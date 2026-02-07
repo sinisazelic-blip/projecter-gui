@@ -143,7 +143,8 @@ export async function POST(req: Request) {
     );
   }
 
-  // Postavi FINAL OK: status_id = 7 (Završen)
+  // FINAL OK = produkcija završena → status_id = 7 ("Završen")
+  // NAPOMENA: ovo NIJE klijentska potvrda i ne zaključava projekat.
   await query(
     `
     UPDATE projekti
@@ -161,7 +162,7 @@ export async function POST(req: Request) {
     force,
     warnings: check.warnings,
     summary: check.summary,
-    note: "FINAL OK (klijent prihvatio final)",
+    note: "FINAL OK (produkcija završena — čeka se komunikacija s klijentom)",
   };
 
   await query(

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { Flag } from "lucide-react";
 
 const USER_LABEL = "SiNY";
 
@@ -149,10 +150,23 @@ export function CloseProjectModal({
         <>
           <div className="rounded-xl border p-3 mb-4">
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>Troškova: <b>{data.summary.broj_troskova}</b></div>
-              <div>Spent: <b>{formatKM(Number(data.summary.ukupno_km ?? 0))} KM</b></div>
-              <div>Budžet: <b>{data.summary.budzet_planirani == null ? "—" : `${formatKM(Number(data.summary.budzet_planirani))} KM`}</b></div>
-              <div>Zadnji trošak: <b>{toDateShort(data.summary.zadnji_trosak)}</b></div>
+              <div>
+                Troškova: <b>{data.summary.broj_troskova}</b>
+              </div>
+              <div>
+                Spent: <b>{formatKM(Number(data.summary.ukupno_km ?? 0))} KM</b>
+              </div>
+              <div>
+                Budžet:{" "}
+                <b>
+                  {data.summary.budzet_planirani == null
+                    ? "—"
+                    : `${formatKM(Number(data.summary.budzet_planirani))} KM`}
+                </b>
+              </div>
+              <div>
+                Zadnji trošak: <b>{toDateShort(data.summary.zadnji_trosak)}</b>
+              </div>
             </div>
           </div>
 
@@ -191,7 +205,8 @@ export function CloseProjectModal({
                     {w.message}
                     {w.code === "OVER_BUDGET" && w.value ? (
                       <span className="block text-xs text-yellow-900/80">
-                        Budžet: {formatKM(Number(w.value.budzet_planirani))} KM · Spent: {formatKM(Number(w.value.spent))} KM
+                        Budžet: {formatKM(Number(w.value.budzet_planirani))} KM · Spent:{" "}
+                        {formatKM(Number(w.value.spent))} KM
                       </span>
                     ) : null}
                   </li>
@@ -231,7 +246,10 @@ export function CloseProjectModal({
               type="button"
               disabled={saving || hasHardBlocks || (hasWarnings && !confirmWarnings)}
             >
-              Arhiviraj
+              <span className="inline-flex items-center gap-2">
+                <Flag className="h-4 w-4" />
+                Arhiviraj
+              </span>
             </button>
           </div>
         </>

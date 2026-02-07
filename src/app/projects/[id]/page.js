@@ -153,8 +153,8 @@ async function editCost(formData) {
     .toUpperCase();
 
   let kurs = Number.parseFloat(
-    String(formData.get("kurs") ?? formData.get("kurs_u_km") ?? "1").replace(",", "."))
-  ;
+    String(formData.get("kurs") ?? formData.get("kurs_u_km") ?? "1").replace(",", ".")
+  );
   if (valuta === "BAM") kurs = 1;
 
   const tipId = Number(formData.get("tip_id")) || 1;
@@ -517,7 +517,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
   const isReadOnly = statusIdNum === 9;
 
   return (
-    <div className="container">
+    <div style={{ height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <style>{`
         .topbar {
           display: flex;
@@ -669,137 +669,167 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
         }
       `}</style>
 
-      <div className="topbar">
-        <div className="backCluster">
-          <Link
-            href="/projects"
-            aria-label="Povratak na sve projekte"
-            title="Povratak na sve projekte"
-            className="glassbtn backIcon"
-          >
-            <span style={{ fontSize: 22, lineHeight: 1 }}>←</span>
-          </Link>
+      {/* ✅ Topbar uvijek vidljiv; scroll je isključivo u donjem sadržaju */}
+      <div style={{ flex: "0 0 auto", position: "sticky", top: 0, zIndex: 20 }}>
+        <div className="container">
+          <div className="topbar">
+            <div className="backCluster">
+              <Link
+                href="/projects"
+                aria-label="Povratak na sve projekte"
+                title="Povratak na sve projekte"
+                className="glassbtn backIcon"
+              >
+                <span style={{ fontSize: 22, lineHeight: 1 }}>←</span>
+              </Link>
 
-          <div className="backText">
-            <div className="mutedLine">Povratak</div>
-            <div className="strongLine">na sve projekte</div>
+              <div className="backText">
+                <div className="mutedLine">Povratak</div>
+                <div className="strongLine">na sve projekte</div>
+              </div>
+            </div>
+
+            {/* ✅ FLUXA BRAND */}
+            <div className="brandWrap" title="FLUXA — Project & Finance Engine">
+              <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+              <div>
+                <div className="brandTitle">DETALJI PROJEKTA</div>
+                <div className="brandSub">Project & Finance Engine</div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                flexWrap: "wrap",
+                justifyContent: "flex-end",
+              }}
+            >
+              {/* ✅ Status (informativno) */}
+              <span className="statusBadge" title={`Status ID: ${statusIdNum}`}>
+                {statusName}
+              </span>
+
+              {/* ✅ Operativni signal (vidljiv timu) */}
+              <span
+                className="signalBadge"
+                title={sig.title}
+                style={{ background: sig.bg, borderColor: sig.border }}
+              >
+                <span className="signalDot" style={{ background: sig.dot }} />
+                {sig.label}
+              </span>
+
+              {/* ✅ FINAL OK (produkcija završena; ne zaključava) */}
+              <FinalOkButtonClient projekatId={project.projekat_id} disabled={isReadOnly} />
+
+              {/* ✅ OWNER KONTROLA SIGNALA */}
+              <form
+                action={setOperativniSignal}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  opacity: isReadOnly ? 0.55 : 1,
+                  pointerEvents: isReadOnly ? "none" : "auto",
+                }}
+                title={isReadOnly ? "Projekat je fakturisan (read-only)." : "Owner: operativni signal"}
+              >
+                <input type="hidden" name="projekat_id" value={project.projekat_id} />
+                <input type="hidden" name="return_to" value={returnTo} />
+
+                <select
+                  name="operativni_signal"
+                  defaultValue={String(project?.operativni_signal ?? "NORMALNO")}
+                  className="sigSelect"
+                >
+                  <option value="NORMALNO">NORMALNO</option>
+                  <option value="PAZNJA">PAŽNJA</option>
+                  <option value="STOP">STOP</option>
+                </select>
+
+                <input
+                  name="note"
+                  placeholder="bilješka (opciono)…"
+                  className="sigNote"
+                  maxLength={500}
+                  title="Bilješka (ide u log)"
+                />
+
+                <button type="submit" className="glassbtn payBtn" title="Snimi signal (upiši u log)">
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>✅</span>
+                  Snimi
+                </button>
+              </form>
+
+              <Link
+                href={`/finance/banka?projekat_id=${project.projekat_id}`}
+                title="Banka (projekat)"
+                className="glassbtn payBtn"
+              >
+                <span style={{ fontSize: 16, lineHeight: 1 }}>🦦</span>
+                Banka
+              </Link>
+
+              <Link
+                href={`/naplate?projekat_id=${project.projekat_id}`}
+                title="Naplate"
+                className="glassbtn payBtn"
+              >
+                <span style={{ fontSize: 16, lineHeight: 1 }}>💳</span>
+                Naplate
+              </Link>
+            </div>
           </div>
-        </div>
-
-        {/* ✅ FLUXA BRAND */}
-        <div className="brandWrap" title="FLUXA — Project & Finance Engine">
-          <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
-          <div>
-            <div className="brandTitle">DETALJI PROJEKTA</div>
-            <div className="brandSub">Project & Finance Engine</div>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          {/* ✅ Status (informativno) */}
-          <span className="statusBadge" title={`Status ID: ${statusIdNum}`}>
-            {statusName}
-          </span>
-
-          {/* ✅ Operativni signal (vidljiv timu) */}
-          <span
-            className="signalBadge"
-            title={sig.title}
-            style={{ background: sig.bg, borderColor: sig.border }}
-          >
-            <span className="signalDot" style={{ background: sig.dot }} />
-            {sig.label}
-          </span>
-
-          {/* ✅ FINAL OK (operativno zatvaranje) */}
-          <FinalOkButtonClient projekatId={project.projekat_id} disabled={isReadOnly} />
-
-          {/* ✅ OWNER KONTROLA SIGNALA */}
-          <form
-            action={setOperativniSignal}
-            style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", opacity: isReadOnly ? 0.55 : 1, pointerEvents: isReadOnly ? "none" : "auto" }}
-            title={isReadOnly ? "Projekat je fakturisan (read-only)." : "Owner: operativni signal"}
-          >
-            <input type="hidden" name="projekat_id" value={project.projekat_id} />
-            <input type="hidden" name="return_to" value={returnTo} />
-
-            <select name="operativni_signal" defaultValue={String(project?.operativni_signal ?? "NORMALNO")} className="sigSelect">
-              <option value="NORMALNO">NORMALNO</option>
-              <option value="PAZNJA">PAŽNJA</option>
-              <option value="STOP">STOP</option>
-            </select>
-
-            <input
-              name="note"
-              placeholder="bilješka (opciono)…"
-              className="sigNote"
-              maxLength={500}
-              title="Bilješka (ide u log)"
-            />
-
-            <button type="submit" className="glassbtn payBtn" title="Snimi signal (upiši u log)">
-              <span style={{ fontSize: 16, lineHeight: 1 }}>✅</span>
-              Snimi
-            </button>
-          </form>
-
-          <Link
-            href={`/finance/banka?projekat_id=${project.projekat_id}`}
-            title="Banka (projekat)"
-            className="glassbtn payBtn"
-          >
-            <span style={{ fontSize: 16, lineHeight: 1 }}>🏦</span>
-            Banka
-          </Link>
-
-          <Link href={`/naplate?projekat_id=${project.projekat_id}`} title="Naplate" className="glassbtn payBtn">
-            <span style={{ fontSize: 16, lineHeight: 1 }}>💳</span>
-            Naplate
-          </Link>
         </div>
       </div>
 
-      {isReadOnly && (
-        <div
-          className="card"
-          style={{
-            marginBottom: 12,
-            borderLeft: "6px solid #ef4444",
-            background: "rgba(239,68,68,0.08)",
-          }}
-        >
-          <div style={{ fontWeight: 800, marginBottom: 4 }}>🔒 Read-only</div>
-          <div style={{ opacity: 0.9 }}>
-            Projekat je <b>fakturisan</b> (status: Fakturisan). Izmjene više nisu dozvoljene.
-          </div>
+      {/* ✅ Scroll samo donji sadržaj */}
+      <div style={{ flex: "1 1 auto", overflowY: "auto" }}>
+        <div className="container" style={{ paddingBottom: 24 }}>
+          {isReadOnly && (
+            <div
+              className="card"
+              style={{
+                marginBottom: 12,
+                borderLeft: "6px solid #ef4444",
+                background: "rgba(239,68,68,0.08)",
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 4 }}>🔒 Read-only</div>
+              <div style={{ opacity: 0.9 }}>
+                Projekat je <b>fakturisan</b> (status: Fakturisan). Izmjene više nisu dozvoljene.
+              </div>
+            </div>
+          )}
+
+          <ProjectHeader project={project} />
+          <ProjectSummaryCard project={project} />
+
+          {!!project?.napomena && (
+            <div className="noteBox">
+              <div className="muted" style={{ marginBottom: 6 }}>
+                Napomena (Deal)
+              </div>
+              {project.napomena}
+            </div>
+          )}
+
+          <ReadOnlyGuard isReadOnly={isReadOnly} reason="Projekat je fakturisan (read-only). Akcije su onemogućene.">
+            <CostsPanel
+              project={project}
+              costs={costs ?? []}
+              costTypes={costTypes ?? []}
+              showStornirano={showStornirano}
+              returnTo={returnTo}
+              actions={{ addCost, editCost, setCostStatus }}
+            />
+          </ReadOnlyGuard>
         </div>
-      )}
-
-      <ProjectHeader project={project} />
-      <ProjectSummaryCard project={project} />
-
-      {!!project?.napomena && (
-        <div className="noteBox">
-          <div className="muted" style={{ marginBottom: 6 }}>
-            Napomena (Deal)
-          </div>
-          {project.napomena}
-        </div>
-      )}
-
-      <ReadOnlyGuard
-        isReadOnly={isReadOnly}
-        reason="Projekat je fakturisan (read-only). Akcije su onemogućene."
-      >
-        <CostsPanel
-          project={project}
-          costs={costs ?? []}
-          costTypes={costTypes ?? []}
-          showStornirano={showStornirano}
-          returnTo={returnTo}
-          actions={{ addCost, editCost, setCostStatus }}
-        />
-      </ReadOnlyGuard>
+      </div>
     </div>
   );
 }

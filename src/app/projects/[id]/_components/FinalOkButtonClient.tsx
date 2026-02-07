@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import { Flag } from "lucide-react";
 
 const USER_LABEL = "SiNY";
 
@@ -119,12 +120,12 @@ export default function FinalOkButtonClient({
       <button
         type="button"
         className="glassbtn payBtn"
-        title={disabled ? "Projekat je read-only." : "Klijent je prihvatio final → FINAL OK"}
+        title={disabled ? "Projekat je read-only." : "Produkcija završena → FINAL OK (status: Završen)"}
         onClick={() => setOpen(true)}
         disabled={disabled}
         style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? "none" : "auto" }}
       >
-        <span style={{ fontSize: 16, lineHeight: 1 }}>✅</span>
+        <Flag size={16} />
         FINAL OK
       </button>
 
@@ -146,7 +147,10 @@ export default function FinalOkButtonClient({
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-            <div style={{ fontWeight: 800 }}>FINAL OK</div>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 800 }}>
+              <Flag size={16} />
+              FINAL OK
+            </div>
             <button
               type="button"
               className="btn"
@@ -159,7 +163,8 @@ export default function FinalOkButtonClient({
           </div>
 
           <div style={{ marginTop: 8, opacity: 0.85, fontSize: 13 }}>
-            Ovo znači: klijent je prihvatio final. Projekat prelazi u status <b>Završen</b> i spreman je za fakturisanje.
+            Ovo znači: produkcija je završena. Projekat prelazi u status <b>Završen</b> (bez zaključavanja) i spreman je
+            za komunikaciju s klijentom.
           </div>
 
           <div style={{ marginTop: 12 }}>
@@ -191,9 +196,7 @@ export default function FinalOkButtonClient({
                   <div style={{ display: "grid", gap: 6, fontSize: 13, opacity: 0.92 }}>
                     <div>
                       Status sada:{" "}
-                      <b>
-                        {data.summary.status_name ? data.summary.status_name : `#${data.summary.status_id}`}
-                      </b>
+                      <b>{data.summary.status_name ? data.summary.status_name : `#${data.summary.status_id}`}</b>
                     </div>
                     <div>
                       Budžet:{" "}
