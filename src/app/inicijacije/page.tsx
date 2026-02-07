@@ -1,0 +1,417 @@
+// src/app/inicijacije/page.tsx
+import Link from "next/link";
+import { query } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
+
+// Date | string -> "YYYY-MM-DD" (ili null)
+function toISODateOnly(v: any): string | null {
+  if (!v) return null;
+
+  if (v instanceof Date && Number.isFinite(v.getTime())) {
+    return v.toISOString().slice(0, 10);
+  }
+
+  const s = String(v);
+  if (!s) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+
+  const d = new Date(s);
+  if (Number.isFinite(d.getTime())) return d.toISOString().slice(0, 10);
+
+  return null;
+}
+
+// dd.mm.yyyy
+function fmtDate(v: any) {
+  const iso = toISODateOnly(v);
+  if (!iso) return "—";
+  const y = iso.slice(0, 4);
+  const m = iso.slice(5, 7);
+  const d = iso.slice(8, 10);
+  return `${d}.${m}.${y}`;
+}
+
+// dd.mm.yyyy HH:mm
+function fmtDateTime(v: any) {
+  if (!v) return "—";
+  const d = v instanceof Date ? v : new Date(String(v));
+  if (!Number.isFinite(d.getTime())) return String(v);
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(
+    d.getMinutes()
+  )}`;
+}
+
+function daysDiffFromToday(isoDate: string) {
+  const [y, m, d] = isoDate.split("-").map((x) => Number(x));
+  const target = new Date(y, (m || 1) - 1, d || 1);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const ms = target.getTime() - today.getTime();
+  return Math.round(ms / (1000 * 60 * 60 * 24));
+}
+
+function semaforFor(isoDate: string | null) {
+  if (!isoDate) return { cls: "sem--none", title: "Nema roka" };
+  const diff = daysDiffFromToday(isoDate);
+  if (!Number.isFinite(diff)) return { cls: "sem--none", title: "Nevažeći rok" };
+
+  if (diff <= 0) return { cls: "sem--red", title: "Deadline je danas ili prošao" };
+  if (diff <= 3) return { cls: "sem--orange", title: "Deadline uskoro (≤ 3 dana)" };
+  return { cls: "sem--green", title: "Deadline OK (> 3 dana)" };
+}
+
+function normSignal(v: any) {
+  return String(v ?? "").trim().toUpperCase();
+}
+
+function signalMeta(sigRaw: any) {
+  const sig = normSignal(sigRaw);
+
+  if (sig === "STOP") {
+    return {
+      label: "STOP",
+      bg: "rgba(255, 80, 80, .16)",
+      border: "rgba(255, 80, 80, .40)",
+      dot: "rgba(255, 80, 80, .95)",
+      title: "STOP — eskalirano",
+    };
+  }
+
+  if (sig === "PAZNJA" || sig === "PAŽNJA") {
+    return {
+      label: "PAŽNJA",
+      bg: "rgba(255, 165, 0, .16)",
+      border: "rgba(255, 165, 0, .40)",
+      dot: "rgba(255, 165, 0, .95)",
+      title: "PAŽNJA — potencijalni problem",
+    };
+  }
+
+  return null; // NORMALNO i ostalo: ne prikazuj u Deal UI
+}
+
+export default async function DealsPage({ searchParams }: any) {
+  const sp = await Promise.resolve(searchParams);
+  const q = String(sp?.q ?? "").trim();
+
+  const where: string[] = [];
+  const params: any[] = [];
+
+  if (q) {
+    const qNum = Number(q);
+    if (Number.isFinite(qNum)) {
+      where.push("(i.inicijacija_id = ? OR i.radni_naziv LIKE ?)");
+      params.push(Math.trunc(qNum), `%${q}%`);
+    } else {
+      where.push("(i.radni_naziv LIKE ?)");
+      params.push(`%${q}%`);
+    }
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+  // ✅ ključ: povuci zadnji timeline event (accepted_deadline) i koristi kao rok i prije otvaranja projekta
+  const rows: any[] = await query(
+    `
+    SELECT
+      i.inicijacija_id,
+      i.radni_naziv,
+      i.status_id,
+      s.naziv AS status_naziv,
+      i.updated_at,
+      i.created_at,
+      i.projekat_id,
+
+      -- ✅ operativni signal sa projekta (owner -> tim / pregovarač)
+      p.operativni_signal,
+
+      -- rok: projekat rok (ako postoji) ili accepted_deadline iz timeline-a
+      COALESCE(
+        DATE_FORMAT(p.rok_glavni, '%Y-%m-%d'),
+        DATE_FORMAT(tl.accepted_deadline, '%Y-%m-%d')
+      ) AS rok_glavni
+
+    FROM inicijacije i
+    LEFT JOIN statusi s
+      ON s.status_id = i.status_id
+    LEFT JOIN projekti p
+      ON p.projekat_id = i.projekat_id
+    LEFT JOIN (
+      SELECT t1.inicijacija_id, t1.accepted_deadline
+      FROM deal_timeline_events t1
+      INNER JOIN (
+        SELECT inicijacija_id, MAX(event_id) AS max_event_id
+        FROM deal_timeline_events
+        GROUP BY inicijacija_id
+      ) t2
+        ON t2.inicijacija_id = t1.inicijacija_id
+       AND t2.max_event_id = t1.event_id
+    ) tl
+      ON tl.inicijacija_id = i.inicijacija_id
+
+    ${whereSql}
+    ORDER BY i.updated_at DESC, i.inicijacija_id DESC
+    LIMIT 300
+    `,
+    params
+  );
+
+  return (
+    <div className="container">
+      <style>{`
+        /* ✅ Sticky topblock + scroll lista (kao Projects) */
+        .pageWrap {
+          display: flex;
+          flex-direction: column;
+          height: 100vh;
+          overflow: hidden;
+        }
+
+        .topBlock {
+          position: sticky;
+          top: 0;
+          z-index: 30;
+          padding: 14px 0 12px;
+          background: rgba(255,255,255,.04);
+          border: 1px solid rgba(255,255,255,.10);
+          border-radius: 18px;
+          box-shadow: 0 14px 40px rgba(0,0,0,.22);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+        }
+
+        .topInner { padding: 0 14px; }
+
+        .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+        .actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+        .glassbtn {
+          border: 1px solid rgba(255,255,255,.18);
+          background: rgba(255,255,255,.06);
+          box-shadow: 0 10px 30px rgba(0,0,0,.18);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          transition: transform .12s ease, background .12s ease, border-color .12s ease;
+          text-decoration: none;
+          cursor: pointer;
+          user-select: none;
+          padding: 10px 12px;
+          border-radius: 14px;
+          font-weight: 650;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .glassbtn:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.26); }
+        .glassbtn:active { transform: scale(.985); }
+
+        .brandWrap { display:flex; align-items:center; gap:12px; }
+        .brandLogo { height: 30px; width: auto; opacity: .92; }
+        .brandTitle { font-size: 22px; font-weight: 750; line-height: 1.1; margin: 0; }
+        .brandSub { font-size: 12px; opacity: .75; margin-top: 4px; }
+
+        .divider {
+          height: 1px;
+          background: rgba(255,255,255,.12);
+          margin: 12px 0 12px;
+        }
+
+        .listWrap {
+          flex: 1;
+          min-height: 0;
+          overflow: auto;
+          padding: 14px 0 18px;
+        }
+
+        .tableCard {
+          border: 1px solid rgba(255,255,255,.10);
+          background: rgba(255,255,255,.03);
+          border-radius: 18px;
+          box-shadow: 0 10px 30px rgba(0,0,0,.16);
+          overflow: hidden;
+        }
+
+        /* Fino: tabela header ostaje vidljiv */
+        .table thead th {
+          position: sticky;
+          top: 0;
+          z-index: 5;
+          background: rgba(10,10,10,.35);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+        }
+
+        .sem { width: 12px; height: 12px; border-radius: 999px; display: inline-block; box-shadow: 0 0 0 2px rgba(0,0,0,.15) inset; }
+        .sem--none { background: rgba(255,255,255,.18); }
+        .sem--green { background: #37d67a; }
+        .sem--orange { background: #ffb020; }
+        .sem--red { background: #ff3b30; }
+
+        .dealLink { text-decoration:none; color:inherit; font-weight:650; }
+        .dealLink:hover { text-decoration: underline; }
+        .mutedSmall { font-size:12px; opacity:.78; margin-top:3px; }
+
+        .sigPill {
+          display:inline-flex;
+          align-items:center;
+          gap:8px;
+          padding: 6px 10px;
+          border-radius: 999px;
+          font-weight: 800;
+          letter-spacing: .2px;
+          border: 1px solid rgba(255,255,255,.18);
+          background: rgba(255,255,255,.06);
+          font-size: 12px;
+          line-height: 1;
+          margin-left: 10px;
+          white-space: nowrap;
+        }
+        .sigDot {
+          width: 9px;
+          height: 9px;
+          border-radius: 999px;
+          display: inline-block;
+          box-shadow: 0 0 0 3px rgba(255,255,255,.06);
+        }
+
+        .dealNameWrap { display:flex; align-items:center; gap:8px; min-width:0; }
+        .dealIcon { width:14px; height:14px; opacity:.55; flex:0 0 auto; }
+      `}</style>
+
+      <div className="pageWrap">
+        {/* ✅ TOPBLOCK (sticky + glass) */}
+        <div className="topBlock">
+          <div className="topInner">
+            <div className="topbar">
+              {/* ✅ LOGO + naslov (diskretno) */}
+              <div className="brandWrap">
+                <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+                <div>
+                  <div className="brandTitle">Deals</div>
+                  <div className="brandSub">Project & Finance Engine</div>
+                </div>
+              </div>
+
+              <div className="actions">
+                <Link href="/inicijacije/novo" className="glassbtn" title="Novi Deal">
+                  ➕ NOVI
+                </Link>
+
+                <Link href="/inicijacije" className="glassbtn" title="Osvježi listu">
+                  ⟳ Osvježi
+                </Link>
+              </div>
+            </div>
+
+            <form method="GET" style={{ marginTop: 12 }}>
+              <input
+                name="q"
+                defaultValue={q}
+                placeholder="Traži: ID ili naziv..."
+                style={{
+                  width: 320,
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,.18)",
+                  background: "rgba(255,255,255,.06)",
+                  color: "inherit",
+                  outline: "none",
+                }}
+              />
+              <button type="submit" style={{ marginLeft: 10 }}>
+                Traži
+              </button>
+            </form>
+
+            <div className="divider" />
+          </div>
+        </div>
+
+        {/* ✅ LISTA (skrola) */}
+        <div className="listWrap">
+          <div className="tableCard">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Deal</th>
+                  <th>Rok</th>
+                  <th>Status</th>
+                  <th>Vrijeme</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ opacity: 0.7, padding: 18 }}>
+                      Nema deal-ova za zadate filtere.
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((r) => {
+                    const opened = !!r.projekat_id;
+                    const statusLabel = opened ? "Otvoren projekat" : (r.status_naziv ?? "—");
+
+                    const rokIso = toISODateOnly(r.rok_glavni);
+                    const sem = semaforFor(rokIso);
+
+                    const sig = opened ? signalMeta(r.operativni_signal) : null;
+
+                    return (
+                      <tr key={r.inicijacija_id}>
+                        <td style={{ width: 80 }}>{r.inicijacija_id}</td>
+
+                        <td className="cell-wrap">
+                          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                            {/* ✅ IKONICA + naziv */}
+                            <div className="dealNameWrap">
+                              <img src="/fluxa/Icon.png" alt="" className="dealIcon" />
+                              <Link href={`/inicijacije/${r.inicijacija_id}`} className="dealLink">
+                                {r.radni_naziv}
+                              </Link>
+                            </div>
+
+                            {/* ✅ Signal samo kad je PAŽNJA/STOP */}
+                            {sig ? (
+                              <span className="sigPill" title={sig.title} style={{ background: sig.bg, borderColor: sig.border }}>
+                                <span className="sigDot" style={{ background: sig.dot }} />
+                                {sig.label}
+                              </span>
+                            ) : null}
+                          </div>
+
+                          {opened && (
+                            <div className="mutedSmall">
+                              Projekat:{" "}
+                              <Link href={`/projects/${r.projekat_id}`} className="project-link">
+                                #{r.projekat_id}
+                              </Link>
+                            </div>
+                          )}
+                        </td>
+
+                        <td style={{ width: 170 }}>
+                          <span className={`sem ${sem.cls}`} title={sem.title} />{" "}
+                          <span style={{ marginLeft: 8 }}>{rokIso ? fmtDate(rokIso) : "—"}</span>
+                        </td>
+
+                        <td style={{ width: 210 }}>{statusLabel}</td>
+
+                        <td style={{ width: 190 }}>{fmtDateTime(r.updated_at || r.created_at)}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

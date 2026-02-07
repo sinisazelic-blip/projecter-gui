@@ -1,0 +1,6 @@
+Ako sve vrati OK, spremno si da na bilo kojoj mašini radiš:
+
+sync project folder
+pokreneš .\tools\onedrive-setup.ps1
+npm install
+npm run dev

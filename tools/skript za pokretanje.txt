@@ -1,0 +1,6 @@
+powershell -ExecutionPolicy Bypass -File .\tools\onedrive-setup.ps1
+
+powershell -ExecutionPolicy Bypass -File C:\Users\ReDellvill\OneDrive\Desktop\projecter-gui\tools\onedrive-setup.ps1
+
+
+powershell -ExecutionPolicy Bypass -File D:\OneDrive\Desktop\projecter-gui\tools\onedrive-setup.ps1

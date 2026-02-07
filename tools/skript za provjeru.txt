@@ -1,0 +1,4 @@
+Test-Path .\tools\onedrive-setup.ps1
+Test-Path .\.vscode\settings.json
+Test-Path .\README_DEV.md
+Get-Content .\tools\onedrive-setup.ps1 -TotalCount 5

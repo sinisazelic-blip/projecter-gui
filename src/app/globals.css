@@ -1,0 +1,507 @@
+/* =========================
+   Global / Theme
+   ========================= */
+
+:root {
+  --bg: #0b0f14;
+  --panel: #0f1620;
+  --panel-2: #0c121b;
+
+  --text: #e8eef6;
+  --muted: #a9b4c2;
+
+  /* FIX: alias koji si koristio dole u .project-link */
+  --fg: var(--text);
+
+  --border: rgba(255, 255, 255, 0.10);
+  --border-2: rgba(255, 255, 255, 0.14);
+
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+
+  --accent: #7dd3fc;      /* light blue */
+  --good: #22c55e;        /* green */
+  --warn: #f59e0b;        /* amber */
+  --bad: #ef4444;         /* red */
+
+  --radius: 14px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+/* FIX: reci browseru da smo dark UI (bolje renderovanje form kontrola, scrollbars, itd.) */
+html {
+  color-scheme: dark;
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(1200px 600px at 10% 0%, rgba(125, 211, 252, 0.10), transparent 60%),
+              radial-gradient(900px 500px at 80% 20%, rgba(34, 197, 94, 0.07), transparent 60%),
+              var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji",
+    "Segoe UI Emoji";
+  line-height: 1.45;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1, h2, h3 {
+  margin: 0;
+}
+
+.container {
+  width: min(1200px, calc(100% - 32px));
+  margin: 28px auto;
+}
+
+/* =========================
+   FIX: Form controls (da ne budu bijeli)
+   ========================= */
+
+input,
+select,
+textarea {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(233, 238, 246, 0.45);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(125, 211, 252, 0.45);
+  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.10);
+}
+
+/* da select ne "pobijeli" na Windows */
+option {
+  background: var(--panel);
+  color: var(--text);
+}
+
+/* =========================
+   Table
+   ========================= */
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.table thead th {
+  text-align: left;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 14px;
+  position: sticky;
+  top: 0;
+  backdrop-filter: blur(6px);
+}
+
+.table tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.table tbody tr {
+  background: transparent;
+}
+
+.table tbody tr:hover {
+  background: rgba(125, 211, 252, 0.06);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Listing: utišaj zatvorene projekte */
+.table tr[data-closed="1"] { opacity: 0.65; }
+.table tr[data-closed="1"]:hover { opacity: 0.85; }
+
+/* =========================
+   WRAP cell (Radni naziv)
+   ========================= */
+
+.cell-wrap {
+  max-width: 640px;
+  white-space: normal;
+  word-break: break-word;
+  color: var(--text);
+}
+
+/* =========================
+   Badge
+   ========================= */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-2);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* Finansijski status (postojeće) */
+.badge[data-status="u_plusu"] { border-color: rgba(34,197,94,0.35); background: rgba(34,197,94,0.10); }
+.badge[data-status="na_nuli"] { border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.10); }
+.badge[data-status="u_minusu"] { border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.10); }
+
+/* =========================
+   Project CORE faze (Fluxa)
+   draft / planned / active / closed
+   ========================= */
+
+.badge[data-status="draft"] {
+  border-color: rgba(125, 211, 252, 0.35);
+  background: rgba(125, 211, 252, 0.10);
+}
+
+.badge[data-status="planned"] {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.10);
+}
+
+.badge[data-status="active"] {
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.10);
+}
+
+/* 🔴 ZATVOREN / ARHIVIRAN */
+.badge[data-status="closed"] {
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.14);
+}
+
+/* opcionalno: lock ikonica samo za closed */
+.badge[data-status="closed"]::before {
+  content: "🔒";
+  margin-right: 2px;
+}
+
+/* =========================
+   ✅ Right-align numeric columns
+   Columns:
+   1 = ID
+   3 = Budžet
+   4 = Troškovi
+   5 = Zarada
+   ========================= */
+
+.table thead th:nth-child(1),
+.table tbody td:nth-child(1),
+.table thead th:nth-child(3),
+.table tbody td:nth-child(3),
+.table thead th:nth-child(4),
+.table tbody td:nth-child(4),
+.table thead th:nth-child(5),
+.table tbody td:nth-child(5) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Malo “zraka” desno da brojevi budu uredni */
+.table tbody td:nth-child(1),
+.table tbody td:nth-child(3),
+.table tbody td:nth-child(4),
+.table tbody td:nth-child(5) {
+  white-space: nowrap;
+}
+
+/* =========================
+   Small screens
+   ========================= */
+
+@media (max-width: 900px) {
+  .cell-wrap {
+    max-width: 360px;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    width: calc(100% - 20px);
+    margin: 18px auto;
+  }
+
+  .table thead th,
+  .table tbody td {
+    padding: 10px 10px;
+  }
+
+  .cell-wrap {
+    max-width: 260px;
+  }
+}
+
+.num { text-align: right; }
+.table td.num, .table th.num { text-align: right; }
+
+.card {
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  padding: 14px;
+  background: rgba(255,255,255,.04);
+}
+
+.btn {
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,.06);
+  color: inherit;
+  cursor: pointer;
+}
+
+.btn:hover { background: rgba(255,255,255,.10); }
+
+.skeleton-row {
+  height: 14px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.08);
+  margin: 10px 0;
+}
+
+.grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+.kpiLabel { opacity: 0.75; font-size: 13px; margin-bottom: 6px; }
+.kpiValue { font-size: 24px; font-weight: 700; }
+
+.project-link {
+  color: var(--fg);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.project-link:hover {
+  text-decoration: underline;
+  opacity: 0.85;
+}
+/* ========== Project status badge ========== */
+.status-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:.45rem;
+  padding:.18rem .55rem;
+  border-radius:999px;
+  font-size:.75rem;
+  line-height:1.1;
+  font-weight:600;
+  border:1px solid rgba(148,163,184,.25); /* slate-ish */
+  background: rgba(148,163,184,.10);
+  color: rgba(226,232,240,.95);
+  user-select:none;
+  white-space:nowrap;
+}
+
+.status-badge__dot{
+  width:.45rem;
+  height:.45rem;
+  border-radius:999px;
+  background: currentColor;
+  opacity:.95;
+}
+
+/* Variants */
+.status-badge--draft{
+  border-color: rgba(148,163,184,.30);
+  background: rgba(148,163,184,.12);
+  color: rgba(226,232,240,.92);
+}
+
+.status-badge--planned{
+  border-color: rgba(56,189,248,.35);   /* sky */
+  background: rgba(56,189,248,.12);
+  color: rgba(186,230,253,.95);
+}
+
+.status-badge--active{
+  border-color: rgba(34,197,94,.35);    /* green */
+  background: rgba(34,197,94,.12);
+  color: rgba(187,247,208,.95);
+}
+
+.status-badge--closed{
+  border-color: rgba(239,68,68,.35);    /* red */
+  background: rgba(239,68,68,.10);
+  color: rgba(254,202,202,.95);
+}
+
+.status-badge--unknown{
+  border-color: rgba(234,179,8,.35);    /* amber */
+  background: rgba(234,179,8,.12);
+  color: rgba(254,243,199,.95);
+}
+/* ========== Financial status badge ========== */
+.fin-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:.45rem;
+  padding:.18rem .55rem;
+  border-radius:999px;
+  font-size:.75rem;
+  line-height:1.1;
+  font-weight:600;
+  border:1px solid rgba(148,163,184,.25);
+  background: rgba(148,163,184,.10);
+  color: rgba(226,232,240,.95);
+  user-select:none;
+  white-space:nowrap;
+}
+
+.fin-badge__dot{
+  width:.45rem;
+  height:.45rem;
+  border-radius:999px;
+  background: currentColor;
+  opacity:.95;
+}
+
+.fin-badge--bez_budzeta{
+  border-color: rgba(148,163,184,.30);
+  background: rgba(148,163,184,.12);
+  color: rgba(226,232,240,.92);
+}
+
+.fin-badge--u_plusu{
+  border-color: rgba(34,197,94,.35);
+  background: rgba(34,197,94,.12);
+  color: rgba(187,247,208,.95);
+}
+
+.fin-badge--u_minusu{
+  border-color: rgba(239,68,68,.35);
+  background: rgba(239,68,68,.10);
+  color: rgba(254,202,202,.95);
+}
+
+.fin-badge--unknown{
+  border-color: rgba(234,179,8,.35);
+  background: rgba(234,179,8,.12);
+  color: rgba(254,243,199,.95);
+}
+
+.btn--active {
+  background: rgba(125, 211, 252, 0.16);
+  border-color: rgba(125, 211, 252, 0.35);
+}
+/* Naplate / top nav buttons */
+.navCard {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  text-decoration: none;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  transition: transform 0.08s ease, filter 0.12s ease, background 0.12s ease;
+}
+.navCard:hover {
+  filter: brightness(1.05);
+  background: rgba(255, 255, 255, 0.085);
+}
+.navCard:active {
+  transform: translateY(1px);
+}
+
+.navPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  transition: transform 0.08s ease, filter 0.12s ease, background 0.12s ease;
+}
+.navPill:hover {
+  filter: brightness(1.05);
+  background: rgba(255, 255, 255, 0.07);
+}
+.navPill:active {
+  transform: translateY(1px);
+}
+/* === Studio šifrarnici: Sticky toolbar + table scroll + sticky thead (UX block) === */
+.studioPage {
+  height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* ključ: page više ne skrola */
+}
+
+.studioControlsSticky {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding-bottom: 12px;
+  /* suptilna “glass” pozadina da se tabela ne probija ispod */
+  background: linear-gradient(180deg, rgba(8, 10, 16, 0.86), rgba(8, 10, 16, 0.62));
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.studioTableScroll {
+  flex: 1;
+  min-height: 0; /* ključ za scroll u flex child-u */
+  overflow: auto; /* skrol samo ovdje */
+  padding-top: 14px;
+}
+
+/* sticky header tabele unutar scroll zone */
+.studioTableScroll .table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(8, 10, 16, 0.85);
+  backdrop-filter: blur(8px);
+}

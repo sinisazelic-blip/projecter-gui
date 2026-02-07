@@ -1,0 +1,293 @@
+import Link from "next/link";
+import { apiGet } from "@/lib/api";
+import { query } from "@/lib/db";
+
+const inputStyle = {
+  padding: "8px 10px",
+  borderRadius: 10,
+  border: "1px solid rgba(255,255,255,.18)",
+  background: "rgba(255,255,255,.06)",
+  color: "inherit",
+  outline: "none",
+};
+
+function fmtMoney(v, cur) {
+  if (v === null || v === undefined) return "—";
+  const n = Number(v);
+  if (Number.isNaN(n)) return `${v} ${cur || ""}`.trim();
+  return `${n.toFixed(2)} ${cur || "BAM"}`.trim();
+}
+
+function fmtDateDMY(v) {
+  if (!v) return "—";
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return String(v);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}.${mm}.${yyyy}`;
+}
+
+function addDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + Number(days || 0));
+  return d;
+}
+
+function daysCell(r) {
+  if (r?.naplata_status === "kasni") {
+    const d = Number(r?.dana_kasni || 0);
+    return <span style={{ color: "#f87171", fontWeight: 700 }}>{`-${d}`}</span>;
+  }
+  if (r?.datum_valute) {
+    const d = r?.dana_do_valute;
+    return <span style={{ color: "#4ade80", fontWeight: 700 }}>{d}</span>;
+  }
+  return <span style={{ opacity: 0.6 }}>—</span>;
+}
+
+export default async function Page({ searchParams }) {
+  const sp = await Promise.resolve(searchParams);
+
+  // ✅ projekat filter iz URL-a
+  const projekatIdRaw = sp?.projekat_id ?? "";
+  const projekatId = String(projekatIdRaw || "").trim();
+
+  const onlyLate = sp?.only_late === "1";
+  const fakt = sp?.fakturisano ?? "";
+  const narId = sp?.narucilac_id ?? "";
+  const dueFrom = sp?.due_from ?? "";
+  const dueTo = sp?.due_to ?? "";
+  const upcomingDays = sp?.upcoming_days ?? "14";
+
+  const narucioci = await query(`
+    SELECT klijent_id, naziv_klijenta
+    FROM klijenti
+    ORDER BY naziv_klijenta ASC
+  `);
+
+  const params = new URLSearchParams();
+
+  // ✅ proslijedi projekat_id ka API-ju
+  if (projekatId) params.set("projekat_id", projekatId);
+
+  if (onlyLate) params.set("only_late", "1");
+  // Fakturisano: samo "DA" ili svi (NE nema smisla)
+  if (fakt === "1") params.set("fakturisano", "1");
+  if (narId) params.set("narucilac_id", narId);
+  if (dueFrom) params.set("due_from", dueFrom);
+  if (dueTo) params.set("due_to", dueTo);
+  if (!onlyLate) params.set("upcoming_days", String(upcomingDays || "14"));
+
+  const qs = params.toString() ? `?${params.toString()}` : "";
+  const json = await apiGet(`/api/naplate${qs}`);
+  const rows = json.data ?? [];
+
+  // ✅ Reset: ako si u projektu, resetuj filtere ali ostani na projektu
+  const resetHref = projekatId ? `/naplate?projekat_id=${encodeURIComponent(projekatId)}` : "/naplate";
+
+  // period ispod naslova
+  let periodText = "";
+  if (onlyLate) {
+    periodText = "Samo stavke van valute";
+  } else if (dueFrom || dueTo) {
+    const fromTxt = dueFrom ? fmtDateDMY(dueFrom) : "—";
+    const toTxt = dueTo ? fmtDateDMY(dueTo) : "—";
+    periodText = `od ${fromTxt} do ${toTxt}`;
+  } else {
+    const today = new Date();
+    const to = addDays(today, Number(upcomingDays || 14));
+    periodText = `od ${fmtDateDMY(today)} do ${fmtDateDMY(to)}`;
+  }
+
+  return (
+    <div className="container">
+      {/* ✅ TOP NAV: povratak + (ako ima) nazad na projekat */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <Link href="/projects" className="navCard" title="Povratak na projekte">
+            <span className="navIcon" aria-hidden="true">
+              ←
+            </span>
+<span className="navText" style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
+  <strong>Projekti</strong>
+  <span className="muted navSub" style={{ marginTop: 2 }}>
+    povratak na listu
+  </span>
+</span>
+
+          </Link>
+
+          {projekatId ? (
+            <Link
+              href={`/projects/${encodeURIComponent(projekatId)}`}
+              className="navPill"
+              title={`Nazad na projekat #${projekatId}`}
+            >
+              <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 1 }}>
+                ↩
+              </span>
+              <span>
+                <strong>Projekat</strong> <span className="muted">#{projekatId}</span>
+              </span>
+            </Link>
+          ) : null}
+        </div>
+
+        <div />
+      </div>
+
+      {/* Header: naslov + period */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+          <h1 style={{ fontSize: 22, marginBottom: 0 }}>Naplate</h1>
+
+          {/* mali indikator kad je filtrirano po projektu */}
+          {projekatId && (
+            <span className="badge" style={{ opacity: 0.9 }}>
+              Projekat #{projekatId}
+            </span>
+          )}
+        </div>
+
+        <div style={{ opacity: 0.75, whiteSpace: "nowrap" }}>{periodText}</div>
+
+        {/* link da se lako vrati na globalne naplate */}
+        {projekatId && (
+          <div style={{ marginTop: 4 }}>
+            <Link href="/naplate" style={{ opacity: 0.8 }}>
+              ← Sve naplate (svi projekti)
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* Filter bar */}
+      <form method="GET">
+        {/* da projekat_id ostane kad filtriraš */}
+        {projekatId && <input type="hidden" name="projekat_id" value={projekatId} />}
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+            alignItems: "flex-start",
+            flexWrap: "nowrap",
+          }}
+        >
+          {/* Lijevo: filteri */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minWidth: 0 }}>
+            {/* Red 1 */}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, opacity: 0.9 }}>
+                <input type="checkbox" name="only_late" value="1" defaultChecked={onlyLate} />
+                Samo van valute
+              </label>
+
+              {!onlyLate && (
+                <>
+                  <span style={{ opacity: 0.75 }}>U narednih:</span>
+                  <select name="upcoming_days" defaultValue={String(upcomingDays)} style={inputStyle}>
+                    <option value="7">7 dana</option>
+                    <option value="14">14 dana</option>
+                    <option value="30">30 dana</option>
+                  </select>
+                </>
+              )}
+
+              <span style={{ opacity: 0.75 }}>Fakturisano:</span>
+              <select name="fakturisano" defaultValue={String(fakt)} style={inputStyle}>
+                <option value="">Svi</option>
+                <option value="1">DA</option>
+              </select>
+
+              <span style={{ opacity: 0.75 }}>Naručilac:</span>
+              <select name="narucilac_id" defaultValue={String(narId)} style={{ ...inputStyle, minWidth: 220 }}>
+                <option value="">Svi</option>
+                {narucioci.map((k) => (
+                  <option key={k.klijent_id} value={k.klijent_id}>
+                    {k.naziv_klijenta}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Red 2 */}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <span style={{ opacity: 0.75 }}>
+                Valuta: <span style={{ opacity: 0.9 }}>dd.mm.yyyy</span> do <span style={{ opacity: 0.9 }}>dd.mm.yyyy</span>
+              </span>
+
+              <input type="date" name="due_from" defaultValue={String(dueFrom)} style={inputStyle} />
+              <span style={{ opacity: 0.65 }}>do</span>
+              <input type="date" name="due_to" defaultValue={String(dueTo)} style={inputStyle} />
+
+              <span style={{ opacity: 0.55, fontSize: 12 }}>
+                (Browser prikazuje svoj format u polju, ali sistem koristi dd.mm.yyyy u prikazu.)
+              </span>
+            </div>
+          </div>
+
+          {/* Desno: dugmad */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+            <button type="submit" className="btn" style={{ minWidth: 110 }}>
+              Filtriraj
+            </button>
+            <Link href={resetHref} className="btn" style={{ padding: "10px 12px", minWidth: 90, textAlign: "center" }}>
+              Reset
+            </Link>
+          </div>
+        </div>
+      </form>
+
+      {/* Separator */}
+      <div style={{ height: 1, background: "rgba(255,255,255,.12)", margin: "12px 0 14px" }} />
+
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Projekat</th>
+            <th>Naručilac</th>
+            <th>Krajnji klijent</th>
+            <th className="num">Iznos</th>
+            <th>Valuta</th>
+            <th className="num">Dani</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.potrazivanje_id ?? r.projekat_id}>
+              <td className="cell-wrap">
+                <span style={{ opacity: 0.7, marginRight: 6 }}>#{r.projekat_id}</span>
+                {r.radni_naziv}
+              </td>
+              <td>{r.narucilac_naziv ?? "—"}</td>
+              <td style={{ opacity: r.krajnji_klijent_naziv ? 1 : 0.6 }}>{r.krajnji_klijent_naziv ?? "—"}</td>
+              <td className="num">{fmtMoney(r.iznos, r.valuta)}</td>
+              <td>{r.datum_valute ? fmtDateDMY(r.datum_valute) : "—"}</td>
+              <td className="num">{daysCell(r)}</td>
+              <td>{r.naplata_status}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {rows.length === 0 && <div style={{ marginTop: 12, opacity: 0.7 }}>Nema stavki za prikaz (po trenutnim filterima).</div>}
+
+      {/* ✅ hover/press efekti bez event handlera */}
+      
+    </div>
+  );
+}
