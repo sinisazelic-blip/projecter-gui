@@ -4,69 +4,40 @@ import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+//export const metadata = {
+//  title: "Lista projekata",
+//};
+
+
 /**
- * Project status badge helpers
+ * ✅ KANON status prikaz:
+ * - API vraća status_name iz statusi_projekta
+ * - ovdje pravimo samo badge stil (boja/label), ali tekst je kanonski.
  */
-function normalizeProjectStatus(project) {
-  const raw =
-    project?.status ??
-    project?.status_name ??
-    project?.status_naziv ??
-    project?.statusStatus ??
-    project?.status_id ??
-    project?.statusId;
-
-  if (raw === null || raw === undefined) return "unknown";
-
-  if (typeof raw === "number") {
-    const map = { 1: "draft", 2: "planned", 3: "active", 4: "closed", 6: "archived" };
-    return map[raw] ?? "unknown";
-  }
-
-  const s = String(raw).trim().toLowerCase();
-  if (["draft", "nacrt"].includes(s)) return "draft";
-  if (["planned", "planirano", "plan", "dogovoreno", "u_planu"].includes(s)) return "planned";
-  if (["active", "aktivan", "u_toku", "otvoren"].includes(s)) return "active";
-  if (["closed", "zatvoren", "storniran", "zavrsen", "završen", "invoiced", "fakturisan", "fakturisan"].includes(s))
-    return "closed";
-  if (["archived", "arhiviran", "arhiva"].includes(s)) return "archived";
-  return "unknown";
-}
-
-function projectStatusMeta(status) {
-  switch (status) {
-    case "draft":
-      return { label: "DRAFT", className: "status-badge--draft" };
-    case "planned":
-      return { label: "PLANNED", className: "status-badge--planned" };
-    case "active":
-      return { label: "ACTIVE", className: "status-badge--active" };
-    case "closed":
-      return { label: "CLOSED", className: "status-badge--closed" };
-    case "archived":
-      return { label: "ARCHIVED", className: "status-badge--draft" };
-    default:
-      return { label: "UNKNOWN", className: "status-badge--unknown" };
-  }
+function statusToneById(statusId) {
+  const id = Number(statusId ?? 0);
+  if (id === 9) return "status-badge--invoiced"; // Fakturisan
+  if (id === 10) return "status-badge--archived"; // Arhiviran
+  if (id === 12) return "status-badge--cancelled"; // Otkazan
+  if (id === 8) return "status-badge--closed"; // Zatvoren
+  if (id === 7) return "status-badge--done"; // Završen
+  if (id >= 4 && id <= 6) return "status-badge--active"; // U produkciji / Omega / Postprodukcija
+  if (id >= 1 && id <= 3) return "status-badge--planned"; // Otvoren / U razradi / Čeka potvrdu
+  return "status-badge--unknown";
 }
 
 function StatusBadge({ project }) {
-  const status = normalizeProjectStatus(project);
-  const meta = projectStatusMeta(status);
-
-  const rawLabel =
-    project?.status_naziv ??
-    project?.status_name ??
-    project?.status ??
-    (project?.status_id ? `status_id=${project.status_id}` : "");
+  const label = project?.status_name
+    ? String(project.status_name)
+    : project?.status_id
+    ? `Status #${project.status_id}`
+    : "—";
+  const cls = statusToneById(project?.status_id);
 
   return (
-    <span
-      className={`status-badge ${meta.className}`}
-      title={rawLabel ? `Status: ${rawLabel}` : `Status: ${status}`}
-    >
+    <span className={`status-badge ${cls}`} title={`Status: ${label}`}>
       <span className="status-badge__dot" />
-      {meta.label}
+      {label}
     </span>
   );
 }
@@ -108,7 +79,6 @@ function FinancialBadge({ project }) {
 
 /**
  * ✅ Operativni signal (NORMALNO/PAZNJA/STOP) — “vidi se iz aviona”
- * Prikaz u STATUS koloni (ne posebna kolona).
  */
 function normalizeSignal(project) {
   const raw = project?.operativni_signal;
@@ -273,11 +243,11 @@ function buildQuery(paramsObj) {
   return parts.length ? `?${parts.join("&")}` : "";
 }
 
-// ✅ sortiranje po master contextu
-function sortProjects(rows, statusVal) {
+// ✅ sortiranje po master contextu (active grupa => po roku)
+function sortProjects(rows, status_group) {
   const list = Array.isArray(rows) ? [...rows] : [];
 
-  if (String(statusVal) === "3") {
+  if (String(status_group) === "active") {
     list.sort((a, b) => {
       const da = parseToDateOnly(a?.rok_glavni);
       const db = parseToDateOnly(b?.rok_glavni);
@@ -291,7 +261,7 @@ function sortProjects(rows, statusVal) {
     return list;
   }
 
-  if (String(statusVal) === "6") {
+  if (String(status_group) === "archive") {
     list.sort((a, b) => Number(a?.projekat_id ?? 0) - Number(b?.projekat_id ?? 0));
     return list;
   }
@@ -309,41 +279,93 @@ async function apiGetNoStore(path) {
   return json;
 }
 
+// ✅ Server-side interpretacija status_pick (nema JS interaktivnosti)
+function parseStatusPick(status_pick_raw) {
+  const s = String(status_pick_raw ?? "").trim();
+  if (!s) return { status_group: "active", status_id: null };
+
+  if (s.startsWith("group:")) {
+    const g = s.slice("group:".length).toLowerCase();
+    if (g === "active" || g === "archive" || g === "all") return { status_group: g, status_id: null };
+    return { status_group: "active", status_id: null };
+  }
+
+  const n = Number(s);
+  if (Number.isFinite(n) && n > 0) return { status_group: "all", status_id: n }; // exact status => group all
+  return { status_group: "active", status_id: null };
+}
+
 export default async function Page({ searchParams }) {
   const sp = await Promise.resolve(searchParams);
 
-  const statusIdRaw = sp?.status_id ?? "";
   const finRaw = sp?.fin_status ?? "";
   const legacyRaw = sp?.legacy ?? "";
   const qRaw = sp?.q ?? "";
   const showDoneRaw = sp?.show_done ?? "";
   const showDone = String(showDoneRaw) === "1";
 
-  const statusVal = String(statusIdRaw || "3");
+  // ✅ pagination
+  const page = Math.max(1, Number(sp?.page ?? 1) || 1);
+  const limit = Math.max(1, Math.min(200, Number(sp?.limit ?? 50) || 50));
 
-  const statuses = await query(`SELECT status_id, naziv FROM statusi ORDER BY status_id ASC`);
+  // ✅ status picker: jedini input iz forme
+  const status_pick = sp?.status_pick ?? "";
+
+  // ✅ server decides
+  const parsed = parseStatusPick(status_pick);
+  const status_group = parsed.status_group;
+  const status_id = parsed.status_id;
+
+  // ✅ status dropdown source: statusi_projekta (KANON)
+  const statuses = await query(
+    `SELECT status_id, naziv_statusa FROM statusi_projekta ORDER BY status_id ASC`
+  );
 
   const qs = buildQuery({
-    status_id: statusVal,
+    status_group,
+    status_id: status_id ? String(status_id) : "",
     fin_status: finRaw,
     legacy: legacyRaw,
     q: qRaw,
     show_done: showDone ? "1" : "",
+    page: String(page),
+    limit: String(limit),
   });
 
-  // ✅ ključ: no-store fetch, bez apiGet helpera koji može keširati
   const json = await apiGetNoStore(`/api/projects${qs}`);
   const projectsRaw = json?.rows ?? [];
-  const projects = sortProjects(projectsRaw, statusVal);
+  const total = Number(json?.total ?? 0);
+
+  const projects = sortProjects(projectsRaw, status_group);
+
+  const from = total === 0 ? 0 : (page - 1) * limit + 1;
+  const to = Math.min(total, page * limit);
+  const hasPrev = page > 1;
+  const hasNext = page * limit < total;
+
+  function pageLink(nextPage) {
+    return buildQuery({
+      status_pick,
+      fin_status: finRaw,
+      legacy: legacyRaw,
+      q: qRaw,
+      show_done: showDone ? "1" : "",
+      page: String(nextPage),
+      limit: String(limit),
+    });
+  }
+
+  // ✅ default selected value for dropdown (reflect current state)
+  const statusSelectValue = status_id ? String(status_id) : `group:${status_group}`;
 
   return (
-    <div style={{ height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div className="container">
       <style>{`
         /* ✅ Minimal “glass” kozmetika (Fluxa official) */
         .pageWrap {
           display: flex;
           flex-direction: column;
-          height: 100%;
+          height: 100vh;
           overflow: hidden;
         }
 
@@ -415,102 +437,134 @@ export default async function Page({ searchParams }) {
           backdrop-filter: blur(8px);
           -webkit-backdrop-filter: blur(8px);
         }
+
+        .pagerBar {
+          display:flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 10px;
+          margin-top: 10px;
+          flex-wrap: wrap;
+        }
+        .pagerInfo { opacity: .8; font-size: 12px; }
+        .pagerBtns { display:flex; gap:8px; align-items:center; }
       `}</style>
 
       <div className="pageWrap">
         {/* ✅ TOPBLOCK (glass, sticky) */}
-        <div style={{ flex: "0 0 auto" }}>
-          <div className="container">
-            <div className="topBlock">
-              <div className="topInner">
-                <div className="topRow">
-                  <div className="brandWrap">
-                    <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
-                    <div>
-                      <div className="brandTitle">Projekti</div>
-                      <div className="brandSub">Project &amp; Finance Engine</div>
-                    </div>
+        <div className="topBlock">
+          <div className="topInner">
+            <div className="topRow">
+              <div className="brandWrap">
+                <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+                <div>
+                  <div className="brandTitle">Projekti</div>
+                  <div className="brandSub">Project &amp; Finance Engine</div>
+                </div>
+              </div>
+
+              {/* ✅ Tabs samo postavljaju status_pick */}
+              <div className="tabRow">
+                <Link
+                  href={`/projects?status_pick=${encodeURIComponent("group:active")}`}
+                  className={`btn ${status_group === "active" && !status_id ? "btn--active" : ""}`}
+                  title="Filter: aktivni (1–8)"
+                >
+                  Aktivni
+                </Link>
+                <Link
+                  href={`/projects?status_pick=${encodeURIComponent("group:archive")}`}
+                  className={`btn ${status_group === "archive" && !status_id ? "btn--active" : ""}`}
+                  title="Filter: arhiva (10)"
+                >
+                  Arhiva
+                </Link>
+                <Link
+                  href={`/projects?status_pick=${encodeURIComponent("group:all")}`}
+                  className={`btn ${status_group === "all" && !status_id ? "btn--active" : ""}`}
+                  title="Filter: svi statusi"
+                >
+                  Svi projekti
+                </Link>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <form method="GET" style={{ width: "100%" }}>
+                <input type="hidden" name="page" value="1" />
+                <input type="hidden" name="limit" value={String(limit)} />
+
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "nowrap" }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1, minWidth: 0 }}>
+                    <span style={{ opacity: 0.75 }}>Status:</span>
+
+                    <select name="status_pick" defaultValue={statusSelectValue} style={inputStyle}>
+                      <option value="group:active">Aktivni (grupa 1–8)</option>
+                      <option value="group:archive">Arhiva (samo 10)</option>
+                      <option value="group:all">Svi statusi (grupa)</option>
+                      <option disabled value="__sep__">────────</option>
+                      {statuses.map((s) => (
+                        <option key={s.status_id} value={String(s.status_id)}>
+                          {s.status_id} — {s.naziv_statusa}
+                        </option>
+                      ))}
+                    </select>
+
+                    <span style={{ opacity: 0.75 }}>Fin:</span>
+                    <select name="fin_status" defaultValue={String(finRaw)} style={inputStyle}>
+                      <option value="">Svi</option>
+                      <option value="bez_budzeta">Bez budžeta</option>
+                      <option value="u_plusu">U plusu</option>
+                      <option value="u_minusu">U minusu</option>
+                    </select>
+
+                    <span style={{ opacity: 0.75 }}>Legacy:</span>
+                    <select name="legacy" defaultValue={String(legacyRaw)} style={inputStyle}>
+                      <option value="">Sve</option>
+                      <option value="ima_legacy">Ima legacy</option>
+                      <option value="nema_legacy">Nema legacy</option>
+                    </select>
+
+                    <span style={{ opacity: 0.75 }}>Traži:</span>
+                    <input name="q" defaultValue={String(qRaw)} placeholder="ID ili naziv..." style={{ ...inputStyle, width: 220 }} />
+
+                    <label style={{ display: "inline-flex", alignItems: "center", gap: 6, opacity: 0.9 }}>
+                      <input type="checkbox" name="show_done" value="1" defaultChecked={showDone} />
+                      Prikaži završene
+                    </label>
                   </div>
 
-                  <div className="tabRow">
-                    <Link href="/projects?status_id=3" className={`btn ${statusVal === "3" ? "btn--active" : ""}`}>
-                      Aktivni
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                    <Link href="/naplate" className="btn" style={{ padding: "10px 12px", minWidth: 90, textAlign: "center" }}>
+                      Naplate
                     </Link>
-                    <Link href="/projects?status_id=6" className={`btn ${statusVal === "6" ? "btn--active" : ""}`}>
-                      Arhiva
-                    </Link>
-                    <Link href="/projects?status_id=all" className={`btn ${statusVal === "all" ? "btn--active" : ""}`}>
-                      Svi projekti
+
+                    <button type="submit" className="btn" style={{ minWidth: 110 }}>
+                      Filtriraj
+                    </button>
+
+                    <Link href="/projects" className="btn" style={{ padding: "10px 12px", minWidth: 90, textAlign: "center" }}>
+                      Reset
                     </Link>
                   </div>
                 </div>
+              </form>
+            </div>
 
-                <div style={{ marginTop: 12 }}>
-                  <form method="GET" style={{ width: "100%" }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 12,
-                        alignItems: "flex-start",
-                        flexWrap: "nowrap",
-                      }}
-                    >
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1, minWidth: 0 }}>
-                        <span style={{ opacity: 0.75 }}>Status:</span>
+            <div className="divider" />
 
-                        <select name="status_id" defaultValue={statusVal} style={inputStyle}>
-                          <option value="3">Aktivni (default)</option>
-                          <option value="all">Svi statusi</option>
-                          {statuses.map((s) => (
-                            <option key={s.status_id} value={s.status_id}>
-                              {s.naziv}
-                            </option>
-                          ))}
-                        </select>
-
-                        <span style={{ opacity: 0.75 }}>Fin:</span>
-                        <select name="fin_status" defaultValue={String(finRaw)} style={inputStyle}>
-                          <option value="">Svi</option>
-                          <option value="bez_budzeta">Bez budžeta</option>
-                          <option value="u_plusu">U plusu</option>
-                          <option value="u_minusu">U minusu</option>
-                        </select>
-
-                        <span style={{ opacity: 0.75 }}>Legacy:</span>
-                        <select name="legacy" defaultValue={String(legacyRaw)} style={inputStyle}>
-                          <option value="">Sve</option>
-                          <option value="ima_legacy">Ima legacy</option>
-                          <option value="nema_legacy">Nema legacy</option>
-                        </select>
-
-                        <span style={{ opacity: 0.75 }}>Traži:</span>
-                        <input name="q" defaultValue={String(qRaw)} placeholder="ID ili naziv..." style={{ ...inputStyle, width: 220 }} />
-
-                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, opacity: 0.9 }}>
-                          <input type="checkbox" name="show_done" value="1" defaultChecked={showDone} />
-                          Prikaži završene
-                        </label>
-                      </div>
-
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-                        <Link href="/naplate" className="btn" style={{ padding: "10px 12px", minWidth: 90, textAlign: "center" }}>
-                          Naplate
-                        </Link>
-
-                        <button type="submit" className="btn" style={{ minWidth: 110 }}>
-                          Filtriraj
-                        </button>
-
-                        <Link href="/projects" className="btn" style={{ padding: "10px 12px", minWidth: 90, textAlign: "center" }}>
-                          Reset
-                        </Link>
-                      </div>
-                    </div>
-                  </form>
-                </div>
-
-                <div className="divider" />
+            {/* ✅ pager info u headeru */}
+            <div className="pagerBar">
+              <div className="pagerInfo">
+                Prikaz: <b>{from}</b>–<b>{to}</b> od <b>{total}</b> (strana {page})
+              </div>
+              <div className="pagerBtns">
+                <Link className={`btn ${hasPrev ? "" : "btn--disabled"}`} href={hasPrev ? `/projects${pageLink(page - 1)}` : "#"} aria-disabled={!hasPrev}>
+                  ← Prethodna
+                </Link>
+                <Link className={`btn ${hasNext ? "" : "btn--disabled"}`} href={hasNext ? `/projects${pageLink(page + 1)}` : "#"} aria-disabled={!hasNext}>
+                  Sljedeća →
+                </Link>
               </div>
             </div>
           </div>
@@ -518,104 +572,113 @@ export default async function Page({ searchParams }) {
 
         {/* ✅ LISTA (skrola) */}
         <div className="listWrap">
-          <div className="container">
-            <div className="tableCard">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Radni naziv</th>
-                    <th>Rok</th>
-                    <th className="num">Budžet</th>
-                    <th className="num">Troškovi</th>
-                    <th className="num">Zarada</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
+          <div className="tableCard">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Radni naziv</th>
+                  <th>Rok</th>
+                  <th className="num">Budžet</th>
+                  <th className="num">Troškovi</th>
+                  <th className="num">Zarada</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
 
-                <tbody>
-                  {projects.map((p) => {
-                    const isArchived = String(p.status_id) === "6";
+              <tbody>
+                {projects.map((p) => {
+                  const d0 = parseToDateOnly(p?.rok_glavni);
+                  const rokText = fmtDDMMYYYY(d0);
+                  const diff = computeDaysDiff(d0);
+                  const sem = semColor(diff);
+                  const label = semLabel(diff);
 
-                    const d0 = parseToDateOnly(p?.rok_glavni);
-                    const rokText = fmtDDMMYYYY(d0);
-                    const diff = computeDaysDiff(d0);
-                    const sem = semColor(diff);
-                    const label = semLabel(diff);
+                  return (
+                    <tr key={p.projekat_id}>
+                      <td>{p.projekat_id}</td>
 
-                    return (
-                      <tr key={p.projekat_id} data-closed={isArchived ? "1" : "0"}>
-                        <td>{p.projekat_id}</td>
+                      <td className="cell-wrap">
+                        <Link
+                          href={`/projects/${p.projekat_id}`}
+                          className="project-link"
+                          style={{ display: "inline-flex", alignItems: "center", gap: 10 }}
+                        >
+                          <img
+                            src={
+                              p.operativni_signal === "STOP"
+                                ? "/fluxa/Icon_red.png"
+                                : p.operativni_signal === "PAZNJA"
+                                ? "/fluxa/Icon_zuta.png"
+                                : "/fluxa/Icon.png"
+                            }
+                            alt=""
+                            width={18}
+                            height={18}
+                            style={{ opacity: 0.9 }}
+                          />
+                          <span>{p.radni_naziv}</span>
+                        </Link>
+                      </td>
 
-                        <td className="cell-wrap">
-                          <Link
-                            href={`/projects/${p.projekat_id}`}
-                            className="project-link"
-                            style={{ display: "inline-flex", alignItems: "center", gap: 10 }}
-                          >
-                            <img
-                              src={
-                                p.operativni_signal === "STOP"
-                                  ? "/fluxa/Icon_red.png"
-                                  : p.operativni_signal === "PAZNJA"
-                                  ? "/fluxa/Icon_zuta.png"
-                                  : "/fluxa/Icon.png"
-                              }
-                              alt=""
-                              width={18}
-                              height={18}
-                              style={{ opacity: 0.9 }}
-                            />
-                            <span>{p.radni_naziv}</span>
-                          </Link>
-                        </td>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
+                          <span style={{ fontWeight: 650 }}>{rokText}</span>
+                          <span
+                            title={label}
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: 999,
+                              display: "inline-block",
+                              background: dotBg(sem),
+                              boxShadow: "0 0 0 3px rgba(255,255,255,.06)",
+                            }}
+                          />
+                          <span style={{ opacity: 0.7, fontSize: 12 }}>{label}</span>
+                        </div>
+                      </td>
 
-                        <td>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
-                            <span style={{ fontWeight: 650 }}>{rokText}</span>
-                            <span
-                              title={label}
-                              style={{
-                                width: 10,
-                                height: 10,
-                                borderRadius: 999,
-                                display: "inline-block",
-                                background: dotBg(sem),
-                                boxShadow: "0 0 0 3px rgba(255,255,255,.06)",
-                              }}
-                            />
-                            <span style={{ opacity: 0.7, fontSize: 12 }}>{label}</span>
-                          </div>
-                        </td>
+                      <td className="num">{fmt(p.budzet_planirani)}</td>
+                      <td className="num">{fmt(p.troskovi_ukupno)}</td>
+                      <td className="num">{fmt(p.planirana_zarada)}</td>
 
-                        <td className="num">{fmt(p.budzet_planirani)}</td>
-
-                        <td className="num">{fmt(p.troskovi_ukupno)}</td>
-
-                        <td className="num">{fmt(p.planirana_zarada)}</td>
-
-                        <td>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                            <SignalBadge project={p} />
-                            <span style={{ opacity: 0.45 }}>·</span>
-                            <StatusBadge project={p} />
-                            <span style={{ opacity: 0.45 }}>·</span>
-                            <FinancialBadge project={p} />
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-
-                  {projects.length === 0 && (
-                    <tr>
-                      <td colSpan={7} style={{ opacity: 0.7, padding: 18 }}>
-                        Nema projekata za zadate filtere.
+                      <td>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                          <SignalBadge project={p} />
+                          <span style={{ opacity: 0.45 }}>·</span>
+                          <StatusBadge project={p} />
+                          <span style={{ opacity: 0.45 }}>·</span>
+                          <FinancialBadge project={p} />
+                        </div>
                       </td>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  );
+                })}
+
+                {projects.length === 0 && (
+                  <tr>
+                    <td colSpan={7} style={{ opacity: 0.7, padding: 18 }}>
+                      Nema projekata za zadate filtere.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ✅ pager i na dnu */}
+          <div className="pagerBar" style={{ paddingTop: 12 }}>
+            <div className="pagerInfo">
+              Prikaz: <b>{from}</b>–<b>{to}</b> od <b>{total}</b> (strana {page})
+            </div>
+            <div className="pagerBtns">
+              <Link className={`btn ${hasPrev ? "" : "btn--disabled"}`} href={hasPrev ? `/projects${pageLink(page - 1)}` : "#"} aria-disabled={!hasPrev}>
+                ← Prethodna
+              </Link>
+              <Link className={`btn ${hasNext ? "" : "btn--disabled"}`} href={hasNext ? `/projects${pageLink(page + 1)}` : "#"} aria-disabled={!hasNext}>
+                Sljedeća →
+              </Link>
             </div>
           </div>
         </div>

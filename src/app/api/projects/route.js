@@ -4,7 +4,8 @@ import mysql from "mysql2/promise";
 
 export const dynamic = "force-dynamic";
 
-const DEFAULT_STATUS_ID = 3; // Active
+// ✅ DEFAULT: aktivna grupa (1–8)
+const DEFAULT_STATUS_GROUP = "active";
 
 function intOrNull(v) {
   if (v === null || v === undefined || v === "") return null;
@@ -31,15 +32,14 @@ export async function GET(req) {
     const maxBudget = decOrNull(url.searchParams.get("max_budget"));
     const onlyOverBudget = url.searchParams.get("only_over_budget") === "1";
 
-    // status: "all" | "" | "3" | "6" ...
-    const statusRaw = url.searchParams.get("status_id");
-    const statusMode = (statusRaw || "").toLowerCase();
-    const statusId =
-      statusRaw === null || statusRaw === undefined || statusRaw === ""
-        ? DEFAULT_STATUS_ID
-        : statusMode === "all"
-          ? null
-          : intOrNull(statusRaw);
+    // ✅ NEW: status group (active/archive/all) + exact status_id
+    const statusGroupRaw = (url.searchParams.get("status_group") || "").trim().toLowerCase();
+    const status_group =
+      statusGroupRaw === "active" || statusGroupRaw === "archive" || statusGroupRaw === "all"
+        ? statusGroupRaw
+        : DEFAULT_STATUS_GROUP;
+
+    const status_id = intOrNull(url.searchParams.get("status_id")); // exact filter (optional)
 
     // pagination
     const limitRaw = intOrNull(url.searchParams.get("limit")) ?? 50;
@@ -61,14 +61,14 @@ export async function GET(req) {
       database: process.env.DB_NAME,
       ssl: process.env.DB_SSL === "1" ? { rejectUnauthorized: false } : undefined,
       multipleStatements: false,
-
       // ✅ DATETIME kao string (timezone safe)
       dateStrings: true,
     });
 
     /**
      * ✅ Budžet source-of-truth (po MC):
-     * vf (kanonski iz view-a) → ps (zadnji snapshot) → p (legacy)
+     * vf (kanonski iz view-a) → legacy (p.budzet_planirani)
+     * (ps snapshot join ostaje ako ga želiš kasnije uključiti — sada ne diramo)
      */
     const budgetExpr = "COALESCE(vf.budzet_planirani, p.budzet_planirani, 0)";
     const costsExpr = "COALESCE(vf.troskovi_ukupno, tc.troskovi_ukupno, 0)";
@@ -101,9 +101,21 @@ export async function GET(req) {
       where.push(`${costsExpr} > ${budgetExpr}`);
     }
 
-    if (statusId !== null && Number.isFinite(statusId)) {
+    // ✅ STATUS FILTERING (KANON):
+    // - ako je status_id (exact) dat → tačno taj status
+    // - inače koristimo status_group:
+    //   active  => 1–8
+    //   archive => 10 (Arhiviran)
+    //   all     => bez filtera
+    if (status_id !== null) {
       where.push("p.status_id = ?");
-      params.push(statusId);
+      params.push(status_id);
+    } else if (status_group === "active") {
+      where.push("p.status_id BETWEEN 1 AND 8");
+    } else if (status_group === "archive") {
+      where.push("p.status_id = 10");
+    } else {
+      // all => no filter
     }
 
     if (q) {
@@ -123,14 +135,14 @@ export async function GET(req) {
     const userExplicitSort = url.searchParams.has("sort") || url.searchParams.has("dir");
 
     let orderClause = "";
-    if (!userExplicitSort && String(statusId) === "3") {
+    if (!userExplicitSort && status_id === null && status_group === "active") {
       orderClause = `
         ORDER BY
           CASE WHEN p.rok_glavni IS NULL THEN 1 ELSE 0 END ASC,
           p.rok_glavni ASC,
           p.projekat_id ASC
       `;
-    } else if (!userExplicitSort && String(statusId) === "6") {
+    } else if (!userExplicitSort && status_id === null && status_group === "archive") {
       orderClause = `ORDER BY p.projekat_id ASC`;
     } else {
       const sortMap = {
@@ -141,30 +153,11 @@ export async function GET(req) {
         troskovi: costsExpr,
         rok: "p.rok_glavni",
         rok_glavni: "p.rok_glavni",
+        status: "p.status_id",
       };
       const orderBy = sortMap[sort] || "p.projekat_id";
       orderClause = `ORDER BY ${orderBy} ${dir}`;
     }
-
-    /**
-     * ✅ ps = budžet iz ZADNJEG snapshot-a
-     * (ne smije biti SUM svih snapshotova)
-     */
-    const psJoin = `
-      LEFT JOIN (
-        SELECT
-          x.projekat_id,
-          ROUND(SUM(i.line_total), 2) AS budzet_planirani
-        FROM (
-          SELECT projekat_id, MAX(snapshot_id) AS snapshot_id
-          FROM projekat_budget_snapshots
-          GROUP BY projekat_id
-        ) x
-        JOIN projekat_stavke i
-          ON i.projekat_id = x.projekat_id AND i.snapshot_id = x.snapshot_id
-        GROUP BY x.projekat_id
-      ) ps ON ps.projekat_id = p.projekat_id
-    `;
 
     // COUNT
     const [countRows] = await conn.execute(
@@ -172,13 +165,13 @@ export async function GET(req) {
       SELECT COUNT(*) AS total
       FROM projekti p
       LEFT JOIN vw_projekti_finansije vf ON vf.projekat_id = p.projekat_id
-      ${psJoin}
       LEFT JOIN (
         SELECT projekat_id, ROUND(SUM(iznos_km), 2) AS troskovi_ukupno
         FROM projektni_troskovi
         WHERE status <> 'STORNIRANO'
         GROUP BY projekat_id
       ) tc ON tc.projekat_id = p.projekat_id
+      JOIN statusi_projekta sp ON sp.status_id = p.status_id
       ${whereSql}
       `,
       params
@@ -198,7 +191,11 @@ export async function GET(req) {
         p.naziv_za_fakturu,
         p.narucilac_id,
         p.krajnji_klijent_id,
+
+        -- ✅ KANON STATUS:
         p.status_id,
+        sp.naziv_statusa AS status_name,
+        sp.core_faza,
 
         p.operativni_signal,
 
@@ -206,10 +203,7 @@ export async function GET(req) {
         DATE_FORMAT(p.rok_glavni, '%Y-%m-%d %H:%i:%s') AS rok_glavni,
         p.tip_roka,
 
-        -- ✅ Budžet: view → zadnji snapshot → legacy
         ${budgetExpr} AS budzet_planirani,
-
-        -- ✅ Troškovi: view → real costs
         ${costsExpr} AS troskovi_ukupno,
 
         COALESCE(vf.troskovi_novi, ${costsExpr}) AS troskovi_novi,
@@ -232,13 +226,13 @@ export async function GET(req) {
 
       FROM projekti p
       LEFT JOIN vw_projekti_finansije vf ON vf.projekat_id = p.projekat_id
-      ${psJoin}
       LEFT JOIN (
         SELECT projekat_id, ROUND(SUM(iznos_km), 2) AS troskovi_ukupno
         FROM projektni_troskovi
         WHERE status <> 'STORNIRANO'
         GROUP BY projekat_id
       ) tc ON tc.projekat_id = p.projekat_id
+      JOIN statusi_projekta sp ON sp.status_id = p.status_id
 
       ${whereSql}
       ${orderClause}
@@ -253,7 +247,11 @@ export async function GET(req) {
       limit,
       total,
       rows,
-      meta: { default_status_id: DEFAULT_STATUS_ID },
+      meta: {
+        status_group_default: DEFAULT_STATUS_GROUP,
+        status_group,
+        status_id,
+      },
     });
   } catch (err) {
     return NextResponse.json({ ok: false, message: err?.message || "Greška na serveru" }, { status: 500 });

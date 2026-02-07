@@ -1,11 +1,10 @@
+// src/lib/projects/close.ts
 import { query } from "@/lib/db";
-
-type CoreFaza = "draft" | "planned" | "active" | "closed" | null;
 
 type CloseCheck = {
   projekat_id: number;
-  core_faza: CoreFaza;
   status_id: number;
+  status_name: string | null;
   summary: {
     broj_troskova: number;
     ukupno_km: number;
@@ -20,46 +19,89 @@ type CloseCheck = {
 };
 
 export async function getCloseCheck(projekatId: number): Promise<CloseCheck | null> {
-  // 1) Projekat + core_faza
+  // 1) Projekat + naziv statusa + kanonski budžet (view)
   const pRows = await query(
     `
-    SELECT p.projekat_id, p.status_id, p.budzet_planirani, s.core_faza
+    SELECT
+      p.projekat_id,
+      p.status_id,
+      s.naziv_statusa,
+      v.budzet_planirani
     FROM projekti p
-    JOIN statusi_projekta s ON s.status_id = p.status_id
+    LEFT JOIN statusi_projekta s
+      ON s.status_id = p.status_id
+    LEFT JOIN vw_projekti_finansije v
+      ON v.projekat_id = p.projekat_id
     WHERE p.projekat_id = ?
+    LIMIT 1
     `,
     [projekatId]
   );
 
-  const p = pRows[0];
+  const p = pRows?.[0];
   if (!p) return null;
 
-  // 2) Summary troškova
+  const status_id = Number(p.status_id ?? 0);
+  const status_name = p.naziv_statusa ? String(p.naziv_statusa) : null;
+
+  const budzet =
+    p.budzet_planirani === null || p.budzet_planirani === undefined ? null : Number(p.budzet_planirani);
+
+  // 2) Summary troškova (bez STORNIRANO)
   const tRows = await query(
     `
     SELECT
       COUNT(*) AS broj_troskova,
-      COALESCE(SUM(iznos_km),0) AS ukupno_km,
-      MAX(datum_troska) AS zadnji_trosak
+      COALESCE(SUM(CASE WHEN status <> 'STORNIRANO' THEN iznos_km ELSE 0 END), 0) AS ukupno_km,
+      MAX(CASE WHEN status <> 'STORNIRANO' THEN datum_troska ELSE NULL END) AS zadnji_trosak
     FROM projektni_troskovi
     WHERE projekat_id = ?
     `,
     [projekatId]
   );
-  const t = tRows[0] ?? {};
 
+  const t = tRows?.[0] ?? {};
   const spent = Number(t.ukupno_km ?? 0);
-  const budzet = p.budzet_planirani == null ? null : Number(p.budzet_planirani);
   const overBudget = budzet != null && spent > budzet;
 
   const hard_blocks: CloseCheck["hard_blocks"] = [];
   const warnings: CloseCheck["warnings"] = [];
 
-  // HARD BLOCK: već zatvoren
-  if (p.core_faza === "closed") {
+  /**
+   * HARD BLOCK pravila:
+   * - ne smije se zatvarati ako je Zatvoren/Fakturisan/Arhiviran/Otkazan
+   * - zatvaranje (ZATVOREN = 8) smije doći tek nakon FINAL OK (status 7 = Završen)
+   */
+  if (status_id === 8) {
     hard_blocks.push({
       code: "ALREADY_CLOSED",
-      message: "Projekat je već zatvoren (closed).",
+      message: "Projekat je već u statusu 'Zatvoren'.",
+    });
+  }
+  if (status_id === 9) {
+    hard_blocks.push({
+      code: "ALREADY_INVOICED",
+      message: "Projekat je već fakturisan (read-only). Zatvaranje nije moguće.",
+    });
+  }
+  if (status_id === 10) {
+    hard_blocks.push({
+      code: "ALREADY_ARCHIVED",
+      message: "Projekat je već arhiviran. Zatvaranje nije moguće.",
+    });
+  }
+  if (status_id === 12) {
+    hard_blocks.push({
+      code: "CANCELLED",
+      message: "Projekat je otkazan. Zatvaranje nije moguće.",
+    });
+  }
+
+  // mora biti bar FINAL OK (7)
+  if (status_id < 7) {
+    hard_blocks.push({
+      code: "NOT_READY",
+      message: "Projekat nije u statusu 'Završen' (FINAL OK). Prvo završi produkciju (status 7).",
     });
   }
 
@@ -75,7 +117,8 @@ export async function getCloseCheck(projekatId: number): Promise<CloseCheck | nu
     `,
     [projekatId]
   );
-  const uncommitted = Number(bRows[0]?.cnt ?? 0);
+
+  const uncommitted = Number(bRows?.[0]?.cnt ?? 0);
   if (uncommitted > 0) {
     hard_blocks.push({
       code: "BANK_UNCOMMITTED",
@@ -103,7 +146,8 @@ export async function getCloseCheck(projekatId: number): Promise<CloseCheck | nu
     `,
     [projekatId]
   );
-  const reversed = Number(rRows[0]?.cnt ?? 0);
+
+  const reversed = Number(rRows?.[0]?.cnt ?? 0);
   if (reversed > 0) {
     warnings.push({
       code: "BANK_REVERSED",
@@ -115,8 +159,8 @@ export async function getCloseCheck(projekatId: number): Promise<CloseCheck | nu
 
   return {
     projekat_id: Number(p.projekat_id),
-    core_faza: (p.core_faza as CoreFaza) ?? null,
-    status_id: Number(p.status_id),
+    status_id,
+    status_name,
     summary: {
       broj_troskova: Number(t.broj_troskova ?? 0),
       ukupno_km: spent,

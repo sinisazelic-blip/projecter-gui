@@ -1,3 +1,4 @@
+// src/app/api/projects/[id]/close/route.ts
 import { NextResponse } from "next/server";
 import { getCloseCheck } from "@/lib/projects/close";
 import { query } from "@/lib/db";
@@ -57,7 +58,10 @@ export async function POST(req: Request) {
     );
   }
 
-  await query(`UPDATE projekti SET status_id = 10 WHERE projekat_id = ?`, [projekatId]);
+  // ✅ ZATVOREN (soft-lock): status_id = 8
+  await query(`UPDATE projekti SET status_id = 8 WHERE projekat_id = ?`, [projekatId]);
+
+
 
   // ✅ audit log
   const user_label = getUserLabel(req);
@@ -77,7 +81,7 @@ export async function POST(req: Request) {
   const after = await getCloseCheck(projekatId);
 
   return NextResponse.json(
-    { ok: true, message: "Projekat arhiviran.", projekat_id: projekatId, after },
+    { ok: true, message: "Projekat zatvoren (soft-lock).", projekat_id: projekatId, after },
     { status: 200 }
   );
 }

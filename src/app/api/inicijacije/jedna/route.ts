@@ -1,3 +1,4 @@
+// src/app/api/inicijacije/jedna/route.ts
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
@@ -40,13 +41,19 @@ export async function GET(req: Request) {
         i.created_at AS opened_at,
 
         -- ✅ OWNER SIGNAL dolazi sa projekta (ako postoji)
-        p.operativni_signal
+        p.operativni_signal,
+
+        -- ✅ kanonski status projekta (statusi_projekta)
+        p.status_id AS projekat_status_id,
+        sp.naziv_statusa AS projekat_status_name
 
       FROM inicijacije i
       LEFT JOIN statusi s
         ON s.status_id = i.status_id
       LEFT JOIN projekti p
         ON p.projekat_id = i.projekat_id
+      LEFT JOIN statusi_projekta sp
+        ON sp.status_id = p.status_id
       WHERE i.inicijacija_id = ?
       LIMIT 1
       `,

@@ -4,6 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { query } from "@/lib/db";
 
+//export const metadata = {
+//  title: "Lista projekata",
+//};
+//export async function generateMetadata({ params }) {
+//  return { title: `Projekat #${params.id}` };
+//}
+
 import ProjectHeader from "./_components/ProjectHeader";
 import ProjectSummaryCard from "./_components/ProjectSummaryCard";
 import CostsPanel from "./_components/CostsPanel";

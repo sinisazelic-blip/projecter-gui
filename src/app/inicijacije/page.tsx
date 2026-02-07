@@ -4,6 +4,12 @@ import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+
+export const metadata = {
+  title: "Deals lista",
+};
+
+
 // Date | string -> "YYYY-MM-DD" (ili null)
 function toISODateOnly(v: any): string | null {
   if (!v) return null;
@@ -94,9 +100,26 @@ function signalMeta(sigRaw: any) {
   return null; // NORMALNO i ostalo: ne prikazuj u Deal UI
 }
 
+type ViewMode = "active" | "to_invoice" | "invoiced" | "archived" | "no_project" | "all";
+
+const VIEW_OPTIONS: { v: ViewMode; label: string; hint?: string }[] = [
+  { v: "active", label: "Aktivno", hint: "Sakrij arhivirane/otkazane projekte + odbijene deale" },
+  { v: "to_invoice", label: "Spremno za fakturisanje", hint: "Projekti: ZATVOREN (status 8)" },
+  { v: "invoiced", label: "Fakturisano (za naplatu)", hint: "Projekti: FAKTURISAN (status 9)" },
+  { v: "archived", label: "Arhiva", hint: "Projekti: ARHIVIRAN/OTKAZAN + deal ODBIJEN" },
+  { v: "no_project", label: "Samo pregovori", hint: "Deal bez projekta" },
+  { v: "all", label: "Svi", hint: "Bez filtera" },
+];
+
 export default async function DealsPage({ searchParams }: any) {
   const sp = await Promise.resolve(searchParams);
+
   const q = String(sp?.q ?? "").trim();
+  const viewRaw = String(sp?.view ?? "active").trim().toLowerCase();
+  const view: ViewMode =
+    viewRaw === "to_invoice" || viewRaw === "invoiced" || viewRaw === "archived" || viewRaw === "no_project" || viewRaw === "all"
+      ? (viewRaw as ViewMode)
+      : "active";
 
   const where: string[] = [];
   const params: any[] = [];
@@ -111,6 +134,39 @@ export default async function DealsPage({ searchParams }: any) {
       params.push(`%${q}%`);
     }
   }
+
+  /**
+   * ✅ FILTER LOGIKA (kanonski za Deals):
+   * - Ako postoji projekat: filtriramo po p.status_id
+   * - Ako nema projekta: filtriramo po i.status_id (deal pregovori)
+   *
+   * statusi_projekta:
+   * 8 = ZATVOREN (soft-lock)  -> "spremno za fakturisanje"
+   * 9 = FAKTURISAN            -> "za naplatu"
+   * 10 = ARHIVIRAN            -> arhiva
+   * 12 = OTKAZAN              -> arhiva
+   *
+   * Deal statusi (inicijacije.status_id):
+   * 4 = ODBIJENO (po tvom UI nizu)
+   */
+  if (view === "no_project") {
+    where.push("i.projekat_id IS NULL");
+  } else if (view === "to_invoice") {
+    where.push("i.projekat_id IS NOT NULL");
+    where.push("p.status_id = 8");
+  } else if (view === "invoiced") {
+    where.push("i.projekat_id IS NOT NULL");
+    where.push("p.status_id = 9");
+  } else if (view === "archived") {
+    where.push(
+      "((i.projekat_id IS NOT NULL AND p.status_id IN (10,12)) OR (i.projekat_id IS NULL AND i.status_id = 4))"
+    );
+  } else if (view === "active") {
+    // default: sakrij arhivu (projekat 10/12) + sakrij odbijene deale
+    where.push(
+      "((i.projekat_id IS NOT NULL AND p.status_id NOT IN (10,12)) OR (i.projekat_id IS NULL AND i.status_id <> 4))"
+    );
+  } // "all" = ništa
 
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
@@ -129,6 +185,10 @@ export default async function DealsPage({ searchParams }: any) {
       -- ✅ operativni signal sa projekta (owner -> tim / pregovarač)
       p.operativni_signal,
 
+      -- ✅ status projekta (za prikaz + filter mental model)
+      p.status_id AS projekat_status_id,
+      sp.naziv_statusa AS projekat_status_naziv,
+
       -- rok: projekat rok (ako postoji) ili accepted_deadline iz timeline-a
       COALESCE(
         DATE_FORMAT(p.rok_glavni, '%Y-%m-%d'),
@@ -140,6 +200,8 @@ export default async function DealsPage({ searchParams }: any) {
       ON s.status_id = i.status_id
     LEFT JOIN projekti p
       ON p.projekat_id = i.projekat_id
+    LEFT JOIN statusi_projekta sp
+      ON sp.status_id = p.status_id
     LEFT JOIN (
       SELECT t1.inicijacija_id, t1.accepted_deadline
       FROM deal_timeline_events t1
@@ -205,6 +267,7 @@ export default async function DealsPage({ searchParams }: any) {
           display: inline-flex;
           align-items: center;
           gap: 8px;
+          color: inherit;
         }
         .glassbtn:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.26); }
         .glassbtn:active { transform: scale(.985); }
@@ -280,6 +343,19 @@ export default async function DealsPage({ searchParams }: any) {
 
         .dealNameWrap { display:flex; align-items:center; gap:8px; min-width:0; }
         .dealIcon { width:14px; height:14px; opacity:.55; flex:0 0 auto; }
+
+        .filtersRow { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-top: 12px; }
+        .field { display:flex; flex-direction:column; gap:6px; }
+        .labelSmall { font-size:12px; opacity:.75; }
+
+        .input {
+          padding: 10px 12px;
+          borderRadius: 12px;
+          border: 1px solid rgba(255,255,255,.18);
+          background: rgba(255,255,255,.06);
+          color: inherit;
+          outline: none;
+        }
       `}</style>
 
       <div className="pageWrap">
@@ -307,23 +383,32 @@ export default async function DealsPage({ searchParams }: any) {
               </div>
             </div>
 
-            <form method="GET" style={{ marginTop: 12 }}>
-              <input
-                name="q"
-                defaultValue={q}
-                placeholder="Traži: ID ili naziv..."
-                style={{
-                  width: 320,
-                  padding: "10px 12px",
-                  borderRadius: 12,
-                  border: "1px solid rgba(255,255,255,.18)",
-                  background: "rgba(255,255,255,.06)",
-                  color: "inherit",
-                  outline: "none",
-                }}
-              />
-              <button type="submit" style={{ marginLeft: 10 }}>
-                Traži
+            {/* ✅ FILTERS (GET, bez onChange) */}
+            <form method="GET" className="filtersRow">
+              <div className="field">
+                <div className="labelSmall">Traži</div>
+                <input
+                  name="q"
+                  defaultValue={q}
+                  placeholder="ID ili naziv…"
+                  className="input"
+                  style={{ width: 320 }}
+                />
+              </div>
+
+              <div className="field">
+                <div className="labelSmall">Pregled</div>
+                <select name="view" defaultValue={view} className="input" style={{ width: 260 }}>
+                  {VIEW_OPTIONS.map((o) => (
+                    <option key={o.v} value={o.v}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button type="submit" className="glassbtn" title="Primijeni filtere">
+                🔎 Primijeni
               </button>
             </form>
 
@@ -355,7 +440,14 @@ export default async function DealsPage({ searchParams }: any) {
                 ) : (
                   rows.map((r) => {
                     const opened = !!r.projekat_id;
-                    const statusLabel = opened ? "Otvoren projekat" : (r.status_naziv ?? "—");
+
+                    // ✅ Status prikaz:
+                    // - ako ima projekat: prikazi status PROJEKTA (naziv_statusa)
+                    // - ako nema projekta: prikazi status DEAL-a (naziv)
+                    const projectStatusName = r.projekat_status_naziv ? String(r.projekat_status_naziv) : null;
+                    const dealStatusName = r.status_naziv ? String(r.status_naziv) : null;
+
+                    const statusLabel = opened ? (projectStatusName ?? `Projekt #${Number(r.projekat_status_id ?? 0)}`) : (dealStatusName ?? "—");
 
                     const rokIso = toISODateOnly(r.rok_glavni);
                     const sem = semaforFor(rokIso);

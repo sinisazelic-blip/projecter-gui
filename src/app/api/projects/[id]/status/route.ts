@@ -1,56 +1,66 @@
-export const runtime = "nodejs";
-
+// src/app/api/projects/[id]/status/route.ts
 import { NextResponse } from "next/server";
-import mysql from "mysql2/promise";
+import { query } from "@/lib/db";
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __projecterPool: mysql.Pool | undefined;
-}
+export const dynamic = "force-dynamic";
 
-function getPool() {
-  if (!global.__projecterPool) {
-    global.__projecterPool = mysql.createPool({
-      host: process.env.DB_HOST,
-      port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      waitForConnections: true,
-      connectionLimit: 10,
-    });
+function getIdFromUrl(req: Request): number | null {
+  try {
+    const url = new URL(req.url);
+    const parts = url.pathname.split("/").filter(Boolean);
+    // očekujemo: api / projects / {id} / status
+    const i = parts.indexOf("projects");
+    if (i === -1) return null;
+    const raw = parts[i + 1];
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
+  } catch {
+    return null;
   }
-  return global.__projecterPool;
 }
 
-function extractProjectIdFromUrl(req: Request): { projekat_id: number | null; rawId: string | null } {
-  const pathname = new URL(req.url).pathname; // npr. /api/projects/5691/status
-  const parts = pathname.split("/").filter(Boolean); // ["api","projects","5691","status"]
+export async function GET(req: Request) {
+  try {
+    const id = getIdFromUrl(req);
+    if (!id) {
+      return NextResponse.json({ ok: false, error: "BAD_ID" }, { status: 400 });
+    }
 
-  const i = parts.indexOf("projects");
-  const rawId = i >= 0 ? parts[i + 1] ?? null : null;
+    const rows: any[] = await query(
+      `
+      SELECT
+        p.projekat_id,
+        p.status_id,
+        sp.naziv_statusa AS status_name
+      FROM projekti p
+      LEFT JOIN statusi_projekta sp
+        ON sp.status_id = p.status_id
+      WHERE p.projekat_id = ?
+      LIMIT 1
+      `,
+      [id]
+    );
 
-  const projekat_id = rawId ? Number(rawId) : NaN;
-  if (!Number.isFinite(projekat_id)) return { projekat_id: null, rawId };
+    const row = rows?.[0] ?? null;
+    if (!row) {
+      return NextResponse.json({ ok: false, error: "NOT_FOUND", projekat_id: id }, { status: 404 });
+    }
 
-  return { projekat_id, rawId };
-}
-
-export async function PATCH(req: Request) {
-  // ✅ OWNER DECISION: manual status changes OFF (do not delete endpoint to avoid regressions)
-  const { projekat_id, rawId } = extractProjectIdFromUrl(req);
-
-  return NextResponse.json(
-    {
-      success: false,
-      message:
-        "Ručna promjena statusa je isključena (owner decision). Status se mijenja samo kroz sistemske operacije (Final OK, Faktura, Arhiviranje...).",
-      projekat_id: projekat_id ?? null,
-      rawId,
-      code: "MANUAL_STATUS_DISABLED",
-    },
-    { status: 403 }
-  );
+    return NextResponse.json({
+      ok: true,
+      row: {
+        projekat_id: Number(row.projekat_id),
+        status_id: Number(row.status_id),
+        status_name: row.status_name ? String(row.status_name) : null,
+      },
+    });
+  } catch (e: any) {
+    // ✅ vrati stvarni error tekst da ga vidiš odmah u Network tab-u
+    return NextResponse.json(
+      { ok: false, error: "SERVER_ERROR", message: e?.message ?? "Unknown error" },
+      { status: 500 }
+    );
+  }
 
   // NOTE: old logic intentionally kept below as reference (unreachable).
   // If in the future we re-enable it, it must be guarded by user roles (owner/admin only).
