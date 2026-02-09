@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DateTimePickerDDMMYYYYHHMM } from "@/components/DatePickers";
+import StatusTimelineBar from "@/components/StatusTimelineBar";
 
 type Row = {
   inicijacija_id: number;
@@ -986,6 +987,13 @@ export default function PonudaDetaljPage() {
               <span className="muted" style={{ fontWeight: 600 }}>{" "}· Deal #{id}</span>
               {row?.projekat_id ? <span className="muted">{" "}· Projekt #{row.projekat_id}</span> : null}
             </h1>
+
+            {/* ✅ Deal → Project “kanonska” traka (vizuelna navigacija) */}
+             <StatusTimelineBar
+                hasProject={!!row?.projekat_id}
+                projectStatusId={projectStatusId}
+                compact={false}
+             />
 
             {!loading && (
               <div className="pageSub">

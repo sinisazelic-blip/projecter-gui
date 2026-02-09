@@ -356,6 +356,7 @@ export default async function DealsPage({ searchParams }: any) {
           color: inherit;
           outline: none;
         }
+          
       `}</style>
 
       <div className="pageWrap">

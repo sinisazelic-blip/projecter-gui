@@ -11,21 +11,39 @@ function mustEnv(name: string) {
   return v;
 }
 
-export const pool: mysql.Pool =
-  global.__projecter_pool__ ??
-  mysql.createPool({
+function createPool(): mysql.Pool {
+  return mysql.createPool({
     host: mustEnv("DB_HOST"),
     user: mustEnv("DB_USER"),
     password: mustEnv("DB_PASSWORD"),
     database: mustEnv("DB_NAME"),
     port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
+
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
+
+    // ✅ dev stabilnost (socket keepalive + razumni timeout)
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0,
+    connectTimeout: 10000,
   });
+}
+
+export const pool: mysql.Pool = global.__projecter_pool__ ?? createPool();
 
 if (process.env.NODE_ENV !== "production") {
   global.__projecter_pool__ = pool;
+}
+
+function isTransientDbError(err: any) {
+  const code = String(err?.code || "");
+  return (
+    code === "ECONNRESET" ||
+    code === "PROTOCOL_CONNECTION_LOST" ||
+    code === "EPIPE" ||
+    code === "ETIMEDOUT"
+  );
 }
 
 /**
@@ -33,8 +51,28 @@ if (process.env.NODE_ENV !== "production") {
  * import { query } from "@/lib/db"
  */
 export async function query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
-  const [rows] = await pool.query(sql, params);
-  return rows as T[];
+  try {
+    const [rows] = await pool.query(sql, params);
+    return rows as T[];
+  } catch (err: any) {
+    // ✅ Jedan retry za tipične dev resetove konekcije
+    if (isTransientDbError(err)) {
+      try {
+        // pokušaj zatvoriti stari pool (ignore errors)
+        await pool.end().catch(() => null);
+      } catch {}
+
+      const fresh = createPool();
+      if (process.env.NODE_ENV !== "production") {
+        global.__projecter_pool__ = fresh;
+      }
+
+      const [rows] = await fresh.query(sql, params);
+      return rows as T[];
+    }
+
+    throw err;
+  }
 }
 
 /**

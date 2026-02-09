@@ -18,6 +18,9 @@ import CostsPanel from "./_components/CostsPanel";
 import FinalOkButtonClient from "./_components/FinalOkButtonClient";
 import { ReadOnlyGuard } from "@/components/ReadOnlyGuard";
 
+// ✅ NEW: Timeline indikator (read-only)
+import { FluxaTimeline, phaseFromProjectStatusId } from "@/lib/ui/fluxaTimeline";
+
 export const dynamic = "force-dynamic";
 
 const VALID_STATUS = new Set(["PLANIRANO", "NASTALO", "PLACENO", "STORNIRANO"]);
@@ -791,6 +794,9 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
               </Link>
             </div>
           </div>
+
+          {/* ✅ NEW: Timeline ispod naslova/topbar-a */}
+          <FluxaTimeline phase={phaseFromProjectStatusId(project?.status_id)} title="Faza" />
         </div>
       </div>
 

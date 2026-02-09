@@ -1,0 +1,193 @@
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+  color: inherit;
+}
+
+.header {
+  margin-bottom: 12px;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.card {
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 14px;
+  padding: 12px;
+  backdrop-filter: blur(2px);
+}
+
+.error {
+  margin-bottom: 12px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.10);
+  color: rgba(255, 190, 190, 1);
+  border-radius: 14px;
+  padding: 12px;
+  font-weight: 700;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.grow {
+  flex: 1 1 320px;
+  min-width: 320px;
+}
+
+.label {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-bottom: 6px;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  outline: none;
+}
+
+.input:focus {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.btn, .btnPrimary {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn:hover, .btnPrimary:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.btn:disabled, .btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnPrimary {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.grid {
+  margin-top: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.big {
+  font-size: 24px;
+  font-weight: 900;
+  margin-top: 2px;
+}
+
+.muted {
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.formGrid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 150px 180px 120px 1fr;
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+.actions {
+  margin-top: 10px;
+}
+
+/* ✅ Scroll samo za tabelu */
+.tableWrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 420px; /* slobodno povećaj na 520px ako hoćeš */
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+/* tabela */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+/* ✅ sticky header */
+.table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  font-size: 12px;
+  opacity: 0.9;
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(0, 0, 0, 0.35); /* da header ostane čitljiv dok scrolla */
+  backdrop-filter: blur(4px);
+}
+
+.table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.bold {
+  font-weight: 800;
+}
+
+.footerNote {
+  margin-top: 10px;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+/* responsive */
+@media (max-width: 900px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+  .tableWrap {
+    max-height: 520px; /* na mobu može više jer je tabela viša */
+  }
+}
