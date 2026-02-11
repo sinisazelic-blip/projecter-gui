@@ -12,7 +12,7 @@ async function hasColumn(table: string, column: string): Promise<boolean> {
         AND COLUMN_NAME = ?
       LIMIT 1
       `,
-      [table, column]
+      [table, column],
     );
     return Array.isArray(rows) && rows.length > 0;
   } catch {
@@ -49,7 +49,7 @@ export async function GET() {
   } catch (e: any) {
     return NextResponse.json(
       { ok: false, error: e?.message ?? "Greska" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

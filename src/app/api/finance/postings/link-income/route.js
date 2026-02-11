@@ -17,16 +17,20 @@ export async function POST(req) {
     const projekat_id = Number(body?.projekat_id); // for income meaning we need a project (use 1 for overhead)
     const opis = String(body?.opis || "");
 
-    if (!Number.isFinite(posting_id) || posting_id <= 0) return bad("posting_id invalid");
-    if (!Number.isFinite(amount_km) || amount_km <= 0) return bad("amount_km must be > 0");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(datum)) return bad("datum must be YYYY-MM-DD");
-    if (!Number.isFinite(projekat_id) || projekat_id <= 0) return bad("projekat_id invalid");
+    if (!Number.isFinite(posting_id) || posting_id <= 0)
+      return bad("posting_id invalid");
+    if (!Number.isFinite(amount_km) || amount_km <= 0)
+      return bad("amount_km must be > 0");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(datum))
+      return bad("datum must be YYYY-MM-DD");
+    if (!Number.isFinite(projekat_id) || projekat_id <= 0)
+      return bad("projekat_id invalid");
 
     const pRows = await query(
       `SELECT posting_id, amount, value_date, currency, counterparty, description
        FROM bank_tx_posting
        WHERE posting_id = ?`,
-      [posting_id]
+      [posting_id],
     );
     if (!pRows?.length) return bad("posting not found", 404);
 
@@ -34,9 +38,13 @@ export async function POST(req) {
 
     // Income link only allowed for incoming postings
     if (Number(posting.amount) <= 0) {
-      return bad("Posting is not incoming (amount <= 0); cannot link to income", 400, {
-        posting_amount: posting.amount,
-      });
+      return bad(
+        "Posting is not incoming (amount <= 0); cannot link to income",
+        400,
+        {
+          posting_amount: posting.amount,
+        },
+      );
     }
 
     // Sanity cap check
@@ -44,7 +52,7 @@ export async function POST(req) {
       `SELECT posting_id, amount, linked_income_km, linked_payment_km, linked_total_km, alloc_status
        FROM v_bank_posting_sanity
        WHERE posting_id = ?`,
-      [posting_id]
+      [posting_id],
     );
     if (!sRows?.length) return bad("sanity view missing for posting", 500);
 
@@ -53,7 +61,11 @@ export async function POST(req) {
     const used = Number(sanity.linked_total_km);
 
     if (used + amount_km > cap + 0.00001) {
-      return bad("Would over-allocate posting", 400, { cap, used, try_add: amount_km });
+      return bad("Would over-allocate posting", 400, {
+        cap,
+        used,
+        try_add: amount_km,
+      });
     }
 
     // Create meaning: projektni_prihodi (your schema)
@@ -62,7 +74,7 @@ export async function POST(req) {
         (projekat_id, datum_prihoda, iznos_km, opis)
        VALUES
         (?, ?, ?, ?)`,
-      [projekat_id, datum, amount_km, opis || posting.description || ""]
+      [projekat_id, datum, amount_km, opis || posting.description || ""],
     );
 
     const prihod_id = insInc?.insertId ?? insInc?.rows?.insertId;
@@ -74,14 +86,14 @@ export async function POST(req) {
         (posting_id, prihod_id, amount_km, aktivan)
        VALUES
         (?, ?, ?, 1)`,
-      [posting_id, prihod_id, amount_km]
+      [posting_id, prihod_id, amount_km],
     );
 
     const s2 = await query(
       `SELECT posting_id, amount, linked_income_km, linked_payment_km, linked_total_km, alloc_status
        FROM v_bank_posting_sanity
        WHERE posting_id = ?`,
-      [posting_id]
+      [posting_id],
     );
 
     return NextResponse.json({

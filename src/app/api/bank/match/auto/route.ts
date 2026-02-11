@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   return NextResponse.json({
     ok: true,
-    hint: "POST JSON: { batch_id: number, limit?: number }"
+    hint: "POST JSON: { batch_id: number, limit?: number }",
   });
 }
 
@@ -33,7 +33,10 @@ type TxRow = {
 };
 
 function norm(v: any): string {
-  return String(v ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+  return String(v ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
 }
 
 function round2(n: any): number | null {
@@ -85,13 +88,17 @@ export async function POST(req: NextRequest) {
     const batch_id = Number(qp ?? body?.batch_id);
 
     // limit može doći iz query ili body
-    const limitRaw = req.nextUrl.searchParams.get("limit") ?? body?.limit ?? 1000;
+    const limitRaw =
+      req.nextUrl.searchParams.get("limit") ?? body?.limit ?? 1000;
     let limit = Number(limitRaw);
     if (!Number.isFinite(limit)) limit = 1000;
     limit = Math.max(1, Math.min(5000, Math.floor(limit)));
 
     if (!Number.isFinite(batch_id) || batch_id <= 0) {
-      return NextResponse.json({ ok: false, error: "batch_id is required" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "batch_id is required" },
+        { status: 400 },
+      );
     }
 
     const result = await withTransaction(async (conn) => {
@@ -104,7 +111,7 @@ export async function POST(req: NextRequest) {
         FROM bank_tx_match_rule
         WHERE is_active = 1
         ORDER BY priority ASC, rule_id ASC
-        `
+        `,
       );
       const rules: RuleRow[] = (rulesRaw ?? []) as RuleRow[];
 
@@ -120,7 +127,7 @@ export async function POST(req: NextRequest) {
         ORDER BY s.tx_id ASC
         LIMIT ${limit}
         `,
-        [batch_id]
+        [batch_id],
       );
       const txs: TxRow[] = (txsRaw ?? []) as TxRow[];
 
@@ -146,7 +153,12 @@ export async function POST(req: NextRequest) {
           VALUES
             (?, ?, ?, ?, 'AUTO')
           `,
-          [tx.tx_id, hit.projekat_id ?? null, hit.narucilac_id ?? null, hit.kategorija ?? null]
+          [
+            tx.tx_id,
+            hit.projekat_id ?? null,
+            hit.narucilac_id ?? null,
+            hit.kategorija ?? null,
+          ],
         );
 
         matched++;
@@ -171,8 +183,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, ...result });
   } catch (e: any) {
     return NextResponse.json(
-      { ok: false, error: e?.message ?? "Server error", stack: e?.stack ?? null },
-      { status: 500 }
+      {
+        ok: false,
+        error: e?.message ?? "Server error",
+        stack: e?.stack ?? null,
+      },
+      { status: 500 },
     );
   }
 }

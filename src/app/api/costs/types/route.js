@@ -11,13 +11,13 @@ export async function GET() {
       FROM tip_troska
       WHERE aktivan = 1
       ORDER BY naziv
-      `
+      `,
     );
     return NextResponse.json({ ok: true, items: rows });
   } catch (e) {
     return NextResponse.json(
       { ok: false, message: e?.message ?? "Greška" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

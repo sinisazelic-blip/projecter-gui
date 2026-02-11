@@ -19,7 +19,9 @@ function normInt(v) {
 
 // ✅ normalizuj requires_entity iz baze u: none | talent | vendor
 function normalizeRequires(v) {
-  const s = String(v ?? "NONE").trim().toUpperCase();
+  const s = String(v ?? "NONE")
+    .trim()
+    .toUpperCase();
 
   if (s === "TALENT") return "talent";
   if (s === "DOBAVLJAC") return "vendor";
@@ -106,7 +108,8 @@ export default function CostTypeAndEntityPicker({ value, onChange }) {
           const r = await fetch("/api/talents");
           const data = await r.json();
           if (!cancelled) {
-            if (data?.ok) setTalents(Array.isArray(data.items) ? data.items : []);
+            if (data?.ok)
+              setTalents(Array.isArray(data.items) ? data.items : []);
             else setErr(data?.message ?? "Greška pri učitavanju talenata");
           }
         }
@@ -115,7 +118,8 @@ export default function CostTypeAndEntityPicker({ value, onChange }) {
           const r = await fetch("/api/vendors");
           const data = await r.json();
           if (!cancelled) {
-            if (data?.ok) setVendors(Array.isArray(data.items) ? data.items : []);
+            if (data?.ok)
+              setVendors(Array.isArray(data.items) ? data.items : []);
             else setErr(data?.message ?? "Greška pri učitavanju dobavljača");
           }
         }
@@ -159,7 +163,8 @@ export default function CostTypeAndEntityPicker({ value, onChange }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipId, requires]);
 
-  const currentItems = requires === "talent" ? talents : requires === "vendor" ? vendors : [];
+  const currentItems =
+    requires === "talent" ? talents : requires === "vendor" ? vendors : [];
 
   const onPickType = (e) => {
     const nextTip = normInt(e.target.value);
@@ -175,7 +180,12 @@ export default function CostTypeAndEntityPicker({ value, onChange }) {
     const nextId = normInt(e.target.value);
     onChange?.({
       tip_id: tipId,
-      entity_type: requires === "talent" ? "talent" : requires === "vendor" ? "vendor" : null,
+      entity_type:
+        requires === "talent"
+          ? "talent"
+          : requires === "vendor"
+            ? "vendor"
+            : null,
       entity_id: nextId,
     });
   };
@@ -183,7 +193,8 @@ export default function CostTypeAndEntityPicker({ value, onChange }) {
   // mini inline add (prompt) — da radi odmah, bez modala
   const addEntityInline = async () => {
     try {
-      const label = requires === "talent" ? "Ime i prezime talenta" : "Naziv dobavljača";
+      const label =
+        requires === "talent" ? "Ime i prezime talenta" : "Naziv dobavljača";
       const name = window.prompt(label);
       if (!name || !String(name).trim()) return;
 
@@ -226,7 +237,12 @@ export default function CostTypeAndEntityPicker({ value, onChange }) {
     <div style={{ display: "grid", gap: 8 }}>
       {/* TIP */}
       <div>
-        <select value={tipId ?? ""} onChange={onPickType} style={inputStyle} disabled={loadingTypes}>
+        <select
+          value={tipId ?? ""}
+          onChange={onPickType}
+          style={inputStyle}
+          disabled={loadingTypes}
+        >
           <option value="">— izaberi tip —</option>
           {types.map((t) => {
             const id = getTypeId(t);
@@ -248,9 +264,25 @@ export default function CostTypeAndEntityPicker({ value, onChange }) {
 
       {/* ENTITY (talent/vendor) */}
       {tipId && requires !== "none" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "center" }}>
-          <select value={entityId ?? ""} onChange={onPickEntity} style={inputStyle} disabled={loadingEntities}>
-            <option value="">{requires === "talent" ? "— izaberi talenta —" : "— izaberi dobavljača —"}</option>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr auto",
+            gap: 8,
+            alignItems: "center",
+          }}
+        >
+          <select
+            value={entityId ?? ""}
+            onChange={onPickEntity}
+            style={inputStyle}
+            disabled={loadingEntities}
+          >
+            <option value="">
+              {requires === "talent"
+                ? "— izaberi talenta —"
+                : "— izaberi dobavljača —"}
+            </option>
 
             {currentItems.map((x) => (
               <option key={x.id} value={x.id}>
@@ -263,7 +295,11 @@ export default function CostTypeAndEntityPicker({ value, onChange }) {
             type="button"
             onClick={addEntityInline}
             disabled={loadingEntities}
-            title={requires === "talent" ? "Dodaj novog talenta" : "Dodaj novog dobavljača"}
+            title={
+              requires === "talent"
+                ? "Dodaj novog talenta"
+                : "Dodaj novog dobavljača"
+            }
           >
             + Dodaj
           </button>

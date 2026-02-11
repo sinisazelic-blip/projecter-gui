@@ -22,9 +22,10 @@ export async function POST(req: NextRequest) {
         ? Number(body.narucilac_id)
         : null;
 
-    const kategorija = body?.kategorija != null && String(body.kategorija).trim() !== ""
-      ? String(body.kategorija).trim()
-      : null;
+    const kategorija =
+      body?.kategorija != null && String(body.kategorija).trim() !== ""
+        ? String(body.kategorija).trim()
+        : null;
 
     // priority (manji broj = jače pravilo)
     let priority = Number(body?.priority ?? 50);
@@ -32,7 +33,10 @@ export async function POST(req: NextRequest) {
     priority = Math.max(1, Math.min(9999, Math.floor(priority)));
 
     if (!match_text) {
-      return NextResponse.json({ ok: false, error: "match_text is required" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "match_text is required" },
+        { status: 400 },
+      );
     }
 
     const res = await withTransaction(async (conn) => {
@@ -48,7 +52,7 @@ export async function POST(req: NextRequest) {
           AND COALESCE(kategorija,'') = COALESCE(?, '')
         LIMIT 1
         `,
-        [match_text, match_is_fee, projekat_id, kategorija]
+        [match_text, match_is_fee, projekat_id, kategorija],
       );
 
       if (Array.isArray(existing) && existing.length) {
@@ -62,7 +66,14 @@ export async function POST(req: NextRequest) {
         VALUES
           (?, 1, ?, ?, ?, ?, ?)
         `,
-        [priority, match_text, match_is_fee, projekat_id, narucilac_id, kategorija]
+        [
+          priority,
+          match_text,
+          match_is_fee,
+          projekat_id,
+          narucilac_id,
+          kategorija,
+        ],
       );
 
       return { rule_id: ins?.insertId ?? null, created: true };
@@ -72,7 +83,7 @@ export async function POST(req: NextRequest) {
   } catch (e: any) {
     return NextResponse.json(
       { ok: false, error: e?.message ?? "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

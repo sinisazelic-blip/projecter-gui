@@ -2,68 +2,138 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 function pad2(n: number) {
   return String(n).padStart(2, "0");
 }
-function todayISO() {
+
+function todayDDMMYYYY() {
   const d = new Date();
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
 }
-function fmtDDMMYYYY(iso: string) {
-  if (!iso || iso.length < 10) return "—";
-  const y = iso.slice(0, 4);
-  const m = iso.slice(5, 7);
-  const d = iso.slice(8, 10);
-  return `${d}.${m}.${y}`;
+
+function ddmmyyyyToISO(ddmmyyyy: string): string | null {
+  const s = String(ddmmyyyy || "").trim();
+  const m = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (!m) return null;
+  const dd = Number(m[1]);
+  const mm = Number(m[2]);
+  const yyyy = Number(m[3]);
+
+  if (!(yyyy >= 2000 && yyyy <= 2100)) return null;
+  if (!(mm >= 1 && mm <= 12)) return null;
+
+  const maxDay = new Date(yyyy, mm, 0).getDate();
+  if (!(dd >= 1 && dd <= maxDay)) return null;
+
+  return `${yyyy}-${pad2(mm)}-${pad2(dd)}`;
 }
 
 export default function InvoiceWizard() {
   const sp = useSearchParams();
   const router = useRouter();
 
-  const idsRaw = String(sp.get("ids") ?? "");
+  // ✅ čitamo ids (novo) + pid (fallback)
   const ids = useMemo(() => {
-    return idsRaw
-      .split(",")
-      .map((x) => Number(String(x).trim()))
-      .filter((n) => Number.isFinite(n) && n > 0);
-  }, [idsRaw]);
+    const idsRaw = String(sp.get("ids") ?? "").trim();
+    if (idsRaw) {
+      return idsRaw
+        .split(",")
+        .map((x) => Number(String(x).trim()))
+        .filter((n) => Number.isFinite(n) && n > 0);
+    }
 
-  // ✅ minimal state (sutra poliramo detalje + auto-popune iz DB)
-  const [invoiceDate, setInvoiceDate] = useState<string>(todayISO());
+    const pid = sp.get("pid");
+    const n = Number(pid);
+    return Number.isFinite(n) && n > 0 ? [n] : [];
+  }, [sp]);
+
+  // Datum u UI je dd.mm.yyyy (kao što tražiš)
+  const [invoiceDateDD, setInvoiceDateDD] = useState<string>(todayDDMMYYYY());
+
+  // Osnovno (ostavljam kako je bilo)
   const [currency, setCurrency] = useState<string>("KM");
   const [vatMode, setVatMode] = useState<"BH_17" | "INO_0">("BH_17");
 
-  // Fiskalni broj (editable)
-  const [fiskalniBroj, setFiskalniBroj] = useState<string>("");
+  // Fiskalni/PFR (editable, ostavljam)
+  const [pfrBroj, setPfrBroj] = useState<string>("");
 
-  // Poziv na broj (8 cifara) — zaključali smo koncept
+  // ✅ Poziv na broj: AUTO, read-only
   const [pozivNaBroj, setPozivNaBroj] = useState<string>("");
+  const [pnbLoading, setPnbLoading] = useState<boolean>(false);
+  const [pnbErr, setPnbErr] = useState<string>("");
 
-  // Popust (opciono, NE default)
-  const [discountEnabled, setDiscountEnabled] = useState(false);
-  const [discountPct, setDiscountPct] = useState<string>("5");
-  const [discountHours, setDiscountHours] = useState<string>("48");
+  useEffect(() => {
+    let alive = true;
+
+    async function run() {
+      setPnbErr("");
+      if (ids.length === 0) {
+        setPozivNaBroj("");
+        return;
+      }
+
+      setPnbLoading(true);
+      try {
+        const qs = new URLSearchParams();
+        qs.set("ids", ids.join(","));
+        const res = await fetch(`/api/fakture/wizard/seed?${qs.toString()}`, {
+          cache: "no-store",
+        });
+        const j = await res.json();
+
+        if (!res.ok || j?.ok === false) {
+          throw new Error(j?.error ?? "Seed API error");
+        }
+
+        const p = String(j?.poziv_na_broj ?? "");
+        if (!/^\d{8}$/.test(p)) {
+          throw new Error("Poziv na broj nije validan (mora biti 8 cifara).");
+        }
+
+        if (alive) setPozivNaBroj(p);
+      } catch (e: any) {
+        if (alive) {
+          setPozivNaBroj("");
+          setPnbErr(e?.message ?? "Greška kod generisanja poziva na broj");
+        }
+      } finally {
+        if (alive) setPnbLoading(false);
+      }
+    }
+
+    run();
+    return () => {
+      alive = false;
+    };
+  }, [ids]);
 
   function goPreview() {
     if (ids.length === 0) return;
 
+    const iso = ddmmyyyyToISO(invoiceDateDD);
+    if (!iso) {
+      alert("Datum fakture mora biti u formatu dd.mm.yyyy");
+      return;
+    }
+
+    if (!/^\d{8}$/.test(pozivNaBroj)) {
+      alert("Poziv na broj nije generisan ili nije validan.");
+      return;
+    }
+
     const qs = new URLSearchParams();
     qs.set("ids", ids.join(","));
-    qs.set("date", invoiceDate);
+    qs.set("date", iso);
     qs.set("ccy", currency);
     qs.set("vat", vatMode);
-    if (fiskalniBroj.trim()) qs.set("fisk", fiskalniBroj.trim());
-    if (pozivNaBroj.trim()) qs.set("pnb", pozivNaBroj.trim());
 
-    if (discountEnabled) {
-      qs.set("disc_on", "1");
-      qs.set("disc_pct", String(discountPct || "0"));
-      qs.set("disc_h", String(discountHours || "0"));
-    }
+    if (pfrBroj.trim()) qs.set("pfr", pfrBroj.trim());
+
+    // ✅ AUTO poziv na broj ide uvijek
+    qs.set("pnb", pozivNaBroj);
 
     router.push(`/fakture/wizard/preview?${qs.toString()}`);
   }
@@ -104,6 +174,36 @@ export default function InvoiceWizard() {
           color: inherit;
           outline: none;
         }
+
+        .btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 10px 12px;
+          min-width: 120px;
+          text-align: center;
+          white-space: nowrap;
+          border-radius: 14px;
+          cursor: pointer;
+          border: 1px solid rgba(255,255,255,.12);
+          background: rgba(255,255,255,.03);
+          font-weight: 650;
+          color: inherit;
+        }
+        .btn:hover { border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.05); }
+
+        .hint { margin-top: 10px; opacity: .8; fontSize: 12px; }
+        .err {
+          margin-top: 10px;
+          padding: 10px 12px;
+          border-radius: 12px;
+          border: 1px solid rgba(255,80,80,.35);
+          background: rgba(255,80,80,.10);
+          color: rgba(255,220,220,.92);
+          font-size: 12px;
+          line-height: 1.35;
+        }
       `}</style>
 
       <div className="pageWrap">
@@ -111,25 +211,61 @@ export default function InvoiceWizard() {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+                <img
+                  src="/fluxa/logo-light.png"
+                  alt="FLUXA"
+                  className="brandLogo"
+                />
                 <div>
                   <div className="brandTitle">Faktura — Wizard (2/3)</div>
-                  <div className="brandSub">Priprema elemenata prije preview-a</div>
+                  <div className="brandSub">
+                    Priprema elemenata prije preview-a
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                <Link href={`/fakture/za-fakturisanje`} className="btn" title="Nazad na listu">
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+              >
+                <Link
+                  href={`/fakture/za-fakturisanje`}
+                  className="btn"
+                  title="Nazad na listu"
+                >
                   ← Nazad
                 </Link>
-                <button className="btn" type="button" onClick={goPreview} disabled={ids.length === 0} style={{ opacity: ids.length === 0 ? 0.55 : 1 }}>
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={goPreview}
+                  disabled={
+                    ids.length === 0 ||
+                    pnbLoading ||
+                    !/^\d{8}$/.test(pozivNaBroj)
+                  }
+                  style={{ opacity: ids.length === 0 || pnbLoading ? 0.55 : 1 }}
+                  title={
+                    ids.length === 0
+                      ? "Nema selekcije"
+                      : pnbLoading
+                        ? "Generišem poziv na broj…"
+                        : "Preview"
+                  }
+                >
                   ➜ Preview (3/3)
                 </button>
               </div>
             </div>
 
-            <div style={{ marginTop: 10, opacity: .8, fontSize: 13 }}>
-              Projekti u fakturi: <b>{ids.length}</b> ({ids.slice(0, 12).join(", ")}{ids.length > 12 ? "…" : ""})
+            <div style={{ marginTop: 10, opacity: 0.8, fontSize: 13 }}>
+              Projekti u fakturi: <b>{ids.length}</b> (
+              {ids.slice(0, 12).join(", ")}
+              {ids.length > 12 ? "…" : ""})
             </div>
           </div>
         </div>
@@ -140,54 +276,58 @@ export default function InvoiceWizard() {
               <div style={{ fontWeight: 850, fontSize: 16 }}>Osnovno</div>
 
               <div className="grid2" style={{ marginTop: 10 }}>
-                <div className="label">Datum fakture</div>
-                <input className="input" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} placeholder="YYYY-MM-DD" />
+                <div className="label">Datum fakture (dd.mm.yyyy)</div>
+                <input
+                  className="input"
+                  value={invoiceDateDD}
+                  onChange={(e) => setInvoiceDateDD(e.target.value)}
+                  placeholder="dd.mm.yyyy"
+                />
 
                 <div className="label">Valuta plaćanja</div>
-                <select className="input" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                <select
+                  className="input"
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                >
                   <option value="KM">KM (BAM)</option>
                   <option value="EUR">EUR</option>
                 </select>
 
                 <div className="label">PDV režim</div>
-                <select className="input" value={vatMode} onChange={(e) => setVatMode(e.target.value as any)}>
+                <select
+                  className="input"
+                  value={vatMode}
+                  onChange={(e) => setVatMode(e.target.value as any)}
+                >
                   <option value="BH_17">BiH (PDV 17%)</option>
                   <option value="INO_0">INO (0% VAT)</option>
                 </select>
 
-                <div className="label">Fiskalni broj (opciono)</div>
-                <input className="input" value={fiskalniBroj} onChange={(e) => setFiskalniBroj(e.target.value)} placeholder="npr. 00012345" />
+                <div className="label">PFR broj (opciono)</div>
+                <input
+                  className="input"
+                  value={pfrBroj}
+                  onChange={(e) => setPfrBroj(e.target.value)}
+                  placeholder="—"
+                />
 
-                <div className="label">Poziv na broj (8 cifara)</div>
-                <input className="input" value={pozivNaBroj} onChange={(e) => setPozivNaBroj(e.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="8 cifara" />
+                <div className="label">Poziv na broj (AUTO, 8 cifara)</div>
+                <input
+                  className="input"
+                  value={pnbLoading ? "Generišem…" : pozivNaBroj}
+                  readOnly
+                  disabled
+                  style={{ opacity: 0.9 }}
+                />
               </div>
 
-              <div style={{ marginTop: 10, opacity: .8, fontSize: 12 }}>
-                * Datum fakture: {fmtDDMMYYYY(invoiceDate)} · Poziv na broj mora biti samo brojevi (8 cifara).
+              {pnbErr ? <div className="err">{pnbErr}</div> : null}
+
+              <div style={{ marginTop: 10, opacity: 0.8, fontSize: 12 }}>
+                * Poziv na broj generiše Fluxa automatski (ne ručno). Datum se
+                unosi kao <b>dd.mm.yyyy</b>.
               </div>
-            </div>
-
-            <div className="cardLike">
-              <div style={{ fontWeight: 850, fontSize: 16 }}>Popust (opciono)</div>
-
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 10 }}>
-                <input type="checkbox" checked={discountEnabled} onChange={(e) => setDiscountEnabled(e.target.checked)} />
-                Aktiviraj popust (samo kad ti odlučiš)
-              </label>
-
-              {discountEnabled ? (
-                <div className="grid2" style={{ marginTop: 10 }}>
-                  <div className="label">Popust (%)</div>
-                  <input className="input" value={discountPct} onChange={(e) => setDiscountPct(e.target.value)} placeholder="npr. 5" />
-
-                  <div className="label">Vrijedi (sati)</div>
-                  <input className="input" value={discountHours} onChange={(e) => setDiscountHours(e.target.value)} placeholder="npr. 48" />
-                </div>
-              ) : (
-                <div style={{ marginTop: 8, opacity: .75, fontSize: 12 }}>
-                  Popust se ne prikazuje dok ga ne uključiš.
-                </div>
-              )}
             </div>
           </div>
         </div>

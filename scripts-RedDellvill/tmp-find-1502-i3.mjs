@@ -22,7 +22,8 @@ const { query } = await import("../src/lib/db.ts");
 const inicijacijaId = 3;
 const targetDate = "2026-02-15";
 
-const rows = await query(`
+const rows = await query(
+  `
   SELECT
     event_id,
     DATE_FORMAT(required_deadline, '%Y-%m-%d %H:%i:%s') AS required_deadline,
@@ -38,6 +39,8 @@ const rows = await query(`
       DATE(accepted_deadline) = ?
     )
   ORDER BY event_id DESC
-`, [inicijacijaId, targetDate, targetDate, targetDate]);
+`,
+  [inicijacijaId, targetDate, targetDate, targetDate],
+);
 
 console.log(JSON.stringify(rows, null, 2));

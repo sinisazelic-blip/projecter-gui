@@ -32,10 +32,10 @@ function badge(text, kind = "neutral") {
     kind === "ok"
       ? "badge badge-green"
       : kind === "warn"
-      ? "badge badge-orange"
-      : kind === "bad"
-      ? "badge badge-red"
-      : "badge";
+        ? "badge badge-orange"
+        : kind === "bad"
+          ? "badge badge-red"
+          : "badge";
   return <span className={cls}>{text}</span>;
 }
 
@@ -79,7 +79,7 @@ export default async function PotrazivanjeDetailPage({ params }) {
       WHERE p.potrazivanje_id = ?
       LIMIT 1
       `,
-      [pid]
+      [pid],
     );
     pot = rows?.[0] ?? null;
   } catch {
@@ -90,7 +90,7 @@ export default async function PotrazivanjeDetailPage({ params }) {
       WHERE potrazivanje_id = ?
       LIMIT 1
       `,
-      [pid]
+      [pid],
     );
     pot = rows?.[0] ?? null;
   }
@@ -104,7 +104,9 @@ export default async function PotrazivanjeDetailPage({ params }) {
             <div className="subtle">ID #{pid} nije pronađen.</div>
           </div>
           <div className="topbar-right">
-            <Link className="btn" href="/finance/potrazivanja">Nazad</Link>
+            <Link className="btn" href="/finance/potrazivanja">
+              Nazad
+            </Link>
           </div>
         </div>
 
@@ -123,16 +125,12 @@ export default async function PotrazivanjeDetailPage({ params }) {
     WHERE potrazivanje_id = ?
     LIMIT 1
     `,
-    [pid]
+    [pid],
   ).catch(async () => []);
 
   const paid = paidRows?.[0] ?? null;
   const paidKm =
-    paid?.paid_km ??
-    paid?.paid_sum_km ??
-    paid?.paid_sum ??
-    paid?.paid ??
-    0;
+    paid?.paid_km ?? paid?.paid_sum_km ?? paid?.paid_sum ?? paid?.paid ?? 0;
 
   const iznosKm = pot.iznos_km ?? pot.iznos ?? null;
   const remaining =
@@ -154,7 +152,7 @@ export default async function PotrazivanjeDetailPage({ params }) {
     WHERE potrazivanje_id = ?
     ORDER BY link_id
     `,
-    [pid]
+    [pid],
   ).catch(async () => []);
 
   const prihodIds = links
@@ -172,7 +170,7 @@ export default async function PotrazivanjeDetailPage({ params }) {
       FROM projektni_prihodi
       WHERE prihod_id IN (${placeholders})
       `,
-      uniq
+      uniq,
     ).catch(async () => []);
   }
 
@@ -204,7 +202,7 @@ export default async function PotrazivanjeDetailPage({ params }) {
       ORDER BY f.value_date DESC, f.posting_id DESC
       LIMIT 20
       `,
-      [`%${needle}%`, `%${needle}%`]
+      [`%${needle}%`, `%${needle}%`],
     ).catch(async () => []);
   }
 
@@ -212,8 +210,8 @@ export default async function PotrazivanjeDetailPage({ params }) {
     remaining === null
       ? badge("—", "neutral")
       : remaining <= 0.0001
-      ? badge("ZATVORENO", "ok")
-      : badge("OTVORENO", "warn");
+        ? badge("ZATVORENO", "ok")
+        : badge("OTVORENO", "warn");
 
   return (
     <div className="container">
@@ -221,61 +219,93 @@ export default async function PotrazivanjeDetailPage({ params }) {
         <div className="topbar-left">
           <h1 className="h1">Potraživanje #{pot.potrazivanje_id}</h1>
           <div className="subtle">
-            projekat_id: <b>{pot.projekat_id ?? "—"}</b> · datum: <b>{fmtDate(pot.datum)}</b>
-            {pot.datum_dospijeca ? (
-              <>
-                {" "}· dospijeće: <b>{fmtDate(pot.datum_dospijeca)}</b>
-              </>
-            ) : null}
+            projekat_id: <b>{pot.projekat_id ?? "—"}</b> · datum:{" "}
+            <b>{fmtDate(pot.datum)}</b>
+            {pot.datum_dospijeca
+              ? <>
+                  {" "}
+                  · dospijeće: <b>{fmtDate(pot.datum_dospijeca)}</b>
+                </>
+              : null}
           </div>
         </div>
 
         <div className="topbar-right" style={{ display: "flex", gap: 8 }}>
-          <Link className="btn" href={bankSearchHref}>Banka (filter)</Link>
-          <Link className="btn" href="/finance/potrazivanja">Nazad</Link>
+          <Link className="btn" href={bankSearchHref}>
+            Banka (filter)
+          </Link>
+          <Link className="btn" href="/finance/potrazivanja">
+            Nazad
+          </Link>
         </div>
       </div>
 
       {/* SUMMARY */}
       <div className="card">
-        <div className="card-row" style={{ justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div
+          className="card-row"
+          style={{ justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}
+        >
           <div>
             <div className="label">Iznos</div>
-            <div style={{ fontSize: 22, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>
+            <div
+              style={{
+                fontSize: 22,
+                fontWeight: 800,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
               {fmtKM(iznosKm)}
             </div>
-            <div className="subtle">status: {pot.status ?? "—"} · {statusBadge}</div>
+            <div className="subtle">
+              status: {pot.status ?? "—"} · {statusBadge}
+            </div>
           </div>
 
           <div style={{ minWidth: 320, flex: 1 }}>
             <div className="label">Opis</div>
             <div style={{ fontWeight: 800 }}>{pot.opis ?? "—"}</div>
-            {pot.napomena ? <div className="subtle" style={{ marginTop: 6 }}>{pot.napomena}</div> : null}
+            {pot.napomena
+              ? <div className="subtle" style={{ marginTop: 6 }}>
+                  {pot.napomena}
+                </div>
+              : null}
           </div>
 
           <div>
             <div className="label">Naplaćeno (view)</div>
-            <div style={{ fontSize: 22, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>
+            <div
+              style={{
+                fontSize: 22,
+                fontWeight: 800,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
               {fmtKM(paidKm)}
             </div>
             <div className="subtle">
               preostalo:{" "}
-              {remaining === null ? "—" : (
-                remaining <= 0.0001 ? badge(fmtKM(remaining), "ok") : badge(fmtKM(remaining), "warn")
-              )}
+              {remaining === null
+                ? "—"
+                : remaining <= 0.0001
+                  ? badge(fmtKM(remaining), "ok")
+                  : badge(fmtKM(remaining), "warn")}
             </div>
           </div>
         </div>
 
         <div className="hr" />
         <div className="subtle" style={{ lineHeight: 1.7 }}>
-          <b>Read-only.</b> Ovo je meaning + linkovi. Banka je canonical. “Banka (filter)” je samo kontekst, ne link.
+          <b>Read-only.</b> Ovo je meaning + linkovi. Banka je canonical. “Banka
+          (filter)” je samo kontekst, ne link.
         </div>
       </div>
 
       {/* LINKS */}
       <div className="card">
-        <div className="h2" style={{ marginBottom: 10 }}>Veze na prihode (projekt_potrazivanje_prihod_link)</div>
+        <div className="h2" style={{ marginBottom: 10 }}>
+          Veze na prihode (projekt_potrazivanje_prihod_link)
+        </div>
 
         <div className="table-wrap">
           <table className="table">
@@ -289,84 +319,105 @@ export default async function PotrazivanjeDetailPage({ params }) {
               </tr>
             </thead>
             <tbody>
-              {links?.length ? (
-                links.map((r) => (
-                  <tr key={r.link_id}>
-                    <td>{r.link_id}</td>
-                    <td>
-                      {Number(r.prihod_id) > 0 ? (
-                        <Link className="link" href={`/finance/prihodi/${r.prihod_id}`}>
-                          {r.prihod_id}
-                        </Link>
-                      ) : (
-                        r.prihod_id
-                      )}
+              {links?.length
+                ? links.map((r) => (
+                    <tr key={r.link_id}>
+                      <td>{r.link_id}</td>
+                      <td>
+                        {Number(r.prihod_id) > 0
+                          ? <Link
+                              className="link"
+                              href={`/finance/prihodi/${r.prihod_id}`}
+                            >
+                              {r.prihod_id}
+                            </Link>
+                          : r.prihod_id}
+                      </td>
+                      <td
+                        style={{
+                          textAlign: "right",
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {fmtKM(r.amount_km)}
+                      </td>
+                      <td>
+                        {r.aktivan ? badge("DA", "ok") : badge("NE", "warn")}
+                      </td>
+                      <td className="subtle">{fmtDT(r.created_at)}</td>
+                    </tr>
+                  ))
+                : <tr>
+                    <td colSpan={5} className="subtle" style={{ padding: 12 }}>
+                      Nema veza na prihode.
                     </td>
-                    <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {fmtKM(r.amount_km)}
-                    </td>
-                    <td>{r.aktivan ? badge("DA", "ok") : badge("NE", "warn")}</td>
-                    <td className="subtle">{fmtDT(r.created_at)}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="subtle" style={{ padding: 12 }}>
-                    Nema veza na prihode.
-                  </td>
-                </tr>
-              )}
+                  </tr>}
             </tbody>
           </table>
         </div>
 
-        {prihodi?.length ? (
-          <>
-            <div className="hr" />
-            <div className="subtle" style={{ marginBottom: 8 }}>Povezani prihodi (read-only):</div>
-            <div className="table-wrap">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th style={{ width: 110 }}>prihod_id</th>
-                    <th style={{ width: 120 }}>projekat</th>
-                    <th style={{ width: 140 }}>datum</th>
-                    <th style={{ width: 160, textAlign: "right" }}>iznos</th>
-                    <th>opis</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {prihodi.map((r) => (
-                    <tr key={r.prihod_id}>
-                      <td>
-                        <Link className="link" href={`/finance/prihodi/${r.prihod_id}`}>
-                          {r.prihod_id}
-                        </Link>
-                      </td>
-                      <td>{r.projekat_id ?? "—"}</td>
-                      <td>{fmtDate(r.datum)}</td>
-                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                        {fmtKM(r.iznos_km)}
-                      </td>
-                      <td className="subtle">{r.opis ?? "—"}</td>
+        {prihodi?.length
+          ? <>
+              <div className="hr" />
+              <div className="subtle" style={{ marginBottom: 8 }}>
+                Povezani prihodi (read-only):
+              </div>
+              <div className="table-wrap">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: 110 }}>prihod_id</th>
+                      <th style={{ width: 120 }}>projekat</th>
+                      <th style={{ width: 140 }}>datum</th>
+                      <th style={{ width: 160, textAlign: "right" }}>iznos</th>
+                      <th>opis</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        ) : null}
+                  </thead>
+                  <tbody>
+                    {prihodi.map((r) => (
+                      <tr key={r.prihod_id}>
+                        <td>
+                          <Link
+                            className="link"
+                            href={`/finance/prihodi/${r.prihod_id}`}
+                          >
+                            {r.prihod_id}
+                          </Link>
+                        </td>
+                        <td>{r.projekat_id ?? "—"}</td>
+                        <td>{fmtDate(r.datum)}</td>
+                        <td
+                          style={{
+                            textAlign: "right",
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          {fmtKM(r.iznos_km)}
+                        </td>
+                        <td className="subtle">{r.opis ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          : null}
       </div>
 
       {/* 2.19 BANK CONTEXT */}
       <div className="card">
-        <div className="h2" style={{ marginBottom: 10 }}>Bank context (fallback)</div>
+        <div className="h2" style={{ marginBottom: 10 }}>
+          Bank context (fallback)
+        </div>
         <div className="subtle" style={{ marginBottom: 10, lineHeight: 1.7 }}>
-          Ovo je best-effort lista sličnih bank posting-a po tekstu (opis/napomena). Ne utiče na podatke.
+          Ovo je best-effort lista sličnih bank posting-a po tekstu
+          (opis/napomena). Ne utiče na podatke.
         </div>
 
         <div style={{ marginBottom: 10 }}>
-          <Link className="btn" href={bankSearchHref}>Otvori banku sa filterom</Link>
+          <Link className="btn" href={bankSearchHref}>
+            Otvori banku sa filterom
+          </Link>
         </div>
 
         <div className="table-wrap">
@@ -381,32 +432,40 @@ export default async function PotrazivanjeDetailPage({ params }) {
               </tr>
             </thead>
             <tbody>
-              {related?.length ? (
-                related.map((r) => (
-                  <tr key={r.posting_id}>
-                    <td>
-                      <Link className="link" href={`/finance/banka/${r.posting_id}`}>
-                        {r.posting_id}
-                      </Link>
+              {related?.length
+                ? related.map((r) => (
+                    <tr key={r.posting_id}>
+                      <td>
+                        <Link
+                          className="link"
+                          href={`/finance/banka/${r.posting_id}`}
+                        >
+                          {r.posting_id}
+                        </Link>
+                      </td>
+                      <td>{fmtDate(r.value_date)}</td>
+                      <td
+                        style={{
+                          textAlign: "right",
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {fmtKM(r.amount)}
+                      </td>
+                      <td className="subtle">{r.alloc_status ?? "—"}</td>
+                      <td>
+                        <div style={{ fontWeight: 800 }}>
+                          {r.counterparty?.trim() ? r.counterparty : "—"}
+                        </div>
+                        <div className="subtle">{r.description ?? "—"}</div>
+                      </td>
+                    </tr>
+                  ))
+                : <tr>
+                    <td colSpan={5} className="subtle" style={{ padding: 12 }}>
+                      Nema fallback rezultata (ili nema needle).
                     </td>
-                    <td>{fmtDate(r.value_date)}</td>
-                    <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {fmtKM(r.amount)}
-                    </td>
-                    <td className="subtle">{r.alloc_status ?? "—"}</td>
-                    <td>
-                      <div style={{ fontWeight: 800 }}>{r.counterparty?.trim() ? r.counterparty : "—"}</div>
-                      <div className="subtle">{r.description ?? "—"}</div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="subtle" style={{ padding: 12 }}>
-                    Nema fallback rezultata (ili nema needle).
-                  </td>
-                </tr>
-              )}
+                  </tr>}
             </tbody>
           </table>
         </div>
@@ -414,15 +473,15 @@ export default async function PotrazivanjeDetailPage({ params }) {
 
       {/* RAW PAID VIEW */}
       <div className="card">
-        <div className="h2" style={{ marginBottom: 10 }}>Paid sum (raw view)</div>
+        <div className="h2" style={{ marginBottom: 10 }}>
+          Paid sum (raw view)
+        </div>
         <div className="subtle">
-          {paid ? (
-            <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-              {JSON.stringify(paid, null, 2)}
-            </pre>
-          ) : (
-            "Nema reda u v_potrazivanja_paid_sum (možda još nije linkovano)."
-          )}
+          {paid
+            ? <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                {JSON.stringify(paid, null, 2)}
+              </pre>
+            : "Nema reda u v_potrazivanja_paid_sum (možda još nije linkovano)."}
         </div>
       </div>
     </div>

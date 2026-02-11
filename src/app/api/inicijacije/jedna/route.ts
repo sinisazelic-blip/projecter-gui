@@ -18,7 +18,10 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const id = toInt(url.searchParams.get("id"));
     if (!id) {
-      return NextResponse.json({ ok: false, error: "Nedostaje ili neispravan id." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Nedostaje ili neispravan id." },
+        { status: 400 },
+      );
     }
 
     const rows: any[] = await query(
@@ -57,19 +60,22 @@ export async function GET(req: Request) {
       WHERE i.inicijacija_id = ?
       LIMIT 1
       `,
-      [id]
+      [id],
     );
 
     const row = rows?.[0] ?? null;
     if (!row) {
-      return NextResponse.json({ ok: false, error: "Deal nije pronađen." }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: "Deal nije pronađen." },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json({ ok: true, row });
   } catch (e: any) {
     return NextResponse.json(
       { ok: false, error: e?.message ?? "Greška (GET /api/inicijacije/jedna)" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -79,7 +85,10 @@ export async function PUT(req: Request) {
     const url = new URL(req.url);
     const id = toInt(url.searchParams.get("id"));
     if (!id) {
-      return NextResponse.json({ ok: false, error: "Nedostaje ili neispravan id." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Nedostaje ili neispravan id." },
+        { status: 400 },
+      );
     }
 
     const body = await req.json();
@@ -88,21 +97,41 @@ export async function PUT(req: Request) {
     const status_id = toInt(body?.status_id);
 
     const radni_naziv = String(body?.radni_naziv ?? "").trim();
-    const krajnji_klijent_id = body?.krajnji_klijent_id ? toInt(body.krajnji_klijent_id) : null;
+    const krajnji_klijent_id = body?.krajnji_klijent_id
+      ? toInt(body.krajnji_klijent_id)
+      : null;
 
-    const kontakt_ime = body?.kontakt_ime ? String(body.kontakt_ime).trim() : null;
-    const kontakt_tel = body?.kontakt_tel ? String(body.kontakt_tel).trim() : null;
-    const kontakt_email = body?.kontakt_email ? String(body.kontakt_email).trim() : null;
-    const napomena = body?.napomena !== undefined && body?.napomena !== null ? String(body.napomena) : null;
+    const kontakt_ime = body?.kontakt_ime
+      ? String(body.kontakt_ime).trim()
+      : null;
+    const kontakt_tel = body?.kontakt_tel
+      ? String(body.kontakt_tel).trim()
+      : null;
+    const kontakt_email = body?.kontakt_email
+      ? String(body.kontakt_email).trim()
+      : null;
+    const napomena =
+      body?.napomena !== undefined && body?.napomena !== null
+        ? String(body.napomena)
+        : null;
 
     if (!narucilac_id) {
-      return NextResponse.json({ ok: false, error: "Naručilac je obavezan." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Naručilac je obavezan." },
+        { status: 400 },
+      );
     }
     if (!status_id) {
-      return NextResponse.json({ ok: false, error: "Status je obavezan." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Status je obavezan." },
+        { status: 400 },
+      );
     }
     if (!radni_naziv) {
-      return NextResponse.json({ ok: false, error: "Radni naziv je obavezan." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Radni naziv je obavezan." },
+        { status: 400 },
+      );
     }
 
     await query(
@@ -131,14 +160,14 @@ export async function PUT(req: Request) {
         napomena,
         status_id,
         id,
-      ]
+      ],
     );
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json(
       { ok: false, error: e?.message ?? "Greška (PUT /api/inicijacije/jedna)" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -6,7 +6,9 @@ import { query } from "@/lib/db";
 type Jedinica = "KOM" | "SAT" | "MIN" | "PAKET" | "DAN" | "OSTALO";
 
 function normCurrencyToDb(valutaUi: string): string {
-  const v = String(valutaUi || "").trim().toUpperCase();
+  const v = String(valutaUi || "")
+    .trim()
+    .toUpperCase();
   if (!v) return "BAM";
   // UI uses "KM" for domestic currency; DB is BAM.
   if (v === "KM") return "BAM";
@@ -62,7 +64,7 @@ export async function createCjenovnikItem(data: {
     `INSERT INTO cjenovnik_stavke
       (naziv, jedinica, cijena_default, cijena_ino_eur, valuta_default, sort_order, active)
      VALUES (?, ?, ?, ?, ?, 1000, ?)`,
-    [data.naziv.trim(), data.jedinica, cijena, cijenaIno, valutaDb, active]
+    [data.naziv.trim(), data.jedinica, cijena, cijenaIno, valutaDb, active],
   );
 
   revalidatePath("/studio/cjenovnik");
@@ -98,20 +100,26 @@ export async function updateCjenovnikItem(data: {
          valuta_default = ?,
          active = ?
      WHERE stavka_id = ?`,
-    [data.naziv.trim(), data.jedinica, cijena, cijenaIno, valutaDb, active, id]
+    [data.naziv.trim(), data.jedinica, cijena, cijenaIno, valutaDb, active, id],
   );
 
   revalidatePath("/studio/cjenovnik");
   return { ok: true };
 }
 
-export async function setCjenovnikActive(data: { stavka_id: number; active: boolean }) {
+export async function setCjenovnikActive(data: {
+  stavka_id: number;
+  active: boolean;
+}) {
   const id = Number(data.stavka_id);
   if (!Number.isFinite(id) || id <= 0) throw new Error("Neispravan ID stavke.");
 
   const active = data.active ? 1 : 0;
 
-  await query(`UPDATE cjenovnik_stavke SET active = ? WHERE stavka_id = ?`, [active, id]);
+  await query(`UPDATE cjenovnik_stavke SET active = ? WHERE stavka_id = ?`, [
+    active,
+    id,
+  ]);
 
   revalidatePath("/studio/cjenovnik");
   return { ok: true };

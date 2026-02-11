@@ -32,7 +32,7 @@ const rows = await query(
   WHERE v.projekat_id = ?
   LIMIT 1
   `,
-  [projekatId]
+  [projekatId],
 );
 
 console.log(JSON.stringify(rows, null, 2));

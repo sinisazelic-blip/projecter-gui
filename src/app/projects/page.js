@@ -8,7 +8,6 @@ export const dynamic = "force-dynamic";
 //  title: "Lista projekata",
 //};
 
-
 /**
  * ✅ KANON status prikaz:
  * - API vraća status_name iz statusi_projekta
@@ -30,8 +29,8 @@ function StatusBadge({ project }) {
   const label = project?.status_name
     ? String(project.status_name)
     : project?.status_id
-    ? `Status #${project.status_id}`
-    : "—";
+      ? `Status #${project.status_id}`
+      : "—";
   const cls = statusToneById(project?.status_id);
 
   return (
@@ -70,7 +69,10 @@ function FinancialBadge({ project }) {
   const meta = finMeta(fin);
 
   return (
-    <span className={`fin-badge ${meta.className}`} title={`Fin status: ${fin}`}>
+    <span
+      className={`fin-badge ${meta.className}`}
+      title={`Fin status: ${fin}`}
+    >
       <span className="fin-badge__dot" />
       {meta.label}
     </span>
@@ -82,7 +84,9 @@ function FinancialBadge({ project }) {
  */
 function normalizeSignal(project) {
   const raw = project?.operativni_signal;
-  const s = String(raw ?? "NORMALNO").trim().toUpperCase();
+  const s = String(raw ?? "NORMALNO")
+    .trim()
+    .toUpperCase();
   if (s === "PAZNJA") return "PAZNJA";
   if (s === "STOP") return "STOP";
   return "NORMALNO";
@@ -178,7 +182,8 @@ function parseToDateOnly(v) {
   }
 
   const d = new Date(s0);
-  if (isValidDate(d)) return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  if (isValidDate(d))
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
   return null;
 }
@@ -262,7 +267,9 @@ function sortProjects(rows, status_group) {
   }
 
   if (String(status_group) === "archive") {
-    list.sort((a, b) => Number(a?.projekat_id ?? 0) - Number(b?.projekat_id ?? 0));
+    list.sort(
+      (a, b) => Number(a?.projekat_id ?? 0) - Number(b?.projekat_id ?? 0),
+    );
     return list;
   }
 
@@ -286,7 +293,8 @@ function parseStatusPick(status_pick_raw) {
 
   if (s.startsWith("group:")) {
     const g = s.slice("group:".length).toLowerCase();
-    if (g === "active" || g === "archive" || g === "all") return { status_group: g, status_id: null };
+    if (g === "active" || g === "archive" || g === "all")
+      return { status_group: g, status_id: null };
     return { status_group: "active", status_id: null };
   }
 
@@ -413,20 +421,20 @@ function StatusFlowInline({ project }) {
           const dotColor = isPast
             ? "rgba(160,160,160,.75)"
             : isActive
-            ? acc.dot
-            : "rgba(255,255,255,.18)";
+              ? acc.dot
+              : "rgba(255,255,255,.18)";
 
           const lineColor = isPast
             ? "rgba(160,160,160,.35)"
             : idx <= activeIdx
-            ? acc.line
-            : "rgba(255,255,255,.10)";
+              ? acc.line
+              : "rgba(255,255,255,.10)";
 
           const textColor = isPast
             ? "rgba(255,255,255,.55)"
             : isActive
-            ? acc.text
-            : "rgba(255,255,255,.72)";
+              ? acc.text
+              : "rgba(255,255,255,.72)";
 
           const fontW = isActive ? 900 : 700;
 
@@ -501,7 +509,7 @@ export default async function Page({ searchParams }) {
 
   // ✅ status dropdown source: statusi_projekta (KANON)
   const statuses = await query(
-    `SELECT status_id, naziv_statusa FROM statusi_projekta ORDER BY status_id ASC`
+    `SELECT status_id, naziv_statusa FROM statusi_projekta ORDER BY status_id ASC`,
   );
 
   const qs = buildQuery({
@@ -539,7 +547,9 @@ export default async function Page({ searchParams }) {
   }
 
   // ✅ default selected value for dropdown (reflect current state)
-  const statusSelectValue = status_id ? String(status_id) : `group:${status_group}`;
+  const statusSelectValue = status_id
+    ? String(status_id)
+    : `group:${status_group}`;
 
   return (
     <div className="container">
@@ -639,7 +649,11 @@ export default async function Page({ searchParams }) {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+                <img
+                  src="/fluxa/logo-light.png"
+                  alt="FLUXA"
+                  className="brandLogo"
+                />
                 <div>
                   <div className="brandTitle">Projekti</div>
                   <div className="brandSub">Project &amp; Finance Engine</div>
@@ -677,15 +691,38 @@ export default async function Page({ searchParams }) {
                 <input type="hidden" name="page" value="1" />
                 <input type="hidden" name="limit" value={String(limit)} />
 
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "nowrap" }}>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    alignItems: "flex-start",
+                    flexWrap: "nowrap",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      flex: 1,
+                      minWidth: 0,
+                    }}
+                  >
                     <span style={{ opacity: 0.75 }}>Status:</span>
 
-                    <select name="status_pick" defaultValue={statusSelectValue} style={inputStyle}>
+                    <select
+                      name="status_pick"
+                      defaultValue={statusSelectValue}
+                      style={inputStyle}
+                    >
                       <option value="group:active">Aktivni (grupa 1–8)</option>
                       <option value="group:archive">Arhiva (samo 10)</option>
                       <option value="group:all">Svi statusi (grupa)</option>
-                      <option disabled value="__sep__">────────</option>
+                      <option disabled value="__sep__">
+                        ────────
+                      </option>
                       {statuses.map((s) => (
                         <option key={s.status_id} value={String(s.status_id)}>
                           {s.status_id} — {s.naziv_statusa}
@@ -694,7 +731,11 @@ export default async function Page({ searchParams }) {
                     </select>
 
                     <span style={{ opacity: 0.75 }}>Fin:</span>
-                    <select name="fin_status" defaultValue={String(finRaw)} style={inputStyle}>
+                    <select
+                      name="fin_status"
+                      defaultValue={String(finRaw)}
+                      style={inputStyle}
+                    >
                       <option value="">Svi</option>
                       <option value="bez_budzeta">Bez budžeta</option>
                       <option value="u_plusu">U plusu</option>
@@ -702,31 +743,79 @@ export default async function Page({ searchParams }) {
                     </select>
 
                     <span style={{ opacity: 0.75 }}>Legacy:</span>
-                    <select name="legacy" defaultValue={String(legacyRaw)} style={inputStyle}>
+                    <select
+                      name="legacy"
+                      defaultValue={String(legacyRaw)}
+                      style={inputStyle}
+                    >
                       <option value="">Sve</option>
                       <option value="ima_legacy">Ima legacy</option>
                       <option value="nema_legacy">Nema legacy</option>
                     </select>
 
                     <span style={{ opacity: 0.75 }}>Traži:</span>
-                    <input name="q" defaultValue={String(qRaw)} placeholder="ID ili naziv..." style={{ ...inputStyle, width: 220 }} />
+                    <input
+                      name="q"
+                      defaultValue={String(qRaw)}
+                      placeholder="ID ili naziv..."
+                      style={{ ...inputStyle, width: 220 }}
+                    />
 
-                    <label style={{ display: "inline-flex", alignItems: "center", gap: 6, opacity: 0.9 }}>
-                      <input type="checkbox" name="show_done" value="1" defaultChecked={showDone} />
+                    <label
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        opacity: 0.9,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        name="show_done"
+                        value="1"
+                        defaultChecked={showDone}
+                      />
                       Prikaži završene
                     </label>
                   </div>
 
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-                    <Link href="/naplate" className="btn" style={{ padding: "10px 12px", minWidth: 90, textAlign: "center" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      alignItems: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Link
+                      href="/naplate"
+                      className="btn"
+                      style={{
+                        padding: "10px 12px",
+                        minWidth: 90,
+                        textAlign: "center",
+                      }}
+                    >
                       Naplate
                     </Link>
 
-                    <button type="submit" className="btn" style={{ minWidth: 110 }}>
+                    <button
+                      type="submit"
+                      className="btn"
+                      style={{ minWidth: 110 }}
+                    >
                       Filtriraj
                     </button>
 
-                    <Link href="/projects" className="btn" style={{ padding: "10px 12px", minWidth: 90, textAlign: "center" }}>
+                    <Link
+                      href="/projects"
+                      className="btn"
+                      style={{
+                        padding: "10px 12px",
+                        minWidth: 90,
+                        textAlign: "center",
+                      }}
+                    >
                       Reset
                     </Link>
                   </div>
@@ -739,13 +828,22 @@ export default async function Page({ searchParams }) {
             {/* ✅ pager info u headeru */}
             <div className="pagerBar">
               <div className="pagerInfo">
-                Prikaz: <b>{from}</b>–<b>{to}</b> od <b>{total}</b> (strana {page})
+                Prikaz: <b>{from}</b>–<b>{to}</b> od <b>{total}</b> (strana{" "}
+                {page})
               </div>
               <div className="pagerBtns">
-                <Link className={`btn ${hasPrev ? "" : "btn--disabled"}`} href={hasPrev ? `/projects${pageLink(page - 1)}` : "#"} aria-disabled={!hasPrev}>
+                <Link
+                  className={`btn ${hasPrev ? "" : "btn--disabled"}`}
+                  href={hasPrev ? `/projects${pageLink(page - 1)}` : "#"}
+                  aria-disabled={!hasPrev}
+                >
                   ← Prethodna
                 </Link>
-                <Link className={`btn ${hasNext ? "" : "btn--disabled"}`} href={hasNext ? `/projects${pageLink(page + 1)}` : "#"} aria-disabled={!hasNext}>
+                <Link
+                  className={`btn ${hasNext ? "" : "btn--disabled"}`}
+                  href={hasNext ? `/projects${pageLink(page + 1)}` : "#"}
+                  aria-disabled={!hasNext}
+                >
                   Sljedeća →
                 </Link>
               </div>
@@ -786,15 +884,19 @@ export default async function Page({ searchParams }) {
                           <Link
                             href={`/projects/${p.projekat_id}`}
                             className="project-link"
-                            style={{ display: "inline-flex", alignItems: "center", gap: 10 }}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 10,
+                            }}
                           >
                             <img
                               src={
                                 p.operativni_signal === "STOP"
                                   ? "/fluxa/Icon_red.png"
                                   : p.operativni_signal === "PAZNJA"
-                                  ? "/fluxa/Icon_zuta.png"
-                                  : "/fluxa/Icon.png"
+                                    ? "/fluxa/Icon_zuta.png"
+                                    : "/fluxa/Icon.png"
                               }
                               alt=""
                               width={18}
@@ -810,7 +912,14 @@ export default async function Page({ searchParams }) {
                       </td>
 
                       <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
                           <span style={{ fontWeight: 650 }}>{rokText}</span>
                           <span
                             title={label}
@@ -823,7 +932,9 @@ export default async function Page({ searchParams }) {
                               boxShadow: "0 0 0 3px rgba(255,255,255,.06)",
                             }}
                           />
-                          <span style={{ opacity: 0.7, fontSize: 12 }}>{label}</span>
+                          <span style={{ opacity: 0.7, fontSize: 12 }}>
+                            {label}
+                          </span>
                         </div>
                       </td>
 
@@ -832,7 +943,14 @@ export default async function Page({ searchParams }) {
                       <td className="num">{fmt(p.planirana_zarada)}</td>
 
                       <td>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: 8,
+                            alignItems: "center",
+                          }}
+                        >
                           <SignalBadge project={p} />
                           <span style={{ opacity: 0.45 }}>·</span>
                           <StatusBadge project={p} />
@@ -858,13 +976,22 @@ export default async function Page({ searchParams }) {
           {/* ✅ pager i na dnu */}
           <div className="pagerBar" style={{ paddingTop: 12 }}>
             <div className="pagerInfo">
-              Prikaz: <b>{from}</b>–<b>{to}</b> od <b>{total}</b> (strana {page})
+              Prikaz: <b>{from}</b>–<b>{to}</b> od <b>{total}</b> (strana {page}
+              )
             </div>
             <div className="pagerBtns">
-              <Link className={`btn ${hasPrev ? "" : "btn--disabled"}`} href={hasPrev ? `/projects${pageLink(page - 1)}` : "#"} aria-disabled={!hasPrev}>
+              <Link
+                className={`btn ${hasPrev ? "" : "btn--disabled"}`}
+                href={hasPrev ? `/projects${pageLink(page - 1)}` : "#"}
+                aria-disabled={!hasPrev}
+              >
                 ← Prethodna
               </Link>
-              <Link className={`btn ${hasNext ? "" : "btn--disabled"}`} href={hasNext ? `/projects${pageLink(page + 1)}` : "#"} aria-disabled={!hasNext}>
+              <Link
+                className={`btn ${hasNext ? "" : "btn--disabled"}`}
+                href={hasNext ? `/projects${pageLink(page + 1)}` : "#"}
+                aria-disabled={!hasNext}
+              >
                 Sljedeća →
               </Link>
             </div>

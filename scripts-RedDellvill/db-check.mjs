@@ -32,7 +32,7 @@ const { query } = await import("../src/lib/db.ts");
 
 try {
   const rows = await query(
-  `
+    `
   SELECT
     ls.snapshot_id AS ls_snapshot_id,
     ps.snapshot_id AS ps_snapshot_id,
@@ -53,8 +53,8 @@ try {
     ps.snapshot_id ASC,
     ps.valuta ASC
   `,
-  [5763, 5763]
-);
+    [5763, 5763],
+  );
 
   console.log(JSON.stringify(rows, null, 2));
   process.exit(0);

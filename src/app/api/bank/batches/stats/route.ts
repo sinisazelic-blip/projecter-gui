@@ -12,17 +12,24 @@ export async function GET(req: Request) {
     const batch_id = Number(raw);
 
     if (!raw || !Number.isFinite(batch_id) || batch_id <= 0) {
-      return NextResponse.json({ ok: false, error: "Invalid batch_id", debug: { raw } }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Invalid batch_id", debug: { raw } },
+        { status: 400 },
+      );
     }
 
     const out = await withTransaction(async (conn: any) => {
       const [brows]: any = await conn.execute(
         `SELECT batch_id, account_id, status FROM bank_import_batch WHERE batch_id = ? LIMIT 1`,
-        [batch_id]
+        [batch_id],
       );
-      if (!Array.isArray(brows) || brows.length === 0) return { ok: false, error: "BATCH_NOT_FOUND" as const };
+      if (!Array.isArray(brows) || brows.length === 0)
+        return { ok: false, error: "BATCH_NOT_FOUND" as const };
 
-      const [st]: any = await conn.execute(`SELECT COUNT(*) AS cnt FROM bank_tx_staging WHERE batch_id = ?`, [batch_id]);
+      const [st]: any = await conn.execute(
+        `SELECT COUNT(*) AS cnt FROM bank_tx_staging WHERE batch_id = ?`,
+        [batch_id],
+      );
       const [m]: any = await conn.execute(
         `
         SELECT COUNT(*) AS cnt
@@ -30,10 +37,16 @@ export async function GET(req: Request) {
         JOIN bank_tx_staging t ON t.tx_id = mm.tx_id
         WHERE t.batch_id = ?
         `,
-        [batch_id]
+        [batch_id],
       );
-      const [p]: any = await conn.execute(`SELECT COUNT(*) AS cnt FROM bank_tx_posting WHERE batch_id = ?`, [batch_id]);
-      const [l]: any = await conn.execute(`SELECT COUNT(*) AS cnt FROM bank_tx_cost_link WHERE batch_id = ?`, [batch_id]);
+      const [p]: any = await conn.execute(
+        `SELECT COUNT(*) AS cnt FROM bank_tx_posting WHERE batch_id = ?`,
+        [batch_id],
+      );
+      const [l]: any = await conn.execute(
+        `SELECT COUNT(*) AS cnt FROM bank_tx_cost_link WHERE batch_id = ?`,
+        [batch_id],
+      );
 
       return {
         ok: true,
@@ -49,10 +62,16 @@ export async function GET(req: Request) {
     });
 
     if (!out.ok && out.error === "BATCH_NOT_FOUND") {
-      return NextResponse.json({ ok: false, error: "BATCH_NOT_FOUND" }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: "BATCH_NOT_FOUND" },
+        { status: 404 },
+      );
     }
     return NextResponse.json(out);
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Server error" },
+      { status: 500 },
+    );
   }
 }

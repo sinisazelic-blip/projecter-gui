@@ -2,7 +2,11 @@
 "use server";
 
 import { query } from "@/lib/db";
-import { assertNonEmpty, assertOptionalStr, assertBool } from "./inventory.validate";
+import {
+  assertNonEmpty,
+  assertOptionalStr,
+  assertBool,
+} from "./inventory.validate";
 
 export async function inventoryCreateLocation({ naziv, opis }) {
   const name = assertNonEmpty("Naziv lokacije", naziv, 160);
@@ -11,13 +15,14 @@ export async function inventoryCreateLocation({ naziv, opis }) {
   // unique naziv
   const exists = await query(
     "SELECT location_id FROM inventory_locations WHERE naziv = ? LIMIT 1",
-    [name]
+    [name],
   );
-  if (exists?.rows?.length) throw new Error("Lokacija sa tim nazivom već postoji.");
+  if (exists?.rows?.length)
+    throw new Error("Lokacija sa tim nazivom već postoji.");
 
   const r = await query(
     "INSERT INTO inventory_locations (naziv, opis, aktivan) VALUES (?, ?, 1)",
-    [name, desc]
+    [name, desc],
   );
 
   return { ok: true, location_id: r?.insertId ?? null };
@@ -25,21 +30,26 @@ export async function inventoryCreateLocation({ naziv, opis }) {
 
 export async function inventoryUpdateLocation(location_id, { naziv, opis }) {
   const id = Number(location_id);
-  if (!Number.isInteger(id) || id <= 0) throw new Error("Neispravan location_id.");
+  if (!Number.isInteger(id) || id <= 0)
+    throw new Error("Neispravan location_id.");
 
-  const name = naziv !== undefined ? assertNonEmpty("Naziv lokacije", naziv, 160) : undefined;
-  const desc = opis !== undefined ? assertOptionalStr("Opis", opis, 255) : undefined;
+  const name =
+    naziv !== undefined
+      ? assertNonEmpty("Naziv lokacije", naziv, 160)
+      : undefined;
+  const desc =
+    opis !== undefined ? assertOptionalStr("Opis", opis, 255) : undefined;
 
   const cur = await query(
     "SELECT location_id, naziv FROM inventory_locations WHERE location_id = ? LIMIT 1",
-    [id]
+    [id],
   );
   if (!cur?.rows?.length) throw new Error("Lokacija ne postoji.");
 
   if (name !== undefined) {
     const dup = await query(
       "SELECT location_id FROM inventory_locations WHERE naziv = ? AND location_id <> ? LIMIT 1",
-      [name, id]
+      [name, id],
     );
     if (dup?.rows?.length) throw new Error("Druga lokacija već ima taj naziv.");
   }
@@ -62,7 +72,7 @@ export async function inventoryUpdateLocation(location_id, { naziv, opis }) {
 
   await query(
     `UPDATE inventory_locations SET ${sets.join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE location_id = ?`,
-    vals
+    vals,
   );
 
   return { ok: true, updated: 1 };
@@ -70,19 +80,20 @@ export async function inventoryUpdateLocation(location_id, { naziv, opis }) {
 
 export async function inventorySetLocationActive(location_id, aktivan) {
   const id = Number(location_id);
-  if (!Number.isInteger(id) || id <= 0) throw new Error("Neispravan location_id.");
+  if (!Number.isInteger(id) || id <= 0)
+    throw new Error("Neispravan location_id.");
 
   const active = assertBool("Aktivan", aktivan);
 
   const cur = await query(
     "SELECT location_id FROM inventory_locations WHERE location_id = ? LIMIT 1",
-    [id]
+    [id],
   );
   if (!cur?.rows?.length) throw new Error("Lokacija ne postoji.");
 
   await query(
     "UPDATE inventory_locations SET aktivan = ?, updated_at = CURRENT_TIMESTAMP WHERE location_id = ?",
-    [active, id]
+    [active, id],
   );
 
   return { ok: true, aktivan: !!active };
@@ -97,7 +108,7 @@ export async function inventoryListLocations({ includeInactive = false } = {}) {
     WHERE (? = 1) OR aktivan = 1
     ORDER BY aktivan DESC, naziv ASC
     `,
-    [inc]
+    [inc],
   );
   return { ok: true, rows: r?.rows ?? [] };
 }

@@ -3,7 +3,12 @@
 
 import { query } from "@/lib/db";
 import { mustInt, mustAllocationKm } from "./finance.validate";
-import { getPostingOrThrow, getPostingAllocatedSums, abs2, signOf } from "./finance.helpers";
+import {
+  getPostingOrThrow,
+  getPostingAllocatedSums,
+  abs2,
+  signOf,
+} from "./finance.helpers";
 
 /**
  * Pravila:
@@ -21,8 +26,11 @@ function postingAmount(row) {
   return Math.round(n * 100) / 100;
 }
 
-
-export async function financeLinkPostingToIncome({ posting_id, prihod_id, amount_km }) {
+export async function financeLinkPostingToIncome({
+  posting_id,
+  prihod_id,
+  amount_km,
+}) {
   const pid = mustInt("posting_id", posting_id);
   const iid = mustInt("prihod_id", prihod_id);
   const alloc = mustAllocationKm(amount_km);
@@ -31,7 +39,9 @@ export async function financeLinkPostingToIncome({ posting_id, prihod_id, amount
   const amt = postingAmount(posting);
 
   if (signOf(amt) !== 1) {
-    throw new Error("Ovaj posting nije incoming (amount > 0). Ne može se linkovati na prihod.");
+    throw new Error(
+      "Ovaj posting nije incoming (amount > 0). Ne može se linkovati na prihod.",
+    );
   }
 
   const sums = await getPostingAllocatedSums(pid);
@@ -39,29 +49,36 @@ export async function financeLinkPostingToIncome({ posting_id, prihod_id, amount
   const cap = abs2(amt);
 
   if (already + alloc > cap + 0.0001) {
-    throw new Error(`Prekoračenje split-a. Već alocirano: ${already.toFixed(2)} KM, traženo: ${alloc.toFixed(2)} KM, limit: ${cap.toFixed(2)} KM.`);
+    throw new Error(
+      `Prekoračenje split-a. Već alocirano: ${already.toFixed(2)} KM, traženo: ${alloc.toFixed(2)} KM, limit: ${cap.toFixed(2)} KM.`,
+    );
   }
 
   // prihod mora postojati i biti ACTIVE
   const pr = await query(
     "SELECT prihod_id, status FROM projektni_prihodi WHERE prihod_id = ? LIMIT 1",
-    [iid]
+    [iid],
   );
   if (!pr?.rows?.length) throw new Error("Prihod ne postoji.");
-  if (pr.rows[0].status !== "ACTIVE") throw new Error("Prihod nije ACTIVE (storno ili nevažeći).");
+  if (pr.rows[0].status !== "ACTIVE")
+    throw new Error("Prihod nije ACTIVE (storno ili nevažeći).");
 
   const r = await query(
     `
     INSERT INTO bank_tx_posting_prihod_link (posting_id, prihod_id, amount_km, aktivan)
     VALUES (?, ?, ?, 1)
     `,
-    [pid, iid, alloc]
+    [pid, iid, alloc],
   );
 
   return { ok: true, link_id: r?.insertId ?? null };
 }
 
-export async function financeLinkPostingToPayment({ posting_id, placanje_id, amount_km }) {
+export async function financeLinkPostingToPayment({
+  posting_id,
+  placanje_id,
+  amount_km,
+}) {
   const pid = mustInt("posting_id", posting_id);
   const payId = mustInt("placanje_id", placanje_id);
   const alloc = mustAllocationKm(amount_km);
@@ -70,7 +87,9 @@ export async function financeLinkPostingToPayment({ posting_id, placanje_id, amo
   const amt = postingAmount(posting);
 
   if (signOf(amt) !== -1) {
-    throw new Error("Ovaj posting nije outgoing (amount < 0). Ne može se linkovati na plaćanje.");
+    throw new Error(
+      "Ovaj posting nije outgoing (amount < 0). Ne može se linkovati na plaćanje.",
+    );
   }
 
   const sums = await getPostingAllocatedSums(pid);
@@ -78,23 +97,26 @@ export async function financeLinkPostingToPayment({ posting_id, placanje_id, amo
   const cap = abs2(amt);
 
   if (already + alloc > cap + 0.0001) {
-    throw new Error(`Prekoračenje split-a. Već alocirano: ${already.toFixed(2)} KM, traženo: ${alloc.toFixed(2)} KM, limit: ${cap.toFixed(2)} KM.`);
+    throw new Error(
+      `Prekoračenje split-a. Već alocirano: ${already.toFixed(2)} KM, traženo: ${alloc.toFixed(2)} KM, limit: ${cap.toFixed(2)} KM.`,
+    );
   }
 
   // placanje mora postojati i biti ACTIVE
   const pl = await query(
     "SELECT placanje_id, status FROM placanja WHERE placanje_id = ? LIMIT 1",
-    [payId]
+    [payId],
   );
   if (!pl?.rows?.length) throw new Error("Plaćanje ne postoji.");
-  if (pl.rows[0].status !== "ACTIVE") throw new Error("Plaćanje nije ACTIVE (storno ili nevažeće).");
+  if (pl.rows[0].status !== "ACTIVE")
+    throw new Error("Plaćanje nije ACTIVE (storno ili nevažeće).");
 
   const r = await query(
     `
     INSERT INTO bank_tx_posting_placanje_link (posting_id, placanje_id, amount_km, aktivan)
     VALUES (?, ?, ?, 1)
     `,
-    [pid, payId, alloc]
+    [pid, payId, alloc],
   );
 
   return { ok: true, link_id: r?.insertId ?? null };
@@ -109,7 +131,7 @@ export async function financeSetIncomeLinkActive(link_id, aktivan) {
 
   await query(
     "UPDATE bank_tx_posting_prihod_link SET aktivan = ? WHERE link_id = ?",
-    [a, id]
+    [a, id],
   );
 
   return { ok: true, aktivan: !!a };
@@ -121,7 +143,7 @@ export async function financeSetPaymentLinkActive(link_id, aktivan) {
 
   await query(
     "UPDATE bank_tx_posting_placanje_link SET aktivan = ? WHERE link_id = ?",
-    [a, id]
+    [a, id],
   );
 
   return { ok: true, aktivan: !!a };
@@ -139,7 +161,7 @@ export async function financeListLinksForPosting(posting_id) {
     WHERE l.posting_id = ?
     ORDER BY l.aktivan DESC, l.link_id DESC
     `,
-    [pid]
+    [pid],
   );
 
   const pay = await query(
@@ -151,10 +173,15 @@ export async function financeListLinksForPosting(posting_id) {
     WHERE l.posting_id = ?
     ORDER BY l.aktivan DESC, l.link_id DESC
     `,
-    [pid]
+    [pid],
   );
 
   const sums = await getPostingAllocatedSums(pid);
 
-  return { ok: true, income_links: inc?.rows ?? [], payment_links: pay?.rows ?? [], sums };
+  return {
+    ok: true,
+    income_links: inc?.rows ?? [],
+    payment_links: pay?.rows ?? [],
+    sums,
+  };
 }

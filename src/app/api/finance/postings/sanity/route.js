@@ -18,22 +18,24 @@ export async function GET(req) {
         `SELECT posting_id, amount, linked_income_km, linked_payment_km, linked_total_km, alloc_status
          FROM v_bank_posting_sanity
          ORDER BY posting_id DESC
-         LIMIT 200`
+         LIMIT 200`,
       );
       return NextResponse.json({ ok: true, rows: rows || [] });
     }
 
     const posting_id = Number(postingIdRaw);
-    if (!Number.isFinite(posting_id) || posting_id <= 0) return bad("posting_id invalid");
+    if (!Number.isFinite(posting_id) || posting_id <= 0)
+      return bad("posting_id invalid");
 
     const rows = await query(
       `SELECT posting_id, amount, linked_income_km, linked_payment_km, linked_total_km, alloc_status
        FROM v_bank_posting_sanity
        WHERE posting_id = ?`,
-      [posting_id]
+      [posting_id],
     );
 
-    if (!rows?.length) return bad("posting not found in sanity view", 404, { posting_id });
+    if (!rows?.length)
+      return bad("posting not found in sanity view", 404, { posting_id });
 
     return NextResponse.json({ ok: true, row: rows[0] });
   } catch (e) {

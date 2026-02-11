@@ -4,11 +4,9 @@ import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-
 export const metadata = {
   title: "Deals lista",
 };
-
 
 // Date | string -> "YYYY-MM-DD" (ili null)
 function toISODateOnly(v: any): string | null {
@@ -47,7 +45,7 @@ function fmtDateTime(v: any) {
 
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(
-    d.getMinutes()
+    d.getMinutes(),
   )}`;
 }
 
@@ -63,15 +61,20 @@ function daysDiffFromToday(isoDate: string) {
 function semaforFor(isoDate: string | null) {
   if (!isoDate) return { cls: "sem--none", title: "Nema roka" };
   const diff = daysDiffFromToday(isoDate);
-  if (!Number.isFinite(diff)) return { cls: "sem--none", title: "Nevažeći rok" };
+  if (!Number.isFinite(diff))
+    return { cls: "sem--none", title: "Nevažeći rok" };
 
-  if (diff <= 0) return { cls: "sem--red", title: "Deadline je danas ili prošao" };
-  if (diff <= 3) return { cls: "sem--orange", title: "Deadline uskoro (≤ 3 dana)" };
+  if (diff <= 0)
+    return { cls: "sem--red", title: "Deadline je danas ili prošao" };
+  if (diff <= 3)
+    return { cls: "sem--orange", title: "Deadline uskoro (≤ 3 dana)" };
   return { cls: "sem--green", title: "Deadline OK (> 3 dana)" };
 }
 
 function normSignal(v: any) {
-  return String(v ?? "").trim().toUpperCase();
+  return String(v ?? "")
+    .trim()
+    .toUpperCase();
 }
 
 function signalMeta(sigRaw: any) {
@@ -100,13 +103,35 @@ function signalMeta(sigRaw: any) {
   return null; // NORMALNO i ostalo: ne prikazuj u Deal UI
 }
 
-type ViewMode = "active" | "to_invoice" | "invoiced" | "archived" | "no_project" | "all";
+type ViewMode =
+  | "active"
+  | "to_invoice"
+  | "invoiced"
+  | "archived"
+  | "no_project"
+  | "all";
 
 const VIEW_OPTIONS: { v: ViewMode; label: string; hint?: string }[] = [
-  { v: "active", label: "Aktivno", hint: "Sakrij arhivirane/otkazane projekte + odbijene deale" },
-  { v: "to_invoice", label: "Spremno za fakturisanje", hint: "Projekti: ZATVOREN (status 8)" },
-  { v: "invoiced", label: "Fakturisano (za naplatu)", hint: "Projekti: FAKTURISAN (status 9)" },
-  { v: "archived", label: "Arhiva", hint: "Projekti: ARHIVIRAN/OTKAZAN + deal ODBIJEN" },
+  {
+    v: "active",
+    label: "Aktivno",
+    hint: "Sakrij arhivirane/otkazane projekte + odbijene deale",
+  },
+  {
+    v: "to_invoice",
+    label: "Spremno za fakturisanje",
+    hint: "Projekti: ZATVOREN (status 8)",
+  },
+  {
+    v: "invoiced",
+    label: "Fakturisano (za naplatu)",
+    hint: "Projekti: FAKTURISAN (status 9)",
+  },
+  {
+    v: "archived",
+    label: "Arhiva",
+    hint: "Projekti: ARHIVIRAN/OTKAZAN + deal ODBIJEN",
+  },
   { v: "no_project", label: "Samo pregovori", hint: "Deal bez projekta" },
   { v: "all", label: "Svi", hint: "Bez filtera" },
 ];
@@ -115,9 +140,15 @@ export default async function DealsPage({ searchParams }: any) {
   const sp = await Promise.resolve(searchParams);
 
   const q = String(sp?.q ?? "").trim();
-  const viewRaw = String(sp?.view ?? "active").trim().toLowerCase();
+  const viewRaw = String(sp?.view ?? "active")
+    .trim()
+    .toLowerCase();
   const view: ViewMode =
-    viewRaw === "to_invoice" || viewRaw === "invoiced" || viewRaw === "archived" || viewRaw === "no_project" || viewRaw === "all"
+    viewRaw === "to_invoice" ||
+    viewRaw === "invoiced" ||
+    viewRaw === "archived" ||
+    viewRaw === "no_project" ||
+    viewRaw === "all"
       ? (viewRaw as ViewMode)
       : "active";
 
@@ -159,12 +190,12 @@ export default async function DealsPage({ searchParams }: any) {
     where.push("p.status_id = 9");
   } else if (view === "archived") {
     where.push(
-      "((i.projekat_id IS NOT NULL AND p.status_id IN (10,12)) OR (i.projekat_id IS NULL AND i.status_id = 4))"
+      "((i.projekat_id IS NOT NULL AND p.status_id IN (10,12)) OR (i.projekat_id IS NULL AND i.status_id = 4))",
     );
   } else if (view === "active") {
     // default: sakrij arhivu (projekat 10/12) + sakrij odbijene deale
     where.push(
-      "((i.projekat_id IS NOT NULL AND p.status_id NOT IN (10,12)) OR (i.projekat_id IS NULL AND i.status_id <> 4))"
+      "((i.projekat_id IS NOT NULL AND p.status_id NOT IN (10,12)) OR (i.projekat_id IS NULL AND i.status_id <> 4))",
     );
   } // "all" = ništa
 
@@ -219,7 +250,7 @@ export default async function DealsPage({ searchParams }: any) {
     ORDER BY i.updated_at DESC, i.inicijacija_id DESC
     LIMIT 300
     `,
-    params
+    params,
   );
 
   return (
@@ -366,7 +397,11 @@ export default async function DealsPage({ searchParams }: any) {
             <div className="topbar">
               {/* ✅ LOGO + naslov (diskretno) */}
               <div className="brandWrap">
-                <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+                <img
+                  src="/fluxa/logo-light.png"
+                  alt="FLUXA"
+                  className="brandLogo"
+                />
                 <div>
                   <div className="brandTitle">Deals</div>
                   <div className="brandSub">Project & Finance Engine</div>
@@ -374,11 +409,19 @@ export default async function DealsPage({ searchParams }: any) {
               </div>
 
               <div className="actions">
-                <Link href="/inicijacije/novo" className="glassbtn" title="Novi Deal">
+                <Link
+                  href="/inicijacije/novo"
+                  className="glassbtn"
+                  title="Novi Deal"
+                >
                   ➕ NOVI
                 </Link>
 
-                <Link href="/inicijacije" className="glassbtn" title="Osvježi listu">
+                <Link
+                  href="/inicijacije"
+                  className="glassbtn"
+                  title="Osvježi listu"
+                >
                   ⟳ Osvježi
                 </Link>
               </div>
@@ -399,7 +442,12 @@ export default async function DealsPage({ searchParams }: any) {
 
               <div className="field">
                 <div className="labelSmall">Pregled</div>
-                <select name="view" defaultValue={view} className="input" style={{ width: 260 }}>
+                <select
+                  name="view"
+                  defaultValue={view}
+                  className="input"
+                  style={{ width: 260 }}
+                >
                   {VIEW_OPTIONS.map((o) => (
                     <option key={o.v} value={o.v}>
                       {o.label}
@@ -408,7 +456,11 @@ export default async function DealsPage({ searchParams }: any) {
                 </select>
               </div>
 
-              <button type="submit" className="glassbtn" title="Primijeni filtere">
+              <button
+                type="submit"
+                className="glassbtn"
+                title="Primijeni filtere"
+              >
                 🔎 Primijeni
               </button>
             </form>
@@ -445,10 +497,17 @@ export default async function DealsPage({ searchParams }: any) {
                     // ✅ Status prikaz:
                     // - ako ima projekat: prikazi status PROJEKTA (naziv_statusa)
                     // - ako nema projekta: prikazi status DEAL-a (naziv)
-                    const projectStatusName = r.projekat_status_naziv ? String(r.projekat_status_naziv) : null;
-                    const dealStatusName = r.status_naziv ? String(r.status_naziv) : null;
+                    const projectStatusName = r.projekat_status_naziv
+                      ? String(r.projekat_status_naziv)
+                      : null;
+                    const dealStatusName = r.status_naziv
+                      ? String(r.status_naziv)
+                      : null;
 
-                    const statusLabel = opened ? (projectStatusName ?? `Projekt #${Number(r.projekat_status_id ?? 0)}`) : (dealStatusName ?? "—");
+                    const statusLabel = opened
+                      ? (projectStatusName ??
+                        `Projekt #${Number(r.projekat_status_id ?? 0)}`)
+                      : (dealStatusName ?? "—");
 
                     const rokIso = toISODateOnly(r.rok_glavni);
                     const sem = semaforFor(rokIso);
@@ -460,19 +519,43 @@ export default async function DealsPage({ searchParams }: any) {
                         <td style={{ width: 80 }}>{r.inicijacija_id}</td>
 
                         <td className="cell-wrap">
-                          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              flexWrap: "wrap",
+                              gap: 8,
+                            }}
+                          >
                             {/* ✅ IKONICA + naziv */}
                             <div className="dealNameWrap">
-                              <img src="/fluxa/Icon.png" alt="" className="dealIcon" />
-                              <Link href={`/inicijacije/${r.inicijacija_id}`} className="dealLink">
+                              <img
+                                src="/fluxa/Icon.png"
+                                alt=""
+                                className="dealIcon"
+                              />
+                              <Link
+                                href={`/inicijacije/${r.inicijacija_id}`}
+                                className="dealLink"
+                              >
                                 {r.radni_naziv}
                               </Link>
                             </div>
 
                             {/* ✅ Signal samo kad je PAŽNJA/STOP */}
                             {sig ? (
-                              <span className="sigPill" title={sig.title} style={{ background: sig.bg, borderColor: sig.border }}>
-                                <span className="sigDot" style={{ background: sig.dot }} />
+                              <span
+                                className="sigPill"
+                                title={sig.title}
+                                style={{
+                                  background: sig.bg,
+                                  borderColor: sig.border,
+                                }}
+                              >
+                                <span
+                                  className="sigDot"
+                                  style={{ background: sig.dot }}
+                                />
                                 {sig.label}
                               </span>
                             ) : null}
@@ -481,7 +564,10 @@ export default async function DealsPage({ searchParams }: any) {
                           {opened && (
                             <div className="mutedSmall">
                               Projekat:{" "}
-                              <Link href={`/projects/${r.projekat_id}`} className="project-link">
+                              <Link
+                                href={`/projects/${r.projekat_id}`}
+                                className="project-link"
+                              >
                                 #{r.projekat_id}
                               </Link>
                             </div>
@@ -489,13 +575,20 @@ export default async function DealsPage({ searchParams }: any) {
                         </td>
 
                         <td style={{ width: 170 }}>
-                          <span className={`sem ${sem.cls}`} title={sem.title} />{" "}
-                          <span style={{ marginLeft: 8 }}>{rokIso ? fmtDate(rokIso) : "—"}</span>
+                          <span
+                            className={`sem ${sem.cls}`}
+                            title={sem.title}
+                          />{" "}
+                          <span style={{ marginLeft: 8 }}>
+                            {rokIso ? fmtDate(rokIso) : "—"}
+                          </span>
                         </td>
 
                         <td style={{ width: 210 }}>{statusLabel}</td>
 
-                        <td style={{ width: 190 }}>{fmtDateTime(r.updated_at || r.created_at)}</td>
+                        <td style={{ width: 190 }}>
+                          {fmtDateTime(r.updated_at || r.created_at)}
+                        </td>
                       </tr>
                     );
                   })

@@ -50,7 +50,10 @@ function isTransientDbError(err: any) {
  * Named helper koji projekat već koristi:
  * import { query } from "@/lib/db"
  */
-export async function query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+export async function query<T = any>(
+  sql: string,
+  params: any[] = [],
+): Promise<T[]> {
   try {
     const [rows] = await pool.query(sql, params);
     return rows as T[];

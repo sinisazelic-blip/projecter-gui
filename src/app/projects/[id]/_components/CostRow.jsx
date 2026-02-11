@@ -79,7 +79,9 @@ export default function CostRow({ c, project, actions, returnTo }) {
   const safeReturnTo = returnTo || `/projects/${project?.projekat_id ?? ""}`;
 
   const ccy = String(c?.valuta_original || "BAM").toUpperCase();
-  const kursDefault = Number.isFinite(Number(c?.kurs_u_km)) ? String(c.kurs_u_km) : "1";
+  const kursDefault = Number.isFinite(Number(c?.kurs_u_km))
+    ? String(c.kurs_u_km)
+    : "1";
 
   const iznosDefault = Number.isFinite(Number(c?.iznos_original))
     ? String(c.iznos_original)
@@ -117,7 +119,10 @@ export default function CostRow({ c, project, actions, returnTo }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const initialDate = useMemo(() => toYMD(c?.datum_troska) || "", [c?.datum_troska]);
+  const initialDate = useMemo(
+    () => toYMD(c?.datum_troska) || "",
+    [c?.datum_troska],
+  );
 
   const modal = (
     <div
@@ -146,7 +151,14 @@ export default function CostRow({ c, project, actions, returnTo }) {
           borderRadius: 16,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+            alignItems: "center",
+          }}
+        >
           <div style={{ fontWeight: 700 }}>Uredi trošak</div>
           <button type="button" onClick={() => setOpen(false)}>
             ✕
@@ -159,8 +171,16 @@ export default function CostRow({ c, project, actions, returnTo }) {
           <input type="hidden" name="return_to" value={safeReturnTo} />
 
           <input type="hidden" name="tip_id" value={editLink.tip_id ?? ""} />
-          <input type="hidden" name="entity_type" value={editLink.entity_type ?? ""} />
-          <input type="hidden" name="entity_id" value={editLink.entity_id ?? ""} />
+          <input
+            type="hidden"
+            name="entity_type"
+            value={editLink.entity_type ?? ""}
+          />
+          <input
+            type="hidden"
+            name="entity_id"
+            value={editLink.entity_id ?? ""}
+          />
 
           <div
             style={{
@@ -184,7 +204,13 @@ export default function CostRow({ c, project, actions, returnTo }) {
               />
             </div>
 
-            <input type="date" name="datum_troska" defaultValue={initialDate} required style={inputStyle} />
+            <input
+              type="date"
+              name="datum_troska"
+              defaultValue={initialDate}
+              required
+              style={inputStyle}
+            />
 
             <textarea
               name="opis"
@@ -223,7 +249,15 @@ export default function CostRow({ c, project, actions, returnTo }) {
             />
           </div>
 
-          <div style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <div
+            style={{
+              marginTop: 10,
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
             <button type="submit" disabled={c.status === "STORNIRANO"}>
               Snimi izmjene
             </button>
@@ -270,7 +304,9 @@ export default function CostRow({ c, project, actions, returnTo }) {
               }}
               title={`${c.entity_type === "talent" ? "Talenat" : "Dobavljač"}: ${c.entity_name}`}
             >
-              <span aria-hidden="true">{c.entity_type === "talent" ? "🎤" : "🏢"}</span>
+              <span aria-hidden="true">
+                {c.entity_type === "talent" ? "🎤" : "🏢"}
+              </span>
               <span style={{ fontWeight: 700 }}>
                 {c.entity_type === "talent" ? "Talenat" : "Dobavljač"}:
               </span>
@@ -293,17 +329,40 @@ export default function CostRow({ c, project, actions, returnTo }) {
       </td>
 
       <td style={{ whiteSpace: "normal" }}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <button type="button" onClick={() => setOpen(true)} disabled={c.status === "STORNIRANO"}>
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            disabled={c.status === "STORNIRANO"}
+          >
             Uredi
           </button>
 
-          <form action={actions.setCostStatus} style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-            <input type="hidden" name="projekat_id" value={project.projekat_id} />
+          <form
+            action={actions.setCostStatus}
+            style={{ display: "inline-flex", gap: 6, alignItems: "center" }}
+          >
+            <input
+              type="hidden"
+              name="projekat_id"
+              value={project.projekat_id}
+            />
             <input type="hidden" name="trosak_id" value={c.trosak_id} />
             <input type="hidden" name="return_to" value={safeReturnTo} />
 
-            <select name="status" defaultValue={c.status} disabled={c.status === "STORNIRANO"} style={inputStyle}>
+            <select
+              name="status"
+              defaultValue={c.status}
+              disabled={c.status === "STORNIRANO"}
+              style={inputStyle}
+            >
               <option value="PLANIRANO">PLANIRANO</option>
               <option value="NASTALO">NASTALO</option>
               <option value="PLACENO">PLACENO</option>
@@ -325,24 +384,32 @@ export default function CostRow({ c, project, actions, returnTo }) {
               Storniraj
             </summary>
 
-            <div className="card" style={{ padding: 10, marginTop: 8, minWidth: 320 }}>
-                background: "rgba(15,15,18,.92)",
-                border: "1px solid rgba(255,255,255,.12)",
+            <div
+              className="card"
+              style={{ padding: 10, marginTop: 8, minWidth: 320 }}
+            >
+              background: "rgba(15,15,18,.92)", border: "1px solid
+              rgba(255,255,255,.12)",
+              <div style={{ marginBottom: 8 }}>
+                Da li stvarno želiš stornirati ovaj trošak?
+              </div>
+              <form
+                action={actions.setCostStatus}
+                style={{ display: "flex", gap: 8 }}
+              >
+                <input
+                  type="hidden"
+                  name="projekat_id"
+                  value={project.projekat_id}
+                />
+                <input type="hidden" name="trosak_id" value={c.trosak_id} />
+                <input type="hidden" name="status" value="STORNIRANO" />
+                <input type="hidden" name="return_to" value={safeReturnTo} />
 
-              <div style={{ marginBottom: 8 }}>Da li stvarno želiš stornirati ovaj trošak?</div>
-
-              <form action={actions.setCostStatus} style={{ display: "flex", gap: 8 }}>
-  <input type="hidden" name="projekat_id" value={project.projekat_id} />
-  <input type="hidden" name="trosak_id" value={c.trosak_id} />
-  <input type="hidden" name="status" value="STORNIRANO" />
-  <input type="hidden" name="return_to" value={safeReturnTo} />
-
-  <button type="submit" disabled={c.status === "STORNIRANO"}>
-    Da, storniraj
-  </button>
-</form>
-
-
+                <button type="submit" disabled={c.status === "STORNIRANO"}>
+                  Da, storniraj
+                </button>
+              </form>
               <div className="subtle" style={{ marginTop: 8 }}>
                 (Stornirano vidiš kroz “prikaži”.)
               </div>

@@ -43,7 +43,9 @@ function fmtDT(v?: string | null) {
 }
 
 function normCcy(v: any) {
-  const s = String(v ?? "").trim().toUpperCase();
+  const s = String(v ?? "")
+    .trim()
+    .toUpperCase();
   return (s || "BAM").slice(0, 3);
 }
 
@@ -77,7 +79,7 @@ export default function CjenovnikPage() {
           active: Number(r.active ?? 0) ? 1 : 0,
           _dirty: false,
           _isNew: false,
-        }))
+        })),
       );
     } catch (e: any) {
       setErr(e?.message ?? "Greška");
@@ -100,7 +102,7 @@ export default function CjenovnikPage() {
         const k = r.stavka_id ? `id:${r.stavka_id}` : `tmp:${r._tmpId}`;
         if (k !== key) return r;
         return { ...r, ...patch, _dirty: true };
-      })
+      }),
     );
   }
 
@@ -153,9 +155,13 @@ export default function CjenovnikPage() {
       }));
 
       // ako nešto fali — odmah signal (ne prekidamo sve, ali upozorimo)
-      const bad = items.some((i) => !i.naziv || !i.jedinica || i.cijena_default === null);
+      const bad = items.some(
+        (i) => !i.naziv || !i.jedinica || i.cijena_default === null,
+      );
       if (bad) {
-        throw new Error("Ne mogu snimiti: svaka stavka mora imati Naziv, Jedinicu i Cijenu (broj).");
+        throw new Error(
+          "Ne mogu snimiti: svaka stavka mora imati Naziv, Jedinicu i Cijenu (broj).",
+        );
       }
 
       const res = await fetch("/api/cjenovnik", {
@@ -261,7 +267,14 @@ export default function CjenovnikPage() {
 
       {/* HEADER */}
       <div className="topbar">
-        <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "baseline",
+            flexWrap: "wrap",
+          }}
+        >
           <h1 style={{ fontSize: 22, margin: 0 }}>Cjenovnik</h1>
 
           <span className="pill muted" title="Sort po nazivu (A→Z)">
@@ -273,8 +286,20 @@ export default function CjenovnikPage() {
           </span>
         </div>
 
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <button type="button" className="glassbtn btn" onClick={addNewRow} title="Dodaj novu stavku">
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+            justifyContent: "flex-end",
+          }}
+        >
+          <button
+            type="button"
+            className="glassbtn btn"
+            onClick={addNewRow}
+            title="Dodaj novu stavku"
+          >
             ➕ Dodaj novu cijenu
           </button>
 
@@ -289,7 +314,12 @@ export default function CjenovnikPage() {
             💾 {saving ? "Snima..." : "Snimi promjene"}
           </button>
 
-          <button type="button" className="glassbtn btn" onClick={close} title="Zatvori cjenovnik">
+          <button
+            type="button"
+            className="glassbtn btn"
+            onClick={close}
+            title="Zatvori cjenovnik"
+          >
             ✖ Zatvori cjenovnik
           </button>
         </div>
@@ -311,7 +341,9 @@ export default function CjenovnikPage() {
                 <th style={{ width: 70 }}>ID</th>
                 <th>Naziv</th>
                 <th style={{ width: 140 }}>Jedinica</th>
-                <th className="num" style={{ width: 150 }}>Cijena</th>
+                <th className="num" style={{ width: 150 }}>
+                  Cijena
+                </th>
                 <th style={{ width: 90 }}>Valuta</th>
                 <th style={{ width: 90 }}>Active</th>
                 <th style={{ width: 170 }}>Kreirano</th>
@@ -321,7 +353,9 @@ export default function CjenovnikPage() {
 
             <tbody>
               {rows.map((r) => {
-                const key = r.stavka_id ? `id:${r.stavka_id}` : `tmp:${r._tmpId}`;
+                const key = r.stavka_id
+                  ? `id:${r.stavka_id}`
+                  : `tmp:${r._tmpId}`;
                 const isNew = !!r._isNew;
                 const isDirty = !!r._dirty;
 
@@ -329,13 +363,17 @@ export default function CjenovnikPage() {
                   <tr key={key} style={{ opacity: Number(r.active) ? 1 : 0.7 }}>
                     <td className="muted">
                       {r.stavka_id ?? (isNew ? "NEW" : "—")}
-                      {isDirty ? <div style={{ fontSize: 12, marginTop: 4 }}>✱</div> : null}
+                      {isDirty ? (
+                        <div style={{ fontSize: 12, marginTop: 4 }}>✱</div>
+                      ) : null}
                     </td>
 
                     <td>
                       <input
                         value={r.naziv ?? ""}
-                        onChange={(e) => updateRow(key, { naziv: e.target.value })}
+                        onChange={(e) =>
+                          updateRow(key, { naziv: e.target.value })
+                        }
                         placeholder="npr. Snimanje talenta za reklamu"
                         style={inputStyle}
                       />
@@ -344,7 +382,9 @@ export default function CjenovnikPage() {
                     <td>
                       <input
                         value={r.jedinica ?? ""}
-                        onChange={(e) => updateRow(key, { jedinica: e.target.value })}
+                        onChange={(e) =>
+                          updateRow(key, { jedinica: e.target.value })
+                        }
                         placeholder="komad / sat / paket"
                         style={inputStyle}
                       />
@@ -353,7 +393,9 @@ export default function CjenovnikPage() {
                     <td className="num">
                       <input
                         value={String(r.cijena_default ?? "")}
-                        onChange={(e) => updateRow(key, { cijena_default: e.target.value })}
+                        onChange={(e) =>
+                          updateRow(key, { cijena_default: e.target.value })
+                        }
                         placeholder="0.00"
                         style={{ ...inputStyle, textAlign: "right" }}
                         inputMode="decimal"
@@ -363,7 +405,9 @@ export default function CjenovnikPage() {
                     <td>
                       <select
                         value={normCcy(r.valuta_default)}
-                        onChange={(e) => updateRow(key, { valuta_default: e.target.value })}
+                        onChange={(e) =>
+                          updateRow(key, { valuta_default: e.target.value })
+                        }
                         style={inputStyle}
                       >
                         {["BAM", "EUR", "USD", "RSD"].map((c) => (
@@ -377,7 +421,11 @@ export default function CjenovnikPage() {
                     <td>
                       <select
                         value={Number(r.active) ? "1" : "0"}
-                        onChange={(e) => updateRow(key, { active: e.target.value === "1" ? 1 : 0 })}
+                        onChange={(e) =>
+                          updateRow(key, {
+                            active: e.target.value === "1" ? 1 : 0,
+                          })
+                        }
                         style={inputStyle}
                         title="Da li je stavka aktuelna?"
                       >
@@ -401,7 +449,8 @@ export default function CjenovnikPage() {
         )}
 
         <div className="muted" style={{ marginTop: 10, fontSize: 12 }}>
-          * Prikaz je sortiran po <b>nazivu (A→Z)</b>. “Active=NE” samo gasi stavku (ne brišemo ništa).
+          * Prikaz je sortiran po <b>nazivu (A→Z)</b>. “Active=NE” samo gasi
+          stavku (ne brišemo ništa).
         </div>
       </div>
     </div>

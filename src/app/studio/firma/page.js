@@ -10,7 +10,15 @@ function pick(v) {
 }
 
 function accOrEmpty(accs, idx) {
-  return accs?.[idx] || { bank_naziv: "", bank_racun: "", iban: "", swift: "", primary_rank: null };
+  return (
+    accs?.[idx] || {
+      bank_naziv: "",
+      bank_racun: "",
+      iban: "",
+      swift: "",
+      primary_rank: null,
+    }
+  );
 }
 
 export default async function Page({ searchParams }) {
@@ -24,7 +32,7 @@ export default async function Page({ searchParams }) {
     WHERE is_active = 1
     ORDER BY firma_id DESC
     LIMIT 1
-    `
+    `,
   );
 
   const f = firmaRows?.[0] || null;
@@ -37,7 +45,7 @@ export default async function Page({ searchParams }) {
         WHERE firma_id = ?
         ORDER BY bank_account_id ASC
         `,
-        [f.firma_id]
+        [f.firma_id],
       )
     : [];
 
@@ -62,8 +70,16 @@ export default async function Page({ searchParams }) {
   };
 
   const labelStyle = { fontSize: 12, opacity: 0.75, marginBottom: 6 };
-  const row2 = { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 };
-  const row3 = { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 };
+  const row2 = {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 12,
+  };
+  const row3 = {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 12,
+  };
 
   return (
     <div className="container">
@@ -166,16 +182,33 @@ export default async function Page({ searchParams }) {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+                <img
+                  src="/fluxa/logo-light.png"
+                  alt="FLUXA"
+                  className="brandLogo"
+                />
                 <div>
                   <div className="brandTitle">Firma</div>
-                  <div className="brandSub">Identitet studija (kanonski profil za potpise i fakture)</div>
+                  <div className="brandSub">
+                    Identitet studija (kanonski profil za potpise i fakture)
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                <Link href="/dashboard" className="btn">Dashboard</Link>
-                <Link href="/narudzbenice" className="btn">Narudžbenice</Link>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+              >
+                <Link href="/dashboard" className="btn">
+                  Dashboard
+                </Link>
+                <Link href="/narudzbenice" className="btn">
+                  Narudžbenice
+                </Link>
               </div>
             </div>
 
@@ -185,7 +218,11 @@ export default async function Page({ searchParams }) {
 
         <div className="bodyWrap">
           <div className="card">
-            {saved ? <div className="ok">✅ Sačuvano. Ovaj profil je sada aktivan.</div> : null}
+            {saved
+              ? <div className="ok">
+                  ✅ Sačuvano. Ovaj profil je sada aktivan.
+                </div>
+              : null}
 
             <div className="sectionTitle">Osnovno</div>
 
@@ -193,13 +230,24 @@ export default async function Page({ searchParams }) {
               <div className="twoCol" style={row2}>
                 <div>
                   <div style={labelStyle}>Naziv (obavezno)</div>
-                  <input name="naziv" defaultValue={pick(f?.naziv) || "Studio TAF"} style={inputStyle} required />
-                  <div className="hint">Ovo ide u potpis (npr. Studio TAF).</div>
+                  <input
+                    name="naziv"
+                    defaultValue={pick(f?.naziv) || "Studio TAF"}
+                    style={inputStyle}
+                    required
+                  />
+                  <div className="hint">
+                    Ovo ide u potpis (npr. Studio TAF).
+                  </div>
                 </div>
 
                 <div>
                   <div style={labelStyle}>Pravni naziv</div>
-                  <input name="pravni_naziv" defaultValue={pick(f?.pravni_naziv)} style={inputStyle} />
+                  <input
+                    name="pravni_naziv"
+                    defaultValue={pick(f?.pravni_naziv)}
+                    style={inputStyle}
+                  />
                 </div>
               </div>
 
@@ -208,15 +256,27 @@ export default async function Page({ searchParams }) {
               <div className="threeCol" style={row3}>
                 <div>
                   <div style={labelStyle}>Email</div>
-                  <input name="email" defaultValue={pick(f?.email)} style={inputStyle} />
+                  <input
+                    name="email"
+                    defaultValue={pick(f?.email)}
+                    style={inputStyle}
+                  />
                 </div>
                 <div>
                   <div style={labelStyle}>Telefon</div>
-                  <input name="telefon" defaultValue={pick(f?.telefon)} style={inputStyle} />
+                  <input
+                    name="telefon"
+                    defaultValue={pick(f?.telefon)}
+                    style={inputStyle}
+                  />
                 </div>
                 <div>
                   <div style={labelStyle}>Web</div>
-                  <input name="web" defaultValue={pick(f?.web)} style={inputStyle} />
+                  <input
+                    name="web"
+                    defaultValue={pick(f?.web)}
+                    style={inputStyle}
+                  />
                 </div>
               </div>
 
@@ -227,11 +287,19 @@ export default async function Page({ searchParams }) {
               <div className="twoCol" style={row2}>
                 <div>
                   <div style={labelStyle}>Adresa</div>
-                  <input name="adresa" defaultValue={pick(f?.adresa)} style={inputStyle} />
+                  <input
+                    name="adresa"
+                    defaultValue={pick(f?.adresa)}
+                    style={inputStyle}
+                  />
                 </div>
                 <div>
                   <div style={labelStyle}>Grad</div>
-                  <input name="grad" defaultValue={pick(f?.grad)} style={inputStyle} />
+                  <input
+                    name="grad"
+                    defaultValue={pick(f?.grad)}
+                    style={inputStyle}
+                  />
                 </div>
               </div>
 
@@ -240,15 +308,27 @@ export default async function Page({ searchParams }) {
               <div className="threeCol" style={row3}>
                 <div>
                   <div style={labelStyle}>Poštanski broj</div>
-                  <input name="postanski_broj" defaultValue={pick(f?.postanski_broj)} style={inputStyle} />
+                  <input
+                    name="postanski_broj"
+                    defaultValue={pick(f?.postanski_broj)}
+                    style={inputStyle}
+                  />
                 </div>
                 <div>
                   <div style={labelStyle}>Država</div>
-                  <input name="drzava" defaultValue={pick(f?.drzava)} style={inputStyle} />
+                  <input
+                    name="drzava"
+                    defaultValue={pick(f?.drzava)}
+                    style={inputStyle}
+                  />
                 </div>
                 <div>
                   <div style={labelStyle}>Logo path</div>
-                  <input name="logo_path" defaultValue={pick(f?.logo_path) || "/fluxa/logo-light.png"} style={inputStyle} />
+                  <input
+                    name="logo_path"
+                    defaultValue={pick(f?.logo_path) || "/fluxa/logo-light.png"}
+                    style={inputStyle}
+                  />
                 </div>
               </div>
 
@@ -259,15 +339,27 @@ export default async function Page({ searchParams }) {
               <div className="threeCol" style={row3}>
                 <div>
                   <div style={labelStyle}>JIB</div>
-                  <input name="jib" defaultValue={pick(f?.jib)} style={inputStyle} />
+                  <input
+                    name="jib"
+                    defaultValue={pick(f?.jib)}
+                    style={inputStyle}
+                  />
                 </div>
                 <div>
                   <div style={labelStyle}>PIB</div>
-                  <input name="pib" defaultValue={pick(f?.pib)} style={inputStyle} />
+                  <input
+                    name="pib"
+                    defaultValue={pick(f?.pib)}
+                    style={inputStyle}
+                  />
                 </div>
                 <div>
                   <div style={labelStyle}>PDV broj</div>
-                  <input name="pdv_broj" defaultValue={pick(f?.pdv_broj)} style={inputStyle} />
+                  <input
+                    name="pdv_broj"
+                    defaultValue={pick(f?.pdv_broj)}
+                    style={inputStyle}
+                  />
                 </div>
               </div>
 
@@ -275,18 +367,27 @@ export default async function Page({ searchParams }) {
 
               <div>
                 <div style={labelStyle}>Broj rješenja (registracija)</div>
-                <input name="broj_rjesenja" defaultValue={pick(f?.broj_rjesenja)} style={inputStyle} />
+                <input
+                  name="broj_rjesenja"
+                  defaultValue={pick(f?.broj_rjesenja)}
+                  style={inputStyle}
+                />
               </div>
 
               <div style={{ height: 18 }} />
 
               <div className="sectionTitle">Banke / računi</div>
               <div className="hint">
-                Firma može imati više računa. Po BiH pravilima mora postojati tačno jedan <b>glavni</b> račun (radio).
+                Firma može imati više računa. Po BiH pravilima mora postojati
+                tačno jedan <b>glavni</b> račun (radio).
               </div>
 
               {/* ✅ hidden: da API zna koji je “glavni” */}
-              <input type="hidden" name="primary_idx_default" value={primaryIdx} />
+              <input
+                type="hidden"
+                name="primary_idx_default"
+                value={primaryIdx}
+              />
 
               {[1, 2, 3].map((i) => {
                 const a = i === 1 ? a1 : i === 2 ? a2 : a3;
@@ -310,11 +411,19 @@ export default async function Page({ searchParams }) {
                     <div className="twoCol" style={row2}>
                       <div>
                         <div style={labelStyle}>Naziv banke</div>
-                        <input name={`bank_naziv_${i}`} defaultValue={pick(a.bank_naziv)} style={inputStyle} />
+                        <input
+                          name={`bank_naziv_${i}`}
+                          defaultValue={pick(a.bank_naziv)}
+                          style={inputStyle}
+                        />
                       </div>
                       <div>
                         <div style={labelStyle}>Račun</div>
-                        <input name={`bank_racun_${i}`} defaultValue={pick(a.bank_racun)} style={inputStyle} />
+                        <input
+                          name={`bank_racun_${i}`}
+                          defaultValue={pick(a.bank_racun)}
+                          style={inputStyle}
+                        />
                       </div>
                     </div>
 
@@ -323,11 +432,19 @@ export default async function Page({ searchParams }) {
                     <div className="twoCol" style={row2}>
                       <div>
                         <div style={labelStyle}>IBAN</div>
-                        <input name={`iban_${i}`} defaultValue={pick(a.iban)} style={inputStyle} />
+                        <input
+                          name={`iban_${i}`}
+                          defaultValue={pick(a.iban)}
+                          style={inputStyle}
+                        />
                       </div>
                       <div>
                         <div style={labelStyle}>SWIFT</div>
-                        <input name={`swift_${i}`} defaultValue={pick(a.swift)} style={inputStyle} />
+                        <input
+                          name={`swift_${i}`}
+                          defaultValue={pick(a.swift)}
+                          style={inputStyle}
+                        />
                       </div>
                     </div>
 
@@ -339,16 +456,22 @@ export default async function Page({ searchParams }) {
               })}
 
               <div className="btnRow">
-                <button type="submit" className="btn">Sačuvaj</button>
-                <Link href="/dashboard" className="btn">Odustani</Link>
+                <button type="submit" className="btn">
+                  Sačuvaj
+                </button>
+                <Link href="/dashboard" className="btn">
+                  Odustani
+                </Link>
                 <span className="muted">
-                  Aktivni ID: <span className="mono">{pick(f?.firma_id) || "—"}</span>
+                  Aktivni ID:{" "}
+                  <span className="mono">{pick(f?.firma_id) || "—"}</span>
                 </span>
               </div>
 
               <div className="hint">
-                Snimanjem se pravi novi zapis profila i postaje aktivan. Prethodni aktivni se deaktivira (nema brisanja).
-                Bank računi se vezuju za novi aktivni profil.
+                Snimanjem se pravi novi zapis profila i postaje aktivan.
+                Prethodni aktivni se deaktivira (nema brisanja). Bank računi se
+                vezuju za novi aktivni profil.
               </div>
             </form>
           </div>

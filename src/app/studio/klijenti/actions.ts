@@ -17,7 +17,9 @@ function cleanInt(v: any) {
 }
 
 function normalizeTip(v: any): TipKlijenta {
-  const s = String(v ?? "").trim().toLowerCase();
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
   return s === "agencija" ? "agencija" : "direktni";
 }
 
@@ -55,7 +57,18 @@ export async function createKlijent(input: {
     `INSERT INTO klijenti
       (naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava, rok_placanja_dana, napomena, aktivan, is_ino)
      VALUES (?,?,?,?,?,?,?,?,?,?)`,
-    [naziv, tip, porezni_id, adresa, grad, drzava, rok, napomena, aktivan, is_ino]
+    [
+      naziv,
+      tip,
+      porezni_id,
+      adresa,
+      grad,
+      drzava,
+      rok,
+      napomena,
+      aktivan,
+      is_ino,
+    ],
   );
 
   return { ok: true };
@@ -75,7 +88,8 @@ export async function updateKlijent(input: {
   is_ino?: boolean; // NEW
 }) {
   const id = Number(input?.klijent_id);
-  if (!Number.isFinite(id) || id <= 0) throw new Error("Neispravan klijent_id.");
+  if (!Number.isFinite(id) || id <= 0)
+    throw new Error("Neispravan klijent_id.");
 
   const naziv = String(input?.naziv_klijenta ?? "").trim();
   if (!naziv) throw new Error("Naziv klijenta je obavezan.");
@@ -104,16 +118,35 @@ export async function updateKlijent(input: {
             aktivan=?,
             is_ino=?
       WHERE klijent_id=?`,
-    [naziv, tip, porezni_id, adresa, grad, drzava, rok, napomena, aktivan, is_ino, id]
+    [
+      naziv,
+      tip,
+      porezni_id,
+      adresa,
+      grad,
+      drzava,
+      rok,
+      napomena,
+      aktivan,
+      is_ino,
+      id,
+    ],
   );
 
   return { ok: true };
 }
 
-export async function setKlijentActive(input: { klijent_id: number; aktivan: boolean }) {
+export async function setKlijentActive(input: {
+  klijent_id: number;
+  aktivan: boolean;
+}) {
   const id = Number(input?.klijent_id);
-  if (!Number.isFinite(id) || id <= 0) throw new Error("Neispravan klijent_id.");
+  if (!Number.isFinite(id) || id <= 0)
+    throw new Error("Neispravan klijent_id.");
 
-  await query(`UPDATE klijenti SET aktivan=? WHERE klijent_id=?`, [input?.aktivan ? 1 : 0, id]);
+  await query(`UPDATE klijenti SET aktivan=? WHERE klijent_id=?`, [
+    input?.aktivan ? 1 : 0,
+    id,
+  ]);
   return { ok: true };
 }

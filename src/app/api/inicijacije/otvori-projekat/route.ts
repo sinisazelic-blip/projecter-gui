@@ -6,7 +6,11 @@ function asInt(v: any) {
   return Number.isFinite(n) ? Math.trunc(n) : null;
 }
 
-async function hasColumn(conn: any, table: string, column: string): Promise<boolean> {
+async function hasColumn(
+  conn: any,
+  table: string,
+  column: string,
+): Promise<boolean> {
   try {
     const [rows]: any = await conn.query(
       `
@@ -17,7 +21,7 @@ async function hasColumn(conn: any, table: string, column: string): Promise<bool
         AND COLUMN_NAME = ?
       LIMIT 1
       `,
-      [table, column]
+      [table, column],
     );
     return Array.isArray(rows) && rows.length > 0;
   } catch {
@@ -41,10 +45,14 @@ function toISODateOnly(v: any): string | null {
   return null;
 }
 
-async function ensureProjectSnapshot(conn: any, projekat_id: number, inicijacija_id: number) {
+async function ensureProjectSnapshot(
+  conn: any,
+  projekat_id: number,
+  inicijacija_id: number,
+) {
   const [crows]: any = await conn.query(
     `SELECT COUNT(*) AS cnt FROM projekat_stavke WHERE projekat_id = ?`,
-    [projekat_id]
+    [projekat_id],
   );
   const cnt = Number(crows?.[0]?.cnt ?? 0);
   if (cnt > 0) return { inserted: 0, alreadyHad: true };
@@ -68,7 +76,7 @@ async function ensureProjectSnapshot(conn: any, projekat_id: number, inicijacija
     WHERE s.inicijacija_id = ?
       ${hasStorno ? "AND s.stornirano = 0" : ""}
     `,
-    [projekat_id, inicijacija_id]
+    [projekat_id, inicijacija_id],
   );
 
   return { inserted: Number(res?.affectedRows ?? 0), alreadyHad: false };
@@ -77,7 +85,7 @@ async function ensureProjectSnapshot(conn: any, projekat_id: number, inicijacija
 async function ensureProjectMeta(
   conn: any,
   projekat_id: number,
-  meta: { rok_glavni: string | null; napomena: string | null }
+  meta: { rok_glavni: string | null; napomena: string | null },
 ) {
   const [res]: any = await conn.query(
     `
@@ -88,7 +96,7 @@ async function ensureProjectMeta(
     WHERE projekat_id = ?
     LIMIT 1
     `,
-    [meta.rok_glavni, meta.napomena, projekat_id]
+    [meta.rok_glavni, meta.napomena, projekat_id],
   );
   return { updated: Number(res?.affectedRows ?? 0) };
 }
@@ -101,7 +109,10 @@ export async function POST(req: NextRequest) {
     const inicijacija_id = asInt(body?.inicijacija_id);
 
     if (!inicijacija_id || inicijacija_id <= 0) {
-      return NextResponse.json({ ok: false, error: "inicijacija_id je obavezan." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "inicijacija_id je obavezan." },
+        { status: 400 },
+      );
     }
 
     await conn.beginTransaction();
@@ -113,20 +124,27 @@ export async function POST(req: NextRequest) {
       WHERE inicijacija_id = ?
       FOR UPDATE
       `,
-      [inicijacija_id]
+      [inicijacija_id],
     );
 
     const inic = Array.isArray(irows) && irows.length ? irows[0] : null;
     if (!inic) {
       await conn.rollback();
-      return NextResponse.json({ ok: false, error: "Deal nije pronađen." }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: "Deal nije pronađen." },
+        { status: 404 },
+      );
     }
 
     if (!inic.narucilac_id) {
       await conn.rollback();
       return NextResponse.json(
-        { ok: false, error: "Deal nema naručioca (narucilac_id). Ne mogu otvoriti projekat." },
-        { status: 400 }
+        {
+          ok: false,
+          error:
+            "Deal nema naručioca (narucilac_id). Ne mogu otvoriti projekat.",
+        },
+        { status: 400 },
       );
     }
 
@@ -138,15 +156,19 @@ export async function POST(req: NextRequest) {
       ORDER BY created_at DESC, event_id DESC
       LIMIT 1
       `,
-      [inicijacija_id]
+      [inicijacija_id],
     );
 
     const t = Array.isArray(trows) && trows.length ? trows[0] : null;
     if (!t || !t.accepted_deadline) {
       await conn.rollback();
       return NextResponse.json(
-        { ok: false, error: "Ne može se otvoriti projekat bez prihvaćenog roka (Timeline)." },
-        { status: 400 }
+        {
+          ok: false,
+          error:
+            "Ne može se otvoriti projekat bez prihvaćenog roka (Timeline).",
+        },
+        { status: 400 },
       );
     }
 
@@ -161,13 +183,24 @@ export async function POST(req: NextRequest) {
       const projekat_id = Number(inic.projekat_id);
 
       const metaRes = await ensureProjectMeta(conn, projekat_id, meta);
-      const snap = await ensureProjectSnapshot(conn, projekat_id, inicijacija_id);
+      const snap = await ensureProjectSnapshot(
+        conn,
+        projekat_id,
+        inicijacija_id,
+      );
 
       await conn.commit();
-      return NextResponse.json({ ok: true, projekat_id, meta: metaRes, snapshot: snap });
+      return NextResponse.json({
+        ok: true,
+        projekat_id,
+        meta: metaRes,
+        snapshot: snap,
+      });
     }
 
-    const [mrows]: any = await conn.query(`SELECT COALESCE(MAX(projekat_id), 0) AS mx FROM projekti`);
+    const [mrows]: any = await conn.query(
+      `SELECT COALESCE(MAX(projekat_id), 0) AS mx FROM projekti`,
+    );
     const nextId = Number(mrows?.[0]?.mx ?? 0) + 1;
 
     await conn.query(
@@ -190,19 +223,34 @@ export async function POST(req: NextRequest) {
         inic.krajnji_klijent_id ?? null,
         meta.rok_glavni,
         meta.napomena,
-      ]
+      ],
     );
 
-    await conn.query(`UPDATE inicijacije SET projekat_id = ? WHERE inicijacija_id = ?`, [nextId, inicijacija_id]);
+    await conn.query(
+      `UPDATE inicijacije SET projekat_id = ? WHERE inicijacija_id = ?`,
+      [nextId, inicijacija_id],
+    );
 
     const snap = await ensureProjectSnapshot(conn, nextId, inicijacija_id);
 
     await conn.commit();
-    return NextResponse.json({ ok: true, projekat_id: nextId, meta: { ok: true }, snapshot: snap });
+    return NextResponse.json({
+      ok: true,
+      projekat_id: nextId,
+      meta: { ok: true },
+      snapshot: snap,
+    });
   } catch (e: any) {
-    try { await conn.rollback(); } catch {}
-    return NextResponse.json({ ok: false, error: e?.message ?? "Greška" }, { status: 500 });
+    try {
+      await conn.rollback();
+    } catch {}
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Greška" },
+      { status: 500 },
+    );
   } finally {
-    try { conn.release(); } catch {}
+    try {
+      conn.release();
+    } catch {}
   }
 }

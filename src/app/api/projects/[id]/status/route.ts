@@ -38,12 +38,15 @@ export async function GET(req: Request) {
       WHERE p.projekat_id = ?
       LIMIT 1
       `,
-      [id]
+      [id],
     );
 
     const row = rows?.[0] ?? null;
     if (!row) {
-      return NextResponse.json({ ok: false, error: "NOT_FOUND", projekat_id: id }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: "NOT_FOUND", projekat_id: id },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json({
@@ -57,8 +60,12 @@ export async function GET(req: Request) {
   } catch (e: any) {
     // ✅ vrati stvarni error tekst da ga vidiš odmah u Network tab-u
     return NextResponse.json(
-      { ok: false, error: "SERVER_ERROR", message: e?.message ?? "Unknown error" },
-      { status: 500 }
+      {
+        ok: false,
+        error: "SERVER_ERROR",
+        message: e?.message ?? "Unknown error",
+      },
+      { status: 500 },
     );
   }
 

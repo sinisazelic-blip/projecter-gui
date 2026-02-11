@@ -22,13 +22,20 @@ export async function GET(req: Request) {
         ORDER BY batch_id DESC
         LIMIT ?
         `,
-        [limit]
+        [limit],
       );
       return r;
     });
 
-    return NextResponse.json({ ok: true, batches: rows, marker: "BATCH_LIST_V1" });
+    return NextResponse.json({
+      ok: true,
+      batches: rows,
+      marker: "BATCH_LIST_V1",
+    });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Server error" },
+      { status: 500 },
+    );
   }
 }

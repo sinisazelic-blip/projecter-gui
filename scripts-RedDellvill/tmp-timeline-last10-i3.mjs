@@ -21,7 +21,8 @@ const { query } = await import("../src/lib/db.ts");
 
 const inicijacijaId = 3;
 
-const rows = await query(`
+const rows = await query(
+  `
   SELECT
     event_id,
     DATE_FORMAT(required_deadline, '%Y-%m-%d %H:%i:%s') AS required_deadline,
@@ -35,6 +36,8 @@ const rows = await query(`
   WHERE inicijacija_id = ?
   ORDER BY event_id DESC
   LIMIT 10
-`, [inicijacijaId]);
+`,
+  [inicijacijaId],
+);
 
 console.log(JSON.stringify(rows, null, 2));

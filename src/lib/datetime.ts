@@ -1,11 +1,15 @@
 // src/lib/datetime.ts
 export const pad2 = (n: number) => String(n).padStart(2, "0");
 
-export const isDDMMYYYY = (s: string) => /^\d{2}\.\d{2}\.\d{4}$/.test(String(s || "").trim());
-export const isDDMMYYYY_HHMM = (s: string) => /^\d{2}\.\d{2}\.\d{4}\s+\d{2}:\d{2}$/.test(String(s || "").trim());
+export const isDDMMYYYY = (s: string) =>
+  /^\d{2}\.\d{2}\.\d{4}$/.test(String(s || "").trim());
+export const isDDMMYYYY_HHMM = (s: string) =>
+  /^\d{2}\.\d{2}\.\d{4}\s+\d{2}:\d{2}$/.test(String(s || "").trim());
 
 export function normalizeDDMMYYYY(input: string): string {
-  const digits = String(input || "").replace(/\D/g, "").slice(0, 8); // ddmmyyyy
+  const digits = String(input || "")
+    .replace(/\D/g, "")
+    .slice(0, 8); // ddmmyyyy
   const dd = digits.slice(0, 2);
   const mm = digits.slice(2, 4);
   const yyyy = digits.slice(4, 8);
@@ -17,7 +21,9 @@ export function normalizeDDMMYYYY(input: string): string {
 }
 
 export function normalizeDDMMYYYY_HHMM(input: string): string {
-  const digits = String(input || "").replace(/\D/g, "").slice(0, 12); // ddmmyyyyhhmm
+  const digits = String(input || "")
+    .replace(/\D/g, "")
+    .slice(0, 12); // ddmmyyyyhhmm
   const dd = digits.slice(0, 2);
   const mm = digits.slice(2, 4);
   const yyyy = digits.slice(4, 8);
@@ -42,7 +48,8 @@ export function ddmmyyyyToISODate(ddmmyyyy: string): string | null {
   const m = Number(mm);
   const y = Number(yyyy);
 
-  if (!Number.isFinite(d) || !Number.isFinite(m) || !Number.isFinite(y)) return null;
+  if (!Number.isFinite(d) || !Number.isFinite(m) || !Number.isFinite(y))
+    return null;
   if (y < 1900 || y > 2200) return null;
   if (m < 1 || m > 12) return null;
   if (d < 1 || d > 31) return null;
@@ -88,7 +95,7 @@ export function mysqlDTToHuman(v: string | null | undefined): string {
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return "";
   return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(
-    d.getMinutes()
+    d.getMinutes(),
   )}`;
 }
 

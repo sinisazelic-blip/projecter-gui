@@ -7,7 +7,10 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const batch_id = Number(req.nextUrl.searchParams.get("batch_id") || "");
   if (!Number.isFinite(batch_id) || batch_id <= 0) {
-    return NextResponse.json({ ok: false, error: "batch_id is required" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "batch_id is required" },
+      { status: 400 },
+    );
   }
 
   const rows = await query(
@@ -27,7 +30,7 @@ export async function GET(req: NextRequest) {
       AND m.tx_id IS NULL
     ORDER BY s.tx_id ASC
     `,
-    [batch_id]
+    [batch_id],
   );
 
   return NextResponse.json({ ok: true, batch_id, unmatched: rows });

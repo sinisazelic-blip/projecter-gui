@@ -29,7 +29,7 @@ export async function GET(req: Request) {
     ORDER BY created_at DESC
     LIMIT 50
     `,
-    [projekatId]
+    [projekatId],
   );
 
   return NextResponse.json({ ok: true, data: rows }, { status: 200 });

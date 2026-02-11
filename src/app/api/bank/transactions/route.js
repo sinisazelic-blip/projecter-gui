@@ -6,9 +6,9 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
 
     const from = searchParams.get("from"); // YYYY-MM-DD
-    const to = searchParams.get("to");     // YYYY-MM-DD
+    const to = searchParams.get("to"); // YYYY-MM-DD
     const type = searchParams.get("type"); // VLASNIK / OSTALO / ...
-    const q = searchParams.get("q");       // search tekst
+    const q = searchParams.get("q"); // search tekst
 
     const where = [];
     const params = [];
@@ -53,14 +53,14 @@ export async function GET(req) {
       ORDER BY booking_date DESC, id DESC
       LIMIT 500
       `,
-      params
+      params,
     );
 
     return NextResponse.json({ ok: true, rows });
   } catch (e) {
     return NextResponse.json(
       { error: e?.message || "Greška pri čitanju transakcija." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

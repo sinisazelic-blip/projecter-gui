@@ -19,7 +19,10 @@ import FinalOkButtonClient from "./_components/FinalOkButtonClient";
 import { ReadOnlyGuard } from "@/components/ReadOnlyGuard";
 
 // ✅ NEW: Timeline indikator (read-only)
-import { FluxaTimeline, phaseFromProjectStatusId } from "@/lib/ui/fluxaTimeline";
+import {
+  FluxaTimeline,
+  phaseFromProjectStatusId,
+} from "@/lib/ui/fluxaTimeline";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +46,7 @@ async function upsertFxRate({ date, ccy, rate_to_bam, source = "manual" }) {
         rate_to_bam = VALUES(rate_to_bam),
         source = VALUES(source)
       `,
-      [date, ccy, rate_to_bam, source]
+      [date, ccy, rate_to_bam, source],
     );
   } catch {}
 }
@@ -59,10 +62,12 @@ async function getTipRequiresEntity(tipId) {
      FROM tip_troska
      WHERE tip_id = ?
      LIMIT 1`,
-    [tipId]
+    [tipId],
   );
 
-  const raw = String(rows?.[0]?.requires_entity ?? "NONE").trim().toUpperCase();
+  const raw = String(rows?.[0]?.requires_entity ?? "NONE")
+    .trim()
+    .toUpperCase();
 
   if (raw === "TALENT") return "talent";
   if (raw === "DOBAVLJAC") return "vendor";
@@ -75,7 +80,7 @@ async function addCost(formData) {
   const projekatId = Number(formData.get("projekat_id"));
   const returnTo = String(
     formData.get("return_to") ||
-      (Number.isFinite(projekatId) ? `/projects/${projekatId}` : "/projects")
+      (Number.isFinite(projekatId) ? `/projects/${projekatId}` : "/projects"),
   );
 
   const datum = String(formData.get("datum_troska") || "");
@@ -88,7 +93,9 @@ async function addCost(formData) {
     .trim()
     .toUpperCase();
 
-  let kurs = Number.parseFloat(String(formData.get("kurs") || "1").replace(",", "."));
+  let kurs = Number.parseFloat(
+    String(formData.get("kurs") || "1").replace(",", "."),
+  );
   if (valuta === "BAM") kurs = 1;
 
   const status = String(formData.get("status") || "NASTALO");
@@ -104,22 +111,30 @@ async function addCost(formData) {
   if (!Number.isFinite(kurs) || kurs <= 0) redirect(returnTo);
   if (!VALID_STATUS.has(status) || status === "STORNIRANO") redirect(returnTo);
 
-  if (entityType !== null && !VALID_ENTITY_TYPES.has(entityType)) redirect(returnTo);
+  if (entityType !== null && !VALID_ENTITY_TYPES.has(entityType))
+    redirect(returnTo);
   if (entityType === null && entityId !== null) redirect(returnTo);
-  if (entityType !== null && (!Number.isFinite(entityId) || entityId <= 0)) redirect(returnTo);
+  if (entityType !== null && (!Number.isFinite(entityId) || entityId <= 0))
+    redirect(returnTo);
 
   const req = await getTipRequiresEntity(tipId);
 
   if (req === "none") {
     if (entityType !== null || entityId !== null) redirect(returnTo);
   } else {
-    if (entityType !== req || !Number.isFinite(entityId) || entityId <= 0) redirect(returnTo);
+    if (entityType !== req || !Number.isFinite(entityId) || entityId <= 0)
+      redirect(returnTo);
   }
 
   const iznosKM = iznosOriginal * kurs;
 
   if (valuta !== "BAM" && Number.isFinite(kurs)) {
-    await upsertFxRate({ date: datum, ccy: valuta, rate_to_bam: kurs, source: "manual" });
+    await upsertFxRate({
+      date: datum,
+      ccy: valuta,
+      rate_to_bam: kurs,
+      source: "manual",
+    });
   }
 
   await query(
@@ -134,7 +149,19 @@ async function addCost(formData) {
             ?, ?,
             ?, ?)
     `,
-    [projekatId, tipId, datum, opis, iznosOriginal, valuta, kurs, iznosKM, status, entityType, entityId]
+    [
+      projekatId,
+      tipId,
+      datum,
+      opis,
+      iznosOriginal,
+      valuta,
+      kurs,
+      iznosKM,
+      status,
+      entityType,
+      entityId,
+    ],
   );
 
   revalidatePath(`/projects/${projekatId}`);
@@ -149,21 +176,28 @@ async function editCost(formData) {
 
   const returnTo = String(
     formData.get("return_to") ||
-      (Number.isFinite(projekatId) ? `/projects/${projekatId}` : "/projects")
+      (Number.isFinite(projekatId) ? `/projects/${projekatId}` : "/projects"),
   );
 
   const datum = String(formData.get("datum_troska") || "");
   const opis = String(formData.get("opis") || "").trim();
 
-  const iznosRaw = String(formData.get("iznos_km") ?? formData.get("iznos_original") ?? "").trim();
+  const iznosRaw = String(
+    formData.get("iznos_km") ?? formData.get("iznos_original") ?? "",
+  ).trim();
   const iznosOriginal = Number.parseFloat(iznosRaw.replace(",", "."));
 
-  const valuta = String(formData.get("valuta") || formData.get("valuta_original") || "BAM")
+  const valuta = String(
+    formData.get("valuta") || formData.get("valuta_original") || "BAM",
+  )
     .trim()
     .toUpperCase();
 
   let kurs = Number.parseFloat(
-    String(formData.get("kurs") ?? formData.get("kurs_u_km") ?? "1").replace(",", ".")
+    String(formData.get("kurs") ?? formData.get("kurs_u_km") ?? "1").replace(
+      ",",
+      ".",
+    ),
   );
   if (valuta === "BAM") kurs = 1;
 
@@ -188,7 +222,11 @@ async function editCost(formData) {
     finalEntityType = null;
     finalEntityId = null;
   } else {
-    if (finalEntityType !== req || !Number.isFinite(finalEntityId) || finalEntityId <= 0) {
+    if (
+      finalEntityType !== req ||
+      !Number.isFinite(finalEntityId) ||
+      finalEntityId <= 0
+    ) {
       finalEntityType = null;
       finalEntityId = null;
     }
@@ -197,7 +235,12 @@ async function editCost(formData) {
   const iznosKM = iznosOriginal * kurs;
 
   if (valuta !== "BAM" && Number.isFinite(kurs)) {
-    await upsertFxRate({ date: datum, ccy: valuta, rate_to_bam: kurs, source: "manual" });
+    await upsertFxRate({
+      date: datum,
+      ccy: valuta,
+      rate_to_bam: kurs,
+      source: "manual",
+    });
   }
 
   await query(
@@ -215,7 +258,19 @@ async function editCost(formData) {
     WHERE trosak_id = ? AND projekat_id = ?
     LIMIT 1
     `,
-    [tipId, datum, opis, iznosOriginal, valuta, kurs, iznosKM, finalEntityType, finalEntityId, trosakId, projekatId]
+    [
+      tipId,
+      datum,
+      opis,
+      iznosOriginal,
+      valuta,
+      kurs,
+      iznosKM,
+      finalEntityType,
+      finalEntityId,
+      trosakId,
+      projekatId,
+    ],
   );
 
   revalidatePath(`/projects/${projekatId}`);
@@ -233,7 +288,7 @@ async function loadCostTypes() {
   for (const c of candidates) {
     try {
       const rows = await query(
-        `SELECT ${c.id} AS tip_id, ${c.name} AS naziv FROM ${c.table} ORDER BY ${c.name} ASC`
+        `SELECT ${c.id} AS tip_id, ${c.name} AS naziv FROM ${c.table} ORDER BY ${c.name} ASC`,
       );
       return { source: c.table, rows: rows ?? [] };
     } catch {}
@@ -259,7 +314,7 @@ async function setCostStatus(formData) {
     WHERE trosak_id = ? AND projekat_id = ?
     LIMIT 1
     `,
-    [status, trosakId, projekatId]
+    [status, trosakId, projekatId],
   );
 
   revalidatePath(`/projects/${projekatId}`);
@@ -277,12 +332,17 @@ async function setOperativniSignal(formData) {
   const projekatId = Number(formData.get("projekat_id"));
   const returnTo = String(
     formData.get("return_to") ||
-      (Number.isFinite(projekatId) ? `/projects/${projekatId}` : "/projects")
+      (Number.isFinite(projekatId) ? `/projects/${projekatId}` : "/projects"),
   );
 
-  const sigRaw = String(formData.get("operativni_signal") || "").trim().toUpperCase();
+  const sigRaw = String(formData.get("operativni_signal") || "")
+    .trim()
+    .toUpperCase();
   const noteRaw = formData.get("note");
-  const note = noteRaw && String(noteRaw).trim() ? String(noteRaw).trim().slice(0, 500) : null;
+  const note =
+    noteRaw && String(noteRaw).trim()
+      ? String(noteRaw).trim().slice(0, 500)
+      : null;
 
   if (!Number.isFinite(projekatId)) redirect("/projects");
   if (!["NORMALNO", "PAZNJA", "STOP"].includes(sigRaw)) redirect(returnTo);
@@ -295,7 +355,7 @@ async function setOperativniSignal(formData) {
     WHERE projekat_id = ?
     LIMIT 1
     `,
-    [sigRaw, projekatId]
+    [sigRaw, projekatId],
   );
 
   // 2) audit snapshot u log (changed_by_user_id za sada NULL dok ne uvedemo login/roles)
@@ -305,7 +365,7 @@ async function setOperativniSignal(formData) {
       (projekat_id, operativni_signal, note, changed_by_user_id)
     VALUES (?, ?, ?, NULL)
     `,
-    [projekatId, sigRaw, note]
+    [projekatId, sigRaw, note],
   );
 
   // 3) revalidate i detalj i lista projekata
@@ -317,7 +377,9 @@ async function setOperativniSignal(formData) {
 
 /** ✅ Signal badge helpers */
 function signalMeta(sigRaw) {
-  const sig = String(sigRaw || "NORMALNO").trim().toUpperCase();
+  const sig = String(sigRaw || "NORMALNO")
+    .trim()
+    .toUpperCase();
   if (sig === "STOP") {
     return {
       label: "STOP",
@@ -465,7 +527,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
     WHERE p.projekat_id = ?
     LIMIT 1
     `,
-    [projekatId]
+    [projekatId],
   );
 
   const project = projRows?.[0];
@@ -500,7 +562,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
     ORDER BY c.datum_troska DESC, c.trosak_id DESC
     LIMIT 200
     `,
-    [projekatId]
+    [projekatId],
   );
 
   const costTypesRes = await loadCostTypes();
@@ -527,7 +589,14 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
   const isReadOnly = statusIdNum === 9;
 
   return (
-    <div style={{ height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div
+      style={{
+        height: "100dvh",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}
+    >
       <style>{`
         .topbar {
           display: flex;
@@ -701,7 +770,11 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
 
             {/* ✅ FLUXA BRAND */}
             <div className="brandWrap" title="FLUXA — Project & Finance Engine">
-              <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+              <img
+                src="/fluxa/logo-light.png"
+                alt="FLUXA"
+                className="brandLogo"
+              />
               <div>
                 <div className="brandTitle">DETALJI PROJEKTA</div>
                 <div className="brandSub">Project & Finance Engine</div>
@@ -733,7 +806,10 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
               </span>
 
               {/* ✅ FINAL OK (produkcija završena; ne zaključava) */}
-              <FinalOkButtonClient projekatId={project.projekat_id} disabled={isReadOnly} />
+              <FinalOkButtonClient
+                projekatId={project.projekat_id}
+                disabled={isReadOnly}
+              />
 
               {/* ✅ OWNER KONTROLA SIGNALA */}
               <form
@@ -746,14 +822,24 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                   opacity: isReadOnly ? 0.55 : 1,
                   pointerEvents: isReadOnly ? "none" : "auto",
                 }}
-                title={isReadOnly ? "Projekat je fakturisan (read-only)." : "Owner: operativni signal"}
+                title={
+                  isReadOnly
+                    ? "Projekat je fakturisan (read-only)."
+                    : "Owner: operativni signal"
+                }
               >
-                <input type="hidden" name="projekat_id" value={project.projekat_id} />
+                <input
+                  type="hidden"
+                  name="projekat_id"
+                  value={project.projekat_id}
+                />
                 <input type="hidden" name="return_to" value={returnTo} />
 
                 <select
                   name="operativni_signal"
-                  defaultValue={String(project?.operativni_signal ?? "NORMALNO")}
+                  defaultValue={String(
+                    project?.operativni_signal ?? "NORMALNO",
+                  )}
                   className="sigSelect"
                 >
                   <option value="NORMALNO">NORMALNO</option>
@@ -769,7 +855,11 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                   title="Bilješka (ide u log)"
                 />
 
-                <button type="submit" className="glassbtn payBtn" title="Snimi signal (upiši u log)">
+                <button
+                  type="submit"
+                  className="glassbtn payBtn"
+                  title="Snimi signal (upiši u log)"
+                >
                   <span style={{ fontSize: 16, lineHeight: 1 }}>✅</span>
                   Snimi
                 </button>
@@ -796,7 +886,10 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
           </div>
 
           {/* ✅ NEW: Timeline ispod naslova/topbar-a */}
-          <FluxaTimeline phase={phaseFromProjectStatusId(project?.status_id)} title="Faza" />
+          <FluxaTimeline
+            phase={phaseFromProjectStatusId(project?.status_id)}
+            title="Faza"
+          />
         </div>
       </div>
 
@@ -812,9 +905,12 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                 background: "rgba(239,68,68,0.08)",
               }}
             >
-              <div style={{ fontWeight: 800, marginBottom: 4 }}>🔒 Read-only</div>
+              <div style={{ fontWeight: 800, marginBottom: 4 }}>
+                🔒 Read-only
+              </div>
               <div style={{ opacity: 0.9 }}>
-                Projekat je <b>fakturisan</b> (status: Fakturisan). Izmjene više nisu dozvoljene.
+                Projekat je <b>fakturisan</b> (status: Fakturisan). Izmjene više
+                nisu dozvoljene.
               </div>
             </div>
           )}
@@ -831,7 +927,10 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
             </div>
           )}
 
-          <ReadOnlyGuard isReadOnly={isReadOnly} reason="Projekat je fakturisan (read-only). Akcije su onemogućene.">
+          <ReadOnlyGuard
+            isReadOnly={isReadOnly}
+            reason="Projekat je fakturisan (read-only). Akcije su onemogućene."
+          >
             <CostsPanel
               project={project}
               costs={costs ?? []}

@@ -12,7 +12,7 @@ export async function GET() {
     WHERE is_active = 1
     ORDER BY firma_id DESC
     LIMIT 1
-    `
+    `,
   );
 
   const f = rows?.[0] || null;
@@ -33,7 +33,7 @@ export async function GET() {
     WHERE firma_id = ?
     ORDER BY bank_account_id ASC
     `,
-    [f.firma_id]
+    [f.firma_id],
   );
 
   return NextResponse.json({ ok: true, firma: f, bank_accounts: bankAccounts });

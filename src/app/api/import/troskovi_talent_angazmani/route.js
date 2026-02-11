@@ -32,28 +32,33 @@ export async function POST(req) {
     const source_file = payload?.source_file ?? null;
 
     if (!payload?.csv_b64) {
-      return NextResponse.json({ ok: false, message: "Nedostaje csv_b64" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, message: "Nedostaje csv_b64" },
+        { status: 400 },
+      );
     }
 
-    const csvText = Buffer.from(String(payload.csv_b64), "base64").toString("utf8");
+    const csvText = Buffer.from(String(payload.csv_b64), "base64").toString(
+      "utf8",
+    );
     const lines = splitLines(csvText);
 
-if (lines.length < 2) {
-  return NextResponse.json(
-    {
-      ok: false,
-      message: "CSV je prazan (nema data redova)",
-      debug: {
-        len: csvText.length,
-        head200: csvText.slice(0, 200),
-        tail200: csvText.slice(Math.max(0, csvText.length - 200)),
-        lineCountGuessN: (csvText.match(/\n/g) || []).length,
-        lineCountGuessR: (csvText.match(/\r/g) || []).length,
-      },
-    },
-    { status: 400 }
-  );
-}
+    if (lines.length < 2) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "CSV je prazan (nema data redova)",
+          debug: {
+            len: csvText.length,
+            head200: csvText.slice(0, 200),
+            tail200: csvText.slice(Math.max(0, csvText.length - 200)),
+            lineCountGuessN: (csvText.match(/\n/g) || []).length,
+            lineCountGuessR: (csvText.match(/\r/g) || []).length,
+          },
+        },
+        { status: 400 },
+      );
+    }
 
     // header: projekat_id;talent_id;datum;opis;iznos;porez_i_troskovi;napomena
     const header = lines[0].split(";").map((h) => h.trim());
@@ -62,8 +67,16 @@ if (lines.length < 2) {
     for (const col of ["projekat_id", "talent_id", "datum", "iznos"]) {
       if (!(col in idx)) {
         return NextResponse.json(
-          { ok: false, message: "Nedostaje kolona: " + col + " (header: " + header.join(";") + ")" },
-          { status: 400 }
+          {
+            ok: false,
+            message:
+              "Nedostaje kolona: " +
+              col +
+              " (header: " +
+              header.join(";") +
+              ")",
+          },
+          { status: 400 },
         );
       }
     }
@@ -104,7 +117,7 @@ if (lines.length < 2) {
        FROM stg_talenti
        WHERE batch_id = ?
        ORDER BY stg_id`,
-      [batchId]
+      [batchId],
     );
 
     // pošto u talenti.csv nema talent_id kolone, ne možemo direktno mapirati.
@@ -133,14 +146,17 @@ if (lines.length < 2) {
         "dogovoreno",
         datum || null,
         total || null,
-        (opis || "") + (napomena ? (" | " + napomena) : ""),
+        (opis || "") + (napomena ? " | " + napomena : ""),
         null,
         source_file,
       ]);
     }
 
     if (rows.length === 0) {
-      return NextResponse.json({ ok: false, message: "Nema validnih redova za import" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, message: "Nema validnih redova za import" },
+        { status: 400 },
+      );
     }
 
     const chunkSize = 1000;
@@ -151,7 +167,7 @@ if (lines.length < 2) {
         `INSERT INTO stg_troskovi_po
          (batch_id, id_po, vrsta, naziv, status_raw, datum, iznos_km, opis, ref, source_file)
          VALUES ?`,
-        [chunk]
+        [chunk],
       );
       inserted += res?.affectedRows ?? chunk.length;
     }
@@ -164,7 +180,10 @@ if (lines.length < 2) {
       header,
     });
   } catch (e) {
-    return NextResponse.json({ ok: false, message: e?.message ?? String(e) }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, message: e?.message ?? String(e) },
+      { status: 500 },
+    );
   } finally {
     if (conn) await conn.end();
   }

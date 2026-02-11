@@ -83,7 +83,9 @@ function semLabel(daysDiff) {
  * Samo prikaz (ne utiče ni na šta).
  */
 function normalizeSignal(sigRaw) {
-  const s = String(sigRaw ?? "NORMALNO").trim().toUpperCase();
+  const s = String(sigRaw ?? "NORMALNO")
+    .trim()
+    .toUpperCase();
   if (s === "PAZNJA") return "PAZNJA";
   if (s === "STOP") return "STOP";
   return "NORMALNO";
@@ -141,7 +143,8 @@ function statusLabelFallbackById(status_id) {
 }
 
 function getReadOnlyStatusLabel(project) {
-  const n = project?.naziv_statusa || project?.status_naziv || project?.status_name;
+  const n =
+    project?.naziv_statusa || project?.status_naziv || project?.status_name;
   if (n) return String(n);
   return statusLabelFallbackById(project?.status_id);
 }
@@ -158,10 +161,10 @@ export default function ProjectHeader({ project }) {
     sem === "red"
       ? "rgba(255, 80, 80, .95)"
       : sem === "orange"
-      ? "rgba(255, 165, 0, .95)"
-      : sem === "green"
-      ? "rgba(80, 220, 140, .95)"
-      : "rgba(180, 180, 180, .85)";
+        ? "rgba(255, 165, 0, .95)"
+        : sem === "green"
+          ? "rgba(80, 220, 140, .95)"
+          : "rgba(180, 180, 180, .85)";
 
   const sig = normalizeSignal(project?.operativni_signal);
   const sigM = signalMeta(sig);
@@ -169,15 +172,31 @@ export default function ProjectHeader({ project }) {
   const statusLabel = getReadOnlyStatusLabel(project);
 
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        gap: 12,
+        alignItems: "baseline",
+      }}
+    >
       <div>
         <h1 style={{ fontSize: 22, marginBottom: 6 }}>
           #{project.projekat_id} — {project.radni_naziv}
         </h1>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
           {/* ✅ STATUS: read-only box (manual dropdown removed) */}
-          <div style={{ display: "grid", gap: 6, maxWidth: 420, marginTop: 10 }}>
+          <div
+            style={{ display: "grid", gap: 6, maxWidth: 420, marginTop: 10 }}
+          >
             <div className="muted">Status projekta</div>
             <div
               title="Read-only status (ručna promjena je isključena)"

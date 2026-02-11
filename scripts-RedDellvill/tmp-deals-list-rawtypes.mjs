@@ -41,7 +41,7 @@ const rows = await query(`
   ORDER BY i.inicijacija_id ASC
 `);
 
-const out = rows.map(r => ({
+const out = rows.map((r) => ({
   inicijacija_id: r.inicijacija_id,
   projekat_id: r.projekat_id,
   p_rok_glavni_raw: r.p_rok_glavni_raw,
@@ -51,7 +51,8 @@ const out = rows.map(r => ({
   coalesced_raw: r.coalesced_raw,
   coalesced_type: typeof r.coalesced_raw,
   // ako je Date objekat  vidi ISO
-  coalesced_iso: r.coalesced_raw instanceof Date ? r.coalesced_raw.toISOString() : null,
+  coalesced_iso:
+    r.coalesced_raw instanceof Date ? r.coalesced_raw.toISOString() : null,
 }));
 
 console.log(JSON.stringify(out, null, 2));

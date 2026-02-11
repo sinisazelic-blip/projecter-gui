@@ -18,7 +18,9 @@ function clamp255(s: string) {
 
 // handler za /api/bank/costs/commit
 // body: { batch_id: number, include_positive?: boolean, tip_id_default?: number }
-export async function handleBankCostsCommit(req: NextRequest): Promise<Response> {
+export async function handleBankCostsCommit(
+  req: NextRequest,
+): Promise<Response> {
   try {
     const body = await req.json().catch(() => ({}));
     const batch_id = Number((body as any)?.batch_id);
@@ -27,14 +29,22 @@ export async function handleBankCostsCommit(req: NextRequest): Promise<Response>
 
     if (!Number.isFinite(batch_id) || batch_id <= 0) {
       return NextResponse.json(
-        { ok: false, error: "Invalid batch_id", marker: "COSTS_COMMIT_V2_STATUS" },
-        { status: 400 }
+        {
+          ok: false,
+          error: "Invalid batch_id",
+          marker: "COSTS_COMMIT_V2_STATUS",
+        },
+        { status: 400 },
       );
     }
     if (!Number.isFinite(tip_id_default) || tip_id_default <= 0) {
       return NextResponse.json(
-        { ok: false, error: "Invalid tip_id_default", marker: "COSTS_COMMIT_V2_STATUS" },
-        { status: 400 }
+        {
+          ok: false,
+          error: "Invalid tip_id_default",
+          marker: "COSTS_COMMIT_V2_STATUS",
+        },
+        { status: 400 },
       );
     }
 
@@ -42,10 +52,14 @@ export async function handleBankCostsCommit(req: NextRequest): Promise<Response>
       // Guard: mora biti posted (ili costed za idempotent)
       const [brows]: any = await conn.execute(
         `SELECT status FROM bank_import_batch WHERE batch_id = ? LIMIT 1`,
-        [batch_id]
+        [batch_id],
       );
       if (!Array.isArray(brows) || brows.length === 0) {
-        return { ok: false, error: `Batch ${batch_id} ne postoji`, code: "BATCH_NOT_FOUND" };
+        return {
+          ok: false,
+          error: `Batch ${batch_id} ne postoji`,
+          code: "BATCH_NOT_FOUND",
+        };
       }
       const status = String(brows?.[0]?.status ?? "");
       if (status !== "posted" && status !== "costed") {
@@ -63,18 +77,43 @@ export async function handleBankCostsCommit(req: NextRequest): Promise<Response>
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
           AND TABLE_NAME = 'projektni_troskovi'
-        `
+        `,
       );
       if (!Array.isArray(colRows) || colRows.length === 0) {
-        return { ok: false, error: "Tabela projektni_troskovi ne postoji u ovoj bazi." };
+        return {
+          ok: false,
+          error: "Tabela projektni_troskovi ne postoji u ovoj bazi.",
+        };
       }
 
-      const cols = new Set<string>(colRows.map((r: any) => String(r.COLUMN_NAME)));
+      const cols = new Set<string>(
+        colRows.map((r: any) => String(r.COLUMN_NAME)),
+      );
       const colProjekat = pickCol(cols, ["projekat_id"]);
-      const colDatum = pickCol(cols, ["datum_troska", "datum", "datum_valute", "datum_knjizenja"]);
-      const colIznos = pickCol(cols, ["iznos_km", "iznos", "iznos_bam", "iznos_valuta"]);
-      const colOpis = pickCol(cols, ["opis", "napomena", "opis_troska", "opis_stavke", "naziv"]);
-      const colKategorija = pickCol(cols, ["kategorija", "kategorija_txt", "kategorija_naziv"]);
+      const colDatum = pickCol(cols, [
+        "datum_troska",
+        "datum",
+        "datum_valute",
+        "datum_knjizenja",
+      ]);
+      const colIznos = pickCol(cols, [
+        "iznos_km",
+        "iznos",
+        "iznos_bam",
+        "iznos_valuta",
+      ]);
+      const colOpis = pickCol(cols, [
+        "opis",
+        "napomena",
+        "opis_troska",
+        "opis_stavke",
+        "naziv",
+      ]);
+      const colKategorija = pickCol(cols, [
+        "kategorija",
+        "kategorija_txt",
+        "kategorija_naziv",
+      ]);
       const colTipId = pickCol(cols, ["tip_id", "tip_troska_id", "vrsta_id"]);
 
       if (!colProjekat || !colDatum || !colIznos || !colOpis) {
@@ -82,7 +121,14 @@ export async function handleBankCostsCommit(req: NextRequest): Promise<Response>
           ok: false,
           error:
             "Ne mogu mapirati projektni_troskovi. Treba bar: projekat_id + datum + iznos(_km) + opis/napomena.",
-          debug: { colProjekat, colDatum, colIznos, colOpis, colKategorija, colTipId },
+          debug: {
+            colProjekat,
+            colDatum,
+            colIznos,
+            colOpis,
+            colKategorija,
+            colTipId,
+          },
         };
       }
 
@@ -110,7 +156,7 @@ export async function handleBankCostsCommit(req: NextRequest): Promise<Response>
           AND (${include_positive ? "1=1" : "p.amount < 0"})
         ORDER BY p.posting_id ASC
         `,
-        [batch_id]
+        [batch_id],
       );
 
       let inserted = 0;
@@ -122,10 +168,19 @@ export async function handleBankCostsCommit(req: NextRequest): Promise<Response>
           const projekat_id = p.projekat_id;
           const datum = p.value_date ?? new Date();
           const iznos = Math.abs(Number(p.amount ?? 0));
-          const opis = clamp255([asStr(p.counterparty), asStr(p.description)].filter(Boolean).join(" / "));
+          const opis = clamp255(
+            [asStr(p.counterparty), asStr(p.description)]
+              .filter(Boolean)
+              .join(" / "),
+          );
           const kategorija = asStr(p.kategorija) || null;
 
-          const insertCols: string[] = [colProjekat, colDatum, colIznos, colOpis];
+          const insertCols: string[] = [
+            colProjekat,
+            colDatum,
+            colIznos,
+            colOpis,
+          ];
           const insertVals: any[] = [projekat_id, datum, iznos, opis];
 
           if (colTipId) {
@@ -150,12 +205,22 @@ export async function handleBankCostsCommit(req: NextRequest): Promise<Response>
             VALUES
               (?, ?, ?, ?, ?, ?)
             `,
-            [p.posting_id, p.tx_id, p.batch_id, p.account_id ?? null, projekat_id, trosak_row_id]
+            [
+              p.posting_id,
+              p.tx_id,
+              p.batch_id,
+              p.account_id ?? null,
+              projekat_id,
+              trosak_row_id,
+            ],
           );
 
           inserted += 1;
         } catch (e: any) {
-          errors.push({ posting_id: p?.posting_id, error: e?.message ?? String(e) });
+          errors.push({
+            posting_id: p?.posting_id,
+            error: e?.message ?? String(e),
+          });
           skipped += 1;
         }
       }
@@ -163,7 +228,7 @@ export async function handleBankCostsCommit(req: NextRequest): Promise<Response>
       // status -> costed
       await conn.execute(
         `UPDATE bank_import_batch SET status = 'costed' WHERE batch_id = ?`,
-        [batch_id]
+        [batch_id],
       );
 
       return {
@@ -175,16 +240,32 @@ export async function handleBankCostsCommit(req: NextRequest): Promise<Response>
         errors,
         status: "costed",
         marker: "COSTS_COMMIT_V2_STATUS",
-        mapping: { colProjekat, colDatum, colIznos, colOpis, colKategorija, colTipId, tip_id_default },
+        mapping: {
+          colProjekat,
+          colDatum,
+          colIznos,
+          colOpis,
+          colKategorija,
+          colTipId,
+          tip_id_default,
+        },
       };
     });
 
-    if (!res.ok) return NextResponse.json({ ...res, marker: "COSTS_COMMIT_V2_STATUS" }, { status: 400 });
+    if (!res.ok)
+      return NextResponse.json(
+        { ...res, marker: "COSTS_COMMIT_V2_STATUS" },
+        { status: 400 },
+      );
     return NextResponse.json(res);
   } catch (e: any) {
     return NextResponse.json(
-      { ok: false, error: e?.message ?? "Server error", marker: "COSTS_COMMIT_V2_STATUS" },
-      { status: 500 }
+      {
+        ok: false,
+        error: e?.message ?? "Server error",
+        marker: "COSTS_COMMIT_V2_STATUS",
+      },
+      { status: 500 },
     );
   }
 }

@@ -72,14 +72,19 @@ export async function GET(req) {
         f.faktura_id DESC
       LIMIT 500
       `,
-      args
+      args,
     );
 
     return NextResponse.json({ ok: true, success: true, rows });
   } catch (e) {
     return NextResponse.json(
-      { ok: false, success: false, error: e?.message || String(e), code: e?.code },
-      { status: 500 }
+      {
+        ok: false,
+        success: false,
+        error: e?.message || String(e),
+        code: e?.code,
+      },
+      { status: 500 },
     );
   }
 }

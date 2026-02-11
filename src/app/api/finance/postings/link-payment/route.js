@@ -17,16 +17,19 @@ export async function POST(req) {
     const napomena = String(body?.napomena || "");
     const referenca = String(body?.referenca || `posting_id=${posting_id}`);
 
-    if (!Number.isFinite(posting_id) || posting_id <= 0) return bad("posting_id invalid");
-    if (!Number.isFinite(amount_km) || amount_km <= 0) return bad("amount_km must be > 0");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(datum)) return bad("datum must be YYYY-MM-DD");
+    if (!Number.isFinite(posting_id) || posting_id <= 0)
+      return bad("posting_id invalid");
+    if (!Number.isFinite(amount_km) || amount_km <= 0)
+      return bad("amount_km must be > 0");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(datum))
+      return bad("datum must be YYYY-MM-DD");
 
     // 1) Load posting (bank truth)
     const pRows = await query(
       `SELECT posting_id, amount, value_date, currency, counterparty, description
        FROM bank_tx_posting
        WHERE posting_id = ?`,
-      [posting_id]
+      [posting_id],
     );
     if (!pRows?.length) return bad("posting not found", 404);
 
@@ -34,9 +37,13 @@ export async function POST(req) {
 
     // Payment link only allowed for outgoing postings
     if (Number(posting.amount) >= 0) {
-      return bad("Posting is not outgoing (amount >= 0); cannot link to payment", 400, {
-        posting_amount: posting.amount,
-      });
+      return bad(
+        "Posting is not outgoing (amount >= 0); cannot link to payment",
+        400,
+        {
+          posting_amount: posting.amount,
+        },
+      );
     }
 
     // 2) Sanity check: not over-allocate
@@ -44,7 +51,7 @@ export async function POST(req) {
       `SELECT posting_id, amount, linked_income_km, linked_payment_km, linked_total_km, alloc_status
        FROM v_bank_posting_sanity
        WHERE posting_id = ?`,
-      [posting_id]
+      [posting_id],
     );
     if (!sRows?.length) return bad("sanity view missing for posting", 500);
 
@@ -53,7 +60,11 @@ export async function POST(req) {
     const used = Number(sanity.linked_total_km);
 
     if (used + amount_km > cap + 0.00001) {
-      return bad("Would over-allocate posting", 400, { cap, used, try_add: amount_km });
+      return bad("Would over-allocate posting", 400, {
+        cap,
+        used,
+        try_add: amount_km,
+      });
     }
 
     // 3) Create meaning: placanja (your schema has no projekat_id)
@@ -63,7 +74,13 @@ export async function POST(req) {
         (datum_placanja, iznos_original, valuta_original, kurs_u_km, iznos_km, nacin_placanja, referenca, napomena)
        VALUES
         (?, ?, 'BAM', 1.000000, ?, 'BANK', ?, ?)`,
-      [datum, amount_km, amount_km, referenca, napomena || posting.description || ""]
+      [
+        datum,
+        amount_km,
+        amount_km,
+        referenca,
+        napomena || posting.description || "",
+      ],
     );
 
     const placanje_id = insPay?.insertId ?? insPay?.rows?.insertId;
@@ -75,7 +92,7 @@ export async function POST(req) {
         (posting_id, placanje_id, amount_km, aktivan)
        VALUES
         (?, ?, ?, 1)`,
-      [posting_id, placanje_id, amount_km]
+      [posting_id, placanje_id, amount_km],
     );
 
     // 5) Return updated sanity
@@ -83,7 +100,7 @@ export async function POST(req) {
       `SELECT posting_id, amount, linked_income_km, linked_payment_km, linked_total_km, alloc_status
        FROM v_bank_posting_sanity
        WHERE posting_id = ?`,
-      [posting_id]
+      [posting_id],
     );
 
     return NextResponse.json({

@@ -34,10 +34,10 @@ function badge(text, kind = "neutral") {
     kind === "ok"
       ? "badge badge-green"
       : kind === "warn"
-      ? "badge badge-orange"
-      : kind === "bad"
-      ? "badge badge-red"
-      : "badge";
+        ? "badge badge-orange"
+        : kind === "bad"
+          ? "badge badge-red"
+          : "badge";
   return <span className={cls}>{text}</span>;
 }
 
@@ -65,25 +65,25 @@ async function getPostingLinkState(postingId) {
       `SELECT COUNT(*) AS cnt
        FROM bank_tx_posting_prihod_link
        WHERE posting_id = ? AND aktivan = 1`,
-      [postingId]
+      [postingId],
     ).catch(async () => [{ cnt: 0 }]),
     query(
       `SELECT COUNT(*) AS cnt
        FROM bank_tx_posting_placanje_link
        WHERE posting_id = ? AND aktivan = 1`,
-      [postingId]
+      [postingId],
     ).catch(async () => [{ cnt: 0 }]),
     query(
       `SELECT COUNT(*) AS cnt
        FROM bank_tx_cost_link
        WHERE posting_id = ?`,
-      [postingId]
+      [postingId],
     ).catch(async () => [{ cnt: 0 }]),
     query(
       `SELECT COUNT(*) AS cnt
        FROM bank_tx_fixed_link
        WHERE posting_id = ?`,
-      [postingId]
+      [postingId],
     ).catch(async () => [{ cnt: 0 }]),
   ]);
 
@@ -131,7 +131,7 @@ async function loadPosting(pid) {
       WHERE f.posting_id = ?
       LIMIT 1
       `,
-      [pid]
+      [pid],
     );
     posting = rows?.[0] ?? null;
   } catch {
@@ -144,7 +144,7 @@ async function loadPosting(pid) {
       WHERE posting_id = ?
       LIMIT 1
       `,
-      [pid]
+      [pid],
     );
     posting = rows?.[0] ?? null;
 
@@ -160,7 +160,7 @@ async function loadPosting(pid) {
           WHERE s.posting_id = ?
           LIMIT 1
           `,
-          [pid]
+          [pid],
         );
         if (s?.[0]) {
           posting.linked_total_km = s[0].linked_total_km;
@@ -192,14 +192,18 @@ async function createIncomeAndLinkFromPosting(formData) {
 
   const postingId = Number(formData.get("posting_id"));
   const projekatId = Number(formData.get("projekat_id"));
-  const amountKm = Number.parseFloat(String(formData.get("amountkm") ?? "").replace(",", "."));
+  const amountKm = Number.parseFloat(
+    String(formData.get("amountkm") ?? "").replace(",", "."),
+  );
   const datum = String(formData.get("datum") || "").slice(0, 10);
   const opis = String(formData.get("opis") || "").trim();
   const napomena = String(formData.get("napomena") || "").trim();
 
   if (!Number.isFinite(postingId) || postingId <= 0) redirect("/finance/banka");
-  if (!Number.isFinite(projekatId) || projekatId <= 0) redirect(`/finance/banka/${postingId}`);
-  if (!Number.isFinite(amountKm) || amountKm <= 0) redirect(`/finance/banka/${postingId}`);
+  if (!Number.isFinite(projekatId) || projekatId <= 0)
+    redirect(`/finance/banka/${postingId}`);
+  if (!Number.isFinite(amountKm) || amountKm <= 0)
+    redirect(`/finance/banka/${postingId}`);
   if (!datum || !opis) redirect(`/finance/banka/${postingId}`);
 
   const posting = await loadPosting(postingId);
@@ -209,13 +213,16 @@ async function createIncomeAndLinkFromPosting(formData) {
   if (isReversed) redirect(`/finance/banka/${postingId}?msg=reversed`);
 
   const alloc = String(posting.alloc_status ?? "").toUpperCase();
-  if (alloc !== "UNLINKED") redirect(`/finance/banka/${postingId}?msg=not_unlinked`);
+  if (alloc !== "UNLINKED")
+    redirect(`/finance/banka/${postingId}?msg=not_unlinked`);
 
   const linkState = await getPostingLinkState(postingId);
-  if (linkState.anyActive) redirect(`/finance/banka/${postingId}?msg=already_linked`);
+  if (linkState.anyActive)
+    redirect(`/finance/banka/${postingId}?msg=already_linked`);
 
   const rawAmount = Number(posting.amount);
-  if (!Number.isFinite(rawAmount) || rawAmount <= 0) redirect(`/finance/banka/${postingId}?msg=wrong_sign`);
+  if (!Number.isFinite(rawAmount) || rawAmount <= 0)
+    redirect(`/finance/banka/${postingId}?msg=wrong_sign`);
 
   // Create prihod (try common schemas)
   let prihodId = null;
@@ -227,7 +234,7 @@ async function createIncomeAndLinkFromPosting(formData) {
         (projekat_id, datum, iznos_km, opis, napomena, status)
       VALUES (?, ?, ?, ?, ?, 'NASTALO')
       `,
-      [projekatId, datum, amountKm, opis, napomena || null]
+      [projekatId, datum, amountKm, opis, napomena || null],
     );
     prihodId = res?.insertId ?? null;
   } catch {}
@@ -240,7 +247,7 @@ async function createIncomeAndLinkFromPosting(formData) {
           (projekat_id, datum, iznos_km, opis, napomena)
         VALUES (?, ?, ?, ?, ?)
         `,
-        [projekatId, datum, amountKm, opis, napomena || null]
+        [projekatId, datum, amountKm, opis, napomena || null],
       );
       prihodId = res?.insertId ?? null;
     } catch {}
@@ -253,12 +260,13 @@ async function createIncomeAndLinkFromPosting(formData) {
         (projekat_id, datum, iznos_km, opis)
       VALUES (?, ?, ?, ?)
       `,
-      [projekatId, datum, amountKm, opis]
+      [projekatId, datum, amountKm, opis],
     );
     prihodId = res?.insertId ?? null;
   }
 
-  if (!Number.isFinite(prihodId) || prihodId <= 0) redirect(`/finance/banka/${postingId}`);
+  if (!Number.isFinite(prihodId) || prihodId <= 0)
+    redirect(`/finance/banka/${postingId}`);
 
   await query(
     `
@@ -266,7 +274,7 @@ async function createIncomeAndLinkFromPosting(formData) {
       (posting_id, prihod_id, amount_km, aktivan, created_at)
     VALUES (?, ?, ?, 1, NOW())
     `,
-    [postingId, prihodId, amountKm]
+    [postingId, prihodId, amountKm],
   );
 
   revalidatePath(`/finance/banka/${postingId}`);
@@ -290,14 +298,17 @@ async function createPaymentAndLinkFromPosting(formData) {
   "use server";
 
   const postingId = Number(formData.get("posting_id"));
-  const amountKm = Number.parseFloat(String(formData.get("amount_km") ?? "").replace(",", "."));
+  const amountKm = Number.parseFloat(
+    String(formData.get("amount_km") ?? "").replace(",", "."),
+  );
   const datum = String(formData.get("datum") || "").slice(0, 10);
   const partner = String(formData.get("partner") || "").trim();
   const opis = String(formData.get("opis") || "").trim();
   const napomena = String(formData.get("napomena") || "").trim();
 
   if (!Number.isFinite(postingId) || postingId <= 0) redirect("/finance/banka");
-  if (!Number.isFinite(amountKm) || amountKm <= 0) redirect(`/finance/banka/${postingId}`);
+  if (!Number.isFinite(amountKm) || amountKm <= 0)
+    redirect(`/finance/banka/${postingId}`);
   if (!datum || !opis) redirect(`/finance/banka/${postingId}`);
 
   const posting = await loadPosting(postingId);
@@ -307,13 +318,16 @@ async function createPaymentAndLinkFromPosting(formData) {
   if (isReversed) redirect(`/finance/banka/${postingId}?msg=reversed`);
 
   const alloc = String(posting.alloc_status ?? "").toUpperCase();
-  if (alloc !== "UNLINKED") redirect(`/finance/banka/${postingId}?msg=not_unlinked`);
+  if (alloc !== "UNLINKED")
+    redirect(`/finance/banka/${postingId}?msg=not_unlinked`);
 
   const linkState = await getPostingLinkState(postingId);
-  if (linkState.anyActive) redirect(`/finance/banka/${postingId}?msg=already_linked`);
+  if (linkState.anyActive)
+    redirect(`/finance/banka/${postingId}?msg=already_linked`);
 
   const rawAmount = Number(posting.amount);
-  if (!Number.isFinite(rawAmount) || rawAmount >= 0) redirect(`/finance/banka/${postingId}?msg=wrong_sign`);
+  if (!Number.isFinite(rawAmount) || rawAmount >= 0)
+    redirect(`/finance/banka/${postingId}?msg=wrong_sign`);
 
   // Create placanje (try common schemas)
   let placanjeId = null;
@@ -325,7 +339,7 @@ async function createPaymentAndLinkFromPosting(formData) {
         (datum, iznos_km, partner, opis, napomena, status)
       VALUES (?, ?, ?, ?, ?, 'NASTALO')
       `,
-      [datum, amountKm, partner || null, opis, napomena || null]
+      [datum, amountKm, partner || null, opis, napomena || null],
     );
     placanjeId = res?.insertId ?? null;
   } catch {}
@@ -338,7 +352,7 @@ async function createPaymentAndLinkFromPosting(formData) {
           (datum, iznos_km, partner, opis, napomena)
         VALUES (?, ?, ?, ?, ?)
         `,
-        [datum, amountKm, partner || null, opis, napomena || null]
+        [datum, amountKm, partner || null, opis, napomena || null],
       );
       placanjeId = res?.insertId ?? null;
     } catch {}
@@ -351,12 +365,13 @@ async function createPaymentAndLinkFromPosting(formData) {
         (datum, iznos_km, opis)
       VALUES (?, ?, ?)
       `,
-      [datum, amountKm, opis]
+      [datum, amountKm, opis],
     );
     placanjeId = res?.insertId ?? null;
   }
 
-  if (!Number.isFinite(placanjeId) || placanjeId <= 0) redirect(`/finance/banka/${postingId}`);
+  if (!Number.isFinite(placanjeId) || placanjeId <= 0)
+    redirect(`/finance/banka/${postingId}`);
 
   await query(
     `
@@ -364,7 +379,7 @@ async function createPaymentAndLinkFromPosting(formData) {
       (posting_id, placanje_id, amount_km, aktivan, created_at)
     VALUES (?, ?, ?, 1, NOW())
     `,
-    [postingId, placanjeId, amount_km ?? amountKm]
+    [postingId, placanjeId, amount_km ?? amountKm],
   );
 
   revalidatePath(`/finance/banka/${postingId}`);
@@ -377,12 +392,27 @@ async function createPaymentAndLinkFromPosting(formData) {
 
 function msgText(code) {
   const c = String(code || "");
-  if (c === "created_income") return { text: "Kreiran prihod i linkovan na posting.", kind: "ok" };
-  if (c === "created_payment") return { text: "Kreirano plaćanje i linkovano na posting.", kind: "ok" };
-  if (c === "already_linked") return { text: "Ovaj posting je već linkovan (ili ima cost/fixed link).", kind: "warn" };
-  if (c === "not_unlinked") return { text: "Posting nije UNLINKED — quick-create nije dozvoljen.", kind: "warn" };
-  if (c === "reversed") return { text: "Posting je reversed — quick-create nije dozvoljen.", kind: "bad" };
-  if (c === "wrong_sign") return { text: "Neispravan smjer iznosa za ovu akciju.", kind: "warn" };
+  if (c === "created_income")
+    return { text: "Kreiran prihod i linkovan na posting.", kind: "ok" };
+  if (c === "created_payment")
+    return { text: "Kreirano plaćanje i linkovano na posting.", kind: "ok" };
+  if (c === "already_linked")
+    return {
+      text: "Ovaj posting je već linkovan (ili ima cost/fixed link).",
+      kind: "warn",
+    };
+  if (c === "not_unlinked")
+    return {
+      text: "Posting nije UNLINKED — quick-create nije dozvoljen.",
+      kind: "warn",
+    };
+  if (c === "reversed")
+    return {
+      text: "Posting je reversed — quick-create nije dozvoljen.",
+      kind: "bad",
+    };
+  if (c === "wrong_sign")
+    return { text: "Neispravan smjer iznosa za ovu akciju.", kind: "warn" };
   return null;
 }
 
@@ -433,11 +463,14 @@ export default async function BankPostingDetailPage({ params, searchParams }) {
   }
 
   const needle = clampNeedle(posting.counterparty || posting.description);
-  const bankFilterHref = needle ? `/finance/banka?q=${encodeURIComponent(needle)}` : "/finance/banka";
+  const bankFilterHref = needle
+    ? `/finance/banka?q=${encodeURIComponent(needle)}`
+    : "/finance/banka";
 
   const isReversed = !!posting.reversed_at || !!posting.reversed_by_batch_id;
   const alloc = String(posting.alloc_status ?? "").toUpperCase();
-  const isUnlinked = alloc === "UNLINKED" || Number(posting.linked_total_km ?? 0) === 0;
+  const isUnlinked =
+    alloc === "UNLINKED" || Number(posting.linked_total_km ?? 0) === 0;
 
   const amount = Number(posting.amount);
   const absAmount = Number.isFinite(amount) ? Math.abs(amount) : null;
@@ -450,7 +483,7 @@ export default async function BankPostingDetailPage({ params, searchParams }) {
     WHERE posting_id = ?
     ORDER BY link_id
     `,
-    [pid]
+    [pid],
   ).catch(async () => []);
 
   const placanjeLinks = await query(
@@ -460,7 +493,7 @@ export default async function BankPostingDetailPage({ params, searchParams }) {
     WHERE posting_id = ?
     ORDER BY link_id
     `,
-    [pid]
+    [pid],
   ).catch(async () => []);
 
   const costLinks = await query(
@@ -470,7 +503,7 @@ export default async function BankPostingDetailPage({ params, searchParams }) {
     WHERE posting_id = ?
     ORDER BY link_id
     `,
-    [pid]
+    [pid],
   ).catch(async () => []);
 
   const fixedLinks = await query(
@@ -480,7 +513,7 @@ export default async function BankPostingDetailPage({ params, searchParams }) {
     WHERE posting_id = ?
     ORDER BY link_id
     `,
-    [pid]
+    [pid],
   ).catch(async () => []);
 
   const linkState = {
@@ -489,13 +522,24 @@ export default async function BankPostingDetailPage({ params, searchParams }) {
     costCnt: costLinks.length,
     fixedCnt: fixedLinks.length,
   };
-  const anyActive = linkState.incomeCnt > 0 || linkState.payCnt > 0 || linkState.costCnt > 0 || linkState.fixedCnt > 0;
+  const anyActive =
+    linkState.incomeCnt > 0 ||
+    linkState.payCnt > 0 ||
+    linkState.costCnt > 0 ||
+    linkState.fixedCnt > 0;
 
   // ✅ 2.25 UI guardrails
   const canQuickCreate =
-    !isReversed && isUnlinked && alloc === "UNLINKED" && !anyActive && Number.isFinite(absAmount) && absAmount > 0;
+    !isReversed &&
+    isUnlinked &&
+    alloc === "UNLINKED" &&
+    !anyActive &&
+    Number.isFinite(absAmount) &&
+    absAmount > 0;
 
-  const defaultOpis = (posting.description || "Bank transakcija").toString().trim();
+  const defaultOpis = (posting.description || "Bank transakcija")
+    .toString()
+    .trim();
   const defaultPartner = (posting.counterparty || "").toString().trim();
 
   const msg = msgText(sp?.msg);
@@ -506,12 +550,15 @@ export default async function BankPostingDetailPage({ params, searchParams }) {
         <div className="topbar-left">
           <h1 className="h1">Banka — posting #{posting.posting_id}</h1>
           <div className="subtle">
-            datum: <b>{fmtDate(posting.value_date)}</b> · tx_id: <b>{posting.tx_id}</b> · batch:{" "}
-            <b>{posting.batch_id}</b>
+            datum: <b>{fmtDate(posting.value_date)}</b> · tx_id:{" "}
+            <b>{posting.tx_id}</b> · batch: <b>{posting.batch_id}</b>
           </div>
         </div>
 
-        <div className="topbar-right" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div
+          className="topbar-right"
+          style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+        >
           <Link className="btn" href={bankFilterHref}>
             Nazad (filter)
           </Link>
@@ -521,179 +568,291 @@ export default async function BankPostingDetailPage({ params, searchParams }) {
         </div>
       </div>
 
-      {msg ? (
-        <div className="card">
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {badge(msg.kind === "ok" ? "OK" : msg.kind === "bad" ? "STOP" : "INFO", msg.kind)}
-            <div style={{ fontWeight: 800 }}>{msg.text}</div>
+      {msg
+        ? <div className="card">
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {badge(
+                msg.kind === "ok" ? "OK" : msg.kind === "bad" ? "STOP" : "INFO",
+                msg.kind,
+              )}
+              <div style={{ fontWeight: 800 }}>{msg.text}</div>
+            </div>
           </div>
-        </div>
-      ) : null}
+        : null}
 
       {/* SUMMARY */}
       <div className="card">
-        <div className="card-row" style={{ justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div
+          className="card-row"
+          style={{ justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}
+        >
           <div>
             <div className="label">Iznos</div>
-            <div style={{ fontSize: 24, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>
+            <div
+              style={{
+                fontSize: 24,
+                fontWeight: 900,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
               {fmtKM(posting.amount)}{" "}
-              <span className="subtle" style={{ fontSize: 14, fontWeight: 700 }}>
+              <span
+                className="subtle"
+                style={{ fontSize: 14, fontWeight: 700 }}
+              >
                 {posting.currency ?? "BAM"}
               </span>
             </div>
             <div className="subtle" style={{ marginTop: 6 }}>
-              alloc: {allocBadge(posting.alloc_status)} · reversed: {isReversed ? badge("YES", "bad") : badge("NO", "ok")}
+              alloc: {allocBadge(posting.alloc_status)} · reversed:{" "}
+              {isReversed ? badge("YES", "bad") : badge("NO", "ok")}
             </div>
 
             <div className="subtle" style={{ marginTop: 6 }}>
-              linkovi: prihod {linkState.incomeCnt}, plaćanje {linkState.payCnt}, cost {linkState.costCnt}, fixed{" "}
-              {linkState.fixedCnt}
+              linkovi: prihod {linkState.incomeCnt}, plaćanje {linkState.payCnt}
+              , cost {linkState.costCnt}, fixed {linkState.fixedCnt}
             </div>
           </div>
 
           <div style={{ minWidth: 320, flex: 1 }}>
             <div className="label">Partner / opis</div>
-            <div style={{ fontWeight: 900 }}>{defaultPartner ? defaultPartner : "—"}</div>
-            <div className="subtle" style={{ marginTop: 6 }}>{defaultOpis}</div>
+            <div style={{ fontWeight: 900 }}>
+              {defaultPartner ? defaultPartner : "—"}
+            </div>
+            <div className="subtle" style={{ marginTop: 6 }}>
+              {defaultOpis}
+            </div>
           </div>
 
           <div>
             <div className="label">Committed</div>
             <div style={{ fontWeight: 900 }}>{fmtDT(posting.committed_at)}</div>
-            {posting.reversed_at ? (
-              <div className="subtle">reversed_at: {fmtDT(posting.reversed_at)}</div>
-            ) : (
-              <div className="subtle">reversed_at: —</div>
-            )}
+            {posting.reversed_at
+              ? <div className="subtle">
+                  reversed_at: {fmtDT(posting.reversed_at)}
+                </div>
+              : <div className="subtle">reversed_at: —</div>}
           </div>
         </div>
 
         <div className="hr" />
         <div className="subtle" style={{ lineHeight: 1.7 }}>
-          <b>Read-only.</b> Banka je canonical truth. Ovo je samo mapiranje značenja.
+          <b>Read-only.</b> Banka je canonical truth. Ovo je samo mapiranje
+          značenja.
         </div>
       </div>
 
       {/* ✅ 2.25 — Quick create panel samo kad je strogo dozvoljeno */}
-      {canQuickCreate ? (
-        <div className="card">
-          <div className="h2" style={{ marginBottom: 10 }}>UNLINKED — kreiraj “meaning”</div>
-          <div className="subtle" style={{ marginBottom: 12 }}>
-            Ovo pravi novi zapis (Prihod ili Plaćanje) i odmah ga linkuje na ovaj posting.
+      {canQuickCreate
+        ? <div className="card">
+            <div className="h2" style={{ marginBottom: 10 }}>
+              UNLINKED — kreiraj “meaning”
+            </div>
+            <div className="subtle" style={{ marginBottom: 12 }}>
+              Ovo pravi novi zapis (Prihod ili Plaćanje) i odmah ga linkuje na
+              ovaj posting.
+            </div>
+
+            {amount > 0
+              ? <div className="card" style={{ margin: 0 }}>
+                  <div className="h2" style={{ marginBottom: 10 }}>
+                    Kreiraj PRIHOD + link
+                  </div>
+
+                  <form
+                    action={createIncomeAndLinkFromPosting}
+                    className="card-row"
+                    style={{ gap: 12, flexWrap: "wrap" }}
+                  >
+                    <input
+                      type="hidden"
+                      name="posting_id"
+                      value={posting.posting_id}
+                    />
+
+                    <div style={{ width: 160 }}>
+                      <div className="label">datum</div>
+                      <input
+                        className="input"
+                        name="datum"
+                        defaultValue={String(posting.value_date).slice(0, 10)}
+                      />
+                    </div>
+
+                    <div style={{ width: 180 }}>
+                      <div className="label">amount_km</div>
+                      <input
+                        className="input"
+                        name="amount_km"
+                        defaultValue={absAmount?.toFixed(2) ?? ""}
+                      />
+                    </div>
+
+                    <div style={{ width: 180 }}>
+                      <div className="label">projekat_id</div>
+                      <input
+                        className="input"
+                        name="projekat_id"
+                        placeholder="npr. 77"
+                      />
+                      <div className="subtle" style={{ marginTop: 6 }}>
+                        Prihod mora imati projekat.
+                      </div>
+                    </div>
+
+                    <div style={{ minWidth: 320, flex: 1 }}>
+                      <div className="label">opis</div>
+                      <input
+                        className="input"
+                        name="opis"
+                        defaultValue={defaultOpis}
+                      />
+                    </div>
+
+                    <div style={{ minWidth: 260, flex: 1 }}>
+                      <div className="label">napomena (opcionalno)</div>
+                      <input
+                        className="input"
+                        name="napomena"
+                        defaultValue={
+                          defaultPartner ? `partner: ${defaultPartner}` : ""
+                        }
+                      />
+                    </div>
+
+                    <div
+                      style={{ alignSelf: "flex-end", display: "flex", gap: 8 }}
+                    >
+                      <button className="btn btn-primary" type="submit">
+                        Kreiraj prihod
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              : null}
+
+            {amount < 0
+              ? <div className="card" style={{ marginTop: 14 }}>
+                  <div className="h2" style={{ marginBottom: 10 }}>
+                    Kreiraj PLAĆANJE + link
+                  </div>
+
+                  <form
+                    action={createPaymentAndLinkFromPosting}
+                    className="card-row"
+                    style={{ gap: 12, flexWrap: "wrap" }}
+                  >
+                    <input
+                      type="hidden"
+                      name="posting_id"
+                      value={posting.posting_id}
+                    />
+
+                    <div style={{ width: 160 }}>
+                      <div className="label">datum</div>
+                      <input
+                        className="input"
+                        name="datum"
+                        defaultValue={String(posting.value_date).slice(0, 10)}
+                      />
+                    </div>
+
+                    <div style={{ width: 180 }}>
+                      <div className="label">amount_km</div>
+                      <input
+                        className="input"
+                        name="amount_km"
+                        defaultValue={absAmount?.toFixed(2) ?? ""}
+                      />
+                    </div>
+
+                    <div style={{ minWidth: 320, flex: 1 }}>
+                      <div className="label">partner (opcionalno)</div>
+                      <input
+                        className="input"
+                        name="partner"
+                        defaultValue={defaultPartner}
+                      />
+                    </div>
+
+                    <div style={{ minWidth: 320, flex: 1 }}>
+                      <div className="label">opis</div>
+                      <input
+                        className="input"
+                        name="opis"
+                        defaultValue={defaultOpis}
+                      />
+                    </div>
+
+                    <div style={{ minWidth: 260, flex: 1 }}>
+                      <div className="label">napomena (opcionalno)</div>
+                      <input
+                        className="input"
+                        name="napomena"
+                        defaultValue=""
+                      />
+                    </div>
+
+                    <div
+                      style={{ alignSelf: "flex-end", display: "flex", gap: 8 }}
+                    >
+                      <button className="btn btn-primary" type="submit">
+                        Kreiraj plaćanje
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              : null}
           </div>
-
-          {amount > 0 ? (
-            <div className="card" style={{ margin: 0 }}>
-              <div className="h2" style={{ marginBottom: 10 }}>Kreiraj PRIHOD + link</div>
-
-              <form action={createIncomeAndLinkFromPosting} className="card-row" style={{ gap: 12, flexWrap: "wrap" }}>
-                <input type="hidden" name="posting_id" value={posting.posting_id} />
-
-                <div style={{ width: 160 }}>
-                  <div className="label">datum</div>
-                  <input className="input" name="datum" defaultValue={String(posting.value_date).slice(0, 10)} />
-                </div>
-
-                <div style={{ width: 180 }}>
-                  <div className="label">amount_km</div>
-                  <input className="input" name="amount_km" defaultValue={absAmount?.toFixed(2) ?? ""} />
-                </div>
-
-                <div style={{ width: 180 }}>
-                  <div className="label">projekat_id</div>
-                  <input className="input" name="projekat_id" placeholder="npr. 77" />
-                  <div className="subtle" style={{ marginTop: 6 }}>Prihod mora imati projekat.</div>
-                </div>
-
-                <div style={{ minWidth: 320, flex: 1 }}>
-                  <div className="label">opis</div>
-                  <input className="input" name="opis" defaultValue={defaultOpis} />
-                </div>
-
-                <div style={{ minWidth: 260, flex: 1 }}>
-                  <div className="label">napomena (opcionalno)</div>
-                  <input className="input" name="napomena" defaultValue={defaultPartner ? `partner: ${defaultPartner}` : ""} />
-                </div>
-
-                <div style={{ alignSelf: "flex-end", display: "flex", gap: 8 }}>
-                  <button className="btn btn-primary" type="submit">Kreiraj prihod</button>
-                </div>
-              </form>
+        : <div className="card">
+            <div className="h2" style={{ marginBottom: 8 }}>
+              Quick-create status
             </div>
-          ) : null}
 
-          {amount < 0 ? (
-            <div className="card" style={{ marginTop: 14 }}>
-              <div className="h2" style={{ marginBottom: 10 }}>Kreiraj PLAĆANJE + link</div>
-
-              <form action={createPaymentAndLinkFromPosting} className="card-row" style={{ gap: 12, flexWrap: "wrap" }}>
-                <input type="hidden" name="posting_id" value={posting.posting_id} />
-
-                <div style={{ width: 160 }}>
-                  <div className="label">datum</div>
-                  <input className="input" name="datum" defaultValue={String(posting.value_date).slice(0, 10)} />
+            {isReversed
+              ? <div className="subtle">
+                  ⛔ Posting je <b>reversed</b> — quick-create je zabranjen.
                 </div>
-
-                <div style={{ width: 180 }}>
-                  <div className="label">amount_km</div>
-                  <input className="input" name="amount_km" defaultValue={absAmount?.toFixed(2) ?? ""} />
-                </div>
-
-                <div style={{ minWidth: 320, flex: 1 }}>
-                  <div className="label">partner (opcionalno)</div>
-                  <input className="input" name="partner" defaultValue={defaultPartner} />
-                </div>
-
-                <div style={{ minWidth: 320, flex: 1 }}>
-                  <div className="label">opis</div>
-                  <input className="input" name="opis" defaultValue={defaultOpis} />
-                </div>
-
-                <div style={{ minWidth: 260, flex: 1 }}>
-                  <div className="label">napomena (opcionalno)</div>
-                  <input className="input" name="napomena" defaultValue="" />
-                </div>
-
-                <div style={{ alignSelf: "flex-end", display: "flex", gap: 8 }}>
-                  <button className="btn btn-primary" type="submit">Kreiraj plaćanje</button>
-                </div>
-              </form>
-            </div>
-          ) : null}
-        </div>
-      ) : (
-        <div className="card">
-          <div className="h2" style={{ marginBottom: 8 }}>Quick-create status</div>
-
-          {isReversed ? (
-            <div className="subtle">⛔ Posting je <b>reversed</b> — quick-create je zabranjen.</div>
-          ) : alloc !== "UNLINKED" ? (
-            <div className="subtle">ℹ Posting nije <b>UNLINKED</b> — quick-create nije potreban.</div>
-          ) : anyActive ? (
-            <div className="subtle">
-              ℹ Posting već ima linkove (prihod/plaćanje/cost/fixed) — quick-create je isključen.
-            </div>
-          ) : (
-            <div className="subtle">ℹ Quick-create nije dostupan (provjeri iznos / stanje).</div>
-          )}
-        </div>
-      )}
+              : alloc !== "UNLINKED"
+                ? <div className="subtle">
+                    ℹ Posting nije <b>UNLINKED</b> — quick-create nije potreban.
+                  </div>
+                : anyActive
+                  ? <div className="subtle">
+                      ℹ Posting već ima linkove (prihod/plaćanje/cost/fixed) —
+                      quick-create je isključen.
+                    </div>
+                  : <div className="subtle">
+                      ℹ Quick-create nije dostupan (provjeri iznos / stanje).
+                    </div>}
+          </div>}
 
       {/* Ostatak detalja (link tabele) — zadrži kako si već imao u 2.24 */}
       <div className="card">
-        <div className="h2" style={{ marginBottom: 10 }}>Linkovi (pregled)</div>
+        <div className="h2" style={{ marginBottom: 10 }}>
+          Linkovi (pregled)
+        </div>
         <div className="subtle">
-          Ovdje ostaju tvoje tabele za prihod/plaćanje/cost/fixed (kao u 2.24).  
-          Ako želiš, u 2.26 ćemo ih “polirati” i dodati deactivate toggle (aktivan=0) kao soft-unlink.
+          Ovdje ostaju tvoje tabele za prihod/plaćanje/cost/fixed (kao u 2.24).
+          Ako želiš, u 2.26 ćemo ih “polirati” i dodati deactivate toggle
+          (aktivan=0) kao soft-unlink.
         </div>
       </div>
 
       <div className="card">
-        <div className="h2" style={{ marginBottom: 10 }}>Quick navigacija</div>
+        <div className="h2" style={{ marginBottom: 10 }}>
+          Quick navigacija
+        </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Link className="btn btn-primary" href={bankFilterHref}>Nazad (filter)</Link>
-          <Link className="btn" href="/finance/banka">Nazad (lista)</Link>
-          <Link className="btn" href="/finance">Finansije</Link>
+          <Link className="btn btn-primary" href={bankFilterHref}>
+            Nazad (filter)
+          </Link>
+          <Link className="btn" href="/finance/banka">
+            Nazad (lista)
+          </Link>
+          <Link className="btn" href="/finance">
+            Finansije
+          </Link>
         </div>
       </div>
     </div>

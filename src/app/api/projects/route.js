@@ -1,6 +1,6 @@
-﻿// src/app/api/projects/route.js
+// src/app/api/projects/route.js
 import { NextResponse } from "next/server";
-import mysql from "mysql2/promise";
+import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,6 @@ function decOrNull(v) {
 }
 
 export async function GET(req) {
-  let conn;
   try {
     const url = new URL(req.url);
 
@@ -33,9 +32,13 @@ export async function GET(req) {
     const onlyOverBudget = url.searchParams.get("only_over_budget") === "1";
 
     // ✅ NEW: status group (active/archive/all) + exact status_id
-    const statusGroupRaw = (url.searchParams.get("status_group") || "").trim().toLowerCase();
+    const statusGroupRaw = (url.searchParams.get("status_group") || "")
+      .trim()
+      .toLowerCase();
     const status_group =
-      statusGroupRaw === "active" || statusGroupRaw === "archive" || statusGroupRaw === "all"
+      statusGroupRaw === "active" ||
+      statusGroupRaw === "archive" ||
+      statusGroupRaw === "all"
         ? statusGroupRaw
         : DEFAULT_STATUS_GROUP;
 
@@ -51,19 +54,10 @@ export async function GET(req) {
     // sort (user-sort), ali MASTER default za active/arhiva
     const sort = (url.searchParams.get("sort") || "projekat_id").toLowerCase();
     const dirParam = (url.searchParams.get("dir") || "").toLowerCase();
-    const dir = dirParam === "asc" || dirParam === "desc" ? dirParam.toUpperCase() : "DESC";
-
-    conn = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      ssl: process.env.DB_SSL === "1" ? { rejectUnauthorized: false } : undefined,
-      multipleStatements: false,
-      // ✅ DATETIME kao string (timezone safe)
-      dateStrings: true,
-    });
+    const dir =
+      dirParam === "asc" || dirParam === "desc"
+        ? dirParam.toUpperCase()
+        : "DESC";
 
     /**
      * ✅ Budžet source-of-truth (po MC):
@@ -121,7 +115,9 @@ export async function GET(req) {
     if (q) {
       const qNum = intOrNull(q);
       if (qNum !== null) {
-        where.push("(p.projekat_id = ? OR p.id_po = ? OR p.radni_naziv LIKE ? OR p.naziv_za_fakturu LIKE ?)");
+        where.push(
+          "(p.projekat_id = ? OR p.id_po = ? OR p.radni_naziv LIKE ? OR p.naziv_za_fakturu LIKE ?)",
+        );
         params.push(qNum, qNum, `%${q}%`, `%${q}%`);
       } else {
         where.push("(p.radni_naziv LIKE ? OR p.naziv_za_fakturu LIKE ?)");
@@ -132,7 +128,8 @@ export async function GET(req) {
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
     // MASTER DEFAULT ORDER (ako user nije eksplicitno sortirao)
-    const userExplicitSort = url.searchParams.has("sort") || url.searchParams.has("dir");
+    const userExplicitSort =
+      url.searchParams.has("sort") || url.searchParams.has("dir");
 
     let orderClause = "";
     if (!userExplicitSort && status_id === null && status_group === "active") {
@@ -142,7 +139,11 @@ export async function GET(req) {
           p.rok_glavni ASC,
           p.projekat_id ASC
       `;
-    } else if (!userExplicitSort && status_id === null && status_group === "archive") {
+    } else if (
+      !userExplicitSort &&
+      status_id === null &&
+      status_group === "archive"
+    ) {
       orderClause = `ORDER BY p.projekat_id ASC`;
     } else {
       const sortMap = {
@@ -160,7 +161,7 @@ export async function GET(req) {
     }
 
     // COUNT
-    const [countRows] = await conn.execute(
+    const countRows = await query(
       `
       SELECT COUNT(*) AS total
       FROM projekti p
@@ -174,7 +175,7 @@ export async function GET(req) {
       JOIN statusi_projekta sp ON sp.status_id = p.status_id
       ${whereSql}
       `,
-      params
+      params,
     );
     const total = Number(countRows?.[0]?.total ?? 0);
 
@@ -182,7 +183,7 @@ export async function GET(req) {
     const safeLimit = Number.isFinite(limit) ? limit : 50;
 
     // ROWS
-    const [rows] = await conn.query(
+    const rows = await query(
       `
       SELECT
         p.projekat_id,
@@ -238,7 +239,7 @@ export async function GET(req) {
       ${orderClause}
       LIMIT ${safeOffset}, ${safeLimit}
       `,
-      params
+      params,
     );
 
     return NextResponse.json({
@@ -254,8 +255,9 @@ export async function GET(req) {
       },
     });
   } catch (err) {
-    return NextResponse.json({ ok: false, message: err?.message || "Greška na serveru" }, { status: 500 });
-  } finally {
-    if (conn) await conn.end();
+    return NextResponse.json(
+      { ok: false, message: err?.message || "Greška na serveru" },
+      { status: 500 },
+    );
   }
 }

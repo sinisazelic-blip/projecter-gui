@@ -3,7 +3,11 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { DobavljacRow } from "./page";
-import { createDobavljac, setDobavljacActive, updateDobavljac } from "./actions";
+import {
+  createDobavljac,
+  setDobavljacActive,
+  updateDobavljac,
+} from "./actions";
 
 type VrstaDobavljaca = "studio" | "freelancer" | "servis" | "ostalo";
 
@@ -67,7 +71,8 @@ function modalStyle(maxWidth = 980): React.CSSProperties {
     width: "min(100%, " + maxWidth + "px)",
     border: "1px solid var(--border)",
     borderRadius: "16px",
-    background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
+    background:
+      "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
     boxShadow: "var(--shadow)",
     overflow: "hidden",
   };
@@ -77,7 +82,8 @@ function topbarStyle(): React.CSSProperties {
   return {
     border: "1px solid var(--border)",
     borderRadius: "16px",
-    background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
+    background:
+      "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
     boxShadow: "var(--shadow)",
     padding: 16,
     display: "flex",
@@ -119,7 +125,11 @@ const logoStyle: React.CSSProperties = {
   opacity: 0.95,
 };
 
-export default function DobavljaciClient({ initialItems }: { initialItems: DobavljacRow[] }) {
+export default function DobavljaciClient({
+  initialItems,
+}: {
+  initialItems: DobavljacRow[];
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -149,7 +159,15 @@ export default function DobavljaciClient({ initialItems }: { initialItems: Dobav
       if (!showInactive && Number(it.aktivan) !== 1) return false;
       if (!qq) return true;
 
-      const hay = [it.naziv, it.vrsta, it.email ?? "", it.telefon ?? "", it.grad ?? "", it.drzava_iso2 ?? "", it.adresa ?? ""]
+      const hay = [
+        it.naziv,
+        it.vrsta,
+        it.email ?? "",
+        it.telefon ?? "",
+        it.grad ?? "",
+        it.drzava_iso2 ?? "",
+        it.adresa ?? "",
+      ]
         .join(" ")
         .toLowerCase();
 
@@ -159,13 +177,24 @@ export default function DobavljaciClient({ initialItems }: { initialItems: Dobav
 
   const selectedItem = useMemo(() => {
     if (!selectedId) return null;
-    return items.find((x) => Number(x.dobavljac_id) === Number(selectedId)) ?? null;
+    return (
+      items.find((x) => Number(x.dobavljac_id) === Number(selectedId)) ?? null
+    );
   }, [items, selectedId]);
 
-  const selectedIsActive = selectedItem ? Number(selectedItem.aktivan) === 1 : false;
+  const selectedIsActive = selectedItem
+    ? Number(selectedItem.aktivan) === 1
+    : false;
 
   function badgeVrsta(v: VrstaDobavljaca) {
-    const status = v === "studio" ? "active" : v === "freelancer" ? "planned" : v === "servis" ? "draft" : "unknown";
+    const status =
+      v === "studio"
+        ? "active"
+        : v === "freelancer"
+          ? "planned"
+          : v === "servis"
+            ? "draft"
+            : "unknown";
     return (
       <span className="badge" data-status={status}>
         {v}
@@ -202,11 +231,14 @@ export default function DobavljaciClient({ initialItems }: { initialItems: Dobav
 
   const editIndex = useMemo(() => {
     if (!selectedId) return -1;
-    return filtered.findIndex((x) => Number(x.dobavljac_id) === Number(selectedId));
+    return filtered.findIndex(
+      (x) => Number(x.dobavljac_id) === Number(selectedId),
+    );
   }, [filtered, selectedId]);
 
   const canPrev = modalMode === "edit" && editIndex > 0;
-  const canNext = modalMode === "edit" && editIndex >= 0 && editIndex < filtered.length - 1;
+  const canNext =
+    modalMode === "edit" && editIndex >= 0 && editIndex < filtered.length - 1;
 
   function goPrev() {
     if (!canPrev) return;
@@ -258,7 +290,8 @@ export default function DobavljaciClient({ initialItems }: { initialItems: Dobav
     }
   }
 
-  const btnDisabled = (cond: boolean) => (cond ? { opacity: 0.45, cursor: "not-allowed" as const } : {});
+  const btnDisabled = (cond: boolean) =>
+    cond ? { opacity: 0.45, cursor: "not-allowed" as const } : {};
 
   async function onSave() {
     setError(null);
@@ -283,7 +316,10 @@ export default function DobavljaciClient({ initialItems }: { initialItems: Dobav
           await createDobavljac(payload);
         } else {
           if (!form.dobavljac_id) throw new Error("Nedostaje ID za izmjenu.");
-          await updateDobavljac({ dobavljac_id: form.dobavljac_id, ...payload });
+          await updateDobavljac({
+            dobavljac_id: form.dobavljac_id,
+            ...payload,
+          });
         }
         setModalOpen(false);
         setSelectedId(null);
@@ -300,7 +336,10 @@ export default function DobavljaciClient({ initialItems }: { initialItems: Dobav
 
     startTransition(async () => {
       try {
-        await setDobavljacActive({ dobavljac_id: selectedItem.dobavljac_id, aktivan: nextActive });
+        await setDobavljacActive({
+          dobavljac_id: selectedItem.dobavljac_id,
+          aktivan: nextActive,
+        });
         setConfirmOpen(false);
         setSelectedId(null);
         router.refresh();
@@ -310,7 +349,9 @@ export default function DobavljaciClient({ initialItems }: { initialItems: Dobav
     });
   }
 
-  const kpiText = showInactive ? `Aktivni: ${counts.active} / Ukupno: ${counts.total}` : `Aktivni: ${counts.active}`;
+  const kpiText = showInactive
+    ? `Aktivni: ${counts.active} / Ukupno: ${counts.total}`
+    : `Aktivni: ${counts.active}`;
 
   return (
     <div className="container" style={pageShellStyle}>
@@ -318,16 +359,41 @@ export default function DobavljaciClient({ initialItems }: { initialItems: Dobav
         <div style={{ minWidth: 280 }}>
           <div style={pageTitleRowStyle}>
             <img src="/fluxa/logo-light.png" alt="Fluxa" style={logoStyle} />
-            <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em", margin: 0 }}>Dobavljači</h1>
+            <h1
+              style={{
+                fontSize: 22,
+                fontWeight: 700,
+                letterSpacing: "-0.01em",
+                margin: 0,
+              }}
+            >
+              Dobavljači
+            </h1>
           </div>
           <div style={{ marginTop: 6, color: "var(--muted)", fontSize: 14 }}>
-            Klikni red da ga označiš, pa koristi <b>Promijeni</b> / <b>Obriši</b>.
-            <span style={{ opacity: 0.9 }}> “Obriši” = deaktiviraj (istorija ostaje).</span>
+            Klikni red da ga označiš, pa koristi <b>Promijeni</b> /{" "}
+            <b>Obriši</b>.
+            <span style={{ opacity: 0.9 }}>
+              {" "}
+              “Obriši” = deaktiviraj (istorija ostaje).
+            </span>
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <button className="btn" onClick={openNew} disabled={isPending} style={btnDisabled(isPending)}>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexWrap: "wrap",
+            justifyContent: "flex-end",
+          }}
+        >
+          <button
+            className="btn"
+            onClick={openNew}
+            disabled={isPending}
+            style={btnDisabled(isPending)}
+          >
             <span style={{ marginRight: 6 }}>➕</span> Novi
           </button>
 
@@ -346,9 +412,17 @@ export default function DobavljaciClient({ initialItems }: { initialItems: Dobav
             onClick={openConfirmToggle}
             disabled={!selectedItem || isPending}
             style={btnDisabled(!selectedItem || isPending)}
-            title={!selectedItem ? "Prvo odaberi red" : selectedIsActive ? "Deaktiviraj" : "Aktiviraj"}
+            title={
+              !selectedItem
+                ? "Prvo odaberi red"
+                : selectedIsActive
+                  ? "Deaktiviraj"
+                  : "Aktiviraj"
+            }
           >
-            <span style={{ marginRight: 6 }}>{selectedIsActive ? "🗑️" : "✅"}</span>
+            <span style={{ marginRight: 6 }}>
+              {selectedIsActive ? "🗑️" : "✅"}
+            </span>
             {selectedIsActive ? "Obriši" : "Aktiviraj"}
           </button>
 
@@ -359,12 +433,45 @@ export default function DobavljaciClient({ initialItems }: { initialItems: Dobav
       </div>
 
       <div className="card" style={{ marginTop: 14 }}>
-        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Traži (naziv, vrsta, grad, email, telefon)…" style={{ width: 420, maxWidth: "100%" }} />
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Traži (naziv, vrsta, grad, email, telefon)…"
+              style={{ width: 420, maxWidth: "100%" }}
+            />
 
-            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--muted)", fontSize: 14 }}>
-              <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} style={{ width: 16, height: 16 }} />
+            <label
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                color: "var(--muted)",
+                fontSize: 14,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+                style={{ width: 16, height: 16 }}
+              />
               Prikaži deaktivirane
             </label>
           </div>
@@ -410,11 +517,22 @@ export default function DobavljaciClient({ initialItems }: { initialItems: Dobav
               </tr>
             ) : (
               filtered.map((it) => {
-                const isSelected = Number(selectedId) === Number(it.dobavljac_id);
+                const isSelected =
+                  Number(selectedId) === Number(it.dobavljac_id);
                 const isActive = Number(it.aktivan) === 1;
 
-                const lok = [it.grad ? it.grad : null, it.drzava_iso2 ? it.drzava_iso2 : null].filter(Boolean).join(" · ");
-                const kontakt = [it.email ? it.email : null, it.telefon ? it.telefon : null].filter(Boolean).join(" · ");
+                const lok = [
+                  it.grad ? it.grad : null,
+                  it.drzava_iso2 ? it.drzava_iso2 : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+                const kontakt = [
+                  it.email ? it.email : null,
+                  it.telefon ? it.telefon : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
 
                 return (
                   <tr
@@ -425,38 +543,82 @@ export default function DobavljaciClient({ initialItems }: { initialItems: Dobav
                     title="Klikni za selekciju"
                   >
                     <td className="cell-wrap">
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                        }}
+                      >
                         <span
                           style={{
                             width: 10,
                             height: 10,
                             borderRadius: 999,
-                            background: isSelected ? "var(--accent)" : "rgba(255,255,255,0.12)",
-                            boxShadow: isSelected ? "0 0 0 3px rgba(125,211,252,0.12)" : "none",
+                            background: isSelected
+                              ? "var(--accent)"
+                              : "rgba(255,255,255,0.12)",
+                            boxShadow: isSelected
+                              ? "0 0 0 3px rgba(125,211,252,0.12)"
+                              : "none",
                           }}
                         />
                         <span style={{ fontWeight: 800 }}>{it.naziv}</span>
                         {it.pravno_lice ? (
-                          <span className="badge" data-status="draft" style={{ marginLeft: 6 }}>
+                          <span
+                            className="badge"
+                            data-status="draft"
+                            style={{ marginLeft: 6 }}
+                          >
                             pravno lice
                           </span>
                         ) : (
-                          <span className="badge" data-status="planned" style={{ marginLeft: 6 }}>
+                          <span
+                            className="badge"
+                            data-status="planned"
+                            style={{ marginLeft: 6 }}
+                          >
                             fizičko lice
                           </span>
                         )}
                       </div>
-                      {it.adresa ? <div style={{ marginTop: 4, color: "var(--muted)", fontSize: 13 }}>{it.adresa}</div> : null}
+                      {it.adresa ? (
+                        <div
+                          style={{
+                            marginTop: 4,
+                            color: "var(--muted)",
+                            fontSize: 13,
+                          }}
+                        >
+                          {it.adresa}
+                        </div>
+                      ) : null}
                     </td>
 
                     <td>{badgeVrsta(it.vrsta)}</td>
 
                     <td style={{ color: lok ? "var(--text)" : "var(--muted)" }}>
                       {lok || "—"}
-                      {it.postanski_broj ? <div style={{ marginTop: 4, color: "var(--muted)", fontSize: 13 }}>{it.postanski_broj}</div> : null}
+                      {it.postanski_broj ? (
+                        <div
+                          style={{
+                            marginTop: 4,
+                            color: "var(--muted)",
+                            fontSize: 13,
+                          }}
+                        >
+                          {it.postanski_broj}
+                        </div>
+                      ) : null}
                     </td>
 
-                    <td style={{ color: kontakt ? "var(--text)" : "var(--muted)" }}>{kontakt || "—"}</td>
+                    <td
+                      style={{
+                        color: kontakt ? "var(--text)" : "var(--muted)",
+                      }}
+                    >
+                      {kontakt || "—"}
+                    </td>
 
                     <td>{badgeStatus(isActive)}</td>
                   </tr>
@@ -470,12 +632,44 @@ export default function DobavljaciClient({ initialItems }: { initialItems: Dobav
       {modalOpen ? (
         <div style={overlayStyle()} role="dialog" aria-modal="true">
           <div style={modalStyle(980)}>
-            <div style={{ padding: 16, borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", gap: 12 }}>
-              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                <img src="/fluxa/Ikona%20Siva.png" alt="Fluxa" style={{ width: 22, height: 22, objectFit: "contain", opacity: 0.9, marginTop: 2 }} />
+            <div
+              style={{
+                padding: 16,
+                borderBottom: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <div
+                style={{ display: "flex", gap: 12, alignItems: "flex-start" }}
+              >
+                <img
+                  src="/fluxa/Ikona%20Siva.png"
+                  alt="Fluxa"
+                  style={{
+                    width: 22,
+                    height: 22,
+                    objectFit: "contain",
+                    opacity: 0.9,
+                    marginTop: 2,
+                  }}
+                />
                 <div>
-                  <div style={{ fontSize: 18, fontWeight: 700 }}>{modalMode === "new" ? "Novi dobavljač" : "Promijeni dobavljača"}</div>
-                  <div style={{ marginTop: 4, color: "var(--muted)", fontSize: 14 }}>Šifrarnik dobavljača (bez brisanja — samo deaktivacija).</div>
+                  <div style={{ fontSize: 18, fontWeight: 700 }}>
+                    {modalMode === "new"
+                      ? "Novi dobavljač"
+                      : "Promijeni dobavljača"}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 4,
+                      color: "var(--muted)",
+                      fontSize: 14,
+                    }}
+                  >
+                    Šifrarnik dobavljača (bez brisanja — samo deaktivacija).
+                  </div>
                 </div>
               </div>
               <button className="btn" onClick={closeAllModals}>
@@ -484,15 +678,51 @@ export default function DobavljaciClient({ initialItems }: { initialItems: Dobav
             </div>
 
             <div style={{ padding: 16 }}>
-              <div className="grid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+              <div
+                className="grid"
+                style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
+              >
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>Naziv (obavezno)</div>
-                  <input value={form.naziv} onChange={(e) => setForm((s) => ({ ...s, naziv: e.target.value }))} placeholder="npr. Studio TAF" autoFocus style={{ width: "100%" }} />
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Naziv (obavezno)
+                  </div>
+                  <input
+                    value={form.naziv}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, naziv: e.target.value }))
+                    }
+                    placeholder="npr. Studio TAF"
+                    autoFocus
+                    style={{ width: "100%" }}
+                  />
                 </div>
 
                 <div>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>Vrsta</div>
-                  <select value={form.vrsta} onChange={(e) => setForm((s) => ({ ...s, vrsta: e.target.value as VrstaDobavljaca }))} style={{ width: "100%" }}>
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Vrsta
+                  </div>
+                  <select
+                    value={form.vrsta}
+                    onChange={(e) =>
+                      setForm((s) => ({
+                        ...s,
+                        vrsta: e.target.value as VrstaDobavljaca,
+                      }))
+                    }
+                    style={{ width: "100%" }}
+                  >
                     <option value="studio">studio</option>
                     <option value="freelancer">freelancer</option>
                     <option value="servis">servis</option>
@@ -501,86 +731,289 @@ export default function DobavljaciClient({ initialItems }: { initialItems: Dobav
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <input type="checkbox" checked={form.pravno_lice} onChange={(e) => setForm((s) => ({ ...s, pravno_lice: e.target.checked }))} style={{ width: 16, height: 16 }} />
-                  <span style={{ color: "var(--text)", fontSize: 14, fontWeight: 700 }}>Pravno lice</span>
+                  <input
+                    type="checkbox"
+                    checked={form.pravno_lice}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, pravno_lice: e.target.checked }))
+                    }
+                    style={{ width: 16, height: 16 }}
+                  />
+                  <span
+                    style={{
+                      color: "var(--text)",
+                      fontSize: 14,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Pravno lice
+                  </span>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <input type="checkbox" checked={form.aktivan} onChange={(e) => setForm((s) => ({ ...s, aktivan: e.target.checked }))} style={{ width: 16, height: 16 }} />
-                  <span style={{ color: "var(--text)", fontSize: 14, fontWeight: 700 }}>Aktivno</span>
+                  <input
+                    type="checkbox"
+                    checked={form.aktivan}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, aktivan: e.target.checked }))
+                    }
+                    style={{ width: 16, height: 16 }}
+                  />
+                  <span
+                    style={{
+                      color: "var(--text)",
+                      fontSize: 14,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Aktivno
+                  </span>
                 </div>
 
                 <div>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>Država (ISO2)</div>
-                  <input value={form.drzava_iso2} onChange={(e) => setForm((s) => ({ ...s, drzava_iso2: e.target.value.toUpperCase() }))} placeholder="BA" style={{ width: "100%" }} />
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Država (ISO2)
+                  </div>
+                  <input
+                    value={form.drzava_iso2}
+                    onChange={(e) =>
+                      setForm((s) => ({
+                        ...s,
+                        drzava_iso2: e.target.value.toUpperCase(),
+                      }))
+                    }
+                    placeholder="BA"
+                    style={{ width: "100%" }}
+                  />
                 </div>
 
                 <div>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>Grad</div>
-                  <input value={form.grad} onChange={(e) => setForm((s) => ({ ...s, grad: e.target.value }))} placeholder="Sarajevo" style={{ width: "100%" }} />
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Grad
+                  </div>
+                  <input
+                    value={form.grad}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, grad: e.target.value }))
+                    }
+                    placeholder="Sarajevo"
+                    style={{ width: "100%" }}
+                  />
                 </div>
 
                 <div>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>Poštanski broj</div>
-                  <input value={form.postanski_broj} onChange={(e) => setForm((s) => ({ ...s, postanski_broj: e.target.value }))} placeholder="71000" style={{ width: "100%" }} />
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Poštanski broj
+                  </div>
+                  <input
+                    value={form.postanski_broj}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, postanski_broj: e.target.value }))
+                    }
+                    placeholder="71000"
+                    style={{ width: "100%" }}
+                  />
                 </div>
 
                 <div>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>Email</div>
-                  <input value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} placeholder="email@domena.com" style={{ width: "100%" }} />
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Email
+                  </div>
+                  <input
+                    value={form.email}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, email: e.target.value }))
+                    }
+                    placeholder="email@domena.com"
+                    style={{ width: "100%" }}
+                  />
                 </div>
 
                 <div>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>Telefon</div>
-                  <input value={form.telefon} onChange={(e) => setForm((s) => ({ ...s, telefon: e.target.value }))} placeholder="+387 ..." style={{ width: "100%" }} />
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Telefon
+                  </div>
+                  <input
+                    value={form.telefon}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, telefon: e.target.value }))
+                    }
+                    placeholder="+387 ..."
+                    style={{ width: "100%" }}
+                  />
                 </div>
 
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>Adresa</div>
-                  <input value={form.adresa} onChange={(e) => setForm((s) => ({ ...s, adresa: e.target.value }))} placeholder="Ulica i broj" style={{ width: "100%" }} />
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Adresa
+                  </div>
+                  <input
+                    value={form.adresa}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, adresa: e.target.value }))
+                    }
+                    placeholder="Ulica i broj"
+                    style={{ width: "100%" }}
+                  />
                 </div>
 
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>Napomena</div>
-                  <textarea value={form.napomena} onChange={(e) => setForm((s) => ({ ...s, napomena: e.target.value }))} placeholder="Interna napomena" style={{ width: "100%", minHeight: 90, resize: "vertical" }} />
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Napomena
+                  </div>
+                  <textarea
+                    value={form.napomena}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, napomena: e.target.value }))
+                    }
+                    placeholder="Interna napomena"
+                    style={{ width: "100%", minHeight: 90, resize: "vertical" }}
+                  />
                 </div>
               </div>
 
               <div className="card" style={{ marginTop: 14 }}>
-                <div style={{ color: "var(--muted)", fontSize: 12, letterSpacing: ".06em", textTransform: "uppercase" }}>Sistem</div>
-                <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
+                <div
+                  style={{
+                    color: "var(--muted)",
+                    fontSize: 12,
+                    letterSpacing: ".06em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Sistem
+                </div>
+                <div
+                  style={{
+                    marginTop: 10,
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                    gap: 12,
+                  }}
+                >
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>ID</div>
-                    <div style={{ fontWeight: 800 }}>{form.dobavljac_id ?? "—"}</div>
+                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                      ID
+                    </div>
+                    <div style={{ fontWeight: 800 }}>
+                      {form.dobavljac_id ?? "—"}
+                    </div>
                   </div>
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>Kreirano</div>
-                    <div style={{ fontWeight: 800 }}>{form.created_at ? fmtDateTime(form.created_at) : "—"}</div>
+                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                      Kreirano
+                    </div>
+                    <div style={{ fontWeight: 800 }}>
+                      {form.created_at ? fmtDateTime(form.created_at) : "—"}
+                    </div>
                   </div>
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>Updated</div>
-                    <div style={{ fontWeight: 800 }}>{form.updated_at ? fmtDateTime(form.updated_at) : "—"}</div>
+                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                      Updated
+                    </div>
+                    <div style={{ fontWeight: 800 }}>
+                      {form.updated_at ? fmtDateTime(form.updated_at) : "—"}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div style={{ padding: 16, borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <div
+              style={{
+                padding: 16,
+                borderTop: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+              }}
+            >
               {modalMode === "edit" ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
-                  <button className="btn" onClick={goPrev} disabled={isPending || !canPrev} style={btnDisabled(isPending || !canPrev)} title="Prethodni">
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginRight: 8,
+                  }}
+                >
+                  <button
+                    className="btn"
+                    onClick={goPrev}
+                    disabled={isPending || !canPrev}
+                    style={btnDisabled(isPending || !canPrev)}
+                    title="Prethodni"
+                  >
                     ◀
                   </button>
-                  <button className="btn" onClick={goNext} disabled={isPending || !canNext} style={btnDisabled(isPending || !canNext)} title="Naredni">
+                  <button
+                    className="btn"
+                    onClick={goNext}
+                    disabled={isPending || !canNext}
+                    style={btnDisabled(isPending || !canNext)}
+                    title="Naredni"
+                  >
                     ▶
                   </button>
                 </div>
               ) : null}
 
-              <button className="btn" onClick={closeAllModals} disabled={isPending} style={btnDisabled(isPending)}>
+              <button
+                className="btn"
+                onClick={closeAllModals}
+                disabled={isPending}
+                style={btnDisabled(isPending)}
+              >
                 Otkaži
               </button>
-              <button className="btn btn--active" onClick={onSave} disabled={isPending} style={btnDisabled(isPending)}>
+              <button
+                className="btn btn--active"
+                onClick={onSave}
+                disabled={isPending}
+                style={btnDisabled(isPending)}
+              >
                 {isPending ? "Snima..." : "Snimi"}
               </button>
             </div>
@@ -591,10 +1024,24 @@ export default function DobavljaciClient({ initialItems }: { initialItems: Dobav
       {confirmOpen && selectedItem ? (
         <div style={overlayStyle()} role="dialog" aria-modal="true">
           <div style={modalStyle(640)}>
-            <div style={{ padding: 16, borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", gap: 12 }}>
+            <div
+              style={{
+                padding: 16,
+                borderBottom: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
               <div>
-                <div style={{ fontSize: 18, fontWeight: 800 }}>{selectedIsActive ? "Deaktivirati dobavljača?" : "Aktivirati dobavljača?"}</div>
-                <div style={{ marginTop: 4, color: "var(--muted)", fontSize: 14 }}>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>
+                  {selectedIsActive
+                    ? "Deaktivirati dobavljača?"
+                    : "Aktivirati dobavljača?"}
+                </div>
+                <div
+                  style={{ marginTop: 4, color: "var(--muted)", fontSize: 14 }}
+                >
                   <b style={{ color: "var(--text)" }}>{selectedItem.naziv}</b>
                 </div>
               </div>
@@ -603,16 +1050,47 @@ export default function DobavljaciClient({ initialItems }: { initialItems: Dobav
               </button>
             </div>
 
-            <div style={{ padding: 16, color: "var(--text)", fontSize: 14, lineHeight: 1.5 }}>
-              {selectedIsActive ? "Dobavljač će biti sakriven iz liste aktivnih. Možeš ga vratiti kasnije." : "Dobavljač će opet biti vidljiv u listi aktivnih."}
+            <div
+              style={{
+                padding: 16,
+                color: "var(--text)",
+                fontSize: 14,
+                lineHeight: 1.5,
+              }}
+            >
+              {selectedIsActive
+                ? "Dobavljač će biti sakriven iz liste aktivnih. Možeš ga vratiti kasnije."
+                : "Dobavljač će opet biti vidljiv u listi aktivnih."}
             </div>
 
-            <div style={{ padding: 16, borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button className="btn" onClick={closeAllModals} disabled={isPending} style={btnDisabled(isPending)}>
+            <div
+              style={{
+                padding: 16,
+                borderTop: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+              }}
+            >
+              <button
+                className="btn"
+                onClick={closeAllModals}
+                disabled={isPending}
+                style={btnDisabled(isPending)}
+              >
                 Otkaži
               </button>
-              <button className="btn btn--active" onClick={onToggleActiveConfirmed} disabled={isPending} style={btnDisabled(isPending)}>
-                {isPending ? "Radi..." : selectedIsActive ? "Deaktiviraj" : "Aktiviraj"}
+              <button
+                className="btn btn--active"
+                onClick={onToggleActiveConfirmed}
+                disabled={isPending}
+                style={btnDisabled(isPending)}
+              >
+                {isPending
+                  ? "Radi..."
+                  : selectedIsActive
+                    ? "Deaktiviraj"
+                    : "Aktiviraj"}
               </button>
             </div>
           </div>

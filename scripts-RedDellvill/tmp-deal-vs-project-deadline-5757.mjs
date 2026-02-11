@@ -21,7 +21,8 @@ const { query } = await import("../src/lib/db.ts");
 
 const projekatId = 5757;
 
-const rows = await query(`
+const rows = await query(
+  `
   SELECT
     i.inicijacija_id,
     i.projekat_id,
@@ -44,6 +45,8 @@ const rows = await query(`
 
   WHERE i.projekat_id = ?
   LIMIT 1
-`, [projekatId]);
+`,
+  [projekatId],
+);
 
 console.log(JSON.stringify(rows, null, 2));

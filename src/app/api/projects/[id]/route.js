@@ -14,7 +14,7 @@ export async function GET(req, { params }) {
     if (!Number.isFinite(id)) {
       return NextResponse.json(
         { success: false, message: "Neispravan ID", debug: { idStr } },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -58,13 +58,13 @@ export async function GET(req, { params }) {
       WHERE v.projekat_id = ?
       LIMIT 1
       `,
-      [id, id]
+      [id, id],
     );
 
     if (!rows || rows.length === 0) {
       return NextResponse.json(
         { success: false, message: "Projekat nije pronađen", data: null },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -87,7 +87,7 @@ export async function GET(req, { params }) {
       ORDER BY datum_troska DESC, trosak_id DESC
       LIMIT 200
       `,
-      [id]
+      [id],
     );
 
     return NextResponse.json({
@@ -97,7 +97,7 @@ export async function GET(req, { params }) {
   } catch (e) {
     return NextResponse.json(
       { success: false, message: e?.message || "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

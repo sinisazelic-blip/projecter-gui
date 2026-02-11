@@ -41,9 +41,10 @@ function toMySqlDateTime(v: any): string | null {
 async function getProjekatId(inicijacija_id: number): Promise<number> {
   const [r1]: any = await pool.query(
     `SELECT projekat_id FROM inicijacije WHERE inicijacija_id = ? LIMIT 1`,
-    [inicijacija_id]
+    [inicijacija_id],
   );
-  const pid = Array.isArray(r1) && r1.length ? Number(r1[0]?.projekat_id ?? 0) : 0;
+  const pid =
+    Array.isArray(r1) && r1.length ? Number(r1[0]?.projekat_id ?? 0) : 0;
   return pid > 0 ? pid : 0;
 }
 
@@ -52,7 +53,10 @@ async function getProjekatId(inicijacija_id: number): Promise<number> {
  * Ako postoji projekat i novi accepted_deadline je unesen,
  * projekat mora reflektovati zadnji prihvaćeni rok.
  */
-async function resyncProjectDeadlineIfNeeded(projekat_id: number, accepted_deadline: string | null) {
+async function resyncProjectDeadlineIfNeeded(
+  projekat_id: number,
+  accepted_deadline: string | null,
+) {
   if (!projekat_id || projekat_id <= 0) return { didResync: false };
   if (!accepted_deadline) return { didResync: false };
 
@@ -64,7 +68,7 @@ async function resyncProjectDeadlineIfNeeded(projekat_id: number, accepted_deadl
     WHERE projekat_id = ?
     LIMIT 1
     `,
-    [accepted_deadline, projekat_id]
+    [accepted_deadline, projekat_id],
   );
 
   return { didResync: true, projekat_id, rok_glavni: accepted_deadline };
@@ -79,7 +83,7 @@ async function resyncProjectDeadlineIfNeeded(projekat_id: number, accepted_deadl
 async function touchDeal(inicijacija_id: number, projekat_id?: number) {
   await pool.query(
     `UPDATE inicijacije SET updated_at = NOW() WHERE inicijacija_id = ? LIMIT 1`,
-    [inicijacija_id]
+    [inicijacija_id],
   );
 
   revalidatePath(`/inicijacije/${inicijacija_id}`);
@@ -97,7 +101,10 @@ export async function GET(req: NextRequest) {
     const inicijacija_id = asInt(searchParams.get("inicijacija_id"));
 
     if (!inicijacija_id || inicijacija_id <= 0) {
-      return NextResponse.json({ ok: false, error: "inicijacija_id je obavezan." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "inicijacija_id je obavezan." },
+        { status: 400 },
+      );
     }
 
     const [rows]: any = await pool.query(
@@ -117,13 +124,16 @@ FROM deal_timeline_events
       ORDER BY created_at DESC, event_id DESC
       LIMIT 1
       `,
-      [inicijacija_id]
+      [inicijacija_id],
     );
 
     const row = Array.isArray(rows) && rows.length ? rows[0] : null;
     return NextResponse.json({ ok: true, row });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? "Greška" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Greška" },
+      { status: 500 },
+    );
   }
 }
 
@@ -133,7 +143,10 @@ export async function POST(req: NextRequest) {
 
     const inicijacija_id = asInt(body?.inicijacija_id);
     if (!inicijacija_id || inicijacija_id <= 0) {
-      return NextResponse.json({ ok: false, error: "inicijacija_id je obavezan." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "inicijacija_id je obavezan." },
+        { status: 400 },
+      );
     }
 
     const required_deadline = toMySqlDateTime(body?.required_deadline);
@@ -141,11 +154,17 @@ export async function POST(req: NextRequest) {
     const accepted_deadline = toMySqlDateTime(body?.accepted_deadline);
 
     const confirmed_viaRaw = (body?.confirmed_via ?? null) as string | null;
-    const confirmed_via = confirmed_viaRaw && String(confirmed_viaRaw).trim() ? String(confirmed_viaRaw).trim() : null;
+    const confirmed_via =
+      confirmed_viaRaw && String(confirmed_viaRaw).trim()
+        ? String(confirmed_viaRaw).trim()
+        : null;
 
     const confirmed_at = toMySqlDateTime(body?.confirmed_at);
     const noteRaw = body?.note ?? null;
-    const note = noteRaw && String(noteRaw).trim() ? String(noteRaw).trim().slice(0, 500) : null;
+    const note =
+      noteRaw && String(noteRaw).trim()
+        ? String(noteRaw).trim().slice(0, 500)
+        : null;
 
     const [res]: any = await pool.query(
       `
@@ -153,12 +172,23 @@ export async function POST(req: NextRequest) {
       (inicijacija_id, required_deadline, studio_estimate, accepted_deadline, confirmed_via, confirmed_at, note)
       VALUES (?, ?, ?, ?, ?, ?, ?)
       `,
-      [inicijacija_id, required_deadline, studio_estimate, accepted_deadline, confirmed_via, confirmed_at, note]
+      [
+        inicijacija_id,
+        required_deadline,
+        studio_estimate,
+        accepted_deadline,
+        confirmed_via,
+        confirmed_at,
+        note,
+      ],
     );
 
     // FAZA 2: resync roka u projekat (samo ako postoji projekat + accepted_deadline)
     const projekat_id = await getProjekatId(inicijacija_id);
-    const resync = await resyncProjectDeadlineIfNeeded(projekat_id, accepted_deadline);
+    const resync = await resyncProjectDeadlineIfNeeded(
+      projekat_id,
+      accepted_deadline,
+    );
 
     // FAZA 1: touch + revalidate (deal + projects ako postoji)
     await touchDeal(inicijacija_id, projekat_id);
@@ -169,6 +199,9 @@ export async function POST(req: NextRequest) {
       resync,
     });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? "Greška" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Greška" },
+      { status: 500 },
+    );
   }
 }

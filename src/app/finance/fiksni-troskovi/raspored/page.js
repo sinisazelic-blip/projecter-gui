@@ -22,10 +22,10 @@ function badge(text, kind = "neutral") {
     kind === "ok"
       ? "badge badge-green"
       : kind === "warn"
-      ? "badge badge-orange"
-      : kind === "bad"
-      ? "badge badge-red"
-      : "badge";
+        ? "badge badge-orange"
+        : kind === "bad"
+          ? "badge badge-red"
+          : "badge";
   return <span className={cls}>{text}</span>;
 }
 
@@ -37,11 +37,15 @@ function classifyDue(dueDate) {
   today.setHours(0, 0, 0, 0);
 
   const due = new Date(String(dueDate).slice(0, 10) + "T00:00:00");
-  if (Number.isNaN(due.getTime())) return { text: String(dueDate), kind: "neutral" };
+  if (Number.isNaN(due.getTime()))
+    return { text: String(dueDate), kind: "neutral" };
 
-  const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const diffDays = Math.round(
+    (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+  );
 
-  if (diffDays < 0) return { text: `Kasni (${Math.abs(diffDays)}d)`, kind: "bad" };
+  if (diffDays < 0)
+    return { text: `Kasni (${Math.abs(diffDays)}d)`, kind: "bad" };
   if (diffDays === 0) return { text: "Danas", kind: "bad" };
   if (diffDays <= 7) return { text: `Uskoro (${diffDays}d)`, kind: "warn" };
   return { text: `Za ${diffDays}d`, kind: "ok" };
@@ -78,7 +82,7 @@ export default async function FiksniRasporedPage({ searchParams }) {
   // Pošto je view nepoznat, radimo s datumom i MySQL DATEDIFF.
   if (onlyDue) {
     where.push(
-      "(DATEDIFF(COALESCE(r.due_date, r.datum_dospijeca), CURDATE()) <= 7)"
+      "(DATEDIFF(COALESCE(r.due_date, r.datum_dospijeca), CURDATE()) <= 7)",
     );
   }
 
@@ -91,7 +95,7 @@ export default async function FiksniRasporedPage({ searchParams }) {
     FROM vw_fiksni_troskovi_status
     ORDER BY trosak_id DESC
     LIMIT 500
-    `
+    `,
   ).catch(async () => []);
 
   // 2) Raspored (next due list)
@@ -114,7 +118,7 @@ export default async function FiksniRasporedPage({ searchParams }) {
     ORDER BY COALESCE(r.due_date, r.datum_dospijeca) ASC, r.trosak_id ASC
     LIMIT 200
     `,
-    params
+    params,
   ).catch(async () => {
     return await query(
       `
@@ -124,7 +128,7 @@ export default async function FiksniRasporedPage({ searchParams }) {
       ORDER BY 1
       LIMIT 200
       `,
-      params
+      params,
     );
   });
 
@@ -141,7 +145,8 @@ export default async function FiksniRasporedPage({ searchParams }) {
         <div className="topbar-left">
           <h1 className="h1">Fiksni troškovi — raspored</h1>
           <div className="subtle">
-            Read-only pregled iz <code>vw_fiksni_troskovi_raspored</code> + <code>vw_fiksni_troskovi_status</code>
+            Read-only pregled iz <code>vw_fiksni_troskovi_raspored</code> +{" "}
+            <code>vw_fiksni_troskovi_status</code>
           </div>
         </div>
 
@@ -156,24 +161,56 @@ export default async function FiksniRasporedPage({ searchParams }) {
       </div>
 
       <div className="card">
-        <form className="card-row" method="GET" style={{ gap: 12, flexWrap: "wrap" }}>
+        <form
+          className="card-row"
+          method="GET"
+          style={{ gap: 12, flexWrap: "wrap" }}
+        >
           <div style={{ minWidth: 260 }}>
             <div className="label">Pretraga</div>
-            <input className="input" name="q" defaultValue={q} placeholder="naziv troška…" />
+            <input
+              className="input"
+              name="q"
+              defaultValue={q}
+              placeholder="naziv troška…"
+            />
           </div>
 
           <div style={{ width: 160 }}>
             <div className="label">Due od</div>
-            <input className="input" name="due_from" defaultValue={dueFrom} placeholder="YYYY-MM-DD" />
+            <input
+              className="input"
+              name="due_from"
+              defaultValue={dueFrom}
+              placeholder="YYYY-MM-DD"
+            />
           </div>
 
           <div style={{ width: 160 }}>
             <div className="label">Due do</div>
-            <input className="input" name="due_to" defaultValue={dueTo} placeholder="YYYY-MM-DD" />
+            <input
+              className="input"
+              name="due_to"
+              defaultValue={dueTo}
+              placeholder="YYYY-MM-DD"
+            />
           </div>
 
-          <label className="subtle" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 22 }}>
-            <input type="checkbox" name="only_due" value="1" defaultChecked={onlyDue} />
+          <label
+            className="subtle"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginTop: 22,
+            }}
+          >
+            <input
+              type="checkbox"
+              name="only_due"
+              value="1"
+              defaultChecked={onlyDue}
+            />
             Samo dospjelo / uskoro (≤ 7 dana)
           </label>
 
@@ -190,7 +227,9 @@ export default async function FiksniRasporedPage({ searchParams }) {
 
       <div className="card">
         <div className="card-row" style={{ justifyContent: "space-between" }}>
-          <div className="subtle">Prikazano: {scheduleRows?.length ?? 0} (limit 200)</div>
+          <div className="subtle">
+            Prikazano: {scheduleRows?.length ?? 0} (limit 200)
+          </div>
           <div className="subtle">Boje su signal (kasni / uskoro / ok).</div>
         </div>
 
@@ -209,63 +248,68 @@ export default async function FiksniRasporedPage({ searchParams }) {
               </tr>
             </thead>
             <tbody>
-              {scheduleRows?.length ? (
-                scheduleRows.map((r, idx) => {
-                  const id = Number(r.trosak_id);
-                  const due = r.due_date ?? r.datum_dospijeca ?? null;
-                  const sig = classifyDue(due);
+              {scheduleRows?.length
+                ? scheduleRows.map((r, idx) => {
+                    const id = Number(r.trosak_id);
+                    const due = r.due_date ?? r.datum_dospijeca ?? null;
+                    const sig = classifyDue(due);
 
-                  const iznos =
-                    r.amount_km ?? r.iznos_km ?? r.iznos ?? null;
+                    const iznos = r.amount_km ?? r.iznos_km ?? r.iznos ?? null;
 
-                  const st = Number.isFinite(id) ? statusById.get(id) : null;
-                  // ako status view ima "zadnje_placeno" ili sl., preferiraj
-                  const zadnje =
-                    st?.zadnje_placeno ?? r.zadnje_placeno ?? null;
+                    const st = Number.isFinite(id) ? statusById.get(id) : null;
+                    // ako status view ima "zadnje_placeno" ili sl., preferiraj
+                    const zadnje =
+                      st?.zadnje_placeno ?? r.zadnje_placeno ?? null;
 
-                  return (
-                    <tr key={`${r.trosak_id ?? "x"}-${idx}`}>
-                      <td>{r.trosak_id ?? "—"}</td>
-                      <td style={{ fontWeight: 800 }}>{r.naziv_troska ?? "—"}</td>
-                      <td>{r.frekvencija ?? "—"}</td>
-                      <td>{r.dan_u_mjesecu ?? "—"}</td>
-                      <td>{fmtDate(due)}</td>
-                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                        {fmtKM(iznos)}
-                      </td>
-                      <td>{fmtDate(zadnje)}</td>
-                      <td>{badge(sig.text, sig.kind)}</td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={8} className="subtle" style={{ padding: 16 }}>
-                    Nema rezultata.
-                  </td>
-                </tr>
-              )}
+                    return (
+                      <tr key={`${r.trosak_id ?? "x"}-${idx}`}>
+                        <td>{r.trosak_id ?? "—"}</td>
+                        <td style={{ fontWeight: 800 }}>
+                          {r.naziv_troska ?? "—"}
+                        </td>
+                        <td>{r.frekvencija ?? "—"}</td>
+                        <td>{r.dan_u_mjesecu ?? "—"}</td>
+                        <td>{fmtDate(due)}</td>
+                        <td
+                          style={{
+                            textAlign: "right",
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          {fmtKM(iznos)}
+                        </td>
+                        <td>{fmtDate(zadnje)}</td>
+                        <td>{badge(sig.text, sig.kind)}</td>
+                      </tr>
+                    );
+                  })
+                : <tr>
+                    <td colSpan={8} className="subtle" style={{ padding: 16 }}>
+                      Nema rezultata.
+                    </td>
+                  </tr>}
             </tbody>
           </table>
         </div>
 
         <div className="hr" />
         <div className="subtle">
-          Ovo je read-only raspored. Kasnije: kreiranje “plaćanja” iz dospjelih fiksnih + link na bank posting.
+          Ovo je read-only raspored. Kasnije: kreiranje “plaćanja” iz dospjelih
+          fiksnih + link na bank posting.
         </div>
       </div>
 
       {/* RAW STATUS VIEW (debug panel, read-only) */}
       <div className="card">
-        <div className="h2" style={{ marginBottom: 10 }}>Status (raw view preview)</div>
+        <div className="h2" style={{ marginBottom: 10 }}>
+          Status (raw view preview)
+        </div>
         <div className="subtle">
-          {statusRows?.length ? (
-            <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-              {JSON.stringify(statusRows.slice(0, 20), null, 2)}
-            </pre>
-          ) : (
-            "Nema redova (ili view nije dostupan)."
-          )}
+          {statusRows?.length
+            ? <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                {JSON.stringify(statusRows.slice(0, 20), null, 2)}
+              </pre>
+            : "Nema redova (ili view nije dostupan)."}
         </div>
       </div>
     </div>

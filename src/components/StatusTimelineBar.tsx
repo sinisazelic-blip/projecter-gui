@@ -38,15 +38,30 @@ function stageIndex(hasProject: boolean, projectStatusId?: number | null) {
 
 function stageColorByIndex(idx: number) {
   // diskretno, ali jasno — svaka faza ima svoju boju
-  if (idx === 0) return { bg: "rgba(170, 120, 255, .16)", border: "rgba(170, 120, 255, .38)" }; // Deal (ljubičasto)
-  if (idx === 1) return { bg: "rgba(55, 214, 122, .14)", border: "rgba(55, 214, 122, .38)" }; // Produkcija (zeleno)
-  if (idx === 2) return { bg: "rgba(255, 193, 7, .14)", border: "rgba(255, 193, 7, .38)" }; // Završeno (žuto)
-  if (idx === 3) return { bg: "rgba(255, 214, 102, .14)", border: "rgba(255, 214, 102, .40)" }; // Zatvoren (zlatno)
-  if (idx === 4) return { bg: "rgba(80, 170, 255, .14)", border: "rgba(80, 170, 255, .40)" }; // Fakturisan (plavo)
+  if (idx === 0)
+    return {
+      bg: "rgba(170, 120, 255, .16)",
+      border: "rgba(170, 120, 255, .38)",
+    }; // Deal (ljubičasto)
+  if (idx === 1)
+    return { bg: "rgba(55, 214, 122, .14)", border: "rgba(55, 214, 122, .38)" }; // Produkcija (zeleno)
+  if (idx === 2)
+    return { bg: "rgba(255, 193, 7, .14)", border: "rgba(255, 193, 7, .38)" }; // Završeno (žuto)
+  if (idx === 3)
+    return {
+      bg: "rgba(255, 214, 102, .14)",
+      border: "rgba(255, 214, 102, .40)",
+    }; // Zatvoren (zlatno)
+  if (idx === 4)
+    return { bg: "rgba(80, 170, 255, .14)", border: "rgba(80, 170, 255, .40)" }; // Fakturisan (plavo)
   return { bg: "rgba(255,255,255,.06)", border: "rgba(255,255,255,.18)" }; // Arhiviran (neutral)
 }
 
-export default function StatusTimelineBar({ hasProject, projectStatusId, compact }: Props) {
+export default function StatusTimelineBar({
+  hasProject,
+  projectStatusId,
+  compact,
+}: Props) {
   const cur = stageIndex(hasProject, projectStatusId);
   const curCol = stageColorByIndex(cur);
 
@@ -58,25 +73,35 @@ export default function StatusTimelineBar({ hasProject, projectStatusId, compact
     const bg = isCur
       ? curCol.bg
       : isPast
-      ? "rgba(255,255,255,.06)"
-      : "rgba(255,255,255,.03)";
+        ? "rgba(255,255,255,.06)"
+        : "rgba(255,255,255,.03)";
 
     const border = isCur
       ? curCol.border
       : isPast
-      ? "rgba(255,255,255,.18)"
-      : "rgba(255,255,255,.10)";
+        ? "rgba(255,255,255,.18)"
+        : "rgba(255,255,255,.10)";
 
     const textOpacity = isCur ? 0.95 : isPast ? 0.55 : 0.35;
 
     return (
-      <div key={STEPS[i].key} style={{ display: "flex", alignItems: "center", gap: compact ? 6 : 8, minWidth: 0 }}>
+      <div
+        key={STEPS[i].key}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: compact ? 6 : 8,
+          minWidth: 0,
+        }}
+      >
         <span
           style={{
             width: compact ? 10 : 12,
             height: compact ? 10 : 12,
             borderRadius: 999,
-            background: isCur ? "rgba(255,255,255,.75)" : "rgba(255,255,255,.22)",
+            background: isCur
+              ? "rgba(255,255,255,.75)"
+              : "rgba(255,255,255,.22)",
             boxShadow: "0 0 0 3px rgba(255,255,255,.06)",
             border: `1px solid ${border}`,
           }}
@@ -110,7 +135,14 @@ export default function StatusTimelineBar({ hasProject, projectStatusId, compact
       }}
       title="Deal → Produkcija → Završeno → Zatvoren → Fakturisan → Arhiviran"
     >
-      <div style={{ display: "flex", alignItems: "center", gap: compact ? 10 : 14, flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: compact ? 10 : 14,
+          flexWrap: "wrap",
+        }}
+      >
         {STEPS.map((_, i) => (
           <React.Fragment key={STEPS[i].key}>
             {dot(i)}
@@ -120,7 +152,8 @@ export default function StatusTimelineBar({ hasProject, projectStatusId, compact
                 style={{
                   width: compact ? 18 : 26,
                   height: 1,
-                  background: i < cur ? "rgba(255,255,255,.22)" : "rgba(255,255,255,.10)",
+                  background:
+                    i < cur ? "rgba(255,255,255,.22)" : "rgba(255,255,255,.10)",
                   opacity: 1,
                 }}
               />

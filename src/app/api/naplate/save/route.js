@@ -17,7 +17,10 @@ export async function POST(req) {
     } = body;
 
     if (!projekat_id) {
-      return NextResponse.json({ ok: false, error: "Nedostaje projekat_id" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Nedostaje projekat_id" },
+        { status: 400 },
+      );
     }
 
     conn = await mysql.createConnection({
@@ -58,7 +61,7 @@ export async function POST(req) {
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: e?.message || String(e) },
-      { status: 500 }
+      { status: 500 },
     );
   } finally {
     if (conn) await conn.end();

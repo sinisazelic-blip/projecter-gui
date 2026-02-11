@@ -6,7 +6,10 @@ export async function POST(req: NextRequest) {
   const inicijacijaId = Number(searchParams.get("id"));
 
   if (!Number.isFinite(inicijacijaId) || inicijacijaId <= 0) {
-    return NextResponse.json({ ok: false, error: "Neispravan ID" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "Neispravan ID" },
+      { status: 400 },
+    );
   }
 
   const conn = await (pool as any).getConnection();
@@ -17,12 +20,15 @@ export async function POST(req: NextRequest) {
     // 1) Učitaj ponudu
     const [rows] = await conn.query(
       `SELECT * FROM inicijacije WHERE inicijacija_id = ? FOR UPDATE`,
-      [inicijacijaId]
+      [inicijacijaId],
     );
 
     if (!rows || rows.length === 0) {
       await conn.rollback();
-      return NextResponse.json({ ok: false, error: "Ponuda ne postoji" }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: "Ponuda ne postoji" },
+        { status: 404 },
+      );
     }
 
     const inic = rows[0];
@@ -48,13 +54,11 @@ export async function POST(req: NextRequest) {
         inic.krajnji_klijent_id ?? null,
         inic.radni_naziv,
         1, // default status
-      ]
+      ],
     );
 
     const okPacket = insertResult[0];
     const projekatId = Number(okPacket.insertId);
-
-    
 
     // 3) Veži ponudu na projekat
     await conn.query(
@@ -63,12 +67,10 @@ export async function POST(req: NextRequest) {
       WHERE inicijacija_id = ?
       AND (projekat_id IS NULL OR projekat_id = 0)`,
 
-      [projekatId, inicijacijaId]
+      [projekatId, inicijacijaId],
     );
 
     await conn.commit();
-
-    
 
     return NextResponse.json({
       ok: true,
@@ -76,14 +78,13 @@ export async function POST(req: NextRequest) {
       projekat_id: projekatId,
       sifra: projekatId, // 5691, 5692...
     });
-    
   } catch (e: any) {
     try {
       await conn.rollback();
     } catch {}
     return NextResponse.json(
       { ok: false, error: e?.message ?? "Greška" },
-      { status: 500 }
+      { status: 500 },
     );
   } finally {
     conn.release();

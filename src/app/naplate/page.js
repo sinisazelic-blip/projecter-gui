@@ -84,7 +84,9 @@ export default async function Page({ searchParams }) {
   const rows = json.data ?? [];
 
   // ✅ Reset: ako si u projektu, resetuj filtere ali ostani na projektu
-  const resetHref = projekatId ? `/naplate?projekat_id=${encodeURIComponent(projekatId)}` : "/naplate";
+  const resetHref = projekatId
+    ? `/naplate?projekat_id=${encodeURIComponent(projekatId)}`
+    : "/naplate";
 
   // period ispod naslova
   let periodText = "";
@@ -113,42 +115,77 @@ export default async function Page({ searchParams }) {
           flexWrap: "wrap",
         }}
       >
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <Link href="/projects" className="navCard" title="Povratak na projekte">
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <Link
+            href="/projects"
+            className="navCard"
+            title="Povratak na projekte"
+          >
             <span className="navIcon" aria-hidden="true">
               ←
             </span>
-<span className="navText" style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
-  <strong>Projekti</strong>
-  <span className="muted navSub" style={{ marginTop: 2 }}>
-    povratak na listu
-  </span>
-</span>
-
+            <span
+              className="navText"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                lineHeight: 1.2,
+              }}
+            >
+              <strong>Projekti</strong>
+              <span className="muted navSub" style={{ marginTop: 2 }}>
+                povratak na listu
+              </span>
+            </span>
           </Link>
 
-          {projekatId ? (
-            <Link
-              href={`/projects/${encodeURIComponent(projekatId)}`}
-              className="navPill"
-              title={`Nazad na projekat #${projekatId}`}
-            >
-              <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 1 }}>
-                ↩
-              </span>
-              <span>
-                <strong>Projekat</strong> <span className="muted">#{projekatId}</span>
-              </span>
-            </Link>
-          ) : null}
+          {projekatId
+            ? <Link
+                href={`/projects/${encodeURIComponent(projekatId)}`}
+                className="navPill"
+                title={`Nazad na projekat #${projekatId}`}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{ fontSize: 16, lineHeight: 1 }}
+                >
+                  ↩
+                </span>
+                <span>
+                  <strong>Projekat</strong>{" "}
+                  <span className="muted">#{projekatId}</span>
+                </span>
+              </Link>
+            : null}
         </div>
 
         <div />
       </div>
 
       {/* Header: naslov + period */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
-        <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+          marginBottom: 10,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "baseline",
+            flexWrap: "wrap",
+          }}
+        >
           <h1 style={{ fontSize: 22, marginBottom: 0 }}>Naplate</h1>
 
           {/* mali indikator kad je filtrirano po projektu */}
@@ -174,7 +211,9 @@ export default async function Page({ searchParams }) {
       {/* Filter bar */}
       <form method="GET">
         {/* da projekat_id ostane kad filtriraš */}
-        {projekatId && <input type="hidden" name="projekat_id" value={projekatId} />}
+        {projekatId && (
+          <input type="hidden" name="projekat_id" value={projekatId} />
+        )}
 
         <div
           style={{
@@ -186,18 +225,49 @@ export default async function Page({ searchParams }) {
           }}
         >
           {/* Lijevo: filteri */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
             {/* Red 1 */}
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, opacity: 0.9 }}>
-                <input type="checkbox" name="only_late" value="1" defaultChecked={onlyLate} />
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              <label
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  opacity: 0.9,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  name="only_late"
+                  value="1"
+                  defaultChecked={onlyLate}
+                />
                 Samo van valute
               </label>
 
               {!onlyLate && (
                 <>
                   <span style={{ opacity: 0.75 }}>U narednih:</span>
-                  <select name="upcoming_days" defaultValue={String(upcomingDays)} style={inputStyle}>
+                  <select
+                    name="upcoming_days"
+                    defaultValue={String(upcomingDays)}
+                    style={inputStyle}
+                  >
                     <option value="7">7 dana</option>
                     <option value="14">14 dana</option>
                     <option value="30">30 dana</option>
@@ -206,13 +276,21 @@ export default async function Page({ searchParams }) {
               )}
 
               <span style={{ opacity: 0.75 }}>Fakturisano:</span>
-              <select name="fakturisano" defaultValue={String(fakt)} style={inputStyle}>
+              <select
+                name="fakturisano"
+                defaultValue={String(fakt)}
+                style={inputStyle}
+              >
                 <option value="">Svi</option>
                 <option value="1">DA</option>
               </select>
 
               <span style={{ opacity: 0.75 }}>Naručilac:</span>
-              <select name="narucilac_id" defaultValue={String(narId)} style={{ ...inputStyle, minWidth: 220 }}>
+              <select
+                name="narucilac_id"
+                defaultValue={String(narId)}
+                style={{ ...inputStyle, minWidth: 220 }}
+              >
                 <option value="">Svi</option>
                 {narucioci.map((k) => (
                   <option key={k.klijent_id} value={k.klijent_id}>
@@ -223,27 +301,61 @@ export default async function Page({ searchParams }) {
             </div>
 
             {/* Red 2 */}
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
               <span style={{ opacity: 0.75 }}>
-                Valuta: <span style={{ opacity: 0.9 }}>dd.mm.yyyy</span> do <span style={{ opacity: 0.9 }}>dd.mm.yyyy</span>
+                Valuta: <span style={{ opacity: 0.9 }}>dd.mm.yyyy</span> do{" "}
+                <span style={{ opacity: 0.9 }}>dd.mm.yyyy</span>
               </span>
 
-              <input type="date" name="due_from" defaultValue={String(dueFrom)} style={inputStyle} />
+              <input
+                type="date"
+                name="due_from"
+                defaultValue={String(dueFrom)}
+                style={inputStyle}
+              />
               <span style={{ opacity: 0.65 }}>do</span>
-              <input type="date" name="due_to" defaultValue={String(dueTo)} style={inputStyle} />
+              <input
+                type="date"
+                name="due_to"
+                defaultValue={String(dueTo)}
+                style={inputStyle}
+              />
 
               <span style={{ opacity: 0.55, fontSize: 12 }}>
-                (Browser prikazuje svoj format u polju, ali sistem koristi dd.mm.yyyy u prikazu.)
+                (Browser prikazuje svoj format u polju, ali sistem koristi
+                dd.mm.yyyy u prikazu.)
               </span>
             </div>
           </div>
 
           {/* Desno: dugmad */}
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              flexShrink: 0,
+            }}
+          >
             <button type="submit" className="btn" style={{ minWidth: 110 }}>
               Filtriraj
             </button>
-            <Link href={resetHref} className="btn" style={{ padding: "10px 12px", minWidth: 90, textAlign: "center" }}>
+            <Link
+              href={resetHref}
+              className="btn"
+              style={{
+                padding: "10px 12px",
+                minWidth: 90,
+                textAlign: "center",
+              }}
+            >
               Reset
             </Link>
           </div>
@@ -251,7 +363,13 @@ export default async function Page({ searchParams }) {
       </form>
 
       {/* Separator */}
-      <div style={{ height: 1, background: "rgba(255,255,255,.12)", margin: "12px 0 14px" }} />
+      <div
+        style={{
+          height: 1,
+          background: "rgba(255,255,255,.12)",
+          margin: "12px 0 14px",
+        }}
+      />
 
       <table className="table">
         <thead>
@@ -270,11 +388,15 @@ export default async function Page({ searchParams }) {
           {rows.map((r) => (
             <tr key={r.potrazivanje_id ?? r.projekat_id}>
               <td className="cell-wrap">
-                <span style={{ opacity: 0.7, marginRight: 6 }}>#{r.projekat_id}</span>
+                <span style={{ opacity: 0.7, marginRight: 6 }}>
+                  #{r.projekat_id}
+                </span>
                 {r.radni_naziv}
               </td>
               <td>{r.narucilac_naziv ?? "—"}</td>
-              <td style={{ opacity: r.krajnji_klijent_naziv ? 1 : 0.6 }}>{r.krajnji_klijent_naziv ?? "—"}</td>
+              <td style={{ opacity: r.krajnji_klijent_naziv ? 1 : 0.6 }}>
+                {r.krajnji_klijent_naziv ?? "—"}
+              </td>
               <td className="num">{fmtMoney(r.iznos, r.valuta)}</td>
               <td>{r.datum_valute ? fmtDateDMY(r.datum_valute) : "—"}</td>
               <td className="num">{daysCell(r)}</td>
@@ -284,10 +406,13 @@ export default async function Page({ searchParams }) {
         </tbody>
       </table>
 
-      {rows.length === 0 && <div style={{ marginTop: 12, opacity: 0.7 }}>Nema stavki za prikaz (po trenutnim filterima).</div>}
+      {rows.length === 0 && (
+        <div style={{ marginTop: 12, opacity: 0.7 }}>
+          Nema stavki za prikaz (po trenutnim filterima).
+        </div>
+      )}
 
       {/* ✅ hover/press efekti bez event handlera */}
-      
     </div>
   );
 }

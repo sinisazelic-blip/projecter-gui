@@ -18,7 +18,9 @@ function round2(v: number) {
   return Math.round(v * 100) / 100;
 }
 function normCcy(v: any) {
-  const s = String(v ?? "").trim().toUpperCase();
+  const s = String(v ?? "")
+    .trim()
+    .toUpperCase();
   return (s || "BAM").slice(0, 3);
 }
 
@@ -33,7 +35,7 @@ async function hasColumn(table: string, column: string): Promise<boolean> {
         AND COLUMN_NAME = ?
       LIMIT 1
       `,
-      [table, column]
+      [table, column],
     );
     return Array.isArray(rows) && rows.length > 0;
   } catch {
@@ -50,7 +52,7 @@ async function hasColumn(table: string, column: string): Promise<boolean> {
 async function touchDeal(inicijacija_id: number, projekat_id?: number) {
   await pool.query(
     `UPDATE inicijacije SET updated_at = NOW() WHERE inicijacija_id = ? LIMIT 1`,
-    [inicijacija_id]
+    [inicijacija_id],
   );
 
   revalidatePath(`/inicijacije/${inicijacija_id}`);
@@ -66,15 +68,16 @@ async function syncProjectBudgetFromDeal(inicijacija_id: number) {
   // 1) nađi projekat_id
   const [r1]: any = await pool.query(
     `SELECT projekat_id FROM inicijacije WHERE inicijacija_id = ? LIMIT 1`,
-    [inicijacija_id]
+    [inicijacija_id],
   );
-  const projekat_id = Array.isArray(r1) && r1.length ? Number(r1[0]?.projekat_id ?? 0) : 0;
+  const projekat_id =
+    Array.isArray(r1) && r1.length ? Number(r1[0]?.projekat_id ?? 0) : 0;
   if (!projekat_id) return { didSync: false };
 
   // 2) napravi novi snapshot
   const [insSnap]: any = await pool.query(
     `INSERT INTO projekat_budget_snapshots (projekat_id, inicijacija_id) VALUES (?, ?)`,
-    [projekat_id, inicijacija_id]
+    [projekat_id, inicijacija_id],
   );
   const snapshot_id = Number(insSnap?.insertId ?? 0);
   if (!snapshot_id) return { didSync: false };
@@ -97,7 +100,7 @@ async function syncProjectBudgetFromDeal(inicijacija_id: number) {
       ${hasStorno ? "AND stornirano = 0" : ""}
     ORDER BY inicijacija_stavka_id ASC
     `,
-    [inicijacija_id]
+    [inicijacija_id],
   );
 
   const items = Array.isArray(dealItems) ? dealItems : [];
@@ -120,7 +123,7 @@ async function syncProjectBudgetFromDeal(inicijacija_id: number) {
       Number(it.kolicina ?? 0),
       Number(it.cijena_jedinicna ?? 0),
       normCcy(it.valuta),
-      Number(it.line_total ?? 0)
+      Number(it.line_total ?? 0),
     );
   }
 
@@ -132,7 +135,7 @@ async function syncProjectBudgetFromDeal(inicijacija_id: number) {
     VALUES
       ${placeholders.join(",")}
     `,
-    values
+    values,
   );
 
   return { didSync: true, projekat_id, snapshot_id, count: items.length };
@@ -152,9 +155,10 @@ async function getDealCurrencyMode(inicijacija_id: number) {
     WHERE i.inicijacija_id = ?
     LIMIT 1
     `,
-    [inicijacija_id]
+    [inicijacija_id],
   );
-  const is_ino = Array.isArray(rows) && rows.length ? Number(rows[0]?.is_ino ?? 0) : 0;
+  const is_ino =
+    Array.isArray(rows) && rows.length ? Number(rows[0]?.is_ino ?? 0) : 0;
   return { is_ino: is_ino === 1 };
 }
 
@@ -164,7 +168,10 @@ export async function GET(req: NextRequest) {
     const inicijacija_id = asInt(searchParams.get("inicijacija_id"));
 
     if (!inicijacija_id || inicijacija_id <= 0) {
-      return NextResponse.json({ ok: false, error: "Neispravan inicijacija_id." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Neispravan inicijacija_id." },
+        { status: 400 },
+      );
     }
 
     const hasStorno = await hasColumn("inicijacija_stavke", "stornirano");
@@ -181,12 +188,18 @@ export async function GET(req: NextRequest) {
         ${hasStorno ? "AND stornirano = 0" : ""}
       ORDER BY inicijacija_stavka_id ASC
       `,
-      [inicijacija_id]
+      [inicijacija_id],
     );
 
-    return NextResponse.json({ ok: true, rows: Array.isArray(rows) ? rows : [] });
+    return NextResponse.json({
+      ok: true,
+      rows: Array.isArray(rows) ? rows : [],
+    });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? "Greška" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Greška" },
+      { status: 500 },
+    );
   }
 }
 
@@ -198,10 +211,16 @@ export async function POST(req: NextRequest) {
     const stavka_id = asInt(body?.stavka_id);
 
     if (!inicijacija_id || inicijacija_id <= 0) {
-      return NextResponse.json({ ok: false, error: "inicijacija_id je obavezan." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "inicijacija_id je obavezan." },
+        { status: 400 },
+      );
     }
     if (!stavka_id || stavka_id <= 0) {
-      return NextResponse.json({ ok: false, error: "stavka_id je obavezan." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "stavka_id je obavezan." },
+        { status: 400 },
+      );
     }
 
     const hasInoPrice = await hasColumn("cjenovnik_stavke", "cijena_ino_eur");
@@ -221,11 +240,17 @@ export async function POST(req: NextRequest) {
           WHERE stavka_id = ? AND active = 1
           LIMIT 1
         `,
-      [stavka_id]
+      [stavka_id],
     );
     const c = Array.isArray(crows) && crows.length ? crows[0] : null;
     if (!c) {
-      return NextResponse.json({ ok: false, error: "Stavka iz cjenovnika nije pronađena (ili nije aktivna)." }, { status: 404 });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Stavka iz cjenovnika nije pronađena (ili nije aktivna).",
+        },
+        { status: 404 },
+      );
     }
 
     const kolicina = num(body?.kolicina);
@@ -238,14 +263,18 @@ export async function POST(req: NextRequest) {
 
     const cijena_override = num(body?.cijena_jedinicna);
     const cijena =
-      Number.isFinite(cijena_override as any) && (cijena_override as number) >= 0
+      Number.isFinite(cijena_override as any) &&
+      (cijena_override as number) >= 0
         ? (cijena_override as number)
         : baseDefaultPrice;
 
     const valuta = is_ino ? "EUR" : normCcy(c.valuta_default);
 
     const opisRaw = body?.opis ?? null;
-    const opis = opisRaw && String(opisRaw).trim() ? String(opisRaw).trim().slice(0, 500) : null;
+    const opis =
+      opisRaw && String(opisRaw).trim()
+        ? String(opisRaw).trim().slice(0, 500)
+        : null;
 
     const line_total = round2(k * cijena);
 
@@ -258,7 +287,17 @@ export async function POST(req: NextRequest) {
         (?, ?, ?, ?,
          ?, ?, ?, ?, ?)
       `,
-      [inicijacija_id, c.stavka_id, c.naziv, c.jedinica, k, cijena, valuta, opis, line_total]
+      [
+        inicijacija_id,
+        c.stavka_id,
+        c.naziv,
+        c.jedinica,
+        k,
+        cijena,
+        valuta,
+        opis,
+        line_total,
+      ],
     );
 
     const sync = await syncProjectBudgetFromDeal(inicijacija_id);
@@ -266,7 +305,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, sync });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? "Greška" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Greška" },
+      { status: 500 },
+    );
   }
 }
 
@@ -276,25 +318,43 @@ export async function PUT(req: NextRequest) {
 
     const inicijacija_stavka_id = asInt(body?.inicijacija_stavka_id);
     if (!inicijacija_stavka_id || inicijacija_stavka_id <= 0) {
-      return NextResponse.json({ ok: false, error: "inicijacija_stavka_id je obavezan." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "inicijacija_stavka_id je obavezan." },
+        { status: 400 },
+      );
     }
 
     const [r0]: any = await pool.query(
       `SELECT inicijacija_id FROM inicijacija_stavke WHERE inicijacija_stavka_id = ? LIMIT 1`,
-      [inicijacija_stavka_id]
+      [inicijacija_stavka_id],
     );
-    const inicijacija_id = Array.isArray(r0) && r0.length ? Number(r0[0]?.inicijacija_id ?? 0) : 0;
+    const inicijacija_id =
+      Array.isArray(r0) && r0.length ? Number(r0[0]?.inicijacija_id ?? 0) : 0;
     if (!inicijacija_id) {
-      return NextResponse.json({ ok: false, error: "Stavka nije pronađena." }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: "Stavka nije pronađena." },
+        { status: 404 },
+      );
     }
 
     const k = num(body?.kolicina);
     const cij = num(body?.cijena_jedinicna);
-    if (k === null || k <= 0) return NextResponse.json({ ok: false, error: "Količina mora biti broj > 0." }, { status: 400 });
-    if (cij === null || cij < 0) return NextResponse.json({ ok: false, error: "Cijena mora biti broj ≥ 0." }, { status: 400 });
+    if (k === null || k <= 0)
+      return NextResponse.json(
+        { ok: false, error: "Količina mora biti broj > 0." },
+        { status: 400 },
+      );
+    if (cij === null || cij < 0)
+      return NextResponse.json(
+        { ok: false, error: "Cijena mora biti broj ≥ 0." },
+        { status: 400 },
+      );
 
     const opisRaw = body?.opis ?? null;
-    const opis = opisRaw && String(opisRaw).trim() ? String(opisRaw).trim().slice(0, 500) : null;
+    const opis =
+      opisRaw && String(opisRaw).trim()
+        ? String(opisRaw).trim().slice(0, 500)
+        : null;
 
     const hasInoPrice = await hasColumn("cjenovnik_stavke", "cijena_ino_eur");
     const { is_ino } = await getDealCurrencyMode(inicijacija_id);
@@ -316,11 +376,18 @@ export async function PUT(req: NextRequest) {
             WHERE stavka_id = ? AND active = 1
             LIMIT 1
           `,
-        [newStavkaId]
+        [newStavkaId],
       );
       const c = Array.isArray(crows) && crows.length ? crows[0] : null;
       if (!c) {
-        return NextResponse.json({ ok: false, error: "Nova stavka iz cjenovnika nije pronađena (ili nije aktivna)." }, { status: 404 });
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "Nova stavka iz cjenovnika nije pronađena (ili nije aktivna).",
+          },
+          { status: 404 },
+        );
       }
 
       const valuta = is_ino ? "EUR" : normCcy(c.valuta_default);
@@ -341,14 +408,25 @@ export async function PUT(req: NextRequest) {
         WHERE inicijacija_stavka_id = ?
         LIMIT 1
         `,
-        [c.stavka_id, c.naziv, c.jedinica, k, cij, valuta, opis, line_total, inicijacija_stavka_id]
+        [
+          c.stavka_id,
+          c.naziv,
+          c.jedinica,
+          k,
+          cij,
+          valuta,
+          opis,
+          line_total,
+          inicijacija_stavka_id,
+        ],
       );
     } else {
       const [r1]: any = await pool.query(
         `SELECT valuta FROM inicijacija_stavke WHERE inicijacija_stavka_id = ? LIMIT 1`,
-        [inicijacija_stavka_id]
+        [inicijacija_stavka_id],
       );
-      const valuta = Array.isArray(r1) && r1.length ? normCcy(r1[0]?.valuta) : "BAM";
+      const valuta =
+        Array.isArray(r1) && r1.length ? normCcy(r1[0]?.valuta) : "BAM";
       const line_total = round2(k * cij);
 
       await pool.query(
@@ -363,7 +441,7 @@ export async function PUT(req: NextRequest) {
         WHERE inicijacija_stavka_id = ?
         LIMIT 1
         `,
-        [k, cij, opis, line_total, valuta, inicijacija_stavka_id]
+        [k, cij, opis, line_total, valuta, inicijacija_stavka_id],
       );
     }
 
@@ -372,7 +450,10 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json({ ok: true, sync });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? "Greška" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Greška" },
+      { status: 500 },
+    );
   }
 }
 
@@ -389,21 +470,34 @@ export async function PATCH(req: NextRequest) {
     const stornirano = st === 0 ? 0 : 1;
 
     if (!inicijacija_stavka_id || inicijacija_stavka_id <= 0) {
-      return NextResponse.json({ ok: false, error: "inicijacija_stavka_id je obavezan." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "inicijacija_stavka_id je obavezan." },
+        { status: 400 },
+      );
     }
 
     const hasStorno = await hasColumn("inicijacija_stavke", "stornirano");
     if (!hasStorno) {
-      return NextResponse.json({ ok: false, error: "Kolona stornirano ne postoji (pokreni ALTER TABLE)." }, { status: 400 });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Kolona stornirano ne postoji (pokreni ALTER TABLE).",
+        },
+        { status: 400 },
+      );
     }
 
     const [r0]: any = await pool.query(
       `SELECT inicijacija_id FROM inicijacija_stavke WHERE inicijacija_stavka_id = ? LIMIT 1`,
-      [inicijacija_stavka_id]
+      [inicijacija_stavka_id],
     );
-    const inicijacija_id = Array.isArray(r0) && r0.length ? Number(r0[0]?.inicijacija_id ?? 0) : 0;
+    const inicijacija_id =
+      Array.isArray(r0) && r0.length ? Number(r0[0]?.inicijacija_id ?? 0) : 0;
     if (!inicijacija_id) {
-      return NextResponse.json({ ok: false, error: "Stavka nije pronađena." }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: "Stavka nije pronađena." },
+        { status: 404 },
+      );
     }
 
     await pool.query(
@@ -413,7 +507,7 @@ export async function PATCH(req: NextRequest) {
       WHERE inicijacija_stavka_id = ?
       LIMIT 1
       `,
-      [stornirano, inicijacija_stavka_id]
+      [stornirano, inicijacija_stavka_id],
     );
 
     const sync = await syncProjectBudgetFromDeal(inicijacija_id);
@@ -421,6 +515,9 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json({ ok: true, stornirano, sync });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? "Greška" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Greška" },
+      { status: 500 },
+    );
   }
 }

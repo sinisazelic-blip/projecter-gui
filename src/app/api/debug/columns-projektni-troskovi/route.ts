@@ -14,7 +14,8 @@ export async function GET() {
     return NextResponse.json(
       {
         ok: false,
-        error: "Missing env vars. Need DB_HOST, DB_USER, DB_PASSWORD, DB_NAME (and optionally DB_PORT).",
+        error:
+          "Missing env vars. Need DB_HOST, DB_USER, DB_PASSWORD, DB_NAME (and optionally DB_PORT).",
         present: {
           DB_HOST: !!host,
           DB_USER: !!user,
@@ -23,7 +24,7 @@ export async function GET() {
           DB_PORT: process.env.DB_PORT || null,
         },
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -50,7 +51,7 @@ export async function GET() {
         error: e?.message || String(e),
         code: e?.code,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

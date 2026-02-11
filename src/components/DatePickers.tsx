@@ -84,7 +84,10 @@ export function DateTimePickerDDMMYYYYHHMM({
   const hiddenRef = useRef<HTMLInputElement | null>(null);
 
   const parsed = useMemo(() => parseHuman(value), [value]);
-  const hiddenVal = useMemo(() => (parsed ? toDateTimeLocalValue(parsed) : ""), [parsed]);
+  const hiddenVal = useMemo(
+    () => (parsed ? toDateTimeLocalValue(parsed) : ""),
+    [parsed],
+  );
 
   // sync hidden input value (so picker opens at the current value)
   useEffect(() => {
@@ -110,7 +113,14 @@ export function DateTimePickerDDMMYYYYHHMM({
   };
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 44px", gap: 8, alignItems: "center" }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 44px",
+        gap: 8,
+        alignItems: "center",
+      }}
+    >
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}

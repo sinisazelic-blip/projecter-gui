@@ -22,8 +22,8 @@ type BamBatch = {
 type BamTx = {
   reference?: string | null;
   valueDate?: string | null; // YYYY-MM-DD
-  amount: number;            // -duguje, +potrazuje
-  currency: string;          // BAM
+  amount: number; // -duguje, +potrazuje
+  currency: string; // BAM
   counterparty?: string | null;
   counterpartyBank?: string | null;
   description?: string | null;
@@ -44,7 +44,9 @@ function parseBiHShortDate(d?: string | null): string | null {
   if (!d) return null;
   const m = d.trim().match(/^(\d{2})\.(\d{2})\.(\d{2})$/);
   if (!m) return null;
-  const dd = m[1], mm = m[2], yy = m[3];
+  const dd = m[1],
+    mm = m[2],
+    yy = m[3];
   const year = 2000 + parseInt(yy, 10);
   return `${year}-${mm}-${dd}`;
 }
@@ -88,10 +90,16 @@ function parseBamXmlV2(xmlText: string): { batch: BamBatch; txs: BamTx[] } {
     accId: g3.ACC_ID ?? null,
     taxId: g3.TAX_ID ?? null,
     companyName: g3.NAZIV_KOM ?? null,
-    statementNo: g3.CF_BR_IZVODA ? Number(String(g3.CF_BR_IZVODA).trim()) : null,
-    statementDate: parseBiHShortDate(root?.CF_DATUM_IZVODA ?? g4?.DATUM_KONTROLE ?? null),
-    openingBalance: g3.CF_SALDO_PRIJE != null ? toNumber(g3.CF_SALDO_PRIJE) : null,
-    closingBalance: g3.CS_SALDO_POSLIJE != null ? toNumber(g3.CS_SALDO_POSLIJE) : null,
+    statementNo: g3.CF_BR_IZVODA
+      ? Number(String(g3.CF_BR_IZVODA).trim())
+      : null,
+    statementDate: parseBiHShortDate(
+      root?.CF_DATUM_IZVODA ?? g4?.DATUM_KONTROLE ?? null,
+    ),
+    openingBalance:
+      g3.CF_SALDO_PRIJE != null ? toNumber(g3.CF_SALDO_PRIJE) : null,
+    closingBalance:
+      g3.CS_SALDO_POSLIJE != null ? toNumber(g3.CS_SALDO_POSLIJE) : null,
     totalDebit: g3.CS_DUG != null ? toNumber(g3.CS_DUG) : null,
     totalCredit: g3.CS_POT != null ? toNumber(g3.CS_POT) : null,
   };
@@ -115,7 +123,8 @@ function parseBamXmlV2(xmlText: string): { batch: BamBatch; txs: BamTx[] } {
       counterpartyBank: (g1.NAZIV_BAN ?? null) as string | null,
       description,
       fullDescription: (g1.CF_SVRHA ?? null) as string | null,
-      txType: g1.TIP_NALOGA != null ? Number(String(g1.TIP_NALOGA).trim()) : null,
+      txType:
+        g1.TIP_NALOGA != null ? Number(String(g1.TIP_NALOGA).trim()) : null,
       directionFlag: g1.FLAG != null ? Number(String(g1.FLAG).trim()) : null,
       isFee,
       feeForReference: isFee ? extractFeeForReference(description) : null,
@@ -161,7 +170,10 @@ export async function POST(req: NextRequest) {
     const mode = String(form.get("mode") ?? "staging"); // staging | final (final opcionalno)
 
     if (!(file instanceof File)) {
-      return NextResponse.json({ ok: false, error: "Nedostaje file." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Nedostaje file." },
+        { status: 400 },
+      );
     }
 
     const account_id =
@@ -203,7 +215,7 @@ export async function POST(req: NextRequest) {
           batch.totalDebit,
           batch.totalCredit,
           file_hash,
-        ]
+        ],
       );
 
       let batch_id: number | null = null;
@@ -212,7 +224,7 @@ export async function POST(req: NextRequest) {
       } else {
         const [rows]: any = await conn.execute(
           `SELECT batch_id FROM bank_import_batch WHERE file_hash = ? LIMIT 1`,
-          [file_hash]
+          [file_hash],
         );
         batch_id = rows?.[0]?.batch_id ? Number(rows[0].batch_id) : null;
       }
@@ -262,7 +274,7 @@ export async function POST(req: NextRequest) {
             tx.isFee ? 1 : 0,
             tx.feeForReference,
             raw_json,
-          ]
+          ],
         );
 
         if (r?.insertId) inserted++;
@@ -284,7 +296,7 @@ export async function POST(req: NextRequest) {
           FROM bank_tx_staging
           WHERE batch_id = ?
           `,
-          [batch_id]
+          [batch_id],
         );
       }
 
@@ -300,7 +312,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     return NextResponse.json(
       { ok: false, error: err?.message ?? "Greška" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

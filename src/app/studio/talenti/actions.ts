@@ -2,7 +2,13 @@
 
 import { query } from "@/lib/db";
 
-type VrstaTalenta = "spiker" | "glumac" | "pjevac" | "dijete" | "muzicar" | "ostalo";
+type VrstaTalenta =
+  | "spiker"
+  | "glumac"
+  | "pjevac"
+  | "dijete"
+  | "muzicar"
+  | "ostalo";
 
 function cleanStr(v: any) {
   const s = String(v ?? "").trim();
@@ -10,8 +16,17 @@ function cleanStr(v: any) {
 }
 
 function normalizeVrsta(v: any): VrstaTalenta {
-  const s = String(v ?? "").trim().toLowerCase();
-  if (s === "spiker" || s === "glumac" || s === "pjevac" || s === "dijete" || s === "muzicar") return s;
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
+  if (
+    s === "spiker" ||
+    s === "glumac" ||
+    s === "pjevac" ||
+    s === "dijete" ||
+    s === "muzicar"
+  )
+    return s;
   return "ostalo";
 }
 
@@ -35,7 +50,7 @@ export async function createTalent(input: {
   await query(
     `INSERT INTO talenti (ime_prezime, vrsta, email, telefon, napomena, aktivan)
      VALUES (?,?,?,?,?,?)`,
-    [ime, vrsta, email, telefon, napomena, aktivan]
+    [ime, vrsta, email, telefon, napomena, aktivan],
   );
 
   return { ok: true };
@@ -66,16 +81,22 @@ export async function updateTalent(input: {
     `UPDATE talenti
         SET ime_prezime=?, vrsta=?, email=?, telefon=?, napomena=?, aktivan=?
       WHERE talent_id=?`,
-    [ime, vrsta, email, telefon, napomena, aktivan, id]
+    [ime, vrsta, email, telefon, napomena, aktivan, id],
   );
 
   return { ok: true };
 }
 
-export async function setTalentActive(input: { talent_id: number; aktivan: boolean }) {
+export async function setTalentActive(input: {
+  talent_id: number;
+  aktivan: boolean;
+}) {
   const id = Number(input?.talent_id);
   if (!Number.isFinite(id) || id <= 0) throw new Error("Neispravan talent_id.");
 
-  await query(`UPDATE talenti SET aktivan=? WHERE talent_id=?`, [input?.aktivan ? 1 : 0, id]);
+  await query(`UPDATE talenti SET aktivan=? WHERE talent_id=?`, [
+    input?.aktivan ? 1 : 0,
+    id,
+  ]);
   return { ok: true };
 }

@@ -16,7 +16,7 @@ export async function getPostingOrThrow(posting_id) {
     WHERE posting_id = ?
     LIMIT 1
     `,
-    [posting_id]
+    [posting_id],
   );
   const row = r?.rows?.[0];
   if (!row) throw new Error("Posting ne postoji (bank_tx_posting).");
@@ -34,7 +34,7 @@ export async function getPostingAllocatedSums(posting_id) {
     WHERE posting_id = ?
     LIMIT 1
     `,
-    [posting_id]
+    [posting_id],
   );
   const row = r?.rows?.[0] || { linked_income_km: 0, linked_payment_km: 0 };
   const inc = Number(row.linked_income_km) || 0;

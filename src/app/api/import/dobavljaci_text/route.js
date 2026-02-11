@@ -5,7 +5,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function parseBool(v) {
-  const s = String(v ?? "").trim().toLowerCase();
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
   if (["1", "da", "yes", "true", "y"].includes(s)) return 1;
   if (["0", "ne", "no", "false", "n"].includes(s)) return 0;
   return null;
@@ -35,7 +37,10 @@ export async function POST(req) {
       .filter((l) => l.trim() !== "");
 
     if (lines.length < 2) {
-      return NextResponse.json({ ok: false, message: "CSV je prazan (nema data redova)" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, message: "CSV je prazan (nema data redova)" },
+        { status: 400 },
+      );
     }
 
     const header = lines[0].split(";").map((h) => h.trim());
@@ -43,8 +48,11 @@ export async function POST(req) {
 
     if (!("naziv" in idx)) {
       return NextResponse.json(
-        { ok: false, message: "Nedostaje kolona: naziv (header: " + header.join(";") + ")" },
-        { status: 400 }
+        {
+          ok: false,
+          message: "Nedostaje kolona: naziv (header: " + header.join(";") + ")",
+        },
+        { status: 400 },
       );
     }
 
@@ -59,7 +67,8 @@ export async function POST(req) {
       const pravno_lice = (parts[idx["pravno_lice"]] ?? "").trim() || null;
       const drzava_iso2 = (parts[idx["drzava_iso2"]] ?? "").trim() || null;
       const grad = (parts[idx["grad"]] ?? "").trim() || null;
-      const postanski_broj = (parts[idx["postanski_broj"]] ?? "").trim() || null;
+      const postanski_broj =
+        (parts[idx["postanski_broj"]] ?? "").trim() || null;
       const adresa = (parts[idx["adresa"]] ?? "").trim() || null;
       const email = (parts[idx["email"]] ?? "").trim() || null;
       const telefon = (parts[idx["telefon"]] ?? "").trim() || null;
@@ -84,7 +93,10 @@ export async function POST(req) {
     }
 
     if (rows.length === 0) {
-      return NextResponse.json({ ok: false, message: "Nema validnih redova za import" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, message: "Nema validnih redova za import" },
+        { status: 400 },
+      );
     }
 
     conn = await mysql.createConnection({
@@ -127,7 +139,7 @@ export async function POST(req) {
         `INSERT INTO stg_dobavljaci
          (batch_id, naziv, vrsta, pravno_lice, drzava_iso2, grad, postanski_broj, adresa, email, telefon, napomena, aktivan, source_file)
          VALUES ?`,
-        [chunk]
+        [chunk],
       );
       inserted += res?.affectedRows ?? chunk.length;
     }
@@ -140,7 +152,10 @@ export async function POST(req) {
       header,
     });
   } catch (e) {
-    return NextResponse.json({ ok: false, message: e?.message ?? String(e) }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, message: e?.message ?? String(e) },
+      { status: 500 },
+    );
   } finally {
     if (conn) await conn.end();
   }

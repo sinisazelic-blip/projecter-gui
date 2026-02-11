@@ -158,7 +158,8 @@ export default function CashClient() {
 
       if (!res.ok) {
         const msg =
-          (json && typeof json === "object" && json.error) || `HTTP ${res.status}`;
+          (json && typeof json === "object" && json.error) ||
+          `HTTP ${res.status}`;
         throw new Error(msg);
       }
 

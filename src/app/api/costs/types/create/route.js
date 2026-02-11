@@ -14,19 +14,22 @@ export async function POST(req) {
 
     if (!projekat_id || !tip_id || !Number.isFinite(iznos_km)) {
       return NextResponse.json(
-        { ok: false, message: "Nedostaju obavezna polja (projekat, tip, iznos)." },
-        { status: 400 }
+        {
+          ok: false,
+          message: "Nedostaju obavezna polja (projekat, tip, iznos).",
+        },
+        { status: 400 },
       );
     }
 
     const tipRows = await query(
       `SELECT requires_entity FROM tip_troska WHERE tip_id=? AND aktivan=1`,
-      [tip_id]
+      [tip_id],
     );
     if (!tipRows?.length) {
       return NextResponse.json(
         { ok: false, message: "Neispravan tip troška." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -47,7 +50,7 @@ export async function POST(req) {
                 ? "Za ovaj tip moraš izabrati talenta."
                 : "Za ovaj tip moraš izabrati dobavljača.",
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -59,14 +62,14 @@ export async function POST(req) {
       VALUES
         (?, ?, ?, ?, ?, ?, 'AKTIVNO')
       `,
-      [projekat_id, tip_id, iznos_km, opis || null, entitet_tip, entitet_id]
+      [projekat_id, tip_id, iznos_km, opis || null, entitet_tip, entitet_id],
     );
 
     return NextResponse.json({ ok: true, id: r.insertId });
   } catch (e) {
     return NextResponse.json(
       { ok: false, message: e?.message ?? "Greška" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

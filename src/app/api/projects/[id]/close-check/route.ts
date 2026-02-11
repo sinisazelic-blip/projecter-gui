@@ -24,10 +24,11 @@ export async function GET(req: Request) {
 
   const check = await getCloseCheck(projekatId);
   if (!check) {
-    return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, error: "NOT_FOUND" },
+      { status: 404 },
+    );
   }
 
   return NextResponse.json({ ok: true, ...check }, { status: 200 });
 }
-
-

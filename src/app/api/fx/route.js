@@ -7,7 +7,10 @@ export async function GET(req) {
   const ccy = searchParams.get("ccy");
 
   if (!date || !ccy) {
-    return NextResponse.json({ ok: false, error: "missing_params" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "missing_params" },
+      { status: 400 },
+    );
   }
 
   const rows = await query(
@@ -17,7 +20,7 @@ export async function GET(req) {
     WHERE rate_date = ? AND ccy = ?
     LIMIT 1
     `,
-    [date, ccy.toUpperCase()]
+    [date, ccy.toUpperCase()],
   );
 
   if (!rows || rows.length === 0) {

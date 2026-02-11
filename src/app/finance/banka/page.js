@@ -22,10 +22,10 @@ function badge(text, kind = "neutral") {
     kind === "ok"
       ? "badge badge-green"
       : kind === "warn"
-      ? "badge badge-orange"
-      : kind === "bad"
-      ? "badge badge-red"
-      : "badge";
+        ? "badge badge-orange"
+        : kind === "bad"
+          ? "badge badge-red"
+          : "badge";
   return <span className={cls}>{text}</span>;
 }
 
@@ -73,7 +73,9 @@ export default async function BankaPage({ searchParams }) {
   const params = [];
 
   if (q) {
-    where.push("(f.counterparty LIKE ? OR f.description LIKE ? OR CAST(f.tx_id AS CHAR) LIKE ?)");
+    where.push(
+      "(f.counterparty LIKE ? OR f.description LIKE ? OR CAST(f.tx_id AS CHAR) LIKE ?)",
+    );
     params.push(`%${q}%`, `%${q}%`, `%${q}%`);
   }
 
@@ -97,7 +99,7 @@ export default async function BankaPage({ searchParams }) {
       `(f.projekat_id = ? OR EXISTS (
           SELECT 1 FROM bank_tx_cost_link cl
           WHERE cl.posting_id = f.posting_id AND cl.projekat_id = ?
-       ))`
+       ))`,
     );
     params.push(projekatId, projekatId);
   }
@@ -126,7 +128,7 @@ export default async function BankaPage({ searchParams }) {
       ORDER BY f.value_date DESC, f.posting_id DESC
       LIMIT 200
       `,
-      params
+      params,
     );
   } catch {
     // fallback (no view)
@@ -134,7 +136,9 @@ export default async function BankaPage({ searchParams }) {
     const p2 = [];
 
     if (q) {
-      w2.push("(counterparty LIKE ? OR description LIKE ? OR CAST(tx_id AS CHAR) LIKE ?)");
+      w2.push(
+        "(counterparty LIKE ? OR description LIKE ? OR CAST(tx_id AS CHAR) LIKE ?)",
+      );
       p2.push(`%${q}%`, `%${q}%`, `%${q}%`);
     }
     if (from) {
@@ -150,7 +154,7 @@ export default async function BankaPage({ searchParams }) {
         `(projekat_id = ? OR EXISTS (
           SELECT 1 FROM bank_tx_cost_link cl
           WHERE cl.posting_id = bank_tx_posting.posting_id AND cl.projekat_id = ?
-        ))`
+        ))`,
       );
       p2.push(projekatId, projekatId);
     }
@@ -170,7 +174,7 @@ export default async function BankaPage({ searchParams }) {
       ORDER BY value_date DESC, posting_id DESC
       LIMIT 200
       `,
-      p2
+      p2,
     );
   }
 
@@ -178,30 +182,51 @@ export default async function BankaPage({ searchParams }) {
     <div className="container">
       <div className="topbar glass">
         <div className="topbar-left">
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <h1 className="h1" style={{ margin: 0 }}>Banka</h1>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            <h1 className="h1" style={{ margin: 0 }}>
+              Banka
+            </h1>
 
             {/* ✅ 2.23: projekat badge */}
-            {hasProject ? (
-              <span title="Aktivan filter: projekat_id" className="badge badge-green">
-                PROJEKAT #{projekatId}
-              </span>
-            ) : null}
+            {hasProject
+              ? <span
+                  title="Aktivan filter: projekat_id"
+                  className="badge badge-green"
+                >
+                  PROJEKAT #{projekatId}
+                </span>
+              : null}
 
             {alloc ? <span className="badge">{alloc}</span> : null}
             {q ? <span className="badge">q</span> : null}
           </div>
 
-          <div className="subtle">Canonical ledger (read-only). Filteri su UX.</div>
+          <div className="subtle">
+            Canonical ledger (read-only). Filteri su UX.
+          </div>
         </div>
 
-        <div className="topbar-right" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div
+          className="topbar-right"
+          style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+        >
           {/* ✅ 2.23: quick reset samo projekat */}
-          {hasProject ? (
-            <Link className="btn" href={resetProjectHref} title="Ukloni projekat filter (ostavi ostale filtere)">
-              Reset projekat
-            </Link>
-          ) : null}
+          {hasProject
+            ? <Link
+                className="btn"
+                href={resetProjectHref}
+                title="Ukloni projekat filter (ostavi ostale filtere)"
+              >
+                Reset projekat
+              </Link>
+            : null}
 
           <Link className="btn" href="/finance">
             Finansije
@@ -210,11 +235,24 @@ export default async function BankaPage({ searchParams }) {
       </div>
 
       <div className="card">
-        <form className="card-row" method="GET" style={{ gap: 12, flexWrap: "wrap" }}>
+        <form
+          className="card-row"
+          method="GET"
+          style={{ gap: 12, flexWrap: "wrap" }}
+        >
           <div style={{ minWidth: 260 }}>
             <div className="label">Pretraga (q)</div>
-            <input className="input" name="q" defaultValue={q} placeholder="partner / opis / tx_id…" />
-            {q ? <div className="subtle" style={{ marginTop: 6 }}>Traži u partner/opis/tx_id</div> : null}
+            <input
+              className="input"
+              name="q"
+              defaultValue={q}
+              placeholder="partner / opis / tx_id…"
+            />
+            {q
+              ? <div className="subtle" style={{ marginTop: 6 }}>
+                  Traži u partner/opis/tx_id
+                </div>
+              : null}
           </div>
 
           <div style={{ width: 170 }}>
@@ -229,25 +267,40 @@ export default async function BankaPage({ searchParams }) {
 
           <div style={{ width: 180 }}>
             <div className="label">projekat_id</div>
-            <input className="input" name="projekat_id" defaultValue={projekatIdRaw} placeholder="npr. 77" />
-            {hasProject ? (
-              <div className="subtle" style={{ marginTop: 6 }}>
-                Aktivno: <b>PROJEKAT #{projekatId}</b> ·{" "}
-                <Link className="link" href={`/projects/${projekatId}`}>
-                  otvori projekat
-                </Link>
-              </div>
-            ) : null}
+            <input
+              className="input"
+              name="projekat_id"
+              defaultValue={projekatIdRaw}
+              placeholder="npr. 77"
+            />
+            {hasProject
+              ? <div className="subtle" style={{ marginTop: 6 }}>
+                  Aktivno: <b>PROJEKAT #{projekatId}</b> ·{" "}
+                  <Link className="link" href={`/projects/${projekatId}`}>
+                    otvori projekat
+                  </Link>
+                </div>
+              : null}
           </div>
 
           <div style={{ width: 170 }}>
             <div className="label">from</div>
-            <input className="input" name="from" defaultValue={from} placeholder="YYYY-MM-DD" />
+            <input
+              className="input"
+              name="from"
+              defaultValue={from}
+              placeholder="YYYY-MM-DD"
+            />
           </div>
 
           <div style={{ width: 170 }}>
             <div className="label">to</div>
-            <input className="input" name="to" defaultValue={to} placeholder="YYYY-MM-DD" />
+            <input
+              className="input"
+              name="to"
+              defaultValue={to}
+              placeholder="YYYY-MM-DD"
+            />
           </div>
 
           <div style={{ alignSelf: "flex-end", display: "flex", gap: 8 }}>
@@ -277,37 +330,52 @@ export default async function BankaPage({ searchParams }) {
               </tr>
             </thead>
             <tbody>
-              {rows.length ? (
-                rows.map((r) => {
-                  const rev = r.reversed_at || r.reversed_by_batch_id ? badge("YES", "bad") : badge("NO", "ok");
-                  return (
-                    <tr key={r.posting_id}>
-                      <td>
-                        <Link className="link" href={`/finance/banka/${r.posting_id}`}>
-                          {r.posting_id}
-                        </Link>
-                        <div className="subtle">tx:{r.tx_id}</div>
-                      </td>
-                      <td>{fmtDate(r.value_date)}</td>
-                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                        {fmtKM(r.amount)}
-                      </td>
-                      <td>{r.alloc_status ? allocBadge(r.alloc_status) : badge("—")}</td>
-                      <td>{rev}</td>
-                      <td>
-                        <div style={{ fontWeight: 900 }}>{r.counterparty?.trim() ? r.counterparty : "—"}</div>
-                        <div className="subtle">{r.description ?? "—"}</div>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={6} className="subtle" style={{ padding: 14 }}>
-                    Nema rezultata.
-                  </td>
-                </tr>
-              )}
+              {rows.length
+                ? rows.map((r) => {
+                    const rev =
+                      r.reversed_at || r.reversed_by_batch_id
+                        ? badge("YES", "bad")
+                        : badge("NO", "ok");
+                    return (
+                      <tr key={r.posting_id}>
+                        <td>
+                          <Link
+                            className="link"
+                            href={`/finance/banka/${r.posting_id}`}
+                          >
+                            {r.posting_id}
+                          </Link>
+                          <div className="subtle">tx:{r.tx_id}</div>
+                        </td>
+                        <td>{fmtDate(r.value_date)}</td>
+                        <td
+                          style={{
+                            textAlign: "right",
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          {fmtKM(r.amount)}
+                        </td>
+                        <td>
+                          {r.alloc_status
+                            ? allocBadge(r.alloc_status)
+                            : badge("—")}
+                        </td>
+                        <td>{rev}</td>
+                        <td>
+                          <div style={{ fontWeight: 900 }}>
+                            {r.counterparty?.trim() ? r.counterparty : "—"}
+                          </div>
+                          <div className="subtle">{r.description ?? "—"}</div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                : <tr>
+                    <td colSpan={6} className="subtle" style={{ padding: 14 }}>
+                      Nema rezultata.
+                    </td>
+                  </tr>}
             </tbody>
           </table>
         </div>

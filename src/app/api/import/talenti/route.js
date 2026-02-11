@@ -5,7 +5,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function parseBool(v) {
-  const s = String(v ?? "").trim().toLowerCase();
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
   if (["1", "da", "yes", "true", "y"].includes(s)) return 1;
   if (["0", "ne", "no", "false", "n"].includes(s)) return 0;
   return null;
@@ -24,7 +26,10 @@ export async function POST(req) {
     const form = await req.formData();
     const file = form.get("file");
     if (!file) {
-      return NextResponse.json({ ok: false, message: "Nedostaje file (multipart field: file)" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, message: "Nedostaje file (multipart field: file)" },
+        { status: 400 },
+      );
     }
 
     const buf = Buffer.from(await file.arrayBuffer());
@@ -32,7 +37,10 @@ export async function POST(req) {
 
     const lines = splitLines(text).filter((l) => l.trim() !== "");
     if (lines.length < 2) {
-      return NextResponse.json({ ok: false, message: "CSV je prazan (nema data redova)" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, message: "CSV je prazan (nema data redova)" },
+        { status: 400 },
+      );
     }
 
     const header = lines[0].split(";").map((h) => h.trim());
@@ -41,7 +49,11 @@ export async function POST(req) {
     // očekujemo: ime_prezime;vrsta;email;telefon;napomena;aktivan
     const required = ["ime_prezime"];
     for (const r of required) {
-      if (!(r in idx)) return NextResponse.json({ ok: false, message: `Nedostaje kolona: ${r}` }, { status: 400 });
+      if (!(r in idx))
+        return NextResponse.json(
+          { ok: false, message: `Nedostaje kolona: ${r}` },
+          { status: 400 },
+        );
     }
 
     const rows = [];
@@ -56,11 +68,22 @@ export async function POST(req) {
       const napomena = (parts[idx["napomena"]] ?? "").trim() || null;
       const aktivan = parseBool(parts[idx["aktivan"]]);
 
-      rows.push([batchId, ime_prezime, vrsta, email, telefon, napomena, aktivan]);
+      rows.push([
+        batchId,
+        ime_prezime,
+        vrsta,
+        email,
+        telefon,
+        napomena,
+        aktivan,
+      ]);
     }
 
     if (rows.length === 0) {
-      return NextResponse.json({ ok: false, message: "Nema validnih redova za import" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, message: "Nema validnih redova za import" },
+        { status: 400 },
+      );
     }
 
     conn = await mysql.createConnection({
@@ -96,7 +119,7 @@ export async function POST(req) {
       const chunk = rows.slice(i, i + chunkSize);
       const [res] = await conn.query(
         `INSERT INTO stg_talenti (batch_id, ime_prezime, vrsta, email, telefon, napomena, aktivan) VALUES ?`,
-        [chunk]
+        [chunk],
       );
       inserted += res.affectedRows ?? chunk.length;
     }
@@ -109,7 +132,10 @@ export async function POST(req) {
       header,
     });
   } catch (e) {
-    return NextResponse.json({ ok: false, message: e?.message ?? String(e) }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, message: e?.message ?? String(e) },
+      { status: 500 },
+    );
   } finally {
     if (conn) await conn.end();
   }

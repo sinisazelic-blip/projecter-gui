@@ -24,15 +24,20 @@ const projekatId = 5757; // <<< PROMIJENI u svoj problematični
 // 1) DB istina (projekti.rok_glavni)
 const dbRow = await query(
   `SELECT projekat_id, DATE_FORMAT(rok_glavni, '%Y-%m-%d') AS rok_glavni FROM projekti WHERE projekat_id = ? LIMIT 1`,
-  [projekatId]
+  [projekatId],
 );
 
 // 2) API istina (ono što lista guta)
-const res = await fetch(`http://localhost:3000/api/projects?status_id=all&q=${projekatId}`, {
-  cache: "no-store",
-  headers: { "cache-control": "no-store" },
-});
+const res = await fetch(
+  `http://localhost:3000/api/projects?status_id=all&q=${projekatId}`,
+  {
+    cache: "no-store",
+    headers: { "cache-control": "no-store" },
+  },
+);
 const json = await res.json().catch(() => null);
 const apiRow = (json?.rows || [])[0] || null;
 
-console.log(JSON.stringify({ dbRow, apiRok: apiRow?.rok_glavni, apiRow }, null, 2));
+console.log(
+  JSON.stringify({ dbRow, apiRok: apiRow?.rok_glavni, apiRow }, null, 2),
+);

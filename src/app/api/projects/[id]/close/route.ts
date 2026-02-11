@@ -27,7 +27,9 @@ function getUserLabel(req: Request) {
 }
 
 function getIp(req: Request) {
-  return req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || null;
+  return (
+    req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || null
+  );
 }
 
 export async function POST(req: Request) {
@@ -41,27 +43,30 @@ export async function POST(req: Request) {
 
   const check = await getCloseCheck(projekatId);
   if (!check) {
-    return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, error: "NOT_FOUND" },
+      { status: 404 },
+    );
   }
 
   if (!check.ok_to_close) {
     return NextResponse.json(
       { ok: false, error: "CLOSE_BLOCKED", ...check },
-      { status: 409 }
+      { status: 409 },
     );
   }
 
   if (check.warnings.length > 0 && !force) {
     return NextResponse.json(
       { ok: false, error: "CLOSE_NEEDS_CONFIRM", ...check },
-      { status: 409 }
+      { status: 409 },
     );
   }
 
   // ✅ ZATVOREN (soft-lock): status_id = 8
-  await query(`UPDATE projekti SET status_id = 8 WHERE projekat_id = ?`, [projekatId]);
-
-
+  await query(`UPDATE projekti SET status_id = 8 WHERE projekat_id = ?`, [
+    projekatId,
+  ]);
 
   // ✅ audit log
   const user_label = getUserLabel(req);
@@ -75,13 +80,18 @@ export async function POST(req: Request) {
   await query(
     `INSERT INTO project_audit (projekat_id, action, details, user_label, ip)
      VALUES (?, 'PROJECT_CLOSE', CAST(? AS JSON), ?, ?)`,
-    [projekatId, JSON.stringify(details), user_label, ip]
+    [projekatId, JSON.stringify(details), user_label, ip],
   );
 
   const after = await getCloseCheck(projekatId);
 
   return NextResponse.json(
-    { ok: true, message: "Projekat zatvoren (soft-lock).", projekat_id: projekatId, after },
-    { status: 200 }
+    {
+      ok: true,
+      message: "Projekat zatvoren (soft-lock).",
+      projekat_id: projekatId,
+      after,
+    },
+    { status: 200 },
   );
 }

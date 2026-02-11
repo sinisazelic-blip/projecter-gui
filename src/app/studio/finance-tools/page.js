@@ -17,8 +17,8 @@ export default function FinanceToolsPage() {
       <div className="card" style={{ marginTop: 12 }}>
         <div className="card-title">⚠️ Operativni alati</div>
         <div className="card-subtitle">
-          Ovo je “tools” ekran. Koristi se pažljivo. Ništa se ne briše — linkovi se
-          mogu samo deaktivirati (storno).
+          Ovo je “tools” ekran. Koristi se pažljivo. Ništa se ne briše — linkovi
+          se mogu samo deaktivirati (storno).
         </div>
       </div>
 

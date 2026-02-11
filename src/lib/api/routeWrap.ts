@@ -4,10 +4,9 @@ import { fail, asError } from "./response";
  * Wraps Next.js route handlers (GET/POST/etc) and returns the same signature.
  * Works with (req) or (req, ctx) handlers.
  */
-export function withApiErrorBoundary<T extends (...args: any[]) => Promise<Response>>(
-  handler: T,
-  opts?: { defaultCode?: string; defaultMessage?: string }
-): T {
+export function withApiErrorBoundary<
+  T extends (...args: any[]) => Promise<Response>,
+>(handler: T, opts?: { defaultCode?: string; defaultMessage?: string }): T {
   return (async (...args: Parameters<T>) => {
     try {
       return await handler(...args);

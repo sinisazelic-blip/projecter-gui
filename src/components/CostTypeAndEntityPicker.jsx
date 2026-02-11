@@ -52,11 +52,23 @@ export default function CostTypeAndEntityPicker({
       const code = selectedType?.code || null;
 
       if (code === "TALENT") {
-        onChange?.({ tip_id: Number(tipId) || null, entity_type: "talent", entity_id: null });
+        onChange?.({
+          tip_id: Number(tipId) || null,
+          entity_type: "talent",
+          entity_id: null,
+        });
       } else if (code === "VENDOR") {
-        onChange?.({ tip_id: Number(tipId) || null, entity_type: "vendor", entity_id: null });
+        onChange?.({
+          tip_id: Number(tipId) || null,
+          entity_type: "vendor",
+          entity_id: null,
+        });
       } else {
-        onChange?.({ tip_id: Number(tipId) || null, entity_type: null, entity_id: null });
+        onChange?.({
+          tip_id: Number(tipId) || null,
+          entity_type: null,
+          entity_id: null,
+        });
       }
 
       if (code === "TALENT") {
@@ -74,20 +86,31 @@ export default function CostTypeAndEntityPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedType?.code, tipId]);
 
-  const showEntity = selectedType?.code === "TALENT" || selectedType?.code === "VENDOR";
+  const showEntity =
+    selectedType?.code === "TALENT" || selectedType?.code === "VENDOR";
   const entityLabel = selectedType?.code === "TALENT" ? "Talenat" : "Dobavljač";
-  const addLabel = selectedType?.code === "TALENT" ? "Novi talenat" : "Novi dobavljač";
-  const addPlaceholder = selectedType?.code === "TALENT" ? "Ime i prezime" : "Naziv";
+  const addLabel =
+    selectedType?.code === "TALENT" ? "Novi talenat" : "Novi dobavljač";
+  const addPlaceholder =
+    selectedType?.code === "TALENT" ? "Ime i prezime" : "Naziv";
 
   async function refreshItemsAndSelect(idToSelect) {
     if (selectedType?.code === "TALENT") {
       const d = await jget("/api/talents");
       if (d?.ok) setItems(d.items || []);
-      onChange?.({ tip_id: Number(tipId) || null, entity_type: "talent", entity_id: idToSelect });
+      onChange?.({
+        tip_id: Number(tipId) || null,
+        entity_type: "talent",
+        entity_id: idToSelect,
+      });
     } else if (selectedType?.code === "VENDOR") {
       const d = await jget("/api/vendors");
       if (d?.ok) setItems(d.items || []);
-      onChange?.({ tip_id: Number(tipId) || null, entity_type: "vendor", entity_id: idToSelect });
+      onChange?.({
+        tip_id: Number(tipId) || null,
+        entity_type: "vendor",
+        entity_id: idToSelect,
+      });
     }
   }
 
@@ -99,7 +122,8 @@ export default function CostTypeAndEntityPicker({
       return;
     }
     setSaving(true);
-    const url = selectedType?.code === "TALENT" ? "/api/talents" : "/api/vendors";
+    const url =
+      selectedType?.code === "TALENT" ? "/api/talents" : "/api/vendors";
     const d = await jpost(url, { name });
     setSaving(false);
 
@@ -119,7 +143,12 @@ export default function CostTypeAndEntityPicker({
         <div>Vrsta troška</div>
         <select
           value={tipId}
-          onChange={(e) => onChange?.({ ...value, tip_id: e.target.value ? Number(e.target.value) : null })}
+          onChange={(e) =>
+            onChange?.({
+              ...value,
+              tip_id: e.target.value ? Number(e.target.value) : null,
+            })
+          }
         >
           <option value="">— izaberi —</option>
           {types.map((t) => (
@@ -132,9 +161,22 @@ export default function CostTypeAndEntityPicker({
 
       {showEntity && (
         <div style={{ display: "grid", gap: 6 }}>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
             <div>{entityLabel}</div>
-            <button type="button" onClick={() => { setErr(""); setIsOpen(true); }}>
+            <button
+              type="button"
+              onClick={() => {
+                setErr("");
+                setIsOpen(true);
+              }}
+            >
               + {addLabel}
             </button>
           </div>
@@ -150,7 +192,11 @@ export default function CostTypeAndEntityPicker({
             }
             disabled={loadingItems}
           >
-            <option value="">{loadingItems ? "Učitavam..." : `— izaberi (${entityLabel.toLowerCase()}) —`}</option>
+            <option value="">
+              {loadingItems
+                ? "Učitavam..."
+                : `— izaberi (${entityLabel.toLowerCase()}) —`}
+            </option>
             {items.map((x) => (
               <option key={x.id} value={x.id}>
                 {x.name}
@@ -176,8 +222,17 @@ export default function CostTypeAndEntityPicker({
                 placeholder={addPlaceholder}
               />
               {err && <div style={{ color: "crimson" }}>{err}</div>}
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                <button type="button" onClick={() => { setIsOpen(false); setNewName(""); setErr(""); }}>
+              <div
+                style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    setNewName("");
+                    setErr("");
+                  }}
+                >
                   Otkaži
                 </button>
                 <button type="button" onClick={handleCreate} disabled={saving}>

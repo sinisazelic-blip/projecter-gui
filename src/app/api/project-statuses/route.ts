@@ -31,14 +31,18 @@ export async function GET() {
     const [rows] = await pool.query(
       `SELECT status_id, kod, naziv, opis, sort, redoslijed
        FROM projekt_statusi
-       ORDER BY sort ASC, status_id ASC`
+       ORDER BY sort ASC, status_id ASC`,
     );
 
     return NextResponse.json({ success: true, rows });
   } catch (e: any) {
     return NextResponse.json(
-      { success: false, message: e?.message ?? "DB error", code: e?.code ?? null },
-      { status: 500 }
+      {
+        success: false,
+        message: e?.message ?? "DB error",
+        code: e?.code ?? null,
+      },
+      { status: 500 },
     );
   }
 }

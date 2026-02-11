@@ -8,13 +8,15 @@ export function toTrimmed(v) {
 export function assertNonEmpty(label, v, maxLen = 255) {
   const s = toTrimmed(v);
   if (!s) throw new Error(`${label} je obavezno.`);
-  if (s.length > maxLen) throw new Error(`${label} je predugačko (max ${maxLen}).`);
+  if (s.length > maxLen)
+    throw new Error(`${label} je predugačko (max ${maxLen}).`);
   return s;
 }
 
 export function assertEnum(label, v, allowed) {
   const s = toTrimmed(v);
-  if (!allowed.includes(s)) throw new Error(`${label} mora biti jedno od: ${allowed.join(", ")}`);
+  if (!allowed.includes(s))
+    throw new Error(`${label} mora biti jedno od: ${allowed.join(", ")}`);
   return s;
 }
 
@@ -27,7 +29,8 @@ export function assertBool(label, v) {
 export function assertOptionalStr(label, v, maxLen = 255) {
   const s = toTrimmed(v);
   if (!s) return null;
-  if (s.length > maxLen) throw new Error(`${label} je predugačko (max ${maxLen}).`);
+  if (s.length > maxLen)
+    throw new Error(`${label} je predugačko (max ${maxLen}).`);
   return s;
 }
 
@@ -49,6 +52,7 @@ export function assertMovementAt(v) {
   if (v instanceof Date) return v;
   const s = toTrimmed(v);
   // minimalna provjera: "YYYY-MM-DD"
-  if (s.length < 10) throw new Error("Datum/vrijeme (movement_at) nije validan.");
+  if (s.length < 10)
+    throw new Error("Datum/vrijeme (movement_at) nije validan.");
   return s; // prosljeđujemo MySQL-u kao string
 }

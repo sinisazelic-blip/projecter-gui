@@ -7,22 +7,24 @@ import { mustInt, mustAllocationKm } from "./finance.validate";
 async function getReceivableOrThrow(id) {
   const r = await query(
     "SELECT potrazivanje_id, iznos_km, status FROM projekt_potrazivanja WHERE potrazivanje_id = ? LIMIT 1",
-    [id]
+    [id],
   );
   const row = r?.rows?.[0];
   if (!row) throw new Error("Potraživanje ne postoji.");
-  if (row.status === "STORNO") throw new Error("Potraživanje je STORNO i ne može se zatvarati.");
+  if (row.status === "STORNO")
+    throw new Error("Potraživanje je STORNO i ne može se zatvarati.");
   return row;
 }
 
 async function getIncomeOrThrow(id) {
   const r = await query(
     "SELECT prihod_id, iznos_km, status FROM projektni_prihodi WHERE prihod_id = ? LIMIT 1",
-    [id]
+    [id],
   );
   const row = r?.rows?.[0];
   if (!row) throw new Error("Prihod ne postoji.");
-  if (row.status !== "ACTIVE") throw new Error("Prihod nije ACTIVE (storno ili nevažeći).");
+  if (row.status !== "ACTIVE")
+    throw new Error("Prihod nije ACTIVE (storno ili nevažeći).");
   return row;
 }
 
@@ -34,9 +36,13 @@ async function getPaidSum(potrazivanje_id) {
     WHERE potrazivanje_id = ?
     LIMIT 1
     `,
-    [potrazivanje_id]
+    [potrazivanje_id],
   );
-  const row = r?.rows?.[0] || { paid_km: 0, remaining_km: null, potrazuje_km: null };
+  const row = r?.rows?.[0] || {
+    paid_km: 0,
+    remaining_km: null,
+    potrazuje_km: null,
+  };
   return {
     paid_km: Number(row.paid_km) || 0,
     remaining_km: Number(row.remaining_km),
@@ -53,13 +59,17 @@ async function syncReceivableStatus(potrazivanje_id) {
   // ne diramo STORNO ovdje (ionako je blokiran gore)
   await query(
     "UPDATE projekt_potrazivanja SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE potrazivanje_id = ? AND status <> 'STORNO'",
-    [newStatus, potrazivanje_id]
+    [newStatus, potrazivanje_id],
   );
 
   return { status: newStatus, ...sums };
 }
 
-export async function financeLinkIncomeToReceivable({ potrazivanje_id, prihod_id, amount_km }) {
+export async function financeLinkIncomeToReceivable({
+  potrazivanje_id,
+  prihod_id,
+  amount_km,
+}) {
   const potId = mustInt("potrazivanje_id", potrazivanje_id);
   const incId = mustInt("prihod_id", prihod_id);
   const alloc = mustAllocationKm(amount_km);
@@ -75,8 +85,8 @@ export async function financeLinkIncomeToReceivable({ potrazivanje_id, prihod_id
   if (paid + alloc > cap + 0.0001) {
     throw new Error(
       `Prekoračenje potraživanja. Već zatvoreno: ${paid.toFixed(2)} KM, traženo: ${alloc.toFixed(
-        2
-      )} KM, ukupno potražuje: ${cap.toFixed(2)} KM.`
+        2,
+      )} KM, ukupno potražuje: ${cap.toFixed(2)} KM.`,
     );
   }
 
@@ -85,7 +95,7 @@ export async function financeLinkIncomeToReceivable({ potrazivanje_id, prihod_id
     INSERT INTO projekt_potrazivanje_prihod_link (potrazivanje_id, prihod_id, amount_km, aktivan)
     VALUES (?, ?, ?, 1)
     `,
-    [potId, incId, alloc]
+    [potId, incId, alloc],
   );
 
   const synced = await syncReceivableStatus(potId);
@@ -100,14 +110,14 @@ export async function financeSetReceivableIncomeLinkActive(link_id, aktivan) {
   // nađi potrazivanje_id da sync status
   const r0 = await query(
     "SELECT potrazivanje_id FROM projekt_potrazivanje_prihod_link WHERE link_id = ? LIMIT 1",
-    [id]
+    [id],
   );
   const row = r0?.rows?.[0];
   if (!row) throw new Error("Link ne postoji.");
 
   await query(
     "UPDATE projekt_potrazivanje_prihod_link SET aktivan = ? WHERE link_id = ?",
-    [a, id]
+    [a, id],
   );
 
   const synced = await syncReceivableStatus(row.potrazivanje_id);
@@ -128,7 +138,7 @@ export async function financeListReceivableLinks(potrazivanje_id) {
     WHERE l.potrazivanje_id = ?
     ORDER BY l.aktivan DESC, l.link_id DESC
     `,
-    [potId]
+    [potId],
   );
 
   const sums = await getPaidSum(potId);

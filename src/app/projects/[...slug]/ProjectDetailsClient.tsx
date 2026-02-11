@@ -10,12 +10,17 @@ function money(v: any) {
   if (v === null || v === undefined || v === "") return "—";
   const n = Number(v);
   if (!Number.isFinite(n)) return String(v);
-  return n.toLocaleString("bs-BA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n.toLocaleString("bs-BA", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function parseIdFromPathname(pathname: string): string | null {
   // očekujemo /projects/5688
-  const parts = String(pathname || "").split("/").filter(Boolean);
+  const parts = String(pathname || "")
+    .split("/")
+    .filter(Boolean);
   const i = parts.indexOf("projects");
   const candidate = i >= 0 ? parts[i + 1] : null;
   if (!candidate) return null;
@@ -28,7 +33,8 @@ function getCorePhase(p: any) {
   if (Number(p?.status_id) === 10) return "closed";
 
   const cf = String(p?.core_faza || "").toLowerCase();
-  if (cf === "draft" || cf === "planned" || cf === "active" || cf === "closed") return cf;
+  if (cf === "draft" || cf === "planned" || cf === "active" || cf === "closed")
+    return cf;
 
   const sid = Number(p?.status_id);
   if (sid === 1) return "draft";
@@ -115,7 +121,9 @@ export default function ProjectDetailsClient() {
         const project = pj?.data;
         setP(project || null);
 
-        const aj = await fetchJson(`/api/projects/${pid}/audit`).catch(() => ({ data: [] }));
+        const aj = await fetchJson(`/api/projects/${pid}/audit`).catch(() => ({
+          data: [],
+        }));
         const list = aj?.data || [];
         setAuditLast(Array.isArray(list) && list.length ? list[0] : null);
       } catch (e: any) {
@@ -141,14 +149,27 @@ export default function ProjectDetailsClient() {
   if (err || !id) {
     return (
       <div className="container">
-        <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 14 }}>
-          <Link className="btn" href="/projects">← Nazad</Link>
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            marginBottom: 14,
+          }}
+        >
+          <Link className="btn" href="/projects">
+            ← Nazad
+          </Link>
           <h1 style={{ fontSize: 22, margin: 0 }}>Greška</h1>
         </div>
         <div className="card">
           {err || "Neispravan ID projekta."}
           <div style={{ marginTop: 8, opacity: 0.8, fontSize: 12 }}>
-            (debug: pathname = {String(typeof window !== "undefined" ? window.location.pathname : "")})
+            (debug: pathname ={" "}
+            {String(
+              typeof window !== "undefined" ? window.location.pathname : "",
+            )}
+            )
           </div>
         </div>
       </div>
@@ -158,8 +179,17 @@ export default function ProjectDetailsClient() {
   if (!p) {
     return (
       <div className="container">
-        <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 14 }}>
-          <Link className="btn" href="/projects">← Nazad</Link>
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            marginBottom: 14,
+          }}
+        >
+          <Link className="btn" href="/projects">
+            ← Nazad
+          </Link>
           <h1 style={{ fontSize: 22, margin: 0 }}>Projekat nije pronađen</h1>
         </div>
         <div className="card">Nema podataka za traženi projekat.</div>
@@ -173,53 +203,122 @@ export default function ProjectDetailsClient() {
 
   return (
     <div className="container">
-      <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 14,
+        }}
+      >
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <Link className="btn" href="/projects">← Nazad</Link>
+          <Link className="btn" href="/projects">
+            ← Nazad
+          </Link>
           <h1 style={{ fontSize: 22, margin: 0 }}>Projekat #{p.projekat_id}</h1>
-          <span className="badge" data-status={core}>{headerBadgeText}</span>
+          <span className="badge" data-status={core}>
+            {headerBadgeText}
+          </span>
         </div>
 
         {!isClosed && (
-          <CloseButtonClient projekatId={Number(p.projekat_id)} bankImportHref="/bank" />
+          <CloseButtonClient
+            projekatId={Number(p.projekat_id)}
+            bankImportHref="/bank"
+          />
         )}
       </div>
 
       <div className="card" style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, opacity: 0.9 }}>Audit (zadnja akcija)</div>
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            marginBottom: 8,
+            opacity: 0.9,
+          }}
+        >
+          Audit (zadnja akcija)
+        </div>
         {!auditLast ? (
-          <div style={{ opacity: 0.8 }}>Nema audita za ovaj projekat (još).</div>
+          <div style={{ opacity: 0.8 }}>
+            Nema audita za ovaj projekat (još).
+          </div>
         ) : (
           <div style={{ display: "grid", gap: 4, opacity: 0.9 }}>
-            <div><span style={{ opacity: 0.75 }}>Akcija:</span> <b>{formatAuditAction(auditLast.action)}</b></div>
-            <div><span style={{ opacity: 0.75 }}>Vrijeme:</span> <b>{formatDateTime(auditLast.created_at)}</b></div>
-            <div><span style={{ opacity: 0.75 }}>Korisnik:</span> <b>{auditLast.user_label || "system"}</b></div>
+            <div>
+              <span style={{ opacity: 0.75 }}>Akcija:</span>{" "}
+              <b>{formatAuditAction(auditLast.action)}</b>
+            </div>
+            <div>
+              <span style={{ opacity: 0.75 }}>Vrijeme:</span>{" "}
+              <b>{formatDateTime(auditLast.created_at)}</b>
+            </div>
+            <div>
+              <span style={{ opacity: 0.75 }}>Korisnik:</span>{" "}
+              <b>{auditLast.user_label || "system"}</b>
+            </div>
           </div>
         )}
       </div>
 
       {isClosed && (
-        <div className="card" style={{ marginBottom: 14, borderLeft: "6px solid #111", background: "rgba(0,0,0,0.04)" }}>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>Projekat je arhiviran ({statusName})</div>
-          <div style={{ opacity: 0.85 }}>Ovaj projekat je zaključan (read-only). Izmjene troškova i podataka nisu dozvoljene.</div>
+        <div
+          className="card"
+          style={{
+            marginBottom: 14,
+            borderLeft: "6px solid #111",
+            background: "rgba(0,0,0,0.04)",
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+            Projekat je arhiviran ({statusName})
+          </div>
+          <div style={{ opacity: 0.85 }}>
+            Ovaj projekat je zaključan (read-only). Izmjene troškova i podataka
+            nisu dozvoljene.
+          </div>
         </div>
       )}
 
       <div className="card" style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>{p.radni_naziv}</div>
+        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
+          {p.radni_naziv}
+        </div>
         <div style={{ opacity: 0.85 }}>
           Finansijski status:{" "}
-          <span className="badge" data-status={p.finansijski_status}>{p.finansijski_status}</span>
+          <span className="badge" data-status={p.finansijski_status}>
+            {p.finansijski_status}
+          </span>
         </div>
       </div>
 
       <div className="card" style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10, opacity: 0.9 }}>Akcije</div>
-        <ReadOnlyGuard isReadOnly={isClosed} reason="Projekat je arhiviran (read-only). Akcije su onemogućene.">
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            marginBottom: 10,
+            opacity: 0.9,
+          }}
+        >
+          Akcije
+        </div>
+        <ReadOnlyGuard
+          isReadOnly={isClosed}
+          reason="Projekat je arhiviran (read-only). Akcije su onemogućene."
+        >
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button className="btn" type="button">Dodaj trošak</button>
-            <button className="btn" type="button">Import troškova</button>
-            <button className="btn" type="button">Uredi projekat</button>
+            <button className="btn" type="button">
+              Dodaj trošak
+            </button>
+            <button className="btn" type="button">
+              Import troškova
+            </button>
+            <button className="btn" type="button">
+              Uredi projekat
+            </button>
           </div>
         </ReadOnlyGuard>
       </div>

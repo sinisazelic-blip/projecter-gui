@@ -28,7 +28,14 @@ function buildQuery(paramsObj) {
   return parts.length ? `?${parts.join("&")}` : "";
 }
 
-function buildEmail({ mode, projectSingle, clientName, supplierName, dateStr, items }) {
+function buildEmail({
+  mode,
+  projectSingle,
+  clientName,
+  supplierName,
+  dateStr,
+  items,
+}) {
   let subject = "";
   if (mode === "single") {
     subject = `Narudžbenica — PO-${projectSingle.projekat_id} — ${projectSingle.radni_naziv}`;
@@ -74,7 +81,10 @@ export default async function Page({ searchParams }) {
       <div className="container" style={{ padding: 18 }}>
         <div style={{ opacity: 0.8 }}>
           Nedostaju parametri. Vrati se na{" "}
-          <Link href="/narudzbenice" className="btn">Narudžbenice</Link>.
+          <Link href="/narudzbenice" className="btn">
+            Narudžbenice
+          </Link>
+          .
         </div>
       </div>
     );
@@ -82,13 +92,13 @@ export default async function Page({ searchParams }) {
 
   const suppliers = await query(
     `SELECT dobavljac_id, naziv, email, drzava_iso2 FROM dobavljaci WHERE dobavljac_id = ? LIMIT 1`,
-    [dobavljac_id]
+    [dobavljac_id],
   );
   const supplier = suppliers?.[0] || null;
 
   const clients = await query(
     `SELECT klijent_id, naziv_klijenta FROM klijenti WHERE klijent_id = ? LIMIT 1`,
-    [klijent_id]
+    [klijent_id],
   );
   const client = clients?.[0] || null;
 
@@ -111,10 +121,12 @@ export default async function Page({ searchParams }) {
     GROUP BY p.projekat_id, p.radni_naziv, p.narucilac_id, pt.valuta_original
     ORDER BY p.projekat_id ASC, pt.valuta_original ASC
     `,
-    [klijent_id, dobavljac_id]
+    [klijent_id, dobavljac_id],
   );
 
-  const projectIds = Array.from(new Set(items.map((x) => Number(x.projekat_id)))).filter(Boolean);
+  const projectIds = Array.from(
+    new Set(items.map((x) => Number(x.projekat_id))),
+  ).filter(Boolean);
   const mode = projectIds.length <= 1 ? "single" : "multi";
   const dateStr = fmtDateDDMMYYYY(new Date());
 
@@ -126,7 +138,14 @@ export default async function Page({ searchParams }) {
   const supplierName = supplier?.naziv || `Dobavljač #${dobavljac_id}`;
   const clientName = client?.naziv_klijenta || `Klijent #${klijent_id}`;
 
-  const email = buildEmail({ mode, projectSingle, clientName, supplierName, dateStr, items });
+  const email = buildEmail({
+    mode,
+    projectSingle,
+    clientName,
+    supplierName,
+    dateStr,
+    items,
+  });
 
   const sendPayload = {
     klijent_id,
@@ -209,16 +228,31 @@ export default async function Page({ searchParams }) {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+                <img
+                  src="/fluxa/logo-light.png"
+                  alt="FLUXA"
+                  className="brandLogo"
+                />
                 <div>
                   <div className="brandTitle">Narudžbenica — Preview</div>
                   <div className="brandSub">Send / Odustani (email-only)</div>
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                <Link href={`/narudzbenice${qsBack}`} className="btn">← Nazad</Link>
-                <Link href="/dashboard" className="btn">Dashboard</Link>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+              >
+                <Link href={`/narudzbenice${qsBack}`} className="btn">
+                  ← Nazad
+                </Link>
+                <Link href="/dashboard" className="btn">
+                  Dashboard
+                </Link>
               </div>
             </div>
 
@@ -229,21 +263,32 @@ export default async function Page({ searchParams }) {
         <div className="bodyWrap">
           <div className="card">
             <div className="metaRow">
-              <span className="pill">Klijent: <b>{clientName}</b></span>
-              <span className="pill">Dobavljač: <b>{supplierName}</b></span>
-              <span className="pill">Mode: <b>{mode === "single" ? "1 projekat" : "objedinjeno"}</b></span>
-              <span className="pill">PO: <b>{projectIds.map((id) => `PO-${id}`).join(", ")}</b></span>
+              <span className="pill">
+                Klijent: <b>{clientName}</b>
+              </span>
+              <span className="pill">
+                Dobavljač: <b>{supplierName}</b>
+              </span>
+              <span className="pill">
+                Mode: <b>{mode === "single" ? "1 projekat" : "objedinjeno"}</b>
+              </span>
+              <span className="pill">
+                PO: <b>{projectIds.map((id) => `PO-${id}`).join(", ")}</b>
+              </span>
             </div>
 
-            {!supplier?.email ? (
-              <div className="warn">
-                ⚠️ Dobavljač nema email u <b>dobavljaci.email</b>. Slanje neće raditi dok ne upišeš email.
-              </div>
-            ) : null}
+            {!supplier?.email
+              ? <div className="warn">
+                  ⚠️ Dobavljač nema email u <b>dobavljaci.email</b>. Slanje neće
+                  raditi dok ne upišeš email.
+                </div>
+              : null}
 
             <div style={{ marginTop: 12 }}>
               <div className="boxLabel">Subject</div>
-              <div className="monoBox" style={{ minHeight: 44 }}>{email.subject}</div>
+              <div className="monoBox" style={{ minHeight: 44 }}>
+                {email.subject}
+              </div>
             </div>
 
             <div style={{ marginTop: 12 }}>
@@ -251,19 +296,37 @@ export default async function Page({ searchParams }) {
               <div className="monoBox">{email.body}</div>
             </div>
 
-            <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                marginTop: 14,
+                flexWrap: "wrap",
+              }}
+            >
               <form action="/api/narudzbenice/send" method="POST">
-                <input type="hidden" name="payload" value={JSON.stringify(sendPayload)} />
-                <button type="submit" className="btn" disabled={!supplier?.email}>
+                <input
+                  type="hidden"
+                  name="payload"
+                  value={JSON.stringify(sendPayload)}
+                />
+                <button
+                  type="submit"
+                  className="btn"
+                  disabled={!supplier?.email}
+                >
                   Send
                 </button>
               </form>
 
-              <Link href={`/narudzbenice${qsBack}`} className="btn">Odustani</Link>
+              <Link href={`/narudzbenice${qsBack}`} className="btn">
+                Odustani
+              </Link>
             </div>
 
             <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12 }}>
-              Napomena: email se šalje odmah nakon klika <b>Send</b>. Nema PDF-a.
+              Napomena: email se šalje odmah nakon klika <b>Send</b>. Nema
+              PDF-a.
             </div>
           </div>
         </div>

@@ -2,12 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { audit } from "@/lib/audit";
 
-export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(
+  _req: NextRequest,
+  ctx: { params: Promise<{ id: string }> },
+) {
   const { id: rawId } = await ctx.params;
   const id = Number(rawId);
 
   if (!Number.isFinite(id) || id <= 0) {
-    return NextResponse.json({ ok: false, error: "Neispravan ID" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "Neispravan ID" },
+      { status: 400 },
+    );
   }
 
   const [rows] = await pool.query<any[]>(
@@ -16,22 +22,31 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
      JOIN statusi s ON s.status_id = i.status_id
      WHERE i.inicijacija_id = ?
      LIMIT 1`,
-    [id]
+    [id],
   );
 
   if (!rows || rows.length === 0) {
-    return NextResponse.json({ ok: false, error: "Nije pronađeno" }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, error: "Nije pronađeno" },
+      { status: 404 },
+    );
   }
 
   return NextResponse.json({ ok: true, row: rows[0] });
 }
 
-export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+export async function PUT(
+  req: NextRequest,
+  ctx: { params: Promise<{ id: string }> },
+) {
   const { id: rawId } = await ctx.params;
   const id = Number(rawId);
 
   if (!Number.isFinite(id) || id <= 0) {
-    return NextResponse.json({ ok: false, error: "Neispravan ID" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "Neispravan ID" },
+      { status: 400 },
+    );
   }
 
   const body = await req.json().catch(() => ({}));
@@ -49,7 +64,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
   ) {
     return NextResponse.json(
       { ok: false, error: "narucilac_id, radni_naziv i status_id su obavezni" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -74,11 +89,14 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
       body.napomena ?? null,
       status_id,
       id,
-    ]
+    ],
   );
 
   if (res.affectedRows === 0) {
-    return NextResponse.json({ ok: false, error: "Nije pronađeno" }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, error: "Nije pronađeno" },
+      { status: 404 },
+    );
   }
 
   await audit("INIT_UPDATED", {

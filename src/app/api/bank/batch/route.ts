@@ -11,7 +11,10 @@ export async function GET(req: NextRequest) {
   if (id) {
     const batch_id = Number(id);
     if (!Number.isFinite(batch_id) || batch_id <= 0) {
-      return NextResponse.json({ ok: false, error: "Invalid batch id" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Invalid batch id" },
+        { status: 400 },
+      );
     }
 
     const batchRows: any[] = await query(
@@ -26,11 +29,14 @@ export async function GET(req: NextRequest) {
       WHERE batch_id = ?
       LIMIT 1
       `,
-      [batch_id]
+      [batch_id],
     );
 
     if (!batchRows.length) {
-      return NextResponse.json({ ok: false, error: "Batch not found" }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: "Batch not found" },
+        { status: 404 },
+      );
     }
 
     const txs: any[] = await query(
@@ -47,7 +53,7 @@ export async function GET(req: NextRequest) {
       WHERE batch_id = ?
       ORDER BY tx_id ASC
       `,
-      [batch_id]
+      [batch_id],
     );
 
     return NextResponse.json({ ok: true, batch: batchRows[0], txs });
@@ -64,7 +70,7 @@ export async function GET(req: NextRequest) {
     FROM bank_import_batch
     ORDER BY batch_id DESC
     LIMIT 50
-    `
+    `,
   );
 
   return NextResponse.json({ ok: true, batches: rows });

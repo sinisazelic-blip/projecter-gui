@@ -20,6 +20,8 @@ export async function stageBankCosts(_payload: any): Promise<BankStageResult> {
   throw new Error("NOT_IMPLEMENTED: stageBankCosts");
 }
 
-export async function commitBankCosts(_payload: any): Promise<BankCommitResult> {
+export async function commitBankCosts(
+  _payload: any,
+): Promise<BankCommitResult> {
   throw new Error("NOT_IMPLEMENTED: commitBankCosts");
 }

@@ -27,7 +27,9 @@ function getUserLabel(req: Request) {
 }
 
 function getIp(req: Request) {
-  return req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || null;
+  return (
+    req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || null
+  );
 }
 
 async function getFinalOkCheck(projekatId: number) {
@@ -45,7 +47,7 @@ async function getFinalOkCheck(projekatId: number) {
     WHERE p.projekat_id = ?
     LIMIT 1
     `,
-    [projekatId]
+    [projekatId],
   );
 
   const p = rows?.[0];
@@ -126,20 +128,23 @@ export async function POST(req: Request) {
 
   const check = await getFinalOkCheck(projekatId);
   if (!check) {
-    return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, error: "NOT_FOUND" },
+      { status: 404 },
+    );
   }
 
   if (!check.ok_to_final) {
     return NextResponse.json(
       { ok: false, error: "FINAL_BLOCKED", ...check },
-      { status: 409 }
+      { status: 409 },
     );
   }
 
   if ((check.warnings?.length ?? 0) > 0 && !force) {
     return NextResponse.json(
       { ok: false, error: "FINAL_NEEDS_CONFIRM", ...check },
-      { status: 409 }
+      { status: 409 },
     );
   }
 
@@ -152,7 +157,7 @@ export async function POST(req: Request) {
     WHERE projekat_id = ?
     LIMIT 1
     `,
-    [projekatId]
+    [projekatId],
   );
 
   // Audit
@@ -170,7 +175,7 @@ export async function POST(req: Request) {
     INSERT INTO project_audit (projekat_id, action, details, user_label, ip)
     VALUES (?, 'PROJECT_FINAL_OK', CAST(? AS JSON), ?, ?)
     `,
-    [projekatId, JSON.stringify(details), user_label, ip]
+    [projekatId, JSON.stringify(details), user_label, ip],
   );
 
   const after = await getFinalOkCheck(projekatId);
@@ -182,6 +187,6 @@ export async function POST(req: Request) {
       projekat_id: projekatId,
       after,
     },
-    { status: 200 }
+    { status: 200 },
   );
 }

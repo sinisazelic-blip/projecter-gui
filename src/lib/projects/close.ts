@@ -18,7 +18,9 @@ type CloseCheck = {
   ok_to_close: boolean;
 };
 
-export async function getCloseCheck(projekatId: number): Promise<CloseCheck | null> {
+export async function getCloseCheck(
+  projekatId: number,
+): Promise<CloseCheck | null> {
   // 1) Projekat + naziv statusa + kanonski budžet (view)
   const pRows = await query(
     `
@@ -35,7 +37,7 @@ export async function getCloseCheck(projekatId: number): Promise<CloseCheck | nu
     WHERE p.projekat_id = ?
     LIMIT 1
     `,
-    [projekatId]
+    [projekatId],
   );
 
   const p = pRows?.[0];
@@ -45,7 +47,9 @@ export async function getCloseCheck(projekatId: number): Promise<CloseCheck | nu
   const status_name = p.naziv_statusa ? String(p.naziv_statusa) : null;
 
   const budzet =
-    p.budzet_planirani === null || p.budzet_planirani === undefined ? null : Number(p.budzet_planirani);
+    p.budzet_planirani === null || p.budzet_planirani === undefined
+      ? null
+      : Number(p.budzet_planirani);
 
   // 2) Summary troškova (bez STORNIRANO)
   const tRows = await query(
@@ -57,7 +61,7 @@ export async function getCloseCheck(projekatId: number): Promise<CloseCheck | nu
     FROM projektni_troskovi
     WHERE projekat_id = ?
     `,
-    [projekatId]
+    [projekatId],
   );
 
   const t = tRows?.[0] ?? {};
@@ -81,7 +85,8 @@ export async function getCloseCheck(projekatId: number): Promise<CloseCheck | nu
   if (status_id === 9) {
     hard_blocks.push({
       code: "ALREADY_INVOICED",
-      message: "Projekat je već fakturisan (read-only). Zatvaranje nije moguće.",
+      message:
+        "Projekat je već fakturisan (read-only). Zatvaranje nije moguće.",
     });
   }
   if (status_id === 10) {
@@ -101,7 +106,8 @@ export async function getCloseCheck(projekatId: number): Promise<CloseCheck | nu
   if (status_id < 7) {
     hard_blocks.push({
       code: "NOT_READY",
-      message: "Projekat nije u statusu 'Završen' (FINAL OK). Prvo završi produkciju (status 7).",
+      message:
+        "Projekat nije u statusu 'Završen' (FINAL OK). Prvo završi produkciju (status 7).",
     });
   }
 
@@ -115,7 +121,7 @@ export async function getCloseCheck(projekatId: number): Promise<CloseCheck | nu
       AND bp.reversed_at IS NULL
       AND l.trosak_row_id IS NULL
     `,
-    [projekatId]
+    [projekatId],
   );
 
   const uncommitted = Number(bRows?.[0]?.cnt ?? 0);
@@ -144,7 +150,7 @@ export async function getCloseCheck(projekatId: number): Promise<CloseCheck | nu
     WHERE bp.projekat_id = ?
       AND bp.reversed_at IS NOT NULL
     `,
-    [projekatId]
+    [projekatId],
   );
 
   const reversed = Number(rRows?.[0]?.cnt ?? 0);

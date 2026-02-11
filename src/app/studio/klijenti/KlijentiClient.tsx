@@ -65,7 +65,8 @@ function modalStyle(maxWidth = 980): React.CSSProperties {
     width: "min(100%, " + maxWidth + "px)",
     border: "1px solid var(--border)",
     borderRadius: "16px",
-    background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
+    background:
+      "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
     boxShadow: "var(--shadow)",
     overflow: "hidden",
   };
@@ -75,7 +76,8 @@ function topbarStyle(): React.CSSProperties {
   return {
     border: "1px solid var(--border)",
     borderRadius: "16px",
-    background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
+    background:
+      "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
     boxShadow: "var(--shadow)",
     padding: 16,
     display: "flex",
@@ -117,7 +119,11 @@ const logoStyle: React.CSSProperties = {
   opacity: 0.95,
 };
 
-export default function KlijentiClient({ initialItems }: { initialItems: KlijentRow[] }) {
+export default function KlijentiClient({
+  initialItems,
+}: {
+  initialItems: KlijentRow[];
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -147,7 +153,13 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
       if (!showInactive && Number(it.aktivan) !== 1) return false;
       if (!qq) return true;
 
-      const hay = [it.naziv_klijenta, it.porezni_id ?? "", it.grad ?? "", it.drzava ?? "", it.adresa ?? ""]
+      const hay = [
+        it.naziv_klijenta,
+        it.porezni_id ?? "",
+        it.grad ?? "",
+        it.drzava ?? "",
+        it.adresa ?? "",
+      ]
         .join(" ")
         .toLowerCase();
 
@@ -157,14 +169,21 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
 
   const selectedItem = useMemo(() => {
     if (!selectedId) return null;
-    return items.find((x) => Number(x.klijent_id) === Number(selectedId)) ?? null;
+    return (
+      items.find((x) => Number(x.klijent_id) === Number(selectedId)) ?? null
+    );
   }, [items, selectedId]);
 
-  const selectedIsActive = selectedItem ? Number(selectedItem.aktivan) === 1 : false;
+  const selectedIsActive = selectedItem
+    ? Number(selectedItem.aktivan) === 1
+    : false;
 
   function badgeTip(tip: TipKlijenta) {
     return (
-      <span className="badge" data-status={tip === "agencija" ? "planned" : "draft"}>
+      <span
+        className="badge"
+        data-status={tip === "agencija" ? "planned" : "draft"}
+      >
         {tip}
       </span>
     );
@@ -206,11 +225,14 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
 
   const editIndex = useMemo(() => {
     if (!selectedId) return -1;
-    return filtered.findIndex((x) => Number(x.klijent_id) === Number(selectedId));
+    return filtered.findIndex(
+      (x) => Number(x.klijent_id) === Number(selectedId),
+    );
   }, [filtered, selectedId]);
 
   const canPrev = modalMode === "edit" && editIndex > 0;
-  const canNext = modalMode === "edit" && editIndex >= 0 && editIndex < filtered.length - 1;
+  const canNext =
+    modalMode === "edit" && editIndex >= 0 && editIndex < filtered.length - 1;
 
   function goPrev() {
     if (!canPrev) return;
@@ -262,7 +284,8 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
     }
   }
 
-  const btnDisabled = (cond: boolean) => (cond ? { opacity: 0.45, cursor: "not-allowed" as const } : {});
+  const btnDisabled = (cond: boolean) =>
+    cond ? { opacity: 0.45, cursor: "not-allowed" as const } : {};
 
   async function onSave() {
     setError(null);
@@ -303,7 +326,10 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
 
     startTransition(async () => {
       try {
-        await setKlijentActive({ klijent_id: selectedItem.klijent_id, aktivan: nextActive });
+        await setKlijentActive({
+          klijent_id: selectedItem.klijent_id,
+          aktivan: nextActive,
+        });
         setConfirmOpen(false);
         setSelectedId(null);
         router.refresh();
@@ -319,16 +345,41 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
         <div style={{ minWidth: 280 }}>
           <div style={pageTitleRowStyle}>
             <img src="/fluxa/logo-light.png" alt="Fluxa" style={logoStyle} />
-            <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em", margin: 0 }}>Klijenti</h1>
+            <h1
+              style={{
+                fontSize: 22,
+                fontWeight: 700,
+                letterSpacing: "-0.01em",
+                margin: 0,
+              }}
+            >
+              Klijenti
+            </h1>
           </div>
           <div style={{ marginTop: 6, color: "var(--muted)", fontSize: 14 }}>
-            Klikni red da ga označiš, pa koristi <b>Promijeni</b> / <b>Obriši</b>.
-            <span style={{ opacity: 0.9 }}> “Obriši” = deaktiviraj (istorija ostaje).</span>
+            Klikni red da ga označiš, pa koristi <b>Promijeni</b> /{" "}
+            <b>Obriši</b>.
+            <span style={{ opacity: 0.9 }}>
+              {" "}
+              “Obriši” = deaktiviraj (istorija ostaje).
+            </span>
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <button className="btn" onClick={openNew} disabled={isPending} style={btnDisabled(isPending)}>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexWrap: "wrap",
+            justifyContent: "flex-end",
+          }}
+        >
+          <button
+            className="btn"
+            onClick={openNew}
+            disabled={isPending}
+            style={btnDisabled(isPending)}
+          >
             <span style={{ marginRight: 6 }}>➕</span> Novi
           </button>
 
@@ -347,9 +398,17 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
             onClick={openConfirmToggle}
             disabled={!selectedItem || isPending}
             style={btnDisabled(!selectedItem || isPending)}
-            title={!selectedItem ? "Prvo odaberi red" : selectedIsActive ? "Deaktiviraj" : "Aktiviraj"}
+            title={
+              !selectedItem
+                ? "Prvo odaberi red"
+                : selectedIsActive
+                  ? "Deaktiviraj"
+                  : "Aktiviraj"
+            }
           >
-            <span style={{ marginRight: 6 }}>{selectedIsActive ? "🗑️" : "✅"}</span>
+            <span style={{ marginRight: 6 }}>
+              {selectedIsActive ? "🗑️" : "✅"}
+            </span>
             {selectedIsActive ? "Obriši" : "Aktiviraj"}
           </button>
 
@@ -360,8 +419,23 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
       </div>
 
       <div className="card" style={{ marginTop: 14 }}>
-        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -369,7 +443,15 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
               style={{ width: 420, maxWidth: "100%" }}
             />
 
-            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--muted)", fontSize: 14 }}>
+            <label
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                color: "var(--muted)",
+                fontSize: 14,
+              }}
+            >
               <input
                 type="checkbox"
                 checked={showInactive}
@@ -383,8 +465,8 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
           <div style={{ color: "var(--muted)", fontSize: 14 }}>
             {showInactive ? (
               <>
-                Aktivni: <b style={{ color: "var(--text)" }}>{counts.active}</b> / Ukupno:{" "}
-                <b style={{ color: "var(--text)" }}>{counts.total}</b>
+                Aktivni: <b style={{ color: "var(--text)" }}>{counts.active}</b>{" "}
+                / Ukupno: <b style={{ color: "var(--text)" }}>{counts.total}</b>
               </>
             ) : (
               <>
@@ -437,7 +519,9 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
                 const isSelected = Number(selectedId) === Number(it.klijent_id);
                 const isActive = Number(it.aktivan) === 1;
 
-                const gradDrzava = [it.grad, it.drzava].filter(Boolean).join(" · ");
+                const gradDrzava = [it.grad, it.drzava]
+                  .filter(Boolean)
+                  .join(" · ");
                 const isIno = Number(it.is_ino) === 1;
 
                 return (
@@ -449,30 +533,67 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
                     title="Klikni za selekciju"
                   >
                     <td className="cell-wrap">
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                        }}
+                      >
                         <span
                           style={{
                             width: 10,
                             height: 10,
                             borderRadius: 999,
-                            background: isSelected ? "var(--accent)" : "rgba(255,255,255,0.12)",
-                            boxShadow: isSelected ? "0 0 0 3px rgba(125,211,252,0.12)" : "none",
+                            background: isSelected
+                              ? "var(--accent)"
+                              : "rgba(255,255,255,0.12)",
+                            boxShadow: isSelected
+                              ? "0 0 0 3px rgba(125,211,252,0.12)"
+                              : "none",
                           }}
                         />
-                        <span style={{ fontWeight: 700 }}>{it.naziv_klijenta}</span>
+                        <span style={{ fontWeight: 700 }}>
+                          {it.naziv_klijenta}
+                        </span>
                       </div>
-                      {it.adresa ? <div style={{ marginTop: 4, color: "var(--muted)", fontSize: 13 }}>{it.adresa}</div> : null}
+                      {it.adresa ? (
+                        <div
+                          style={{
+                            marginTop: 4,
+                            color: "var(--muted)",
+                            fontSize: 13,
+                          }}
+                        >
+                          {it.adresa}
+                        </div>
+                      ) : null}
                     </td>
 
                     <td>{badgeTip(it.tip_klijenta)}</td>
 
                     <td>{badgeTrziste(isIno)}</td>
 
-                    <td style={{ color: gradDrzava ? "var(--text)" : "var(--muted)" }}>{gradDrzava || "—"}</td>
+                    <td
+                      style={{
+                        color: gradDrzava ? "var(--text)" : "var(--muted)",
+                      }}
+                    >
+                      {gradDrzava || "—"}
+                    </td>
 
-                    <td style={{ color: it.porezni_id ? "var(--text)" : "var(--muted)" }}>{it.porezni_id || "—"}</td>
+                    <td
+                      style={{
+                        color: it.porezni_id ? "var(--text)" : "var(--muted)",
+                      }}
+                    >
+                      {it.porezni_id || "—"}
+                    </td>
 
-                    <td className="num" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    <td
+                      className="num"
+                      style={{ fontVariantNumeric: "tabular-nums" }}
+                    >
                       {Number(it.rok_placanja_dana ?? 0)}
                     </td>
 
@@ -489,13 +610,44 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
       {modalOpen ? (
         <div style={overlayStyle()} role="dialog" aria-modal="true">
           <div style={modalStyle(980)}>
-            <div style={{ padding: 16, borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", gap: 12 }}>
-              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                <img src="/fluxa/Ikona%20Siva.png" alt="Fluxa" style={{ width: 22, height: 22, objectFit: "contain", opacity: 0.9, marginTop: 2 }} />
+            <div
+              style={{
+                padding: 16,
+                borderBottom: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <div
+                style={{ display: "flex", gap: 12, alignItems: "flex-start" }}
+              >
+                <img
+                  src="/fluxa/Ikona%20Siva.png"
+                  alt="Fluxa"
+                  style={{
+                    width: 22,
+                    height: 22,
+                    objectFit: "contain",
+                    opacity: 0.9,
+                    marginTop: 2,
+                  }}
+                />
                 <div>
-                  <div style={{ fontSize: 18, fontWeight: 700 }}>{modalMode === "new" ? "Novi klijent" : "Promijeni klijenta"}</div>
-                  <div style={{ marginTop: 4, color: "var(--muted)", fontSize: 14 }}>
-                    Podaci za fakturisanje/organizaciju (bez brisanja — samo deaktivacija).
+                  <div style={{ fontSize: 18, fontWeight: 700 }}>
+                    {modalMode === "new"
+                      ? "Novi klijent"
+                      : "Promijeni klijenta"}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 4,
+                      color: "var(--muted)",
+                      fontSize: 14,
+                    }}
+                  >
+                    Podaci za fakturisanje/organizaciju (bez brisanja — samo
+                    deaktivacija).
                   </div>
                 </div>
               </div>
@@ -505,12 +657,25 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
             </div>
 
             <div style={{ padding: 16 }}>
-              <div className="grid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+              <div
+                className="grid"
+                style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
+              >
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>Naziv (obavezno)</div>
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Naziv (obavezno)
+                  </div>
                   <input
                     value={form.naziv_klijenta}
-                    onChange={(e) => setForm((s) => ({ ...s, naziv_klijenta: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, naziv_klijenta: e.target.value }))
+                    }
                     placeholder="npr. A&V OPREMA doo SA"
                     autoFocus
                     style={{ width: "100%" }}
@@ -518,10 +683,23 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
                 </div>
 
                 <div>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>Tip klijenta</div>
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Tip klijenta
+                  </div>
                   <select
                     value={form.tip_klijenta}
-                    onChange={(e) => setForm((s) => ({ ...s, tip_klijenta: e.target.value as TipKlijenta }))}
+                    onChange={(e) =>
+                      setForm((s) => ({
+                        ...s,
+                        tip_klijenta: e.target.value as TipKlijenta,
+                      }))
+                    }
                     style={{ width: "100%" }}
                   >
                     <option value="direktni">direktni</option>
@@ -530,50 +708,103 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
                 </div>
 
                 <div>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>Porezni ID</div>
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Porezni ID
+                  </div>
                   <input
                     value={form.porezni_id}
-                    onChange={(e) => setForm((s) => ({ ...s, porezni_id: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, porezni_id: e.target.value }))
+                    }
                     placeholder="JIB / PIB"
                     style={{ width: "100%" }}
                   />
                 </div>
 
                 <div>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>Rok plaćanja (dana)</div>
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Rok plaćanja (dana)
+                  </div>
                   <input
                     value={form.rok_placanja_dana}
-                    onChange={(e) => setForm((s) => ({ ...s, rok_placanja_dana: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((s) => ({
+                        ...s,
+                        rok_placanja_dana: e.target.value,
+                      }))
+                    }
                     placeholder="0"
                     style={{ width: "100%" }}
                   />
                 </div>
 
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>Adresa</div>
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Adresa
+                  </div>
                   <input
                     value={form.adresa}
-                    onChange={(e) => setForm((s) => ({ ...s, adresa: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, adresa: e.target.value }))
+                    }
                     placeholder="Ulica i broj"
                     style={{ width: "100%" }}
                   />
                 </div>
 
                 <div>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>Grad</div>
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Grad
+                  </div>
                   <input
                     value={form.grad}
-                    onChange={(e) => setForm((s) => ({ ...s, grad: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, grad: e.target.value }))
+                    }
                     placeholder="Sarajevo"
                     style={{ width: "100%" }}
                   />
                 </div>
 
                 <div>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>Država</div>
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Država
+                  </div>
                   <input
                     value={form.drzava}
-                    onChange={(e) => setForm((s) => ({ ...s, drzava: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, drzava: e.target.value }))
+                    }
                     placeholder="BiH"
                     style={{ width: "100%" }}
                   />
@@ -583,28 +814,60 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
                   <input
                     type="checkbox"
                     checked={form.is_ino}
-                    onChange={(e) => setForm((s) => ({ ...s, is_ino: e.target.checked }))}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, is_ino: e.target.checked }))
+                    }
                     style={{ width: 16, height: 16 }}
                   />
-                  <span style={{ color: "var(--text)", fontSize: 14, fontWeight: 700 }}>INO klijent</span>
-                  <span style={{ color: "var(--muted)", fontSize: 13 }}>— koristi INO cijene (EUR) u Deal-u</span>
+                  <span
+                    style={{
+                      color: "var(--text)",
+                      fontSize: 14,
+                      fontWeight: 700,
+                    }}
+                  >
+                    INO klijent
+                  </span>
+                  <span style={{ color: "var(--muted)", fontSize: 13 }}>
+                    — koristi INO cijene (EUR) u Deal-u
+                  </span>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <input
                     type="checkbox"
                     checked={form.aktivan}
-                    onChange={(e) => setForm((s) => ({ ...s, aktivan: e.target.checked }))}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, aktivan: e.target.checked }))
+                    }
                     style={{ width: 16, height: 16 }}
                   />
-                  <span style={{ color: "var(--text)", fontSize: 14, fontWeight: 600 }}>Aktivno</span>
+                  <span
+                    style={{
+                      color: "var(--text)",
+                      fontSize: 14,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Aktivno
+                  </span>
                 </div>
 
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>Napomena</div>
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Napomena
+                  </div>
                   <textarea
                     value={form.napomena}
-                    onChange={(e) => setForm((s) => ({ ...s, napomena: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, napomena: e.target.value }))
+                    }
                     placeholder="Interna napomena"
                     style={{ width: "100%", minHeight: 90, resize: "vertical" }}
                   />
@@ -612,42 +875,105 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
               </div>
 
               <div className="card" style={{ marginTop: 14 }}>
-                <div style={{ color: "var(--muted)", fontSize: 12, letterSpacing: ".06em", textTransform: "uppercase" }}>
+                <div
+                  style={{
+                    color: "var(--muted)",
+                    fontSize: 12,
+                    letterSpacing: ".06em",
+                    textTransform: "uppercase",
+                  }}
+                >
                   Sistem
                 </div>
-                <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
+                <div
+                  style={{
+                    marginTop: 10,
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                    gap: 12,
+                  }}
+                >
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>ID</div>
-                    <div style={{ fontWeight: 700 }}>{form.klijent_id ?? "—"}</div>
+                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                      ID
+                    </div>
+                    <div style={{ fontWeight: 700 }}>
+                      {form.klijent_id ?? "—"}
+                    </div>
                   </div>
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>Kreirano</div>
-                    <div style={{ fontWeight: 700 }}>{form.created_at ? fmtDateTime(form.created_at) : "—"}</div>
+                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                      Kreirano
+                    </div>
+                    <div style={{ fontWeight: 700 }}>
+                      {form.created_at ? fmtDateTime(form.created_at) : "—"}
+                    </div>
                   </div>
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>Updated</div>
-                    <div style={{ fontWeight: 700 }}>{form.updated_at ? fmtDateTime(form.updated_at) : "—"}</div>
+                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                      Updated
+                    </div>
+                    <div style={{ fontWeight: 700 }}>
+                      {form.updated_at ? fmtDateTime(form.updated_at) : "—"}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div style={{ padding: 16, borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <div
+              style={{
+                padding: 16,
+                borderTop: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+              }}
+            >
               {modalMode === "edit" ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
-                  <button className="btn" onClick={goPrev} disabled={isPending || !canPrev} style={btnDisabled(isPending || !canPrev)} title="Prethodni">
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginRight: 8,
+                  }}
+                >
+                  <button
+                    className="btn"
+                    onClick={goPrev}
+                    disabled={isPending || !canPrev}
+                    style={btnDisabled(isPending || !canPrev)}
+                    title="Prethodni"
+                  >
                     ◀
                   </button>
-                  <button className="btn" onClick={goNext} disabled={isPending || !canNext} style={btnDisabled(isPending || !canNext)} title="Naredni">
+                  <button
+                    className="btn"
+                    onClick={goNext}
+                    disabled={isPending || !canNext}
+                    style={btnDisabled(isPending || !canNext)}
+                    title="Naredni"
+                  >
                     ▶
                   </button>
                 </div>
               ) : null}
 
-              <button className="btn" onClick={closeAllModals} disabled={isPending} style={btnDisabled(isPending)}>
+              <button
+                className="btn"
+                onClick={closeAllModals}
+                disabled={isPending}
+                style={btnDisabled(isPending)}
+              >
                 Otkaži
               </button>
-              <button className="btn btn--active" onClick={onSave} disabled={isPending} style={btnDisabled(isPending)}>
+              <button
+                className="btn btn--active"
+                onClick={onSave}
+                disabled={isPending}
+                style={btnDisabled(isPending)}
+              >
                 {isPending ? "Snima..." : "Snimi"}
               </button>
             </div>
@@ -659,11 +985,27 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
       {confirmOpen && selectedItem ? (
         <div style={overlayStyle()} role="dialog" aria-modal="true">
           <div style={modalStyle(640)}>
-            <div style={{ padding: 16, borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", gap: 12 }}>
+            <div
+              style={{
+                padding: 16,
+                borderBottom: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
               <div>
-                <div style={{ fontSize: 18, fontWeight: 800 }}>{selectedIsActive ? "Deaktivirati klijenta?" : "Aktivirati klijenta?"}</div>
-                <div style={{ marginTop: 4, color: "var(--muted)", fontSize: 14 }}>
-                  <b style={{ color: "var(--text)" }}>{selectedItem.naziv_klijenta}</b>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>
+                  {selectedIsActive
+                    ? "Deaktivirati klijenta?"
+                    : "Aktivirati klijenta?"}
+                </div>
+                <div
+                  style={{ marginTop: 4, color: "var(--muted)", fontSize: 14 }}
+                >
+                  <b style={{ color: "var(--text)" }}>
+                    {selectedItem.naziv_klijenta}
+                  </b>
                 </div>
               </div>
               <button className="btn" onClick={closeAllModals}>
@@ -671,16 +1013,47 @@ export default function KlijentiClient({ initialItems }: { initialItems: Klijent
               </button>
             </div>
 
-            <div style={{ padding: 16, color: "var(--text)", fontSize: 14, lineHeight: 1.5 }}>
-              {selectedIsActive ? "Klijent će biti sakriven iz liste aktivnih. Možeš ga vratiti kasnije." : "Klijent će opet biti vidljiv u listi aktivnih."}
+            <div
+              style={{
+                padding: 16,
+                color: "var(--text)",
+                fontSize: 14,
+                lineHeight: 1.5,
+              }}
+            >
+              {selectedIsActive
+                ? "Klijent će biti sakriven iz liste aktivnih. Možeš ga vratiti kasnije."
+                : "Klijent će opet biti vidljiv u listi aktivnih."}
             </div>
 
-            <div style={{ padding: 16, borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button className="btn" onClick={closeAllModals} disabled={isPending} style={btnDisabled(isPending)}>
+            <div
+              style={{
+                padding: 16,
+                borderTop: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+              }}
+            >
+              <button
+                className="btn"
+                onClick={closeAllModals}
+                disabled={isPending}
+                style={btnDisabled(isPending)}
+              >
                 Otkaži
               </button>
-              <button className="btn btn--active" onClick={onToggleActiveConfirmed} disabled={isPending} style={btnDisabled(isPending)}>
-                {isPending ? "Radi..." : selectedIsActive ? "Deaktiviraj" : "Aktiviraj"}
+              <button
+                className="btn btn--active"
+                onClick={onToggleActiveConfirmed}
+                disabled={isPending}
+                style={btnDisabled(isPending)}
+              >
+                {isPending
+                  ? "Radi..."
+                  : selectedIsActive
+                    ? "Deaktiviraj"
+                    : "Aktiviraj"}
               </button>
             </div>
           </div>

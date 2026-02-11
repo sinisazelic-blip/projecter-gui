@@ -12,7 +12,9 @@ function asNum(v: any) {
 }
 
 function normCcy(v: any) {
-  const s = String(v ?? "").trim().toUpperCase();
+  const s = String(v ?? "")
+    .trim()
+    .toUpperCase();
   if (!s) return "BAM";
   return s.slice(0, 3);
 }
@@ -33,7 +35,7 @@ async function hasColumn(table: string, column: string): Promise<boolean> {
         AND COLUMN_NAME = ?
       LIMIT 1
       `,
-      [table, column]
+      [table, column],
     );
     return Array.isArray(rows) && rows.length > 0;
   } catch {
@@ -86,8 +88,15 @@ export async function GET(req: NextRequest) {
           LIMIT ?
         `;
 
-      const [rows]: any = await pool.query(sql, [like, like, Math.max(1, Math.min(limit, 100))]);
-      return NextResponse.json({ ok: true, rows: Array.isArray(rows) ? rows : [] });
+      const [rows]: any = await pool.query(sql, [
+        like,
+        like,
+        Math.max(1, Math.min(limit, 100)),
+      ]);
+      return NextResponse.json({
+        ok: true,
+        rows: Array.isArray(rows) ? rows : [],
+      });
     }
 
     // 2) PICKER LIST mode (dropdown)
@@ -125,7 +134,10 @@ export async function GET(req: NextRequest) {
         `;
 
       const [rows]: any = await pool.query(sql, [lim]);
-      return NextResponse.json({ ok: true, rows: Array.isArray(rows) ? rows : [] });
+      return NextResponse.json({
+        ok: true,
+        rows: Array.isArray(rows) ? rows : [],
+      });
     }
 
     // 3) LIST mode (Cjenovnik module)
@@ -162,9 +174,15 @@ export async function GET(req: NextRequest) {
       `;
 
     const [rows]: any = await pool.query(sql);
-    return NextResponse.json({ ok: true, rows: Array.isArray(rows) ? rows : [] });
+    return NextResponse.json({
+      ok: true,
+      rows: Array.isArray(rows) ? rows : [],
+    });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? "Greška" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Greška" },
+      { status: 500 },
+    );
   }
 }
 
@@ -211,7 +229,15 @@ export async function PUT(req: NextRequest) {
             WHERE stavka_id = ?
             LIMIT 1
             `,
-            [naziv, jedinica, cijena_default, valuta_default, cijena_ino_eur, active, stavka_id]
+            [
+              naziv,
+              jedinica,
+              cijena_default,
+              valuta_default,
+              cijena_ino_eur,
+              active,
+              stavka_id,
+            ],
           );
         } else {
           await pool.query(
@@ -227,7 +253,14 @@ export async function PUT(req: NextRequest) {
             WHERE stavka_id = ?
             LIMIT 1
             `,
-            [naziv, jedinica, cijena_default, valuta_default, active, stavka_id]
+            [
+              naziv,
+              jedinica,
+              cijena_default,
+              valuta_default,
+              active,
+              stavka_id,
+            ],
           );
         }
 
@@ -241,7 +274,14 @@ export async function PUT(req: NextRequest) {
             VALUES
               (?, ?, ?, ?, ?, 0, ?, NOW(), NOW())
             `,
-            [naziv, jedinica, cijena_default, valuta_default, cijena_ino_eur, active]
+            [
+              naziv,
+              jedinica,
+              cijena_default,
+              valuta_default,
+              cijena_ino_eur,
+              active,
+            ],
           );
 
           const newId = res?.insertId ?? null;
@@ -254,7 +294,7 @@ export async function PUT(req: NextRequest) {
               WHERE stavka_id = ?
               LIMIT 1
               `,
-              [newId, newId]
+              [newId, newId],
             );
           }
         } else {
@@ -265,7 +305,7 @@ export async function PUT(req: NextRequest) {
             VALUES
               (?, ?, ?, ?, 0, ?, NOW(), NOW())
             `,
-            [naziv, jedinica, cijena_default, valuta_default, active]
+            [naziv, jedinica, cijena_default, valuta_default, active],
           );
 
           const newId = res?.insertId ?? null;
@@ -278,7 +318,7 @@ export async function PUT(req: NextRequest) {
               WHERE stavka_id = ?
               LIMIT 1
               `,
-              [newId, newId]
+              [newId, newId],
             );
           }
         }
@@ -289,6 +329,9 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json({ ok: true, saved });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? "Greška" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Greška" },
+      { status: 500 },
+    );
   }
 }

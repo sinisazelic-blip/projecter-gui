@@ -42,7 +42,7 @@ export default async function Page({ searchParams }) {
     FROM klijenti
     WHERE aktivan = 1
     ORDER BY naziv_klijenta ASC
-    `
+    `,
   );
 
   // ✅ supplier_id: radi i kad je pt.dobavljac_id NULL ali entity_type/entity_id nosi dobavljača
@@ -83,7 +83,7 @@ export default async function Page({ searchParams }) {
 
     ORDER BY k.naziv_klijenta ASC, d.naziv ASC, pt.valuta_original ASC
     `,
-    klijentId ? [klijentId] : []
+    klijentId ? [klijentId] : [],
   );
 
   // group: Klijent × Dobavljač
@@ -180,33 +180,87 @@ export default async function Page({ searchParams }) {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+                <img
+                  src="/fluxa/logo-light.png"
+                  alt="FLUXA"
+                  className="brandLogo"
+                />
                 <div>
                   <div className="brandTitle">Narudžbenice</div>
-                  <div className="brandSub">Zatvoreni projekti (status 8) · email-only · {today}</div>
+                  <div className="brandSub">
+                    Zatvoreni projekti (status 8) · email-only · {today}
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-                <Link href="/dashboard" className="btn">Dashboard</Link>
-                <Link href="/projects" className="btn">Projekti</Link>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+              >
+                <Link href="/dashboard" className="btn">
+                  Dashboard
+                </Link>
+                <Link href="/projects" className="btn">
+                  Projekti
+                </Link>
               </div>
             </div>
 
             <div style={{ marginTop: 12 }}>
               <form method="GET" style={{ width: "100%" }}>
-                <div style={{ display:"flex", justifyContent:"space-between", gap:12, alignItems:"center", flexWrap:"wrap" }}>
-                  <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                    }}
+                  >
                     <span className="muted">Klijent (naručilac):</span>
-                    <select name="klijent_id" defaultValue={klijentId ? String(klijentId) : ""} style={inputStyle}>
+                    <select
+                      name="klijent_id"
+                      defaultValue={klijentId ? String(klijentId) : ""}
+                      style={inputStyle}
+                    >
                       <option value="">Svi</option>
                       {clients.map((c) => (
-                        <option key={c.klijent_id} value={String(c.klijent_id)}>{c.naziv_klijenta}</option>
+                        <option key={c.klijent_id} value={String(c.klijent_id)}>
+                          {c.naziv_klijenta}
+                        </option>
                       ))}
                     </select>
 
-                    <button type="submit" className="btn" style={{ minWidth: 110 }}>Filtriraj</button>
-                    <Link href={`/narudzbenice${qsReset}`} className="btn" style={{ padding:"10px 12px", minWidth:90, textAlign:"center" }}>Reset</Link>
+                    <button
+                      type="submit"
+                      className="btn"
+                      style={{ minWidth: 110 }}
+                    >
+                      Filtriraj
+                    </button>
+                    <Link
+                      href={`/narudzbenice${qsReset}`}
+                      className="btn"
+                      style={{
+                        padding: "10px 12px",
+                        minWidth: 90,
+                        textAlign: "center",
+                      }}
+                    >
+                      Reset
+                    </Link>
                   </div>
 
                   <div className="pill">
@@ -236,18 +290,26 @@ export default async function Page({ searchParams }) {
               </thead>
               <tbody>
                 {list.map((g) => {
-                  const previewQs = buildQuery({ klijent_id: String(g.klijent_id), dobavljac_id: String(g.dobavljac_id) });
+                  const previewQs = buildQuery({
+                    klijent_id: String(g.klijent_id),
+                    dobavljac_id: String(g.dobavljac_id),
+                  });
                   return (
                     <tr key={`${g.klijent_id}-${g.dobavljac_id}`}>
                       <td className="cell-wrap">
                         <div style={{ fontWeight: 800 }}>{g.klijent_naziv}</div>
-                        <div className="muted" style={{ fontSize: 12 }}>ID: {g.klijent_id}</div>
+                        <div className="muted" style={{ fontSize: 12 }}>
+                          ID: {g.klijent_id}
+                        </div>
                       </td>
 
                       <td className="cell-wrap">
-                        <div style={{ fontWeight: 800 }}>{g.dobavljac_naziv}</div>
+                        <div style={{ fontWeight: 800 }}>
+                          {g.dobavljac_naziv}
+                        </div>
                         <div className="muted" style={{ fontSize: 12 }}>
-                          ID: {g.dobavljac_id}{g.email ? ` · ${g.email}` : ""}
+                          ID: {g.dobavljac_id}
+                          {g.email ? ` · ${g.email}` : ""}
                         </div>
                       </td>
 
@@ -257,7 +319,9 @@ export default async function Page({ searchParams }) {
                         <div className="valStack">
                           {g.values.map((v) => (
                             <div className="valLine" key={`${v.valuta}`}>
-                              <span className="valAmt">{fmtAmount(v.ukupno)}</span>
+                              <span className="valAmt">
+                                {fmtAmount(v.ukupno)}
+                              </span>
                               <span className="valCur">{v.valuta}</span>
                             </div>
                           ))}
@@ -265,11 +329,18 @@ export default async function Page({ searchParams }) {
                       </td>
 
                       <td className="cell-wrap">
-                        <span className="muted" style={{ fontSize: 12 }}>{g.po_list || "—"}</span>
+                        <span className="muted" style={{ fontSize: 12 }}>
+                          {g.po_list || "—"}
+                        </span>
                       </td>
 
                       <td>
-                        <Link className="btn" href={`/narudzbenice/preview${previewQs}`}>Preview</Link>
+                        <Link
+                          className="btn"
+                          href={`/narudzbenice/preview${previewQs}`}
+                        >
+                          Preview
+                        </Link>
                       </td>
                     </tr>
                   );
@@ -278,8 +349,9 @@ export default async function Page({ searchParams }) {
                 {list.length === 0 && (
                   <tr>
                     <td colSpan={6} style={{ opacity: 0.7, padding: 18 }}>
-                      Nema narudžbenica za zadati filter. (Dobavljač trošak mora biti u projektni_troskovi:
-                      dobavljac_id ili entity_type='vendor' + entity_id.)
+                      Nema narudžbenica za zadati filter. (Dobavljač trošak mora
+                      biti u projektni_troskovi: dobavljac_id ili
+                      entity_type='vendor' + entity_id.)
                     </td>
                   </tr>
                 )}
@@ -288,7 +360,8 @@ export default async function Page({ searchParams }) {
           </div>
 
           <div style={{ marginTop: 12, opacity: 0.75, fontSize: 12 }}>
-            Savjet: izaberi klijenta ako želiš objedinjenu narudžbenicu za više projekata tog naručioca.
+            Savjet: izaberi klijenta ako želiš objedinjenu narudžbenicu za više
+            projekata tog naručioca.
           </div>
         </div>
       </div>

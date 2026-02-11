@@ -19,14 +19,22 @@ export default function FinanceToolsClient() {
   const [note, setNote] = useState("");
   const [deactLinkId, setDeactLinkId] = useState("");
 
-  const incoming = useMemo(() => rows.filter((r) => Number(r.amount) > 0), [rows]);
-  const outgoing = useMemo(() => rows.filter((r) => Number(r.amount) < 0), [rows]);
+  const incoming = useMemo(
+    () => rows.filter((r) => Number(r.amount) > 0),
+    [rows],
+  );
+  const outgoing = useMemo(
+    () => rows.filter((r) => Number(r.amount) < 0),
+    [rows],
+  );
 
   async function refresh() {
     setErr("");
     setLoading(true);
     try {
-      const res = await fetch("/api/finance/postings/unlinked", { cache: "no-store" });
+      const res = await fetch("/api/finance/postings/unlinked", {
+        cache: "no-store",
+      });
       const j = await res.json();
       if (!j?.ok) throw new Error(j?.error || "Failed to load unlinked");
       setRows(j.rows || []);
@@ -71,7 +79,8 @@ export default function FinanceToolsClient() {
     setErr("");
     try {
       const pid = Number(defaultProjectId);
-      if (!Number.isFinite(pid) || pid <= 0) throw new Error("projekat_id mora biti broj > 0");
+      if (!Number.isFinite(pid) || pid <= 0)
+        throw new Error("projekat_id mora biti broj > 0");
 
       const body = {
         posting_id: Number(posting.posting_id),
@@ -99,7 +108,8 @@ export default function FinanceToolsClient() {
     setErr("");
     try {
       const link_id = Number(deactLinkId);
-      if (!Number.isFinite(link_id) || link_id <= 0) throw new Error("link_id mora biti broj > 0");
+      if (!Number.isFinite(link_id) || link_id <= 0)
+        throw new Error("link_id mora biti broj > 0");
 
       const res = await fetch("/api/finance/postings/deactivate-payment-link", {
         method: "POST",
@@ -119,7 +129,14 @@ export default function FinanceToolsClient() {
   return (
     <>
       <div className="card" style={{ marginTop: 12 }}>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "end" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            flexWrap: "wrap",
+            alignItems: "end",
+          }}
+        >
           <div style={{ minWidth: 180 }}>
             <div className="label">Default projekat_id (za INCOME)</div>
             <input
@@ -154,7 +171,14 @@ export default function FinanceToolsClient() {
 
       <div className="card" style={{ marginTop: 12 }}>
         <div className="card-title">Deaktivacija payment linka (storno)</div>
-        <div style={{ display: "flex", gap: 10, alignItems: "end", flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "end",
+            flexWrap: "wrap",
+          }}
+        >
           <div style={{ minWidth: 200 }}>
             <div className="label">link_id</div>
             <input
@@ -173,7 +197,8 @@ export default function FinanceToolsClient() {
       <div className="card" style={{ marginTop: 12 }}>
         <div className="card-title">UNLINKED bank postings</div>
         <div className="card-subtitle">
-          Incoming (amount &gt; 0) → LINK INCOME. Outgoing (amount &lt; 0) → LINK PAY.
+          Incoming (amount &gt; 0) → LINK INCOME. Outgoing (amount &lt; 0) →
+          LINK PAY.
         </div>
 
         <div style={{ marginTop: 10 }}>
@@ -211,19 +236,41 @@ export default function FinanceToolsClient() {
                     <tr key={r.posting_id}>
                       <td>{r.posting_id}</td>
                       <td>{r.value_date}</td>
-                      <td>{fmt(r.amount)} {r.currency || ""}</td>
-                      <td style={{ maxWidth: 320, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <td>
+                        {fmt(r.amount)} {r.currency || ""}
+                      </td>
+                      <td
+                        style={{
+                          maxWidth: 320,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
                         {r.counterparty || "—"}
                       </td>
-                      <td style={{ maxWidth: 420, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <td
+                        style={{
+                          maxWidth: 420,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
                         {r.description || "—"}
                       </td>
                       <td>
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <div
+                          style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+                        >
                           <button
                             className="btn"
                             disabled={!isOutgoing}
-                            title={isOutgoing ? "Link kao payment" : "Samo outgoing može biti payment"}
+                            title={
+                              isOutgoing
+                                ? "Link kao payment"
+                                : "Samo outgoing može biti payment"
+                            }
                             onClick={() => linkPayment(r)}
                           >
                             LINK PAY
@@ -231,7 +278,11 @@ export default function FinanceToolsClient() {
                           <button
                             className="btn"
                             disabled={!isIncoming}
-                            title={isIncoming ? "Link kao income" : "Samo incoming može biti income"}
+                            title={
+                              isIncoming
+                                ? "Link kao income"
+                                : "Samo incoming može biti income"
+                            }
                             onClick={() => linkIncome(r)}
                           >
                             LINK INCOME

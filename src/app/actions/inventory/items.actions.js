@@ -29,14 +29,15 @@ export async function inventoryCreateItem({
   let min = null;
   if (min_qty !== null && min_qty !== undefined && toTrimmed(min_qty) !== "") {
     const n = Number(min_qty);
-    if (!Number.isFinite(n) || n < 0) throw new Error("min_qty mora biti broj >= 0.");
+    if (!Number.isFinite(n) || n < 0)
+      throw new Error("min_qty mora biti broj >= 0.");
     min = Math.round(n * 1000) / 1000;
   }
 
   if (sSku) {
     const dup = await query(
       "SELECT item_id FROM inventory_items WHERE sku = ? LIMIT 1",
-      [sSku]
+      [sSku],
     );
     if (dup?.rows?.length) throw new Error("SKU već postoji.");
   }
@@ -48,7 +49,7 @@ export async function inventoryCreateItem({
     VALUES
       (?, ?, ?, ?, ?, 1, ?)
     `,
-    [name, k, u, sSku, min, note]
+    [name, k, u, sSku, min, note],
   );
 
   return { ok: true, item_id: r?.insertId ?? null };
@@ -60,7 +61,7 @@ export async function inventoryUpdateItem(item_id, fields) {
 
   const cur = await query(
     "SELECT item_id FROM inventory_items WHERE item_id = ? LIMIT 1",
-    [id]
+    [id],
   );
   if (!cur?.rows?.length) throw new Error("Artikal ne postoji.");
 
@@ -87,9 +88,10 @@ export async function inventoryUpdateItem(item_id, fields) {
     if (sSku) {
       const dup = await query(
         "SELECT item_id FROM inventory_items WHERE sku = ? AND item_id <> ? LIMIT 1",
-        [sSku, id]
+        [sSku, id],
       );
-      if (dup?.rows?.length) throw new Error("SKU već postoji na drugom artiklu.");
+      if (dup?.rows?.length)
+        throw new Error("SKU već postoji na drugom artiklu.");
     }
     sets.push("sku = ?");
     vals.push(sSku);
@@ -100,7 +102,8 @@ export async function inventoryUpdateItem(item_id, fields) {
     const raw = fields.min_qty;
     if (raw !== null && raw !== undefined && toTrimmed(raw) !== "") {
       const n = Number(raw);
-      if (!Number.isFinite(n) || n < 0) throw new Error("min_qty mora biti broj >= 0.");
+      if (!Number.isFinite(n) || n < 0)
+        throw new Error("min_qty mora biti broj >= 0.");
       min = Math.round(n * 1000) / 1000;
     }
     sets.push("min_qty = ?");
@@ -123,7 +126,7 @@ export async function inventoryUpdateItem(item_id, fields) {
 
   await query(
     `UPDATE inventory_items SET ${sets.join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE item_id = ?`,
-    vals
+    vals,
   );
 
   return { ok: true, updated: 1 };
@@ -136,19 +139,22 @@ export async function inventorySetItemActive(item_id, aktivan) {
 
   const cur = await query(
     "SELECT item_id FROM inventory_items WHERE item_id = ? LIMIT 1",
-    [id]
+    [id],
   );
   if (!cur?.rows?.length) throw new Error("Artikal ne postoji.");
 
   await query(
     "UPDATE inventory_items SET aktivan = ?, updated_at = CURRENT_TIMESTAMP WHERE item_id = ?",
-    [active, id]
+    [active, id],
   );
 
   return { ok: true, aktivan: !!active };
 }
 
-export async function inventoryListItems({ includeInactive = false, q = "" } = {}) {
+export async function inventoryListItems({
+  includeInactive = false,
+  q = "",
+} = {}) {
   const inc = includeInactive ? 1 : 0;
   const term = toTrimmed(q);
   const like = term ? `%${term}%` : null;
@@ -167,7 +173,7 @@ export async function inventoryListItems({ includeInactive = false, q = "" } = {
       )
     ORDER BY aktivan DESC, naziv ASC
     `,
-    [inc, like, like, like]
+    [inc, like, like, like],
   );
 
   return { ok: true, rows: r?.rows ?? [] };

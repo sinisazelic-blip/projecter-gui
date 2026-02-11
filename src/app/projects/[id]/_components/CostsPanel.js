@@ -70,7 +70,8 @@ const ddmmyyyyToISO = (ddmmyyyy) => {
   const d = Number(dd);
   const m = Number(mm);
   const y = Number(yyyy);
-  if (!Number.isFinite(d) || !Number.isFinite(m) || !Number.isFinite(y)) return null;
+  if (!Number.isFinite(d) || !Number.isFinite(m) || !Number.isFinite(y))
+    return null;
   if (y < 1900 || y > 2200) return null;
   if (m < 1 || m > 12) return null;
   if (d < 1 || d > 31) return null;
@@ -78,12 +79,23 @@ const ddmmyyyyToISO = (ddmmyyyy) => {
   // real-date check (31.02.)
   const test = new Date(y, m - 1, d);
   if (Number.isNaN(test.getTime())) return null;
-  if (test.getFullYear() !== y || test.getMonth() !== m - 1 || test.getDate() !== d) return null;
+  if (
+    test.getFullYear() !== y ||
+    test.getMonth() !== m - 1 ||
+    test.getDate() !== d
+  )
+    return null;
 
   return `${yyyy}-${mm}-${dd}`;
 };
 
-export default function CostsPanel({ project, costs, showStornirano, actions, returnTo }) {
+export default function CostsPanel({
+  project,
+  costs,
+  showStornirano,
+  actions,
+  returnTo,
+}) {
   const router = useRouter();
 
   const formRef = useRef(null);
@@ -272,7 +284,10 @@ export default function CostsPanel({ project, costs, showStornirano, actions, re
       const formEl = formRef.current;
       const active = document.activeElement;
 
-      const focusInForm = formEl && active && active instanceof HTMLElement ? formEl.contains(active) : false;
+      const focusInForm =
+        formEl && active && active instanceof HTMLElement
+          ? formEl.contains(active)
+          : false;
 
       const hasWork =
         focusInForm ||
@@ -296,9 +311,17 @@ export default function CostsPanel({ project, costs, showStornirano, actions, re
 
   return (
     <>
-      <h2 style={{ fontSize: 18, marginTop: 18, marginBottom: 10 }}>Dodaj trošak</h2>
+      <h2 style={{ fontSize: 18, marginTop: 18, marginBottom: 10 }}>
+        Dodaj trošak
+      </h2>
 
-      <form ref={formRef} action={actions.addCost} className="card" style={{ padding: 14 }} onSubmit={onAddSubmit}>
+      <form
+        ref={formRef}
+        action={actions.addCost}
+        className="card"
+        style={{ padding: 14 }}
+        onSubmit={onAddSubmit}
+      >
         <input type="hidden" name="projekat_id" value={project.projekat_id} />
 
         {/* ✅ vrati me na isti URL (npr. ?stornirano=1) */}
@@ -307,7 +330,11 @@ export default function CostsPanel({ project, costs, showStornirano, actions, re
         {/* ✅ tip_id mora ići na server */}
         <input type="hidden" name="tip_id" value={tipId} />
 
-        <input type="hidden" name="entity_type" value={entity.entity_type ?? ""} />
+        <input
+          type="hidden"
+          name="entity_type"
+          value={entity.entity_type ?? ""}
+        />
         <input type="hidden" name="entity_id" value={entity.entity_id ?? ""} />
 
         {/* ✅ datum šaljemo serveru kao ISO (YYYY-MM-DD) */}
@@ -405,9 +432,21 @@ export default function CostsPanel({ project, costs, showStornirano, actions, re
             />
           </div>
 
-          <input ref={opisRef} type="text" name="opis" placeholder="Opis troška" required style={inputStyle} />
+          <input
+            ref={opisRef}
+            type="text"
+            name="opis"
+            placeholder="Opis troška"
+            required
+            style={inputStyle}
+          />
 
-          <select name="valuta" value={valuta} onChange={(e) => setValuta(e.target.value)} style={inputStyle}>
+          <select
+            name="valuta"
+            value={valuta}
+            onChange={(e) => setValuta(e.target.value)}
+            style={inputStyle}
+          >
             {CURRENCIES.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -472,10 +511,17 @@ export default function CostsPanel({ project, costs, showStornirano, actions, re
           }}
         >
           <span>
-            ≈ <strong>{Number.isFinite(previewKM) ? fmtKM(previewKM) : "—"}</strong>
+            ≈{" "}
+            <strong>
+              {Number.isFinite(previewKM) ? fmtKM(previewKM) : "—"}
+            </strong>
           </span>
-          {loadingRate && valuta !== "BAM" && <span className="muted">Učitavam kurs…</span>}
-          {kursSource === "manual" && valuta !== "BAM" && <span className="muted">Kurs ručni</span>}
+          {loadingRate && valuta !== "BAM" && (
+            <span className="muted">Učitavam kurs…</span>
+          )}
+          {kursSource === "manual" && valuta !== "BAM" && (
+            <span className="muted">Kurs ručni</span>
+          )}
         </div>
 
         <div style={{ marginTop: 10 }}>
@@ -485,20 +531,33 @@ export default function CostsPanel({ project, costs, showStornirano, actions, re
         </div>
       </form>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
-        <h2 style={{ fontSize: 18, marginTop: 18, marginBottom: 10 }}>Troškovi (zadnjih 200)</h2>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          gap: 12,
+        }}
+      >
+        <h2 style={{ fontSize: 18, marginTop: 18, marginBottom: 10 }}>
+          Troškovi (zadnjih 200)
+        </h2>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span className="muted">Stornirani:</span>
-          {showStornirano ? (
-            <Link href={`/projects/${project.projekat_id}`} className="project-link">
-              sakrij
-            </Link>
-          ) : (
-            <Link href={`/projects/${project.projekat_id}?stornirano=1`} className="project-link">
-              prikaži
-            </Link>
-          )}
+          {showStornirano
+            ? <Link
+                href={`/projects/${project.projekat_id}`}
+                className="project-link"
+              >
+                sakrij
+              </Link>
+            : <Link
+                href={`/projects/${project.projekat_id}?stornirano=1`}
+                className="project-link"
+              >
+                prikaži
+              </Link>}
         </div>
       </div>
 
@@ -514,17 +573,21 @@ export default function CostsPanel({ project, costs, showStornirano, actions, re
         </thead>
 
         <tbody>
-          {costs.length === 0 ? (
-            <tr>
-              <td colSpan={5} className="muted">
-                Nema troškova za prikaz.
-              </td>
-            </tr>
-          ) : (
-            costs.map((c) => (
-              <CostRow key={c.trosak_id} c={c} project={project} actions={actions} returnTo={safeReturnTo} />
-            ))
-          )}
+          {costs.length === 0
+            ? <tr>
+                <td colSpan={5} className="muted">
+                  Nema troškova za prikaz.
+                </td>
+              </tr>
+            : costs.map((c) => (
+                <CostRow
+                  key={c.trosak_id}
+                  c={c}
+                  project={project}
+                  actions={actions}
+                  returnTo={safeReturnTo}
+                />
+              ))}
         </tbody>
       </table>
     </>

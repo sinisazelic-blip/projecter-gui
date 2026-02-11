@@ -54,7 +54,7 @@ export async function GET(req) {
       // pametan default: ili kasni ili dospijeva uskoro (ako ima valutu)
       // a projekte bez valute ćemo sakriti dok korisnik ne odabere filtere (jer ih je previše)
       where.push(
-        "(v.naplata_status = 'kasni' OR (v.datum_valute IS NOT NULL AND v.dana_do_valute BETWEEN 0 AND ?))"
+        "(v.naplata_status = 'kasni' OR (v.datum_valute IS NOT NULL AND v.dana_do_valute BETWEEN 0 AND ?))",
       );
       args.push(Number.isFinite(upcomingDays) ? upcomingDays : 14);
     }
@@ -98,8 +98,13 @@ export async function GET(req) {
     return NextResponse.json({ ok: true, success: true, data: rows });
   } catch (e) {
     return NextResponse.json(
-      { ok: false, success: false, error: e?.message || String(e), code: e?.code },
-      { status: 500 }
+      {
+        ok: false,
+        success: false,
+        error: e?.message || String(e),
+        code: e?.code,
+      },
+      { status: 500 },
     );
   } finally {
     if (conn) await conn.end();

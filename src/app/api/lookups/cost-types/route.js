@@ -19,10 +19,14 @@ export async function GET() {
     for (const c of candidates) {
       try {
         const rows = await query(
-          `SELECT ${c.id} AS tip_id, ${c.name} AS naziv FROM ${c.table} ORDER BY ${c.name} ASC`
+          `SELECT ${c.id} AS tip_id, ${c.name} AS naziv FROM ${c.table} ORDER BY ${c.name} ASC`,
         );
         if (rows && rows.length >= 0) {
-          return NextResponse.json({ success: true, source: c.table, data: rows });
+          return NextResponse.json({
+            success: true,
+            source: c.table,
+            data: rows,
+          });
         }
       } catch {
         // probaj sljedeću tabelu
@@ -30,13 +34,17 @@ export async function GET() {
     }
 
     return NextResponse.json(
-      { success: false, message: "Ne mogu naći tabelu tipova troškova (tipovi_troskova / sif_tipovi_troskova / trosak_tipovi)." },
-      { status: 500 }
+      {
+        success: false,
+        message:
+          "Ne mogu naći tabelu tipova troškova (tipovi_troskova / sif_tipovi_troskova / trosak_tipovi).",
+      },
+      { status: 500 },
     );
   } catch (e) {
     return NextResponse.json(
       { success: false, message: e?.message || "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

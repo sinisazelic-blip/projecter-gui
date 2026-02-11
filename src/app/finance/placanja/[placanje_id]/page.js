@@ -32,10 +32,10 @@ function badge(text, kind = "neutral") {
     kind === "ok"
       ? "badge badge-green"
       : kind === "warn"
-      ? "badge badge-orange"
-      : kind === "bad"
-      ? "badge badge-red"
-      : "badge";
+        ? "badge badge-orange"
+        : kind === "bad"
+          ? "badge badge-red"
+          : "badge";
   return <span className={cls}>{text}</span>;
 }
 
@@ -74,9 +74,11 @@ export default async function PlacanjeDetailPage({ params }) {
     WHERE p.placanje_id = ?
     LIMIT 1
     `,
-    [payId]
+    [payId],
   ).catch(async () => {
-    return await query(`SELECT * FROM placanja WHERE placanje_id = ? LIMIT 1`, [payId]);
+    return await query(`SELECT * FROM placanja WHERE placanje_id = ? LIMIT 1`, [
+      payId,
+    ]);
   });
 
   const plac = placRows?.[0] ?? null;
@@ -117,7 +119,7 @@ export default async function PlacanjeDetailPage({ params }) {
     WHERE l.placanje_id = ?
     ORDER BY l.link_id
     `,
-    [payId]
+    [payId],
   );
 
   // 3) Postinzi (detalji) za te linkove
@@ -144,7 +146,7 @@ export default async function PlacanjeDetailPage({ params }) {
       FROM v_bank_posting_feed f
       WHERE f.posting_id IN (${placeholders})
       `,
-      uniq
+      uniq,
     ).catch(async () => {
       // fallback direktno iz bank_tx_posting ako view iz bilo kog razloga nije tu
       return await query(
@@ -153,7 +155,7 @@ export default async function PlacanjeDetailPage({ params }) {
         FROM bank_tx_posting
         WHERE posting_id IN (${placeholders})
         `,
-        uniq
+        uniq,
       );
     });
   }
@@ -170,11 +172,14 @@ export default async function PlacanjeDetailPage({ params }) {
     WHERE s.placanje_id = ?
     ORDER BY s.trosak_id
     `,
-    [payId]
+    [payId],
   ).catch(async () => {
     // fallback: samo select *
     try {
-      return await query(`SELECT * FROM placanja_stavke WHERE placanje_id = ?`, [payId]);
+      return await query(
+        `SELECT * FROM placanja_stavke WHERE placanje_id = ?`,
+        [payId],
+      );
     } catch {
       return [];
     }
@@ -202,7 +207,7 @@ export default async function PlacanjeDetailPage({ params }) {
       FROM projektni_troskovi t
       WHERE t.trosak_id IN (${placeholders})
       `,
-      uniq
+      uniq,
     ).catch(async () => []);
   }
 
@@ -216,7 +221,8 @@ export default async function PlacanjeDetailPage({ params }) {
         <div className="topbar-left">
           <h1 className="h1">Plaćanje #{plac.placanje_id}</h1>
           <div className="subtle">
-            datum: <b>{fmtDate(plac.datum)}</b> · iznos: <b>{fmtKM(plac.iznos_km)}</b>
+            datum: <b>{fmtDate(plac.datum)}</b> · iznos:{" "}
+            <b>{fmtKM(plac.iznos_km)}</b>
           </div>
         </div>
 
@@ -229,10 +235,19 @@ export default async function PlacanjeDetailPage({ params }) {
 
       {/* SUMMARY */}
       <div className="card">
-        <div className="card-row" style={{ justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div
+          className="card-row"
+          style={{ justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}
+        >
           <div>
             <div className="label">Iznos</div>
-            <div style={{ fontSize: 22, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>
+            <div
+              style={{
+                fontSize: 22,
+                fontWeight: 800,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
               {fmtKM(plac.iznos_km)}
             </div>
             <div className="subtle">status: {plac.status ?? "—"}</div>
@@ -244,16 +259,26 @@ export default async function PlacanjeDetailPage({ params }) {
             <div className="subtle" style={{ marginTop: 6 }}>
               opis: {plac.opis ?? "—"}
             </div>
-            {plac.napomena ? <div className="subtle">napomena: {plac.napomena}</div> : null}
+            {plac.napomena
+              ? <div className="subtle">napomena: {plac.napomena}</div>
+              : null}
           </div>
 
           <div>
             <div className="label">Bank linkovi (aktivni)</div>
-            <div style={{ fontSize: 22, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>
+            <div
+              style={{
+                fontSize: 22,
+                fontWeight: 800,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
               {fmtKM(sumLinked)}
             </div>
             <div className="subtle">
-              {sumLinked === Number(plac.iznos_km) ? badge("MATCH", "ok") : badge("CHECK", "warn")}
+              {sumLinked === Number(plac.iznos_km)
+                ? badge("MATCH", "ok")
+                : badge("CHECK", "warn")}
             </div>
           </div>
         </div>
@@ -266,7 +291,9 @@ export default async function PlacanjeDetailPage({ params }) {
 
       {/* BANK LINKS */}
       <div className="card">
-        <div className="h2" style={{ marginBottom: 10 }}>Veze na banku (bank_tx_posting_placanje_link)</div>
+        <div className="h2" style={{ marginBottom: 10 }}>
+          Veze na banku (bank_tx_posting_placanje_link)
+        </div>
         <div className="table-wrap">
           <table className="table">
             <thead>
@@ -279,29 +306,37 @@ export default async function PlacanjeDetailPage({ params }) {
               </tr>
             </thead>
             <tbody>
-              {bankLinks?.length ? (
-                bankLinks.map((r) => (
-                  <tr key={r.link_id}>
-                    <td>{r.link_id}</td>
-                    <td>
-                      <Link className="link" href={`/finance/banka/${r.posting_id}`}>
-                        {r.posting_id}
-                      </Link>
+              {bankLinks?.length
+                ? bankLinks.map((r) => (
+                    <tr key={r.link_id}>
+                      <td>{r.link_id}</td>
+                      <td>
+                        <Link
+                          className="link"
+                          href={`/finance/banka/${r.posting_id}`}
+                        >
+                          {r.posting_id}
+                        </Link>
+                      </td>
+                      <td
+                        style={{
+                          textAlign: "right",
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {fmtKM(r.amount_km)}
+                      </td>
+                      <td>
+                        {r.aktivan ? badge("DA", "ok") : badge("NE", "warn")}
+                      </td>
+                      <td className="subtle">{fmtDT(r.created_at)}</td>
+                    </tr>
+                  ))
+                : <tr>
+                    <td colSpan={5} className="subtle" style={{ padding: 12 }}>
+                      Nema bank linkova.
                     </td>
-                    <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {fmtKM(r.amount_km)}
-                    </td>
-                    <td>{r.aktivan ? badge("DA", "ok") : badge("NE", "warn")}</td>
-                    <td className="subtle">{fmtDT(r.created_at)}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="subtle" style={{ padding: 12 }}>
-                    Nema bank linkova.
-                  </td>
-                </tr>
-              )}
+                  </tr>}
             </tbody>
           </table>
         </div>
@@ -309,7 +344,9 @@ export default async function PlacanjeDetailPage({ params }) {
 
       {/* POSTINGS */}
       <div className="card">
-        <div className="h2" style={{ marginBottom: 10 }}>Povezani postinzi (read-only)</div>
+        <div className="h2" style={{ marginBottom: 10 }}>
+          Povezani postinzi (read-only)
+        </div>
         <div className="table-wrap">
           <table className="table">
             <thead>
@@ -322,34 +359,40 @@ export default async function PlacanjeDetailPage({ params }) {
               </tr>
             </thead>
             <tbody>
-              {postings?.length ? (
-                postings.map((p) => (
-                  <tr key={p.posting_id}>
-                    <td>
-                      <Link className="link" href={`/finance/banka/${p.posting_id}`}>
-                        {p.posting_id}
-                      </Link>
+              {postings?.length
+                ? postings.map((p) => (
+                    <tr key={p.posting_id}>
+                      <td>
+                        <Link
+                          className="link"
+                          href={`/finance/banka/${p.posting_id}`}
+                        >
+                          {p.posting_id}
+                        </Link>
+                      </td>
+                      <td>{fmtDate(p.value_date)}</td>
+                      <td
+                        style={{
+                          textAlign: "right",
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {fmtKM(p.amount)}
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 700 }}>
+                          {p.counterparty?.trim() ? p.counterparty : "—"}
+                        </div>
+                        <div className="subtle">{p.description ?? "—"}</div>
+                      </td>
+                      <td>{p.alloc_status ?? "—"}</td>
+                    </tr>
+                  ))
+                : <tr>
+                    <td colSpan={5} className="subtle" style={{ padding: 12 }}>
+                      Nema postinga (ili nema feed view).
                     </td>
-                    <td>{fmtDate(p.value_date)}</td>
-                    <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {fmtKM(p.amount)}
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 700 }}>
-                        {p.counterparty?.trim() ? p.counterparty : "—"}
-                      </div>
-                      <div className="subtle">{p.description ?? "—"}</div>
-                    </td>
-                    <td>{p.alloc_status ?? "—"}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="subtle" style={{ padding: 12 }}>
-                    Nema postinga (ili nema feed view).
-                  </td>
-                </tr>
-              )}
+                  </tr>}
             </tbody>
           </table>
         </div>
@@ -357,7 +400,9 @@ export default async function PlacanjeDetailPage({ params }) {
 
       {/* STAVKE */}
       <div className="card">
-        <div className="h2" style={{ marginBottom: 10 }}>Stavke (placanja_stavke)</div>
+        <div className="h2" style={{ marginBottom: 10 }}>
+          Stavke (placanja_stavke)
+        </div>
         <div className="table-wrap">
           <table className="table">
             <thead>
@@ -368,23 +413,26 @@ export default async function PlacanjeDetailPage({ params }) {
               </tr>
             </thead>
             <tbody>
-              {stavke?.length ? (
-                stavke.map((s, idx) => (
-                  <tr key={`${s.trosak_id ?? "x"}-${idx}`}>
-                    <td>{s.trosak_id ?? "—"}</td>
-                    <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {fmtKM(s.iznos_km)}
+              {stavke?.length
+                ? stavke.map((s, idx) => (
+                    <tr key={`${s.trosak_id ?? "x"}-${idx}`}>
+                      <td>{s.trosak_id ?? "—"}</td>
+                      <td
+                        style={{
+                          textAlign: "right",
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {fmtKM(s.iznos_km)}
+                      </td>
+                      <td className="subtle">{s.opis ?? "—"}</td>
+                    </tr>
+                  ))
+                : <tr>
+                    <td colSpan={3} className="subtle" style={{ padding: 12 }}>
+                      Nema stavki (ili tabela nema očekivane kolone).
                     </td>
-                    <td className="subtle">{s.opis ?? "—"}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={3} className="subtle" style={{ padding: 12 }}>
-                    Nema stavki (ili tabela nema očekivane kolone).
-                  </td>
-                </tr>
-              )}
+                  </tr>}
             </tbody>
           </table>
         </div>
@@ -392,7 +440,9 @@ export default async function PlacanjeDetailPage({ params }) {
 
       {/* TROSKOVI (optional) */}
       <div className="card">
-        <div className="h2" style={{ marginBottom: 10 }}>Referencirani projektni troškovi (projektni_troskovi)</div>
+        <div className="h2" style={{ marginBottom: 10 }}>
+          Referencirani projektni troškovi (projektni_troskovi)
+        </div>
         <div className="table-wrap">
           <table className="table">
             <thead>
@@ -407,27 +457,31 @@ export default async function PlacanjeDetailPage({ params }) {
               </tr>
             </thead>
             <tbody>
-              {troskovi?.length ? (
-                troskovi.map((t) => (
-                  <tr key={t.trosak_id}>
-                    <td>{t.trosak_id}</td>
-                    <td>{t.projekat_id ?? "—"}</td>
-                    <td>{t.tip_id ?? "—"}</td>
-                    <td>{fmtDate(t.datum_troska)}</td>
-                    <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {fmtKM(t.iznos_km)}
+              {troskovi?.length
+                ? troskovi.map((t) => (
+                    <tr key={t.trosak_id}>
+                      <td>{t.trosak_id}</td>
+                      <td>{t.projekat_id ?? "—"}</td>
+                      <td>{t.tip_id ?? "—"}</td>
+                      <td>{fmtDate(t.datum_troska)}</td>
+                      <td
+                        style={{
+                          textAlign: "right",
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {fmtKM(t.iznos_km)}
+                      </td>
+                      <td className="subtle">{t.opis ?? "—"}</td>
+                      <td>{t.status ?? "—"}</td>
+                    </tr>
+                  ))
+                : <tr>
+                    <td colSpan={7} className="subtle" style={{ padding: 12 }}>
+                      Nema referenciranih troškova (ili stavke nemaju
+                      trosak_id).
                     </td>
-                    <td className="subtle">{t.opis ?? "—"}</td>
-                    <td>{t.status ?? "—"}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="subtle" style={{ padding: 12 }}>
-                    Nema referenciranih troškova (ili stavke nemaju trosak_id).
-                  </td>
-                </tr>
-              )}
+                  </tr>}
             </tbody>
           </table>
         </div>

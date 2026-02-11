@@ -20,7 +20,10 @@ async function readPayload(request) {
     return body;
   }
 
-  if (ct.includes("application/x-www-form-urlencoded") || ct.includes("multipart/form-data")) {
+  if (
+    ct.includes("application/x-www-form-urlencoded") ||
+    ct.includes("multipart/form-data")
+  ) {
     const form = await request.formData();
     const raw = form.get("payload");
     if (!raw) return null;
@@ -48,26 +51,35 @@ export async function POST(request) {
 
   const klijent_id = Number(payload.klijent_id);
   const dobavljac_id = Number(payload.dobavljac_id);
-  const project_ids = Array.isArray(payload.project_ids) ? payload.project_ids.map((x) => Number(x)).filter(Boolean) : [];
+  const project_ids = Array.isArray(payload.project_ids)
+    ? payload.project_ids.map((x) => Number(x)).filter(Boolean)
+    : [];
   const subject = String(payload.subject || "").trim();
   const body = String(payload.body || "").trim();
 
   if (!klijent_id || !dobavljac_id || !subject || !body) {
     return okJson(
-      { ok: false, error: "Invalid payload (klijent_id, dobavljac_id, subject, body are required)" },
-      400
+      {
+        ok: false,
+        error:
+          "Invalid payload (klijent_id, dobavljac_id, subject, body are required)",
+      },
+      400,
     );
   }
 
   // ✅ dobavljač email
   const suppliers = await query(
     `SELECT dobavljac_id, naziv, email FROM dobavljaci WHERE dobavljac_id = ? LIMIT 1`,
-    [dobavljac_id]
+    [dobavljac_id],
   );
   const supplier = suppliers?.[0] || null;
 
   if (!supplier?.email) {
-    return okJson({ ok: false, error: "Supplier has no email (dobavljaci.email is empty)" }, 400);
+    return okJson(
+      { ok: false, error: "Supplier has no email (dobavljaci.email is empty)" },
+      400,
+    );
   }
 
   // ✅ minimal SMTP config (env)
@@ -84,7 +96,7 @@ export async function POST(request) {
         error:
           "SMTP not configured. Set env: FLUXA_SMTP_HOST, FLUXA_SMTP_PORT, FLUXA_SMTP_USER, FLUXA_SMTP_PASS, FLUXA_SMTP_FROM",
       },
-      500
+      500,
     );
   }
 
@@ -120,7 +132,7 @@ export async function POST(request) {
         error: "Send failed",
         details: String(err?.message || err),
       },
-      500
+      500,
     );
   }
 }

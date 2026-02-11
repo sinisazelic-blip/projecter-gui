@@ -51,11 +51,16 @@ type AutoMatchResponse = {
 function fmtMoney(n: number) {
   const v = Number(n);
   if (!Number.isFinite(v)) return "";
-  return v.toLocaleString("bs-BA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return v.toLocaleString("bs-BA", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function cleanSpaces(s: any) {
-  return String(s ?? "").replace(/\s+/g, " ").trim();
+  return String(s ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export default function BankImportPage() {
@@ -68,15 +73,21 @@ export default function BankImportPage() {
   // batch
   const [batchRes, setBatchRes] = useState<BatchResponse | null>(null);
   const [batchList, setBatchList] = useState<any[]>([]);
-  const [filter, setFilter] = useState<"ALL" | "FEES" | "EXCH" | "IN" | "OUT">("ALL");
+  const [filter, setFilter] = useState<"ALL" | "FEES" | "EXCH" | "IN" | "OUT">(
+    "ALL",
+  );
 
   // matching view
   const [view, setView] = useState<"UNMATCHED" | "MATCHED">("UNMATCHED");
-  const [unmatchedRes, setUnmatchedRes] = useState<UnmatchedResponse | null>(null);
+  const [unmatchedRes, setUnmatchedRes] = useState<UnmatchedResponse | null>(
+    null,
+  );
   const [matchedRes, setMatchedRes] = useState<MatchListResponse | null>(null);
 
   // auto-match
-  const [autoMatchRes, setAutoMatchRes] = useState<AutoMatchResponse | null>(null);
+  const [autoMatchRes, setAutoMatchRes] = useState<AutoMatchResponse | null>(
+    null,
+  );
   const [autoMatching, setAutoMatching] = useState(false);
 
   // manual match modal
@@ -101,7 +112,9 @@ export default function BankImportPage() {
   const [costing, setCosting] = useState(false);
   const [costRes, setCostRes] = useState<any | null>(null);
 
-  const batchId = batchRes?.batch?.batch_id ? Number(batchRes.batch.batch_id) : null;
+  const batchId = batchRes?.batch?.batch_id
+    ? Number(batchRes.batch.batch_id)
+    : null;
 
   async function loadBatchList() {
     const r = await fetch("/api/bank/batch", { cache: "no-store" });
@@ -111,8 +124,12 @@ export default function BankImportPage() {
 
   async function loadMatching(batch_id: number) {
     const [u, m] = await Promise.all([
-      fetch(`/api/bank/match/unmatched?batch_id=${batch_id}`, { cache: "no-store" }).then((x) => x.json()),
-      fetch(`/api/bank/match/list?batch_id=${batch_id}`, { cache: "no-store" }).then((x) => x.json()),
+      fetch(`/api/bank/match/unmatched?batch_id=${batch_id}`, {
+        cache: "no-store",
+      }).then((x) => x.json()),
+      fetch(`/api/bank/match/list?batch_id=${batch_id}`, {
+        cache: "no-store",
+      }).then((x) => x.json()),
     ]);
     setUnmatchedRes(u);
     setMatchedRes(m);
@@ -143,7 +160,10 @@ export default function BankImportPage() {
       fd.append("account_id", accountId.trim());
       fd.append("mode", "staging");
 
-      const r = await fetch("/api/bank/import/bam", { method: "POST", body: fd });
+      const r = await fetch("/api/bank/import/bam", {
+        method: "POST",
+        body: fd,
+      });
       const text = await r.text();
 
       let j: ImportResponse;
@@ -236,7 +256,9 @@ export default function BankImportPage() {
         return;
       }
 
-      alert(`✅ Commit OK · committed ${j.committed}/${j.matched_count} (skipped ${j.skipped_already_committed})`);
+      alert(
+        `✅ Commit OK · committed ${j.committed}/${j.matched_count} (skipped ${j.skipped_already_committed})`,
+      );
     } finally {
       setCommitting(false);
     }
@@ -267,7 +289,9 @@ export default function BankImportPage() {
         return;
       }
 
-      alert(`✅ Troškovi upisani: ${j.inserted}/${j.scanned} (skipped ${j.skipped})`);
+      alert(
+        `✅ Troškovi upisani: ${j.inserted}/${j.scanned} (skipped ${j.skipped})`,
+      );
     } finally {
       setCosting(false);
     }
@@ -293,7 +317,10 @@ export default function BankImportPage() {
 
     setProjectLoading(true);
     try {
-      const r = await fetch(`/api/projects/search?q=${encodeURIComponent(qq)}`, { cache: "no-store" });
+      const r = await fetch(
+        `/api/projects/search?q=${encodeURIComponent(qq)}`,
+        { cache: "no-store" },
+      );
       const j = await r.json();
       if (j?.success) setProjectHits(j.data ?? []);
       else setProjectHits([]);
@@ -350,7 +377,9 @@ export default function BankImportPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tx_id,
-          projekat_id: manualTx.projekat_id ? Number(manualTx.projekat_id) : null,
+          projekat_id: manualTx.projekat_id
+            ? Number(manualTx.projekat_id)
+            : null,
           kategorija: String(manualTx.kategorija || "").trim() || null,
         }),
       });
@@ -393,7 +422,9 @@ export default function BankImportPage() {
         body: JSON.stringify({
           match_text,
           match_is_fee: Number(manualTx.is_fee) === 1,
-          projekat_id: manualTx.projekat_id ? Number(manualTx.projekat_id) : null,
+          projekat_id: manualTx.projekat_id
+            ? Number(manualTx.projekat_id)
+            : null,
           kategorija: String(manualTx.kategorija || "").trim() || null,
           priority: 50,
         }),
@@ -415,7 +446,9 @@ export default function BankImportPage() {
       try {
         j2 = JSON.parse(text2);
       } catch {
-        alert(`Auto-match nije vratio JSON (HTTP ${r2.status}). Prvih 200 znakova: ${text2.slice(0, 200)}`);
+        alert(
+          `Auto-match nije vratio JSON (HTTP ${r2.status}). Prvih 200 znakova: ${text2.slice(0, 200)}`,
+        );
         return;
       }
 
@@ -429,7 +462,7 @@ export default function BankImportPage() {
       setProjectHits([]);
       alert(
         (j.created ? "✅ Pravilo snimljeno" : "✅ Pravilo već postoji") +
-          ` · Auto-match: matched ${j2.matched ?? "?"}/${j2.scanned ?? "?"}`
+          ` · Auto-match: matched ${j2.matched ?? "?"}/${j2.scanned ?? "?"}`,
       );
 
       setManualTx(null);
@@ -446,7 +479,8 @@ export default function BankImportPage() {
       const amount = Number(t.amount);
       const desc = String(t.description ?? "");
       const isFee = Number(t.is_fee) === 1;
-      const isExch = desc.toUpperCase().includes("EXCH") || Number(t.tx_type) === 0;
+      const isExch =
+        desc.toUpperCase().includes("EXCH") || Number(t.tx_type) === 0;
 
       if (filter === "ALL") return true;
       if (filter === "FEES") return isFee;
@@ -464,7 +498,14 @@ export default function BankImportPage() {
       </h1>
 
       {/* Import bar */}
-      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
         <input
           type="file"
           accept=".xml,application/xml,text/xml"
@@ -476,7 +517,12 @@ export default function BankImportPage() {
           <input
             value={accountId}
             onChange={(e) => setAccountId(e.target.value)}
-            style={{ width: 80, padding: "6px 8px", border: "1px solid #ccc", borderRadius: 8 }}
+            style={{
+              width: 80,
+              padding: "6px 8px",
+              border: "1px solid #ccc",
+              borderRadius: 8,
+            }}
           />
         </label>
 
@@ -535,7 +581,11 @@ export default function BankImportPage() {
             cursor: !batchId || committing ? "not-allowed" : "pointer",
             fontWeight: 900,
           }}
-          title={!batchId ? "Odaberi batch prvo" : "Upiši matched stavke u bank_tx_posting (ledger)"}
+          title={
+            !batchId
+              ? "Odaberi batch prvo"
+              : "Upiši matched stavke u bank_tx_posting (ledger)"
+          }
         >
           {committing ? "Commit..." : "Commit batch"}
         </button>
@@ -551,7 +601,11 @@ export default function BankImportPage() {
             cursor: !batchId || costing ? "not-allowed" : "pointer",
             fontWeight: 900,
           }}
-          title={!batchId ? "Odaberi batch prvo" : "Upiši postings (bank_tx_posting) u projektne troškove"}
+          title={
+            !batchId
+              ? "Odaberi batch prvo"
+              : "Upiši postings (bank_tx_posting) u projektne troškove"
+          }
         >
           {costing ? "To Costs..." : "To project costs"}
         </button>
@@ -559,20 +613,35 @@ export default function BankImportPage() {
 
       {/* Import result */}
       {importRes && (
-        <div style={{ marginTop: 12, padding: 12, borderRadius: 12, border: "1px solid #ddd" }}>
+        <div
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 12,
+            border: "1px solid #ddd",
+          }}
+        >
           {importRes.ok ? (
             <>
               <div style={{ fontWeight: 800 }}>✅ Import OK</div>
               <div style={{ marginTop: 6, fontSize: 14 }}>
-                batch_id: <b>{importRes.batch_id}</b> · parsed: <b>{importRes.parsed}</b> · inserted:{" "}
-                <b>{importRes.inserted}</b> · duplicates: <b>{importRes.duplicates}</b>
+                batch_id: <b>{importRes.batch_id}</b> · parsed:{" "}
+                <b>{importRes.parsed}</b> · inserted:{" "}
+                <b>{importRes.inserted}</b> · duplicates:{" "}
+                <b>{importRes.duplicates}</b>
               </div>
-              <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>file_hash: {importRes.file_hash}</div>
+              <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
+                file_hash: {importRes.file_hash}
+              </div>
             </>
           ) : (
             <>
-              <div style={{ fontWeight: 800, color: "#b00020" }}>❌ Import greška</div>
-              <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{importRes.error}</div>
+              <div style={{ fontWeight: 800, color: "#b00020" }}>
+                ❌ Import greška
+              </div>
+              <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>
+                {importRes.error}
+              </div>
             </>
           )}
         </div>
@@ -580,19 +649,32 @@ export default function BankImportPage() {
 
       {/* Auto-match result */}
       {autoMatchRes && (
-        <div style={{ marginTop: 12, padding: 12, borderRadius: 12, border: "1px solid #ddd" }}>
+        <div
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 12,
+            border: "1px solid #ddd",
+          }}
+        >
           {autoMatchRes.ok ? (
             <>
               <div style={{ fontWeight: 800 }}>✅ Auto-match OK</div>
               <div style={{ marginTop: 6, fontSize: 14 }}>
-                batch_id: <b>{autoMatchRes.batch_id}</b> · rules: <b>{autoMatchRes.rules}</b> · scanned:{" "}
-                <b>{autoMatchRes.scanned}</b> · matched: <b>{autoMatchRes.matched}</b>
+                batch_id: <b>{autoMatchRes.batch_id}</b> · rules:{" "}
+                <b>{autoMatchRes.rules}</b> · scanned:{" "}
+                <b>{autoMatchRes.scanned}</b> · matched:{" "}
+                <b>{autoMatchRes.matched}</b>
               </div>
             </>
           ) : (
             <>
-              <div style={{ fontWeight: 800, color: "#b00020" }}>❌ Auto-match greška</div>
-              <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{autoMatchRes.error}</div>
+              <div style={{ fontWeight: 800, color: "#b00020" }}>
+                ❌ Auto-match greška
+              </div>
+              <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>
+                {autoMatchRes.error}
+              </div>
             </>
           )}
         </div>
@@ -600,12 +682,20 @@ export default function BankImportPage() {
 
       {/* Commit result */}
       {commitRes && (
-        <div style={{ marginTop: 12, padding: 12, borderRadius: 12, border: "1px solid #ddd" }}>
+        <div
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 12,
+            border: "1px solid #ddd",
+          }}
+        >
           {commitRes.ok ? (
             <div>
               <div style={{ fontWeight: 900 }}>✅ Commit OK</div>
               <div style={{ marginTop: 6, fontSize: 14 }}>
-                committed <b>{commitRes.committed}</b> / matched <b>{commitRes.matched_count}</b> · skipped{" "}
+                committed <b>{commitRes.committed}</b> / matched{" "}
+                <b>{commitRes.matched_count}</b> · skipped{" "}
                 <b>{commitRes.skipped_already_committed}</b>
               </div>
             </div>
@@ -620,12 +710,22 @@ export default function BankImportPage() {
 
       {/* Costs result */}
       {costRes && (
-        <div style={{ marginTop: 12, padding: 12, borderRadius: 12, border: "1px solid #ddd" }}>
+        <div
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 12,
+            border: "1px solid #ddd",
+          }}
+        >
           {costRes.ok ? (
             <div>
-              <div style={{ fontWeight: 900 }}>✅ Troškovi upisani u projektni_troskovi</div>
+              <div style={{ fontWeight: 900 }}>
+                ✅ Troškovi upisani u projektni_troskovi
+              </div>
               <div style={{ marginTop: 6, fontSize: 14 }}>
-                inserted <b>{costRes.inserted}</b> / scanned <b>{costRes.scanned}</b> · skipped <b>{costRes.skipped}</b>
+                inserted <b>{costRes.inserted}</b> / scanned{" "}
+                <b>{costRes.scanned}</b> · skipped <b>{costRes.skipped}</b>
               </div>
               <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
                 mapping: {JSON.stringify(costRes.mapping)}
@@ -641,7 +741,15 @@ export default function BankImportPage() {
               <div style={{ fontWeight: 900 }}>❌ Greška</div>
               <div style={{ marginTop: 6 }}>{costRes.error}</div>
               {costRes.debug && (
-                <pre style={{ marginTop: 10, background: "#fafafa", padding: 10, borderRadius: 10, overflowX: "auto" }}>
+                <pre
+                  style={{
+                    marginTop: 10,
+                    background: "#fafafa",
+                    padding: 10,
+                    borderRadius: 10,
+                    overflowX: "auto",
+                  }}
+                >
                   {JSON.stringify(costRes.debug, null, 2)}
                 </pre>
               )}
@@ -652,28 +760,48 @@ export default function BankImportPage() {
 
       {/* Batch header */}
       {batchRes?.ok && batchRes.batch && (
-        <div style={{ marginTop: 16, padding: 12, borderRadius: 12, border: "1px solid #ddd" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div
+          style={{
+            marginTop: 16,
+            padding: 12,
+            borderRadius: 12,
+            border: "1px solid #ddd",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
             <div>
               <div style={{ fontWeight: 900, fontSize: 16 }}>
-                Batch #{batchRes.batch.batch_id} — izvod {batchRes.batch.statement_no} ({batchRes.batch.statement_date})
+                Batch #{batchRes.batch.batch_id} — izvod{" "}
+                {batchRes.batch.statement_no} ({batchRes.batch.statement_date})
               </div>
               <div style={{ marginTop: 6, fontSize: 14, opacity: 0.9 }}>
-                Račun: <b>{batchRes.batch.bank_account_no}</b> · Firma: <b>{batchRes.batch.company_name}</b>
+                Račun: <b>{batchRes.batch.bank_account_no}</b> · Firma:{" "}
+                <b>{batchRes.batch.company_name}</b>
               </div>
             </div>
 
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 14 }}>
-                Stari saldo: <b>{fmtMoney(Number(batchRes.batch.opening_balance))}</b>
+                Stari saldo:{" "}
+                <b>{fmtMoney(Number(batchRes.batch.opening_balance))}</b>
               </div>
               <div style={{ fontSize: 14 }}>
-                Novi saldo: <b>{fmtMoney(Number(batchRes.batch.closing_balance))}</b>
+                Novi saldo:{" "}
+                <b>{fmtMoney(Number(batchRes.batch.closing_balance))}</b>
               </div>
             </div>
           </div>
 
-          <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div
+            style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}
+          >
             {(["ALL", "FEES", "EXCH", "IN", "OUT"] as const).map((k) => (
               <button
                 key={k}
@@ -691,12 +819,12 @@ export default function BankImportPage() {
                 {k === "ALL"
                   ? "Sve"
                   : k === "FEES"
-                  ? "Provizije"
-                  : k === "EXCH"
-                  ? "Konverzija"
-                  : k === "IN"
-                  ? "Uplate"
-                  : "Isplate"}
+                    ? "Provizije"
+                    : k === "EXCH"
+                      ? "Konverzija"
+                      : k === "IN"
+                        ? "Uplate"
+                        : "Isplate"}
               </button>
             ))}
           </div>
@@ -705,7 +833,14 @@ export default function BankImportPage() {
 
       {/* Matching tabs */}
       {batchRes?.ok && batchRes.batch && (
-        <div style={{ marginTop: 14, padding: 12, borderRadius: 12, border: "1px solid #ddd" }}>
+        <div
+          style={{
+            marginTop: 14,
+            padding: 12,
+            borderRadius: 12,
+            border: "1px solid #ddd",
+          }}
+        >
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button
               onClick={() => setView("UNMATCHED")}
@@ -719,7 +854,8 @@ export default function BankImportPage() {
                 fontWeight: 800,
               }}
             >
-              Unmatched ({unmatchedRes?.ok ? unmatchedRes.unmatched.length : "?"})
+              Unmatched (
+              {unmatchedRes?.ok ? unmatchedRes.unmatched.length : "?"})
             </button>
 
             <button
@@ -755,20 +891,78 @@ export default function BankImportPage() {
           {view === "UNMATCHED" && (
             <div style={{ marginTop: 12 }}>
               {!unmatchedRes ? (
-                <div style={{ opacity: 0.7 }}>Nema podataka (učitaj batch).</div>
+                <div style={{ opacity: 0.7 }}>
+                  Nema podataka (učitaj batch).
+                </div>
               ) : !unmatchedRes.ok ? (
-                <div style={{ color: "#b00020" }}>Greška: {unmatchedRes.error}</div>
+                <div style={{ color: "#b00020" }}>
+                  Greška: {unmatchedRes.error}
+                </div>
               ) : (
-                <div style={{ overflowX: "auto", border: "1px solid #eee", borderRadius: 12 }}>
+                <div
+                  style={{
+                    overflowX: "auto",
+                    border: "1px solid #eee",
+                    borderRadius: 12,
+                  }}
+                >
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "#fafafa" }}>
-                        <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #eee" }}>Datum</th>
-                        <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #eee" }}>Ref</th>
-                        <th style={{ textAlign: "right", padding: 10, borderBottom: "1px solid #eee" }}>Iznos</th>
-                        <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #eee" }}>Partner</th>
-                        <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #eee" }}>Opis</th>
-                        <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #eee" }}>Akcija</th>
+                        <th
+                          style={{
+                            textAlign: "left",
+                            padding: 10,
+                            borderBottom: "1px solid #eee",
+                          }}
+                        >
+                          Datum
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "left",
+                            padding: 10,
+                            borderBottom: "1px solid #eee",
+                          }}
+                        >
+                          Ref
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "right",
+                            padding: 10,
+                            borderBottom: "1px solid #eee",
+                          }}
+                        >
+                          Iznos
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "left",
+                            padding: 10,
+                            borderBottom: "1px solid #eee",
+                          }}
+                        >
+                          Partner
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "left",
+                            padding: 10,
+                            borderBottom: "1px solid #eee",
+                          }}
+                        >
+                          Opis
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "left",
+                            padding: 10,
+                            borderBottom: "1px solid #eee",
+                          }}
+                        >
+                          Akcija
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -776,10 +970,22 @@ export default function BankImportPage() {
                         const amount = Number(t.amount);
                         return (
                           <tr key={t.tx_id}>
-                            <td style={{ padding: 10, borderBottom: "1px solid #f0f0f0", whiteSpace: "nowrap" }}>
+                            <td
+                              style={{
+                                padding: 10,
+                                borderBottom: "1px solid #f0f0f0",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
                               {t.value_date ?? ""}
                             </td>
-                            <td style={{ padding: 10, borderBottom: "1px solid #f0f0f0", whiteSpace: "nowrap" }}>
+                            <td
+                              style={{
+                                padding: 10,
+                                borderBottom: "1px solid #f0f0f0",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
                               {t.reference ?? ""}
                             </td>
                             <td
@@ -789,18 +995,41 @@ export default function BankImportPage() {
                                 textAlign: "right",
                                 whiteSpace: "nowrap",
                                 fontWeight: 800,
-                                color: amount < 0 ? "#b00020" : amount > 0 ? "#0a7a2f" : "#111",
+                                color:
+                                  amount < 0
+                                    ? "#b00020"
+                                    : amount > 0
+                                      ? "#0a7a2f"
+                                      : "#111",
                               }}
                             >
                               {fmtMoney(amount)}
                             </td>
-                            <td style={{ padding: 10, borderBottom: "1px solid #f0f0f0", minWidth: 260 }}>
+                            <td
+                              style={{
+                                padding: 10,
+                                borderBottom: "1px solid #f0f0f0",
+                                minWidth: 260,
+                              }}
+                            >
                               {cleanSpaces(t.counterparty)}
                             </td>
-                            <td style={{ padding: 10, borderBottom: "1px solid #f0f0f0", minWidth: 340 }}>
+                            <td
+                              style={{
+                                padding: 10,
+                                borderBottom: "1px solid #f0f0f0",
+                                minWidth: 340,
+                              }}
+                            >
                               {t.description ?? ""}
                             </td>
-                            <td style={{ padding: 10, borderBottom: "1px solid #f0f0f0", whiteSpace: "nowrap" }}>
+                            <td
+                              style={{
+                                padding: 10,
+                                borderBottom: "1px solid #f0f0f0",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
                               <button
                                 onClick={() => openManualMatch(t)}
                                 style={{
@@ -836,20 +1065,78 @@ export default function BankImportPage() {
           {view === "MATCHED" && (
             <div style={{ marginTop: 12 }}>
               {!matchedRes ? (
-                <div style={{ opacity: 0.7 }}>Nema podataka (učitaj batch).</div>
+                <div style={{ opacity: 0.7 }}>
+                  Nema podataka (učitaj batch).
+                </div>
               ) : !matchedRes.ok ? (
-                <div style={{ color: "#b00020" }}>Greška: {matchedRes.error}</div>
+                <div style={{ color: "#b00020" }}>
+                  Greška: {matchedRes.error}
+                </div>
               ) : (
-                <div style={{ overflowX: "auto", border: "1px solid #eee", borderRadius: 12 }}>
+                <div
+                  style={{
+                    overflowX: "auto",
+                    border: "1px solid #eee",
+                    borderRadius: 12,
+                  }}
+                >
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "#fafafa" }}>
-                        <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #eee" }}>Datum</th>
-                        <th style={{ textAlign: "right", padding: 10, borderBottom: "1px solid #eee" }}>Iznos</th>
-                        <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #eee" }}>Partner</th>
-                        <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #eee" }}>Opis</th>
-                        <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #eee" }}>Kategorija</th>
-                        <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #eee" }}>Matched</th>
+                        <th
+                          style={{
+                            textAlign: "left",
+                            padding: 10,
+                            borderBottom: "1px solid #eee",
+                          }}
+                        >
+                          Datum
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "right",
+                            padding: 10,
+                            borderBottom: "1px solid #eee",
+                          }}
+                        >
+                          Iznos
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "left",
+                            padding: 10,
+                            borderBottom: "1px solid #eee",
+                          }}
+                        >
+                          Partner
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "left",
+                            padding: 10,
+                            borderBottom: "1px solid #eee",
+                          }}
+                        >
+                          Opis
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "left",
+                            padding: 10,
+                            borderBottom: "1px solid #eee",
+                          }}
+                        >
+                          Kategorija
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "left",
+                            padding: 10,
+                            borderBottom: "1px solid #eee",
+                          }}
+                        >
+                          Matched
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -857,7 +1144,13 @@ export default function BankImportPage() {
                         const amount = Number(t.amount);
                         return (
                           <tr key={t.tx_id}>
-                            <td style={{ padding: 10, borderBottom: "1px solid #f0f0f0", whiteSpace: "nowrap" }}>
+                            <td
+                              style={{
+                                padding: 10,
+                                borderBottom: "1px solid #f0f0f0",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
                               {t.value_date ?? ""}
                             </td>
                             <td
@@ -867,22 +1160,51 @@ export default function BankImportPage() {
                                 textAlign: "right",
                                 whiteSpace: "nowrap",
                                 fontWeight: 800,
-                                color: amount < 0 ? "#b00020" : amount > 0 ? "#0a7a2f" : "#111",
+                                color:
+                                  amount < 0
+                                    ? "#b00020"
+                                    : amount > 0
+                                      ? "#0a7a2f"
+                                      : "#111",
                               }}
                             >
                               {fmtMoney(amount)}
                             </td>
-                            <td style={{ padding: 10, borderBottom: "1px solid #f0f0f0", minWidth: 260 }}>
+                            <td
+                              style={{
+                                padding: 10,
+                                borderBottom: "1px solid #f0f0f0",
+                                minWidth: 260,
+                              }}
+                            >
                               {cleanSpaces(t.counterparty)}
                             </td>
-                            <td style={{ padding: 10, borderBottom: "1px solid #f0f0f0", minWidth: 340 }}>
+                            <td
+                              style={{
+                                padding: 10,
+                                borderBottom: "1px solid #f0f0f0",
+                                minWidth: 340,
+                              }}
+                            >
                               {t.description ?? ""}
                             </td>
-                            <td style={{ padding: 10, borderBottom: "1px solid #f0f0f0", whiteSpace: "nowrap" }}>
+                            <td
+                              style={{
+                                padding: 10,
+                                borderBottom: "1px solid #f0f0f0",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
                               <b>{t.kategorija ?? ""}</b>
                               {t.projekat_id ? ` (P#${t.projekat_id})` : ""}
                             </td>
-                            <td style={{ padding: 10, borderBottom: "1px solid #f0f0f0", whiteSpace: "nowrap" }}>
+                            <td
+                              style={{
+                                padding: 10,
+                                borderBottom: "1px solid #f0f0f0",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
                               {t.matched_by} · {t.matched_at}
                             </td>
                           </tr>
@@ -909,18 +1231,65 @@ export default function BankImportPage() {
       {batchRes?.ok && (
         <div style={{ marginTop: 16 }}>
           <div style={{ fontWeight: 800, marginBottom: 8 }}>
-            Raw stavke iz staginga (preview) ({filteredTxs.length} / {txs.length})
+            Raw stavke iz staginga (preview) ({filteredTxs.length} /{" "}
+            {txs.length})
           </div>
 
-          <div style={{ overflowX: "auto", border: "1px solid #ddd", borderRadius: 12 }}>
+          <div
+            style={{
+              overflowX: "auto",
+              border: "1px solid #ddd",
+              borderRadius: 12,
+            }}
+          >
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#fafafa" }}>
-                  <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #eee" }}>Datum</th>
-                  <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #eee" }}>Ref</th>
-                  <th style={{ textAlign: "right", padding: 10, borderBottom: "1px solid #eee" }}>Iznos</th>
-                  <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #eee" }}>Kome / Od koga</th>
-                  <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #eee" }}>Opis</th>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      padding: 10,
+                      borderBottom: "1px solid #eee",
+                    }}
+                  >
+                    Datum
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      padding: 10,
+                      borderBottom: "1px solid #eee",
+                    }}
+                  >
+                    Ref
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "right",
+                      padding: 10,
+                      borderBottom: "1px solid #eee",
+                    }}
+                  >
+                    Iznos
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      padding: 10,
+                      borderBottom: "1px solid #eee",
+                    }}
+                  >
+                    Kome / Od koga
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      padding: 10,
+                      borderBottom: "1px solid #eee",
+                    }}
+                  >
+                    Opis
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -928,10 +1297,22 @@ export default function BankImportPage() {
                   const amount = Number(t.amount);
                   return (
                     <tr key={t.tx_id}>
-                      <td style={{ padding: 10, borderBottom: "1px solid #f0f0f0", whiteSpace: "nowrap" }}>
+                      <td
+                        style={{
+                          padding: 10,
+                          borderBottom: "1px solid #f0f0f0",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {t.value_date ?? ""}
                       </td>
-                      <td style={{ padding: 10, borderBottom: "1px solid #f0f0f0", whiteSpace: "nowrap" }}>
+                      <td
+                        style={{
+                          padding: 10,
+                          borderBottom: "1px solid #f0f0f0",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {t.reference ?? ""}
                       </td>
                       <td
@@ -941,15 +1322,32 @@ export default function BankImportPage() {
                           textAlign: "right",
                           whiteSpace: "nowrap",
                           fontWeight: 800,
-                          color: amount < 0 ? "#b00020" : amount > 0 ? "#0a7a2f" : "#111",
+                          color:
+                            amount < 0
+                              ? "#b00020"
+                              : amount > 0
+                                ? "#0a7a2f"
+                                : "#111",
                         }}
                       >
                         {fmtMoney(amount)}
                       </td>
-                      <td style={{ padding: 10, borderBottom: "1px solid #f0f0f0", minWidth: 280 }}>
+                      <td
+                        style={{
+                          padding: 10,
+                          borderBottom: "1px solid #f0f0f0",
+                          minWidth: 280,
+                        }}
+                      >
                         {cleanSpaces(t.counterparty)}
                       </td>
-                      <td style={{ padding: 10, borderBottom: "1px solid #f0f0f0", minWidth: 360 }}>
+                      <td
+                        style={{
+                          padding: 10,
+                          borderBottom: "1px solid #f0f0f0",
+                          minWidth: 360,
+                        }}
+                      >
                         {t.description ?? ""}
                       </td>
                     </tr>
@@ -969,7 +1367,9 @@ export default function BankImportPage() {
 
           {batchList.length > 0 && (
             <div style={{ marginTop: 14 }}>
-              <div style={{ fontWeight: 800, marginBottom: 6 }}>Zadnji batch-evi</div>
+              <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                Zadnji batch-evi
+              </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {batchList.slice(0, 12).map((b: any) => (
                   <button
@@ -984,7 +1384,8 @@ export default function BankImportPage() {
                     }}
                     title={`Račun ${b.bank_account_no}`}
                   >
-                    #{b.batch_id} · izvod {b.statement_no} · {String(b.statement_date ?? "")}
+                    #{b.batch_id} · izvod {b.statement_no} ·{" "}
+                    {String(b.statement_date ?? "")}
                   </button>
                 ))}
               </div>
@@ -994,7 +1395,15 @@ export default function BankImportPage() {
       )}
 
       {batchRes && !batchRes.ok && (
-        <div style={{ marginTop: 12, padding: 12, borderRadius: 12, border: "1px solid #ddd", color: "#b00020" }}>
+        <div
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 12,
+            border: "1px solid #ddd",
+            color: "#b00020",
+          }}
+        >
           Greška pri učitavanju batch-a: {batchRes.error}
         </div>
       )}
@@ -1017,42 +1426,74 @@ export default function BankImportPage() {
           }}
         >
           <div
-            style={{ background: "#fff", padding: 16, borderRadius: 12, width: 560 }}
+            style={{
+              background: "#fff",
+              padding: 16,
+              borderRadius: 12,
+              width: 560,
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={{ fontWeight: 900, marginBottom: 8 }}>Ručni match</h3>
 
             <div style={{ fontSize: 14, marginBottom: 8 }}>
-              <b>{fmtMoney(Number(manualTx.amount))}</b> · {cleanSpaces(manualTx.counterparty)}
+              <b>{fmtMoney(Number(manualTx.amount))}</b> ·{" "}
+              {cleanSpaces(manualTx.counterparty)}
             </div>
             <div style={{ marginBottom: 12 }}>{manualTx.description}</div>
 
             {/* Projekat search */}
             <label style={{ display: "block", marginBottom: 10 }}>
-              <div style={{ fontSize: 13, marginBottom: 4 }}>Projekat (upiši broj ili naziv)</div>
+              <div style={{ fontSize: 13, marginBottom: 4 }}>
+                Projekat (upiši broj ili naziv)
+              </div>
 
               <input
                 value={projectQuery}
                 onChange={(e) => onProjectQueryChange(e.target.value)}
                 placeholder="npr. 123 ili 'kampanja'"
-                style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #ccc" }}
+                style={{
+                  width: "100%",
+                  padding: 8,
+                  borderRadius: 10,
+                  border: "1px solid #ccc",
+                }}
               />
 
               <div style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>
-                Odabrani projekat: <b>{manualTx.projekat_id ? `#${manualTx.projekat_id}` : "— bez projekta —"}</b>
+                Odabrani projekat:{" "}
+                <b>
+                  {manualTx.projekat_id
+                    ? `#${manualTx.projekat_id}`
+                    : "— bez projekta —"}
+                </b>
               </div>
 
-              {projectLoading && <div style={{ marginTop: 6, fontSize: 13 }}>Tražim...</div>}
+              {projectLoading && (
+                <div style={{ marginTop: 6, fontSize: 13 }}>Tražim...</div>
+              )}
 
               {!!projectHits.length && (
-                <div style={{ marginTop: 8, border: "1px solid #eee", borderRadius: 10, overflow: "hidden" }}>
+                <div
+                  style={{
+                    marginTop: 8,
+                    border: "1px solid #eee",
+                    borderRadius: 10,
+                    overflow: "hidden",
+                  }}
+                >
                   {projectHits.slice(0, 10).map((p: any, idx: number) => (
                     <button
                       key={`${p.projekat_id}-${idx}`}
                       type="button"
                       onClick={() => {
-                        setManualTx({ ...manualTx, projekat_id: String(p.projekat_id) });
-                        setProjectQuery(`#${p.projekat_id} — ${String(p.radni_naziv ?? "").slice(0, 60)}`);
+                        setManualTx({
+                          ...manualTx,
+                          projekat_id: String(p.projekat_id),
+                        });
+                        setProjectQuery(
+                          `#${p.projekat_id} — ${String(p.radni_naziv ?? "").slice(0, 60)}`,
+                        );
                         setProjectHits([]);
                       }}
                       style={{
@@ -1066,13 +1507,22 @@ export default function BankImportPage() {
                       }}
                     >
                       <b>#{p.projekat_id}</b>{" "}
-                      <span style={{ opacity: 0.85 }}>— {String(p.radni_naziv ?? "").slice(0, 80)}</span>
+                      <span style={{ opacity: 0.85 }}>
+                        — {String(p.radni_naziv ?? "").slice(0, 80)}
+                      </span>
                     </button>
                   ))}
                 </div>
               )}
 
-              <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div
+                style={{
+                  marginTop: 8,
+                  display: "flex",
+                  gap: 8,
+                  flexWrap: "wrap",
+                }}
+              >
                 <button
                   type="button"
                   onClick={() => {
@@ -1094,7 +1544,8 @@ export default function BankImportPage() {
                   type="button"
                   onClick={() => {
                     const onlyNum = projectQuery.replace(/[^0-9]/g, "").trim();
-                    if (onlyNum) setManualTx({ ...manualTx, projekat_id: onlyNum });
+                    if (onlyNum)
+                      setManualTx({ ...manualTx, projekat_id: onlyNum });
                     setProjectHits([]);
                   }}
                   style={{
@@ -1116,28 +1567,49 @@ export default function BankImportPage() {
               <div style={{ fontSize: 13, marginBottom: 4 }}>Kategorija</div>
               <input
                 value={manualTx.kategorija ?? ""}
-                onChange={(e) => setManualTx({ ...manualTx, kategorija: e.target.value })}
+                onChange={(e) =>
+                  setManualTx({ ...manualTx, kategorija: e.target.value })
+                }
                 placeholder="npr. GORIVO"
-                style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #ccc" }}
+                style={{
+                  width: "100%",
+                  padding: 8,
+                  borderRadius: 10,
+                  border: "1px solid #ccc",
+                }}
               />
             </label>
 
             {/* Save as rule */}
             <label style={{ display: "block", marginBottom: 10 }}>
-              <div style={{ fontSize: 13, marginBottom: 4 }}>Save as rule (tekst za prepoznavanje)</div>
+              <div style={{ fontSize: 13, marginBottom: 4 }}>
+                Save as rule (tekst za prepoznavanje)
+              </div>
               <input
                 value={ruleText}
                 onChange={(e) => setRuleText(e.target.value)}
                 placeholder="npr. AERO CENTAR KRILA ili EXCH KONVERZIJA"
-                style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #ccc" }}
+                style={{
+                  width: "100%",
+                  padding: 8,
+                  borderRadius: 10,
+                  border: "1px solid #ccc",
+                }}
               />
               <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75 }}>
-                Savjet: za partnere koristi dio imena (npr. “AERO CENTAR”), za konverziju “EXCH”, za interne prenose
-                “PRENOS”.
+                Savjet: za partnere koristi dio imena (npr. “AERO CENTAR”), za
+                konverziju “EXCH”, za interne prenose “PRENOS”.
               </div>
             </label>
 
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                justifyContent: "flex-end",
+                flexWrap: "wrap",
+              }}
+            >
               <button
                 onClick={saveRuleFromModal}
                 disabled={savingRule}
@@ -1158,7 +1630,12 @@ export default function BankImportPage() {
                   setManualTx(null);
                   resetProjectSearch();
                 }}
-                style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #ccc", background: "#fff" }}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #ccc",
+                  background: "#fff",
+                }}
               >
                 Otkaži
               </button>

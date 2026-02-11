@@ -13,7 +13,14 @@
  * 5 Arhiviran
  */
 
-export const FLUXA_PHASES = ["Deal", "Produkcija", "Završeno", "Zatvoren", "Fakturisan", "Arhiviran"];
+export const FLUXA_PHASES = [
+  "Deal",
+  "Produkcija",
+  "Završeno",
+  "Zatvoren",
+  "Fakturisan",
+  "Arhiviran",
+];
 
 /**
  * Mapiranje kanonskih status_id (projekti) → phase index.
@@ -66,18 +73,38 @@ export function FluxaTimeline({ phase = 0, title = "Faza" }) {
         gap: 10,
         flexWrap: "wrap",
       }}
+      role="region"
       aria-label="Fluxa timeline faza"
       title={title}
     >
-      <span style={{ fontSize: 12, opacity: 0.7, fontWeight: 800, letterSpacing: 0.2 }}>{title}</span>
+      <span
+        style={{
+          fontSize: 12,
+          opacity: 0.7,
+          fontWeight: 800,
+          letterSpacing: 0.2,
+        }}
+      >
+        {title}
+      </span>
 
-      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
         {FLUXA_PHASES.map((label, idx) => {
           const isActive = idx === p;
           const isPast = idx < p;
 
           return (
-            <span key={label} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <span
+              key={label}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+            >
               <span
                 style={{
                   fontWeight: isActive ? 900 : 750,
@@ -89,11 +116,14 @@ export function FluxaTimeline({ phase = 0, title = "Faza" }) {
                 {label}
               </span>
 
-              {idx < FLUXA_PHASES.length - 1 ? (
-                <span style={{ color: SEP, opacity: 0.9, fontWeight: 900 }} aria-hidden="true">
-                  →
-                </span>
-              ) : null}
+              {idx < FLUXA_PHASES.length - 1
+                ? <span
+                    style={{ color: SEP, opacity: 0.9, fontWeight: 900 }}
+                    aria-hidden="true"
+                  >
+                    →
+                  </span>
+                : null}
             </span>
           );
         })}

@@ -11,7 +11,7 @@ export async function GET(req) {
     if (!table) {
       return NextResponse.json(
         { success: false, message: "Nedostaje parametar: table" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -19,7 +19,7 @@ export async function GET(req) {
     if (!/^[a-zA-Z0-9_]+$/.test(table)) {
       return NextResponse.json(
         { success: false, message: "Neispravan naziv tabele" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -28,7 +28,7 @@ export async function GET(req) {
   } catch (e) {
     return NextResponse.json(
       { success: false, message: e?.message || "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -21,7 +21,8 @@ const { query } = await import("../src/lib/db.ts");
 
 const targetDate = "2026-02-15";
 
-const rows = await query(`
+const rows = await query(
+  `
   SELECT
     t.inicijacija_id,
     i.projekat_id,
@@ -39,6 +40,8 @@ const rows = await query(`
     DATE(t.accepted_deadline) = ?
   ORDER BY t.inicijacija_id DESC, t.event_id DESC
   LIMIT 50
-`, [targetDate, targetDate, targetDate]);
+`,
+  [targetDate, targetDate, targetDate],
+);
 
 console.log(JSON.stringify(rows, null, 2));

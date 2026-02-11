@@ -37,7 +37,7 @@ export default async function FiksniTroskoviPage({ searchParams }) {
     ORDER BY f.trosak_id DESC
     LIMIT 200
     `,
-    params
+    params,
   ).catch(async () => {
     return await query(
       `
@@ -47,7 +47,7 @@ export default async function FiksniTroskoviPage({ searchParams }) {
       ORDER BY trosak_id DESC
       LIMIT 200
       `,
-      params
+      params,
     );
   });
 
@@ -56,7 +56,9 @@ export default async function FiksniTroskoviPage({ searchParams }) {
       <div className="topbar glass">
         <div className="topbar-left">
           <h1 className="h1">Fiksni troškovi</h1>
-          <div className="subtle">Read-only skeleton (SOON: raspored + bank linkovi)</div>
+          <div className="subtle">
+            Read-only skeleton (SOON: raspored + bank linkovi)
+          </div>
         </div>
         <div className="topbar-right">
           <Link className="btn" href="/finance">
@@ -69,18 +71,29 @@ export default async function FiksniTroskoviPage({ searchParams }) {
         <form className="card-row" method="GET" style={{ gap: 12 }}>
           <div style={{ minWidth: 260 }}>
             <div className="label">Pretraga</div>
-            <input className="input" name="q" defaultValue={q} placeholder="ID / naziv…" />
+            <input
+              className="input"
+              name="q"
+              defaultValue={q}
+              placeholder="ID / naziv…"
+            />
           </div>
           <div style={{ alignSelf: "flex-end", display: "flex", gap: 8 }}>
-            <button className="btn btn-primary" type="submit">Primijeni</button>
-            <Link className="btn" href="/finance/fiksni-troskovi">Reset</Link>
+            <button className="btn btn-primary" type="submit">
+              Primijeni
+            </button>
+            <Link className="btn" href="/finance/fiksni-troskovi">
+              Reset
+            </Link>
           </div>
         </form>
       </div>
 
       <div className="card">
         <div className="card-row" style={{ justifyContent: "space-between" }}>
-          <div className="subtle">Prikazano: {rows?.length ?? 0} (limit 200)</div>
+          <div className="subtle">
+            Prikazano: {rows?.length ?? 0} (limit 200)
+          </div>
           <div className="subtle">Raspored (vw_*) ćemo u sljedećem koraku.</div>
         </div>
 
@@ -97,34 +110,45 @@ export default async function FiksniTroskoviPage({ searchParams }) {
               </tr>
             </thead>
             <tbody>
-              {rows?.length ? (
-                rows.map((r, idx) => (
-                  <tr key={r.trosak_id ?? idx}>
-                    <td>{r.trosak_id ?? "—"}</td>
-                    <td style={{ fontWeight: 700 }}>{r.naziv_troska ?? "—"}</td>
-                    <td>{r.frekvencija ?? "—"}</td>
-                    <td>{r.dan_u_mjesecu ?? "—"}</td>
-                    <td>{r.datum_dospijeca ? String(r.datum_dospijeca).slice(0, 10) : "—"}</td>
-                    <td>{r.zadnje_placeno ? String(r.zadnje_placeno).slice(0, 10) : "—"}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="subtle" style={{ padding: 16 }}>
-                    Nema rezultata.
-                  </td>
-                </tr>
-              )}
+              {rows?.length
+                ? rows.map((r, idx) => (
+                    <tr key={r.trosak_id ?? idx}>
+                      <td>{r.trosak_id ?? "—"}</td>
+                      <td style={{ fontWeight: 700 }}>
+                        {r.naziv_troska ?? "—"}
+                      </td>
+                      <td>{r.frekvencija ?? "—"}</td>
+                      <td>{r.dan_u_mjesecu ?? "—"}</td>
+                      <td>
+                        {r.datum_dospijeca
+                          ? String(r.datum_dospijeca).slice(0, 10)
+                          : "—"}
+                      </td>
+                      <td>
+                        {r.zadnje_placeno
+                          ? String(r.zadnje_placeno).slice(0, 10)
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))
+                : <tr>
+                    <td colSpan={6} className="subtle" style={{ padding: 16 }}>
+                      Nema rezultata.
+                    </td>
+                  </tr>}
             </tbody>
           </table>
         </div>
       </div>
 
       <div className="card" style={{ marginTop: 14 }}>
-        <div className="h2" style={{ marginTop: 0 }}>Napomena</div>
+        <div className="h2" style={{ marginTop: 0 }}>
+          Napomena
+        </div>
         <div className="subtle" style={{ lineHeight: 1.6 }}>
-          Ovdje je cilj prvo stabilan read-only prikaz. Kasnije dodajemo raspored (vw_fiksni_troskovi_*),
-          kao i povezivanje plaćanja sa bank postinzima preko <code>bank_tx_fixed_link</code>.
+          Ovdje je cilj prvo stabilan read-only prikaz. Kasnije dodajemo
+          raspored (vw_fiksni_troskovi_*), kao i povezivanje plaćanja sa bank
+          postinzima preko <code>bank_tx_fixed_link</code>.
         </div>
       </div>
     </div>

@@ -32,8 +32,10 @@ export async function POST(req: NextRequest) {
     const projectId = body?.projectId ? String(body.projectId) : null;
     const date = body?.date ? String(body.date) : undefined;
 
-    if (!Number.isFinite(amount) || amount <= 0) return jsonError("INVALID_AMOUNT");
-    if (direction !== "IN" && direction !== "OUT") return jsonError("INVALID_DIRECTION");
+    if (!Number.isFinite(amount) || amount <= 0)
+      return jsonError("INVALID_AMOUNT");
+    if (direction !== "IN" && direction !== "OUT")
+      return jsonError("INVALID_DIRECTION");
     if (!currency) return jsonError("INVALID_CURRENCY");
     if (!note.trim()) return jsonError("NOTE_REQUIRED");
 

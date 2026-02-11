@@ -25,8 +25,18 @@ export async function GET(req) {
   const upper = sql.toUpperCase();
   if (!upper.startsWith("SELECT")) return bad("Dozvoljen je samo SELECT");
   if (sql.includes(";")) return bad("Bez ';' (samo jedan upit)");
-  const forbidden = ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "TRUNCATE", "REPLACE"];
-  if (forbidden.some((k) => upper.includes(k))) return bad("Zabranjene SQL naredbe");
+  const forbidden = [
+    "INSERT",
+    "UPDATE",
+    "DELETE",
+    "DROP",
+    "ALTER",
+    "CREATE",
+    "TRUNCATE",
+    "REPLACE",
+  ];
+  if (forbidden.some((k) => upper.includes(k)))
+    return bad("Zabranjene SQL naredbe");
 
   // Limit da se ne ubije server
   const finalSql = upper.includes(" LIMIT ") ? sql : `${sql} LIMIT 100`;
@@ -37,7 +47,7 @@ export async function GET(req) {
   } catch (e) {
     return NextResponse.json(
       { success: false, message: e?.message || "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

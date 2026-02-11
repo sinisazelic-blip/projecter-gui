@@ -56,7 +56,9 @@ function req(name, fallback = null) {
     loadEnvFile(".env.development");
 
   if (!loaded) {
-    console.log("ℹ️  No .env files found in project root (looked for .env.local/.env/...)");
+    console.log(
+      "ℹ️  No .env files found in project root (looked for .env.local/.env/...)",
+    );
   }
 
   const cfg = {
@@ -83,8 +85,8 @@ function req(name, fallback = null) {
   try {
     conn = await mysql.createConnection(cfg);
     const [rows] = await conn.query(
-  "SELECT 1 AS ok, NOW() AS now, DATABASE() AS db, USER() AS user_name, VERSION() AS version"
-);
+      "SELECT 1 AS ok, NOW() AS now, DATABASE() AS db, USER() AS user_name, VERSION() AS version",
+    );
 
     console.log("✅ CONNECTED");
     console.table(rows);
@@ -94,6 +96,8 @@ function req(name, fallback = null) {
     if (err?.errno) console.error("errno:", err.errno);
     process.exitCode = 1;
   } finally {
-    try { await conn?.end(); } catch {}
+    try {
+      await conn?.end();
+    } catch {}
   }
 })();

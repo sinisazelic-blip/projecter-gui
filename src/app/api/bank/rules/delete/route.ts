@@ -11,7 +11,10 @@ export async function DELETE(req: NextRequest) {
     const rule_id = Number(searchParams.get("rule_id"));
 
     if (!Number.isFinite(rule_id) || rule_id <= 0) {
-      return NextResponse.json({ ok: false, error: "Invalid rule_id" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Invalid rule_id" },
+        { status: 400 },
+      );
     }
 
     await query(`DELETE FROM bank_tx_match_rule WHERE rule_id=?`, [rule_id]);
@@ -20,7 +23,7 @@ export async function DELETE(req: NextRequest) {
   } catch (e: any) {
     return NextResponse.json(
       { ok: false, error: e?.message ?? "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

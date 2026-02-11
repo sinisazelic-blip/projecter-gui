@@ -120,10 +120,17 @@ export default function FinalOkButtonClient({
       <button
         type="button"
         className="glassbtn payBtn"
-        title={disabled ? "Projekat je read-only." : "Produkcija završena → FINAL OK (status: Završen)"}
+        title={
+          disabled
+            ? "Projekat je read-only."
+            : "Produkcija završena → FINAL OK (status: Završen)"
+        }
         onClick={() => setOpen(true)}
         disabled={disabled}
-        style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? "none" : "auto" }}
+        style={{
+          opacity: disabled ? 0.5 : 1,
+          pointerEvents: disabled ? "none" : "auto",
+        }}
       >
         <Flag size={16} />
         FINAL OK
@@ -146,8 +153,22 @@ export default function FinalOkButtonClient({
             boxShadow: "0 14px 40px rgba(0,0,0,.35)",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 800 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                fontWeight: 800,
+              }}
+            >
               <Flag size={16} />
               FINAL OK
             </div>
@@ -163,8 +184,9 @@ export default function FinalOkButtonClient({
           </div>
 
           <div style={{ marginTop: 8, opacity: 0.85, fontSize: 13 }}>
-            Ovo znači: produkcija je završena. Projekat prelazi u status <b>Završen</b> (bez zaključavanja) i spreman je
-            za komunikaciju s klijentom.
+            Ovo znači: produkcija je završena. Projekat prelazi u status{" "}
+            <b>Završen</b> (bez zaključavanja) i spreman je za komunikaciju s
+            klijentom.
           </div>
 
           <div style={{ marginTop: 12 }}>
@@ -172,13 +194,32 @@ export default function FinalOkButtonClient({
               <div style={{ opacity: 0.85 }}>Učitavam provjeru…</div>
             ) : !data ? (
               <div style={{ opacity: 0.9 }}>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>Nije moguće učitati provjeru</div>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>
+                  Nije moguće učitati provjeru
+                </div>
                 <div style={{ opacity: 0.9 }}>{errorMsg ?? "—"}</div>
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 10 }}>
-                  <button className="btn" type="button" onClick={() => setOpen(false)} disabled={saving}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    gap: 8,
+                    marginTop: 10,
+                  }}
+                >
+                  <button
+                    className="btn"
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    disabled={saving}
+                  >
                     Zatvori
                   </button>
-                  <button className="btn" type="button" onClick={load} disabled={saving}>
+                  <button
+                    className="btn"
+                    type="button"
+                    onClick={load}
+                    disabled={saving}
+                  >
                     Pokušaj ponovo
                   </button>
                 </div>
@@ -193,10 +234,21 @@ export default function FinalOkButtonClient({
                     background: "rgba(255,255,255,.04)",
                   }}
                 >
-                  <div style={{ display: "grid", gap: 6, fontSize: 13, opacity: 0.92 }}>
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: 6,
+                      fontSize: 13,
+                      opacity: 0.92,
+                    }}
+                  >
                     <div>
                       Status sada:{" "}
-                      <b>{data.summary.status_name ? data.summary.status_name : `#${data.summary.status_id}`}</b>
+                      <b>
+                        {data.summary.status_name
+                          ? data.summary.status_name
+                          : `#${data.summary.status_id}`}
+                      </b>
                     </div>
                     <div>
                       Budžet:{" "}
@@ -207,7 +259,10 @@ export default function FinalOkButtonClient({
                       </b>
                     </div>
                     <div>
-                      Troškovi: <b>{formatKM(Number(data.summary.troskovi_ukupno ?? 0))} KM</b>
+                      Troškovi:{" "}
+                      <b>
+                        {formatKM(Number(data.summary.troskovi_ukupno ?? 0))} KM
+                      </b>
                     </div>
                   </div>
                 </div>
@@ -222,8 +277,18 @@ export default function FinalOkButtonClient({
                       borderRadius: 12,
                     }}
                   >
-                    <div style={{ fontWeight: 800, marginBottom: 6 }}>Ne može se upisati FINAL OK</div>
-                    <ul style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 6, fontSize: 13 }}>
+                    <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                      Ne može se upisati FINAL OK
+                    </div>
+                    <ul
+                      style={{
+                        margin: 0,
+                        paddingLeft: 16,
+                        display: "grid",
+                        gap: 6,
+                        fontSize: 13,
+                      }}
+                    >
                       {data.hard_blocks.map((b) => (
                         <li key={b.code}>{b.message}</li>
                       ))}
@@ -241,14 +306,32 @@ export default function FinalOkButtonClient({
                       borderRadius: 12,
                     }}
                   >
-                    <div style={{ fontWeight: 800, marginBottom: 6 }}>Upozorenja</div>
-                    <ul style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 6, fontSize: 13 }}>
+                    <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                      Upozorenja
+                    </div>
+                    <ul
+                      style={{
+                        margin: 0,
+                        paddingLeft: 16,
+                        display: "grid",
+                        gap: 6,
+                        fontSize: 13,
+                      }}
+                    >
                       {data.warnings.map((w) => (
                         <li key={w.code}>
                           {w.message}
                           {w.code === "OVER_BUDGET" && w.value ? (
-                            <div style={{ fontSize: 12, opacity: 0.9, marginTop: 3 }}>
-                              Budžet: {formatKM(Number(w.value.budzet_planirani))} KM · Troškovi:{" "}
+                            <div
+                              style={{
+                                fontSize: 12,
+                                opacity: 0.9,
+                                marginTop: 3,
+                              }}
+                            >
+                              Budžet:{" "}
+                              {formatKM(Number(w.value.budzet_planirani))} KM ·
+                              Troškovi:{" "}
                               {formatKM(Number(w.value.troskovi_ukupno))} KM
                             </div>
                           ) : null}
@@ -256,7 +339,15 @@ export default function FinalOkButtonClient({
                       ))}
                     </ul>
 
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 13 }}>
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        marginTop: 10,
+                        fontSize: 13,
+                      }}
+                    >
                       <input
                         type="checkbox"
                         checked={confirmWarnings}
@@ -284,15 +375,31 @@ export default function FinalOkButtonClient({
                   </div>
                 )}
 
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-                  <button className="btn" type="button" onClick={() => setOpen(false)} disabled={saving}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    gap: 8,
+                    marginTop: 12,
+                  }}
+                >
+                  <button
+                    className="btn"
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    disabled={saving}
+                  >
                     Otkaži
                   </button>
                   <button
                     className="btn"
                     type="button"
                     onClick={doFinalOk}
-                    disabled={saving || hasHardBlocks || (hasWarnings && !confirmWarnings)}
+                    disabled={
+                      saving ||
+                      hasHardBlocks ||
+                      (hasWarnings && !confirmWarnings)
+                    }
                     title="Upiši FINAL OK (status = Završen)"
                   >
                     {saving ? "Snima…" : "Upiši FINAL OK"}

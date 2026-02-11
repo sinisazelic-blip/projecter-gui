@@ -16,12 +16,18 @@ function hasAnyBankField(b) {
 export async function POST(req) {
   const form = await req.formData().catch(() => null);
   if (!form) {
-    return NextResponse.json({ ok: false, error: "Bad form data" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "Bad form data" },
+      { status: 400 },
+    );
   }
 
   const naziv = clean(form.get("naziv"));
   if (!naziv) {
-    return NextResponse.json({ ok: false, error: "Naziv je obavezan" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "Naziv je obavezan" },
+      { status: 400 },
+    );
   }
 
   const payload = {
@@ -56,7 +62,10 @@ export async function POST(req) {
   const banksFilled = banks.filter((b) => hasAnyBankField(b));
 
   // ✅ glavni račun (radio)
-  const primaryIdxRaw = clean(form.get("primary_idx")) || clean(form.get("primary_idx_default")) || "1";
+  const primaryIdxRaw =
+    clean(form.get("primary_idx")) ||
+    clean(form.get("primary_idx_default")) ||
+    "1";
   const primaryIdx = Number(primaryIdxRaw) || 1;
 
   // Ako nema nijedan račun popunjen, nećemo fail-ati (nekad firma još nema unesen račun),
@@ -67,7 +76,9 @@ export async function POST(req) {
     await conn.beginTransaction();
 
     // 1) deaktiviraj postojeći aktivni (nema brisanja)
-    await conn.query(`UPDATE firma_profile SET is_active = 0 WHERE is_active = 1`);
+    await conn.query(
+      `UPDATE firma_profile SET is_active = 0 WHERE is_active = 1`,
+    );
 
     // 2) insert novi aktivni profil
     const [ins] = await conn.query(
@@ -111,7 +122,7 @@ export async function POST(req) {
         payload.broj_rjesenja,
 
         payload.logo_path,
-      ]
+      ],
     );
 
     const firmaId = ins?.insertId;
@@ -132,7 +143,14 @@ export async function POST(req) {
           ?, ?, ?, ?, ?, ?
         )
         `,
-        [firmaId, b.bank_naziv, b.bank_racun, b.iban, b.swift, isPrimary ? 1 : null]
+        [
+          firmaId,
+          b.bank_naziv,
+          b.bank_racun,
+          b.iban,
+          b.swift,
+          isPrimary ? 1 : null,
+        ],
       );
 
       if (isPrimary) primarySet = true;
@@ -149,7 +167,7 @@ export async function POST(req) {
         ORDER BY bank_account_id ASC
         LIMIT 1
         `,
-        [firmaId]
+        [firmaId],
       );
     }
 
@@ -161,7 +179,10 @@ export async function POST(req) {
     try {
       await conn.rollback();
     } catch {}
-    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: String(e?.message || e) },
+      { status: 500 },
+    );
   } finally {
     conn.release();
   }

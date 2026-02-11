@@ -14,7 +14,9 @@ function getBaseUrl() {
 
 export async function apiGet(path, options = {}) {
   const baseUrl = getBaseUrl();
-  const url = path.startsWith("http") ? path : new URL(path, baseUrl).toString();
+  const url = path.startsWith("http")
+    ? path
+    : new URL(path, baseUrl).toString();
 
   const res = await fetch(url, {
     cache: options.cache ?? "no-store",

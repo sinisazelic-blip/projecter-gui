@@ -144,7 +144,7 @@ export async function POST(req) {
     if (!txnNodes.length) {
       return NextResponse.json(
         { error: "Nisam našao transakcije u XML_2 (UniCredit G_* shema)." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -180,14 +180,14 @@ export async function POST(req) {
       // Ako ne postoji, hash uključuje i sirove iznose + opis
       const broj = pick(node, ["BROJ"]) || "";
 
-const uniqPart = await sha1Hex(
-  `UC|${booking_date}|${amountValue}|${counterpartyName || ""}|${description || ""}|${rawDug}|${rawPot}`
-);
+      const uniqPart = await sha1Hex(
+        `UC|${booking_date}|${amountValue}|${counterpartyName || ""}|${description || ""}|${rawDug}|${rawPot}`,
+      );
 
-// ograniči dužinu (tvoja kolona je varchar(100))
-const bankTxnId = broj
-  ? `UC:${booking_date}:${broj}:${uniqPart.slice(0, 16)}`
-  : `UC:${booking_date}:${uniqPart.slice(0, 24)}`;
+      // ograniči dužinu (tvoja kolona je varchar(100))
+      const bankTxnId = broj
+        ? `UC:${booking_date}:${broj}:${uniqPart.slice(0, 16)}`
+        : `UC:${booking_date}:${uniqPart.slice(0, 24)}`;
       const descUpper = (description || "").toUpperCase();
       const isOwner = descUpper.includes("POSUDBA VLASNIKA");
 
@@ -219,7 +219,7 @@ const bankTxnId = broj
           counterparty_type,
           is_internal_transfer,
           xmlStr,
-        ]
+        ],
       );
 
       if (res?.affectedRows === 1) inserted++;
@@ -240,7 +240,7 @@ const bankTxnId = broj
   } catch (e) {
     return NextResponse.json(
       { error: e?.message || "Greška pri importu." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

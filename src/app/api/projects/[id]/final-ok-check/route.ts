@@ -51,12 +51,15 @@ export async function GET(req: Request) {
     WHERE p.projekat_id = ?
     LIMIT 1
     `,
-    [projekatId]
+    [projekatId],
   );
 
   const p = rows?.[0];
   if (!p) {
-    return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, error: "NOT_FOUND" },
+      { status: 404 },
+    );
   }
 
   const status_id = Number(p.status_id);

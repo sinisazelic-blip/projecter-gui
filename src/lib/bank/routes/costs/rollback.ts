@@ -10,7 +10,10 @@ export async function handleBankCostsRollback(req: Request): Promise<Response> {
     const dryRun = Boolean((body as any)?.dry_run);
 
     if (!Number.isFinite(batchId) || batchId <= 0) {
-      return NextResponse.json({ ok: false, error: "INVALID_BATCH_ID" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "INVALID_BATCH_ID" },
+        { status: 400 },
+      );
     }
 
     const result = await withTransaction(async (conn: any) => {
@@ -20,12 +23,15 @@ export async function handleBankCostsRollback(req: Request): Promise<Response> {
          FROM bank_import_batch
          WHERE batch_id = ?
          FOR UPDATE`,
-        [batchId]
+        [batchId],
       );
 
       if (!batchRows?.length) {
         // throw da izadjemo iz transaction wrappera kontrolisano
-        return { __http: 404, payload: { ok: false, error: "BATCH_NOT_FOUND", batch_id: batchId } };
+        return {
+          __http: 404,
+          payload: { ok: false, error: "BATCH_NOT_FOUND", batch_id: batchId },
+        };
       }
 
       // 2) Gate: linkovi su "anchor" za rollback
@@ -34,7 +40,7 @@ export async function handleBankCostsRollback(req: Request): Promise<Response> {
          FROM bank_tx_cost_link
          WHERE batch_id = ?
          FOR UPDATE`,
-        [batchId]
+        [batchId],
       );
       const linksGate = Number(gateRows?.[0]?.links_gate || 0);
 
@@ -43,7 +49,7 @@ export async function handleBankCostsRollback(req: Request): Promise<Response> {
         `SELECT COUNT(*) AS links_total
          FROM bank_tx_cost_link
          WHERE batch_id = ?`,
-        [batchId]
+        [batchId],
       );
       const linksTotal = Number(linksRows?.[0]?.links_total || 0);
 
@@ -52,7 +58,7 @@ export async function handleBankCostsRollback(req: Request): Promise<Response> {
          FROM projektni_troskovi pt
          JOIN bank_tx_cost_link l ON l.trosak_row_id = pt.trosak_id
          WHERE l.batch_id = ?`,
-        [batchId]
+        [batchId],
       );
       const costsTotal = Number(costsRows?.[0]?.costs_total || 0);
 
@@ -62,10 +68,12 @@ export async function handleBankCostsRollback(req: Request): Promise<Response> {
            SUM(reversed_at IS NULL) AS postings_not_reversed
          FROM bank_tx_posting
          WHERE batch_id = ?`,
-        [batchId]
+        [batchId],
       );
       const postingsTotal = Number(postingsRows?.[0]?.postings_total || 0);
-      const postingsNotReversed = Number(postingsRows?.[0]?.postings_not_reversed || 0);
+      const postingsNotReversed = Number(
+        postingsRows?.[0]?.postings_not_reversed || 0,
+      );
 
       // DRY RUN: samo vrati šta bi se desilo (wrapper će rollbackovati svejedno)
       if (dryRun) {
@@ -79,7 +87,8 @@ export async function handleBankCostsRollback(req: Request): Promise<Response> {
             costs_total: costsTotal,
             postings_total: postingsTotal,
             postings_not_reversed: postingsNotReversed,
-            message: linksGate > 0 ? "Rollback available" : "Nothing to rollback",
+            message:
+              linksGate > 0 ? "Rollback available" : "Nothing to rollback",
           },
         };
       }
@@ -108,7 +117,7 @@ export async function handleBankCostsRollback(req: Request): Promise<Response> {
              reversed_by_batch_id = ?
          WHERE batch_id = ?
            AND reversed_at IS NULL`,
-        [batchId, batchId]
+        [batchId, batchId],
       );
 
       // 5) Delete costs preko link tabele
@@ -117,14 +126,14 @@ export async function handleBankCostsRollback(req: Request): Promise<Response> {
          FROM projektni_troskovi pt
          JOIN bank_tx_cost_link l ON l.trosak_row_id = pt.trosak_id
          WHERE l.batch_id = ?`,
-        [batchId]
+        [batchId],
       );
 
       // 6) Delete links
       const [delLinks]: any = await conn.execute(
         `DELETE FROM bank_tx_cost_link
          WHERE batch_id = ?`,
-        [batchId]
+        [batchId],
       );
 
       // 7) Batch status
@@ -132,7 +141,7 @@ export async function handleBankCostsRollback(req: Request): Promise<Response> {
         `UPDATE bank_import_batch
          SET status = 'reverted'
          WHERE batch_id = ?`,
-        [batchId]
+        [batchId],
       );
 
       return {
@@ -151,12 +160,17 @@ export async function handleBankCostsRollback(req: Request): Promise<Response> {
 
     // unify response
     if (result?.payload) {
-      return NextResponse.json(result.payload, { status: result.__http ?? 200 });
+      return NextResponse.json(result.payload, {
+        status: result.__http ?? 200,
+      });
     }
     // fallback (ne bi trebalo)
     return NextResponse.json(result);
   } catch (err) {
     console.error("rollback error:", err);
-    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "INTERNAL_ERROR" },
+      { status: 500 },
+    );
   }
 }

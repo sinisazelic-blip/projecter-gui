@@ -11,14 +11,14 @@ export async function GET() {
       FROM INFORMATION_SCHEMA.TABLES
       WHERE TABLE_SCHEMA = DATABASE()
       ORDER BY TABLE_TYPE, TABLE_NAME
-      `
+      `,
     );
 
     return NextResponse.json({ success: true, tables: rows });
   } catch (e) {
     return NextResponse.json(
       { success: false, message: e?.message || "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -6,14 +6,14 @@ export type CashStatus = "DRAFT";
 
 export type CashEntry = {
   id: string;
-  date: string;        // ISO string
-  amount: number;      // pozitivno
-  currency: string;    // "KM" default
+  date: string; // ISO string
+  amount: number; // pozitivno
+  currency: string; // "KM" default
   direction: CashDirection;
   note: string;
   projectId: string | null;
-  status: CashStatus;  // "DRAFT"
-  createdAt: string;   // ISO
+  status: CashStatus; // "DRAFT"
+  createdAt: string; // ISO
 };
 
 type CashFile = {
@@ -32,7 +32,9 @@ function ensureStore(): CashFile {
     return init;
   }
   const raw = fs.readFileSync(CASH_PATH, "utf8");
-  const parsed = raw ? (JSON.parse(raw) as CashFile) : ({ version: 1, items: [] } as CashFile);
+  const parsed = raw
+    ? (JSON.parse(raw) as CashFile)
+    : ({ version: 1, items: [] } as CashFile);
   if (!parsed?.items) return { version: 1, items: [] };
   return parsed;
 }

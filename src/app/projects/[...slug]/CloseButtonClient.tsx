@@ -132,7 +132,9 @@ export function CloseButtonClient({
   }
 
   const warnings = Array.isArray(check?.warnings) ? check!.warnings! : [];
-  const hardBlocks = Array.isArray(check?.hard_blocks) ? check!.hard_blocks! : [];
+  const hardBlocks = Array.isArray(check?.hard_blocks)
+    ? check!.hard_blocks!
+    : [];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -162,13 +164,16 @@ export function CloseButtonClient({
           {/* Ako close-check ima hard blocks (ne bi trebao kad ok_to_close=true, ali bolje prikazati) */}
           {hardBlocks.length > 0 && (
             <div style={{ marginBottom: 10 }}>
-              <div style={{ fontWeight: 700, marginBottom: 6, color: "#b91c1c" }}>
+              <div
+                style={{ fontWeight: 700, marginBottom: 6, color: "#b91c1c" }}
+              >
                 Blokade
               </div>
               <ul style={{ margin: 0, paddingLeft: 18 }}>
                 {hardBlocks.map((b, i) => (
                   <li key={`${b.code ?? "HB"}-${i}`}>
-                    {b.message ?? "Blokada"}{typeof b.count === "number" ? ` (${b.count})` : ""}
+                    {b.message ?? "Blokada"}
+                    {typeof b.count === "number" ? ` (${b.count})` : ""}
                   </li>
                 ))}
               </ul>
@@ -178,14 +183,25 @@ export function CloseButtonClient({
           {warnings.length > 0 ? (
             <ul style={{ margin: 0, paddingLeft: 18, marginBottom: 10 }}>
               {warnings.map((w, i) => (
-                <li key={`${w.code ?? "W"}-${i}`}>{w.message ?? "Upozorenje"}</li>
+                <li key={`${w.code ?? "W"}-${i}`}>
+                  {w.message ?? "Upozorenje"}
+                </li>
               ))}
             </ul>
           ) : (
-            <div style={{ marginBottom: 10, opacity: 0.9 }}>Postoje upozorenja.</div>
+            <div style={{ marginBottom: 10, opacity: 0.9 }}>
+              Postoje upozorenja.
+            </div>
           )}
 
-          <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+          <label
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              marginBottom: 10,
+            }}
+          >
             <input
               type="checkbox"
               checked={confirmWarnings}

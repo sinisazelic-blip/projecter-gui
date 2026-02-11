@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
         ORDER BY projekat_id ASC
         LIMIT 20
         `,
-        [q]
+        [q],
       )
     : await query(
         `
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
         ORDER BY projekat_id DESC
         LIMIT 20
         `,
-        [q]
+        [q],
       );
 
   return NextResponse.json({ success: true, data: rows });

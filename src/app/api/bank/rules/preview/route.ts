@@ -13,19 +13,26 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
 
     const batch_id =
-      body?.batch_id === null || body?.batch_id === undefined || body?.batch_id === ""
+      body?.batch_id === null ||
+      body?.batch_id === undefined ||
+      body?.batch_id === ""
         ? null
         : Number(body?.batch_id);
 
     if (batch_id !== null && (!Number.isFinite(batch_id) || batch_id <= 0)) {
-      return NextResponse.json({ ok: false, error: "Invalid batch_id" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Invalid batch_id" },
+        { status: 400 },
+      );
     }
 
     const out = await withTransaction(async (conn: any) => {
       let rule = body?.rule ?? null;
 
       const rule_id =
-        body?.rule_id === null || body?.rule_id === undefined || body?.rule_id === ""
+        body?.rule_id === null ||
+        body?.rule_id === undefined ||
+        body?.rule_id === ""
           ? null
           : Number(body?.rule_id);
 
@@ -40,7 +47,7 @@ export async function POST(req: NextRequest) {
           WHERE rule_id = ?
           LIMIT 1
           `,
-          [rule_id]
+          [rule_id],
         );
         rule = rows?.[0] ?? null;
       }
@@ -70,16 +77,26 @@ export async function POST(req: NextRequest) {
         params.push(rule.match_account);
       }
 
-      if (rule.match_amount !== null && rule.match_amount !== undefined && rule.match_amount !== "") {
+      if (
+        rule.match_amount !== null &&
+        rule.match_amount !== undefined &&
+        rule.match_amount !== ""
+      ) {
         where.push("t.amount = ?");
         params.push(Number(rule.match_amount));
       }
 
-      if (rule.match_is_fee !== null && rule.match_is_fee !== undefined && rule.match_is_fee !== "") {
+      if (
+        rule.match_is_fee !== null &&
+        rule.match_is_fee !== undefined &&
+        rule.match_is_fee !== ""
+      ) {
         // MVP: fee = kategorija/description sadrži "Provizija" ili kategorija == 'Provizija'
         // (ovo kasnije može biti bolje)
         if (Number(rule.match_is_fee) === 1) {
-          where.push("(t.description LIKE '%proviz%' OR t.description LIKE '%fee%' OR t.counterparty LIKE '%bank%' OR t.amount <> 0)");
+          where.push(
+            "(t.description LIKE '%proviz%' OR t.description LIKE '%fee%' OR t.counterparty LIKE '%bank%' OR t.amount <> 0)",
+          );
         } else {
           // no-op (teško definisati negaciju fee-a u MVP)
         }
@@ -93,7 +110,7 @@ export async function POST(req: NextRequest) {
         FROM bank_tx_staging t
         ${whereSql}
         `,
-        params
+        params,
       );
 
       const count = Number(cntRows?.[0]?.cnt ?? 0);
@@ -106,18 +123,24 @@ export async function POST(req: NextRequest) {
         ORDER BY t.tx_id DESC
         LIMIT 20
         `,
-        params
+        params,
       );
 
       return { ok: true, count, sample };
     });
 
     if (!out.ok && out.error === "RULE_MISSING") {
-      return NextResponse.json({ ok: false, error: "RULE_MISSING" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "RULE_MISSING" },
+        { status: 400 },
+      );
     }
 
     return NextResponse.json(out);
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Server error" },
+      { status: 500 },
+    );
   }
 }

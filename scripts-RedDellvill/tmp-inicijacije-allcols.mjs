@@ -19,7 +19,9 @@ loadEnvLocal();
 
 const { query } = await import("../src/lib/db.ts");
 
-const db = await query(`SELECT DATABASE() AS db, @@hostname AS host, @@port AS port`);
+const db = await query(
+  `SELECT DATABASE() AS db, @@hostname AS host, @@port AS port`,
+);
 const exists = await query(`
   SELECT TABLE_NAME
   FROM INFORMATION_SCHEMA.TABLES
@@ -36,4 +38,6 @@ const cols = await query(`
   ORDER BY ORDINAL_POSITION
 `);
 
-console.log(JSON.stringify({ db, exists, cols_count: cols.length, cols }, null, 2));
+console.log(
+  JSON.stringify({ db, exists, cols_count: cols.length, cols }, null, 2),
+);

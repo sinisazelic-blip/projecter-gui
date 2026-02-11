@@ -5,7 +5,9 @@ export const dynamic = "force-dynamic";
 function CardLink({ title, desc, href, href2, href2Label }) {
   return (
     <div className="card" style={{ margin: 0 }}>
-      <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 6 }}>
+        {title}
+      </div>
       <div className="subtle" style={{ lineHeight: 1.6, marginBottom: 12 }}>
         {desc}
       </div>
@@ -14,11 +16,11 @@ function CardLink({ title, desc, href, href2, href2Label }) {
         <Link className="btn btn-primary" href={href}>
           Otvori
         </Link>
-        {href2 ? (
-          <Link className="btn" href={href2}>
-            {href2Label ?? "Drugo"}
-          </Link>
-        ) : null}
+        {href2
+          ? <Link className="btn" href={href2}>
+              {href2Label ?? "Drugo"}
+            </Link>
+          : null}
       </div>
     </div>
   );
@@ -85,7 +87,9 @@ export default async function FinanceHomePage() {
 
       {/* NOTE */}
       <div className="card" style={{ marginTop: 12 }}>
-        <div className="h2" style={{ marginTop: 0 }}>Napomena</div>
+        <div className="h2" style={{ marginTop: 0 }}>
+          Napomena
+        </div>
         <div className="subtle" style={{ lineHeight: 1.7 }}>
           Ovo je read-only skeleton faza. Linkovanje i pravila dolaze kasnije,
           ali navigacija i prikazi moraju biti stabilni i jasni.

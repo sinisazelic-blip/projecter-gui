@@ -14,7 +14,9 @@ function cleanBool01(v: any) {
 }
 
 function normalizeVrsta(v: any): VrstaDobavljaca {
-  const s = String(v ?? "").trim().toLowerCase();
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
   if (s === "studio" || s === "freelancer" || s === "servis") return s;
   return "ostalo";
 }
@@ -63,7 +65,7 @@ export async function createDobavljac(input: {
       adresa,
       napomena,
       aktivan,
-    ]
+    ],
   );
 
   return { ok: true };
@@ -84,7 +86,8 @@ export async function updateDobavljac(input: {
   aktivan?: boolean;
 }) {
   const id = Number(input?.dobavljac_id);
-  if (!Number.isFinite(id) || id <= 0) throw new Error("Neispravan dobavljac_id.");
+  if (!Number.isFinite(id) || id <= 0)
+    throw new Error("Neispravan dobavljac_id.");
 
   const naziv = String(input?.naziv ?? "").trim();
   if (!naziv) throw new Error("Naziv dobavljača je obavezan.");
@@ -119,15 +122,19 @@ export async function updateDobavljac(input: {
       napomena,
       aktivan,
       id,
-    ]
+    ],
   );
 
   return { ok: true };
 }
 
-export async function setDobavljacActive(input: { dobavljac_id: number; aktivan: boolean }) {
+export async function setDobavljacActive(input: {
+  dobavljac_id: number;
+  aktivan: boolean;
+}) {
   const id = Number(input?.dobavljac_id);
-  if (!Number.isFinite(id) || id <= 0) throw new Error("Neispravan dobavljac_id.");
+  if (!Number.isFinite(id) || id <= 0)
+    throw new Error("Neispravan dobavljac_id.");
 
   await query(`UPDATE dobavljaci SET aktivan=? WHERE dobavljac_id=?`, [
     input?.aktivan ? 1 : 0,
@@ -136,4 +143,3 @@ export async function setDobavljacActive(input: { dobavljac_id: number; aktivan:
 
   return { ok: true };
 }
-

@@ -7,7 +7,10 @@ export async function POST(req) {
     const { date, ccy, rate_to_bam, source = "manual" } = body;
 
     if (!date || !ccy || !Number.isFinite(Number(rate_to_bam))) {
-      return NextResponse.json({ ok: false, error: "Invalid payload" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Invalid payload" },
+        { status: 400 },
+      );
     }
 
     await query(
@@ -18,12 +21,15 @@ export async function POST(req) {
         rate_to_bam = VALUES(rate_to_bam),
         source = VALUES(source)
       `,
-      [date, ccy.toUpperCase(), rate_to_bam, source]
+      [date, ccy.toUpperCase(), rate_to_bam, source],
     );
 
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("fx/upsert error", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "Server error" },
+      { status: 500 },
+    );
   }
 }

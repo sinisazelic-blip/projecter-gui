@@ -108,7 +108,7 @@ function formatHumanDT(v: string | null | undefined) {
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return "—";
   return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(
-    d.getMinutes()
+    d.getMinutes(),
   )}`;
 }
 
@@ -143,7 +143,7 @@ function toHumanInput(v: string | null | undefined): string {
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return "";
   return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(
-    d.getMinutes()
+    d.getMinutes(),
   )}`;
 }
 
@@ -164,7 +164,9 @@ function fmtMoney(n: number) {
 }
 
 function normCcy(v: any) {
-  const s = String(v ?? "").trim().toUpperCase();
+  const s = String(v ?? "")
+    .trim()
+    .toUpperCase();
   return (s || "BAM").slice(0, 3);
 }
 
@@ -201,13 +203,29 @@ function daysDiffFromToday(isoDate: string) {
 }
 
 function semaforFor(isoDate: string | null) {
-  if (!isoDate) return { cls: "sem--none", title: "Nema roka", label: "Nema roka" };
+  if (!isoDate)
+    return { cls: "sem--none", title: "Nema roka", label: "Nema roka" };
   const diff = daysDiffFromToday(isoDate);
-  if (!Number.isFinite(diff)) return { cls: "sem--none", title: "Nevažeći rok", label: "Nevažeći rok" };
+  if (!Number.isFinite(diff))
+    return { cls: "sem--none", title: "Nevažeći rok", label: "Nevažeći rok" };
 
-  if (diff <= 0) return { cls: "sem--red", title: "Deadline je danas ili prošao", label: "DANAS / PROŠAO" };
-  if (diff <= 3) return { cls: "sem--orange", title: "Deadline uskoro (≤ 3 dana)", label: "USKORO (≤3d)" };
-  return { cls: "sem--green", title: "Deadline OK (> 3 dana)", label: "OK (>3d)" };
+  if (diff <= 0)
+    return {
+      cls: "sem--red",
+      title: "Deadline je danas ili prošao",
+      label: "DANAS / PROŠAO",
+    };
+  if (diff <= 3)
+    return {
+      cls: "sem--orange",
+      title: "Deadline uskoro (≤ 3 dana)",
+      label: "USKORO (≤3d)",
+    };
+  return {
+    cls: "sem--green",
+    title: "Deadline OK (> 3 dana)",
+    label: "OK (>3d)",
+  };
 }
 
 async function fetchJson(url: string, init?: RequestInit) {
@@ -275,7 +293,9 @@ export default function PonudaDetaljPage() {
   const [projStatusError, setProjStatusError] = useState<string | null>(null);
 
   const projectStatusId = Number(projStatus?.status_id ?? 0);
-  const projectStatusName = projStatus?.status_name ? String(projStatus.status_name) : null;
+  const projectStatusName = projStatus?.status_name
+    ? String(projStatus.status_name)
+    : null;
 
   // statusi_projekta:
   // 8 = ZATVOREN (soft-lock)
@@ -289,13 +309,23 @@ export default function PonudaDetaljPage() {
 
   // ✅ Deal read-only čim projekat uđe u zaključavajuće statuse
   const dealReadOnly =
-    !!row?.projekat_id && (isProjectClosed || isProjectInvoiced || isProjectArchived || isProjectCancelled);
+    !!row?.projekat_id &&
+    (isProjectClosed ||
+      isProjectInvoiced ||
+      isProjectArchived ||
+      isProjectCancelled);
 
   const acceptedOk = useMemo(() => !!parseHumanToIso(t_accepted), [t_accepted]);
 
   const acceptedIso = useMemo(() => parseHumanToIso(t_accepted), [t_accepted]);
-  const acceptedIsoDateOnly = useMemo(() => isoDateOnlyFromAccepted(acceptedIso), [acceptedIso]);
-  const sem = useMemo(() => semaforFor(acceptedIsoDateOnly), [acceptedIsoDateOnly]);
+  const acceptedIsoDateOnly = useMemo(
+    () => isoDateOnlyFromAccepted(acceptedIso),
+    [acceptedIso],
+  );
+  const sem = useMemo(
+    () => semaforFor(acceptedIsoDateOnly),
+    [acceptedIsoDateOnly],
+  );
 
   const totalsByCcy = useMemo(() => {
     const map = new Map<string, number>();
@@ -310,7 +340,10 @@ export default function PonudaDetaljPage() {
     return obj;
   }, [stavke]);
 
-  const totalBAM = useMemo(() => (totalsByCcy["BAM"] ?? 0) + (totalsByCcy["KM"] ?? 0), [totalsByCcy]);
+  const totalBAM = useMemo(
+    () => (totalsByCcy["BAM"] ?? 0) + (totalsByCcy["KM"] ?? 0),
+    [totalsByCcy],
+  );
   const totalEUR = useMemo(() => totalsByCcy["EUR"] ?? 0, [totalsByCcy]);
 
   const budgetKM = useMemo(() => {
@@ -334,22 +367,29 @@ export default function PonudaDetaljPage() {
     });
   }, [stavke]);
 
-  const eurInKM = useMemo(() => (Number.isFinite(totalEUR) ? totalEUR * EUR_TO_BAM : 0), [totalEUR]);
+  const eurInKM = useMemo(
+    () => (Number.isFinite(totalEUR) ? totalEUR * EUR_TO_BAM : 0),
+    [totalEUR],
+  );
 
   async function loadKlijenti() {
     try {
       const res = await fetch("/api/klijenti", { cache: "no-store" });
       const data = await res.json();
-      if (data?.ok && Array.isArray(data.rows)) setKlijenti(data.rows as Klijent[]);
+      if (data?.ok && Array.isArray(data.rows))
+        setKlijenti(data.rows as Klijent[]);
     } catch {}
   }
 
   async function loadPickerItems() {
     setPickerLoading(true);
     try {
-      const res = await fetch(`/api/cjenovnik?picker=1&limit=1000`, { cache: "no-store" });
+      const res = await fetch(`/api/cjenovnik?picker=1&limit=1000`, {
+        cache: "no-store",
+      });
       const data = await res.json();
-      if (data?.ok && Array.isArray(data.rows)) setPickerItems(data.rows as CjenHit[]);
+      if (data?.ok && Array.isArray(data.rows))
+        setPickerItems(data.rows as CjenHit[]);
       else setPickerItems([]);
     } catch {
       setPickerItems([]);
@@ -360,7 +400,10 @@ export default function PonudaDetaljPage() {
 
   async function loadTimeline() {
     try {
-      const res = await fetch(`/api/inicijacije/timeline?inicijacija_id=${id}`, { cache: "no-store" });
+      const res = await fetch(
+        `/api/inicijacije/timeline?inicijacija_id=${id}`,
+        { cache: "no-store" },
+      );
       const data = await res.json();
       if (!data?.ok) throw new Error(data?.error || "Greška (timeline)");
       const tr = (data.row ?? null) as TimelineRow | null;
@@ -375,7 +418,9 @@ export default function PonudaDetaljPage() {
 
   async function loadStavke() {
     try {
-      const res = await fetch(`/api/inicijacije/stavke?inicijacija_id=${id}`, { cache: "no-store" });
+      const res = await fetch(`/api/inicijacije/stavke?inicijacija_id=${id}`, {
+        cache: "no-store",
+      });
       const data = await res.json();
       if (!data?.ok) return;
       setStavke(Array.isArray(data.rows) ? (data.rows as StavkaRow[]) : []);
@@ -391,7 +436,9 @@ export default function PonudaDetaljPage() {
       setProjStatus(r);
     } catch (e: any) {
       setProjStatus(null);
-      setProjStatusError(e?.message ?? "Greška pri učitavanju statusa projekta.");
+      setProjStatusError(
+        e?.message ?? "Greška pri učitavanju statusa projekta.",
+      );
     } finally {
       setProjStatusLoading(false);
     }
@@ -402,7 +449,9 @@ export default function PonudaDetaljPage() {
     setCloseLoading(true);
     setCloseConfirmWarnings(false);
     try {
-      const j = (await fetchJson(`/api/projects/${projekatId}/close-check`)) as any;
+      const j = (await fetchJson(
+        `/api/projects/${projekatId}/close-check`,
+      )) as any;
       setCloseData(j as CloseCheck);
     } catch (e: any) {
       setCloseData(null);
@@ -417,7 +466,9 @@ export default function PonudaDetaljPage() {
     setError(null);
     setMsg(null);
     try {
-      const res = await fetch(`/api/inicijacije/jedna?id=${id}`, { cache: "no-store" });
+      const res = await fetch(`/api/inicijacije/jedna?id=${id}`, {
+        cache: "no-store",
+      });
       const data = await res.json();
       if (!data?.ok) throw new Error(data?.error || "Greška");
       const r = data.row as Row;
@@ -529,7 +580,9 @@ export default function PonudaDetaljPage() {
   }
 
   function findPickerById(stavka_id: number) {
-    return pickerItems.find((x) => Number(x.stavka_id) === Number(stavka_id)) ?? null;
+    return (
+      pickerItems.find((x) => Number(x.stavka_id) === Number(stavka_id)) ?? null
+    );
   }
 
   async function addItem() {
@@ -586,7 +639,9 @@ export default function PonudaDetaljPage() {
   async function stornoItem(inicijacija_stavka_id: number) {
     if (dealReadOnly) return;
 
-    const ok = window.confirm("Stornirati ovu stavku? (Ne briše se; samo se sakrije i ne računa u zbir.)");
+    const ok = window.confirm(
+      "Stornirati ovu stavku? (Ne briše se; samo se sakrije i ne računa u zbir.)",
+    );
     if (!ok) return;
 
     setError(null);
@@ -710,15 +765,19 @@ export default function PonudaDetaljPage() {
       await fetchJson(`/api/projects/${pid}/close`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-user": USER_LABEL },
-        body: JSON.stringify({ force: hasWarnings ? closeConfirmWarnings : true }),
+        body: JSON.stringify({
+          force: hasWarnings ? closeConfirmWarnings : true,
+        }),
       });
 
       setCloseOpen(false);
       await load(); // povuče novi status projekta (kanonski)
     } catch (e: any) {
       const payload = e?.payload;
-      if (payload?.error === "CLOSE_BLOCKED") setCloseError("Ne može se zatvoriti projekat. Provjeri blokade.");
-      else if (payload?.error === "CLOSE_NEEDS_CONFIRM") setCloseError("Potrebna je potvrda upozorenja (čekiraj).");
+      if (payload?.error === "CLOSE_BLOCKED")
+        setCloseError("Ne može se zatvoriti projekat. Provjeri blokade.");
+      else if (payload?.error === "CLOSE_NEEDS_CONFIRM")
+        setCloseError("Potrebna je potvrda upozorenja (čekiraj).");
       else setCloseError(e?.message ?? "Greška pri zatvaranju projekta.");
 
       try {
@@ -737,25 +796,29 @@ export default function PonudaDetaljPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [closeOpen]);
 
-  if (!Number.isFinite(id) || id <= 0) return <div className="container" style={{ padding: 16 }}>Neispravan ID.</div>;
+  if (!Number.isFinite(id) || id <= 0)
+    return (
+      <div className="container" style={{ padding: 16 }}>
+        Neispravan ID.
+      </div>
+    );
 
   const dealTitle = row?.radni_naziv ? row.radni_naziv : `Deal #${id}`;
 
   const hasHardBlocks = (closeData?.hard_blocks?.length ?? 0) > 0;
   const hasWarnings = (closeData?.warnings?.length ?? 0) > 0;
 
-  const projectStatusLabel =
-    !row?.projekat_id
-      ? null
-      : projStatusLoading
-        ? "Učitavam…"
-        : projStatusError
-          ? "Greška"
-          : projectStatusName
-            ? projectStatusName
-            : projectStatusId
-              ? `Status #${projectStatusId}`
-              : "—";
+  const projectStatusLabel = !row?.projekat_id
+    ? null
+    : projStatusLoading
+      ? "Učitavam…"
+      : projStatusError
+        ? "Greška"
+        : projectStatusName
+          ? projectStatusName
+          : projectStatusId
+            ? `Status #${projectStatusId}`
+            : "—";
 
   const projectStatusTone =
     isProjectArchived || isProjectCancelled
@@ -840,7 +903,12 @@ export default function PonudaDetaljPage() {
         <div className="container topInner">
           <div className="topbar">
             <div className="backCluster">
-              <Link href="/inicijacije" aria-label="Povratak na Deals" title="Povratak na Deals" className="glassbtn backIcon">
+              <Link
+                href="/inicijacije"
+                aria-label="Povratak na Deals"
+                title="Povratak na Deals"
+                className="glassbtn backIcon"
+              >
                 <span style={{ fontSize: 22, lineHeight: 1 }}>←</span>
               </Link>
               <div className="backText">
@@ -849,8 +917,15 @@ export default function PonudaDetaljPage() {
               </div>
             </div>
 
-            <div className="brandWrap" style={{ flex: "1 1 auto", justifyContent: "center" }}>
-              <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+            <div
+              className="brandWrap"
+              style={{ flex: "1 1 auto", justifyContent: "center" }}
+            >
+              <img
+                src="/fluxa/logo-light.png"
+                alt="FLUXA"
+                className="brandLogo"
+              />
               <div>
                 <div className="brandTitle">Deal</div>
                 <div className="brandSub">Project & Finance Engine</div>
@@ -860,7 +935,11 @@ export default function PonudaDetaljPage() {
             <div className="actions">
               {row?.projekat_id ? (
                 <>
-                  <button onClick={() => router.push(`/projects/${row.projekat_id}`)} className="glassbtn actionBtn" type="button">
+                  <button
+                    onClick={() => router.push(`/projects/${row.projekat_id}`)}
+                    className="glassbtn actionBtn"
+                    type="button"
+                  >
                     📁 Otvori projekat #{row.projekat_id}
                   </button>
 
@@ -869,7 +948,11 @@ export default function PonudaDetaljPage() {
                       onClick={() => setCloseOpen((v) => !v)}
                       className="glassbtn actionBtn"
                       type="button"
-                      title={dealReadOnly ? "Deal je read-only jer projekat ima zaključavajući status." : "Zatvori projekat (soft-lock) i spremi za fakturisanje."}
+                      title={
+                        dealReadOnly
+                          ? "Deal je read-only jer projekat ima zaključavajući status."
+                          : "Zatvori projekat (soft-lock) i spremi za fakturisanje."
+                      }
                       style={{ opacity: dealReadOnly ? 0.9 : 1 }}
                     >
                       🔒 Zatvori projekat
@@ -877,29 +960,73 @@ export default function PonudaDetaljPage() {
 
                     {closeOpen && (
                       <div className="popoverCard">
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                          <div style={{ fontWeight: 900 }}>Zatvori projekat</div>
-                          <button type="button" className="btn" onClick={() => setCloseOpen(false)} disabled={closeSaving} title="Zatvori">
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            gap: 10,
+                          }}
+                        >
+                          <div style={{ fontWeight: 900 }}>
+                            Zatvori projekat
+                          </div>
+                          <button
+                            type="button"
+                            className="btn"
+                            onClick={() => setCloseOpen(false)}
+                            disabled={closeSaving}
+                            title="Zatvori"
+                          >
                             ✕
                           </button>
                         </div>
 
-                        <div style={{ marginTop: 8, opacity: 0.88, fontSize: 13 }}>
-                          Ovo znači: projekat ulazi u status <b>ZATVOREN</b> (soft-lock) i spreman je za fakturisanje.
+                        <div
+                          style={{ marginTop: 8, opacity: 0.88, fontSize: 13 }}
+                        >
+                          Ovo znači: projekat ulazi u status <b>ZATVOREN</b>{" "}
+                          (soft-lock) i spreman je za fakturisanje.
                         </div>
 
                         <div style={{ marginTop: 12 }}>
                           {closeLoading ? (
-                            <div style={{ opacity: 0.85 }}>Učitavam provjeru…</div>
+                            <div style={{ opacity: 0.85 }}>
+                              Učitavam provjeru…
+                            </div>
                           ) : !closeData ? (
                             <div style={{ opacity: 0.9 }}>
-                              <div style={{ fontWeight: 800, marginBottom: 6 }}>Nije moguće učitati provjeru</div>
-                              <div style={{ opacity: 0.9 }}>{closeError ?? "—"}</div>
-                              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 10 }}>
-                                <button className="btn" type="button" onClick={() => setCloseOpen(false)} disabled={closeSaving}>
+                              <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                                Nije moguće učitati provjeru
+                              </div>
+                              <div style={{ opacity: 0.9 }}>
+                                {closeError ?? "—"}
+                              </div>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "flex-end",
+                                  gap: 8,
+                                  marginTop: 10,
+                                }}
+                              >
+                                <button
+                                  className="btn"
+                                  type="button"
+                                  onClick={() => setCloseOpen(false)}
+                                  disabled={closeSaving}
+                                >
                                   Zatvori
                                 </button>
-                                <button className="btn" type="button" onClick={() => row?.projekat_id && loadCloseCheck(Number(row.projekat_id))} disabled={closeSaving}>
+                                <button
+                                  className="btn"
+                                  type="button"
+                                  onClick={() =>
+                                    row?.projekat_id &&
+                                    loadCloseCheck(Number(row.projekat_id))
+                                  }
+                                  disabled={closeSaving}
+                                >
                                   Pokušaj ponovo
                                 </button>
                               </div>
@@ -907,50 +1034,158 @@ export default function PonudaDetaljPage() {
                           ) : (
                             <>
                               {hasHardBlocks && (
-                                <div style={{ marginTop: 12, border: "1px solid rgba(255,80,80,.35)", background: "rgba(255,80,80,.10)", padding: 10, borderRadius: 12 }}>
-                                  <div style={{ fontWeight: 900, marginBottom: 6 }}>Ne može se zatvoriti projekat</div>
-                                  <ul style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 6, fontSize: 13 }}>
-                                    {(closeData?.hard_blocks ?? []).map((b: any) => (
-                                      <li key={String(b?.code ?? b?.message ?? Math.random())}>{String(b?.message ?? "—")}</li>
-                                    ))}
+                                <div
+                                  style={{
+                                    marginTop: 12,
+                                    border: "1px solid rgba(255,80,80,.35)",
+                                    background: "rgba(255,80,80,.10)",
+                                    padding: 10,
+                                    borderRadius: 12,
+                                  }}
+                                >
+                                  <div
+                                    style={{ fontWeight: 900, marginBottom: 6 }}
+                                  >
+                                    Ne može se zatvoriti projekat
+                                  </div>
+                                  <ul
+                                    style={{
+                                      margin: 0,
+                                      paddingLeft: 16,
+                                      display: "grid",
+                                      gap: 6,
+                                      fontSize: 13,
+                                    }}
+                                  >
+                                    {(closeData?.hard_blocks ?? []).map(
+                                      (b: any) => (
+                                        <li
+                                          key={String(
+                                            b?.code ??
+                                              b?.message ??
+                                              Math.random(),
+                                          )}
+                                        >
+                                          {String(b?.message ?? "—")}
+                                        </li>
+                                      ),
+                                    )}
                                   </ul>
                                 </div>
                               )}
 
                               {hasWarnings && (
-                                <div style={{ marginTop: 12, border: "1px solid rgba(255,165,0,.35)", background: "rgba(255,165,0,.10)", padding: 10, borderRadius: 12 }}>
-                                  <div style={{ fontWeight: 900, marginBottom: 6 }}>Upozorenja</div>
-                                  <ul style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 6, fontSize: 13 }}>
-                                    {(closeData?.warnings ?? []).map((w: any) => (
-                                      <li key={String(w?.code ?? w?.message ?? Math.random())}>{String(w?.message ?? "—")}</li>
-                                    ))}
+                                <div
+                                  style={{
+                                    marginTop: 12,
+                                    border: "1px solid rgba(255,165,0,.35)",
+                                    background: "rgba(255,165,0,.10)",
+                                    padding: 10,
+                                    borderRadius: 12,
+                                  }}
+                                >
+                                  <div
+                                    style={{ fontWeight: 900, marginBottom: 6 }}
+                                  >
+                                    Upozorenja
+                                  </div>
+                                  <ul
+                                    style={{
+                                      margin: 0,
+                                      paddingLeft: 16,
+                                      display: "grid",
+                                      gap: 6,
+                                      fontSize: 13,
+                                    }}
+                                  >
+                                    {(closeData?.warnings ?? []).map(
+                                      (w: any) => (
+                                        <li
+                                          key={String(
+                                            w?.code ??
+                                              w?.message ??
+                                              Math.random(),
+                                          )}
+                                        >
+                                          {String(w?.message ?? "—")}
+                                        </li>
+                                      ),
+                                    )}
                                   </ul>
 
-                                  <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 13 }}>
-                                    <input type="checkbox" checked={closeConfirmWarnings} onChange={(e) => setCloseConfirmWarnings(e.target.checked)} disabled={closeSaving} />
+                                  <label
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 8,
+                                      marginTop: 10,
+                                      fontSize: 13,
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={closeConfirmWarnings}
+                                      onChange={(e) =>
+                                        setCloseConfirmWarnings(
+                                          e.target.checked,
+                                        )
+                                      }
+                                      disabled={closeSaving}
+                                    />
                                     Razumijem i želim nastaviti
                                   </label>
                                 </div>
                               )}
 
                               {closeError && (
-                                <div style={{ marginTop: 10, border: "1px solid rgba(255,255,255,.14)", background: "rgba(255,255,255,.06)", padding: 10, borderRadius: 12, fontSize: 13, opacity: 0.95 }}>
+                                <div
+                                  style={{
+                                    marginTop: 10,
+                                    border: "1px solid rgba(255,255,255,.14)",
+                                    background: "rgba(255,255,255,.06)",
+                                    padding: 10,
+                                    borderRadius: 12,
+                                    fontSize: 13,
+                                    opacity: 0.95,
+                                  }}
+                                >
                                   {closeError}
                                 </div>
                               )}
 
-                              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-                                <button className="btn" type="button" onClick={() => setCloseOpen(false)} disabled={closeSaving}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "flex-end",
+                                  gap: 8,
+                                  marginTop: 12,
+                                }}
+                              >
+                                <button
+                                  className="btn"
+                                  type="button"
+                                  onClick={() => setCloseOpen(false)}
+                                  disabled={closeSaving}
+                                >
                                   Otkaži
                                 </button>
                                 <button
                                   className="btn"
                                   type="button"
                                   onClick={doCloseProject}
-                                  disabled={closeSaving || hasHardBlocks || (hasWarnings && !closeConfirmWarnings) || isProjectClosed}
+                                  disabled={
+                                    closeSaving ||
+                                    hasHardBlocks ||
+                                    (hasWarnings && !closeConfirmWarnings) ||
+                                    isProjectClosed
+                                  }
                                   title="Zatvori projekat (status = ZATVOREN)"
                                 >
-                                  {closeSaving ? "Snima…" : isProjectClosed ? "Već zatvoren" : "Zatvori projekat"}
+                                  {closeSaving
+                                    ? "Snima…"
+                                    : isProjectClosed
+                                      ? "Već zatvoren"
+                                      : "Zatvori projekat"}
                                 </button>
                               </div>
                             </>
@@ -962,17 +1197,34 @@ export default function PonudaDetaljPage() {
                 </>
               ) : (
                 <>
-                  <button onClick={saveDeal} disabled={saving || loading || !row} className="glassbtn actionBtn" type="button" style={{ opacity: saving ? 0.7 : 1 }}>
+                  <button
+                    onClick={saveDeal}
+                    disabled={saving || loading || !row}
+                    className="glassbtn actionBtn"
+                    type="button"
+                    style={{ opacity: saving ? 0.7 : 1 }}
+                  >
                     {saving ? "Snima..." : "Sačuvaj"}
                   </button>
 
                   <button
                     onClick={openProject}
-                    disabled={openingProject || loading || !!row?.projekat_id || !acceptedOk}
+                    disabled={
+                      openingProject ||
+                      loading ||
+                      !!row?.projekat_id ||
+                      !acceptedOk
+                    }
                     className="glassbtn actionBtn"
                     type="button"
-                    style={{ opacity: openingProject ? 0.7 : !acceptedOk ? 0.55 : 1 }}
-                    title={!acceptedOk ? "Ne može bez Deadline-a (dd.mm.yyyy HH:mm)." : "Otvori projekat iz Deal-a."}
+                    style={{
+                      opacity: openingProject ? 0.7 : !acceptedOk ? 0.55 : 1,
+                    }}
+                    title={
+                      !acceptedOk
+                        ? "Ne može bez Deadline-a (dd.mm.yyyy HH:mm)."
+                        : "Otvori projekat iz Deal-a."
+                    }
                   >
                     {openingProject ? "Otvaram..." : "Otvori projekat"}
                   </button>
@@ -984,43 +1236,84 @@ export default function PonudaDetaljPage() {
           <div className="pageHead">
             <h1 className="pageTitle">
               {dealTitle}
-              <span className="muted" style={{ fontWeight: 600 }}>{" "}· Deal #{id}</span>
-              {row?.projekat_id ? <span className="muted">{" "}· Projekt #{row.projekat_id}</span> : null}
+              <span className="muted" style={{ fontWeight: 600 }}>
+                {" "}
+                · Deal #{id}
+              </span>
+              {row?.projekat_id ? (
+                <span className="muted"> · Projekt #{row.projekat_id}</span>
+              ) : null}
             </h1>
 
             {/* ✅ Deal → Project “kanonska” traka (vizuelna navigacija) */}
-             <StatusTimelineBar
-                hasProject={!!row?.projekat_id}
-                projectStatusId={projectStatusId}
-                compact={false}
-             />
+            <StatusTimelineBar
+              hasProject={!!row?.projekat_id}
+              projectStatusId={projectStatusId}
+              compact={false}
+            />
 
             {!loading && (
               <div className="pageSub">
-                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                  }}
+                >
                   <span>
                     Otvoren: <b>{formatHumanDT(row?.opened_at ?? null)}</b>
                     {"  "}·{"  "}
                     Timeline:{" "}
-                    {timeline?.created_at ? <b>zadnji zapis {formatHumanDT(timeline.created_at)}</b> : <span className="muted">nema zapisa</span>}
+                    {timeline?.created_at ? (
+                      <b>zadnji zapis {formatHumanDT(timeline.created_at)}</b>
+                    ) : (
+                      <span className="muted">nema zapisa</span>
+                    )}
                   </span>
 
                   {row?.projekat_id ? (
-                    <span className="statusPill" style={{ borderColor: projectStatusTone.border, background: projectStatusTone.bg }} title="Kanonski status projekta (projekti.status_id → statusi_projekta)">
+                    <span
+                      className="statusPill"
+                      style={{
+                        borderColor: projectStatusTone.border,
+                        background: projectStatusTone.bg,
+                      }}
+                      title="Kanonski status projekta (projekti.status_id → statusi_projekta)"
+                    >
                       <span
                         className="statusDot"
                         style={{
-                          background: isProjectArchived || isProjectCancelled ? "rgba(255,255,255,.55)" : isProjectInvoiced ? "rgba(80,170,255,.95)" : isProjectClosed ? "rgba(255,193,7,.95)" : "rgba(55,214,122,.95)",
+                          background:
+                            isProjectArchived || isProjectCancelled
+                              ? "rgba(255,255,255,.55)"
+                              : isProjectInvoiced
+                                ? "rgba(80,170,255,.95)"
+                                : isProjectClosed
+                                  ? "rgba(255,193,7,.95)"
+                                  : "rgba(55,214,122,.95)",
                         }}
                       />
                       <span style={{ opacity: 0.9 }}>Status projekta:</span>
-                      <span style={{ fontWeight: 900 }}>{projectStatusLabel}</span>
-                      {projectStatusId ? <span style={{ opacity: 0.75 }}>#{projectStatusId}</span> : null}
+                      <span style={{ fontWeight: 900 }}>
+                        {projectStatusLabel}
+                      </span>
+                      {projectStatusId ? (
+                        <span style={{ opacity: 0.75 }}>
+                          #{projectStatusId}
+                        </span>
+                      ) : null}
                     </span>
                   ) : null}
 
                   {dealReadOnly ? (
-                    <span style={{ fontWeight: 850, color: "rgba(255, 214, 102, .95)" }}>
+                    <span
+                      style={{
+                        fontWeight: 850,
+                        color: "rgba(255, 214, 102, .95)",
+                      }}
+                    >
                       · 🔒 Deal je read-only (status projekta zaključava)
                     </span>
                   ) : null}
@@ -1030,9 +1323,19 @@ export default function PonudaDetaljPage() {
           </div>
 
           {!loading && row?.projekat_id ? (
-            <div className="cardLike dealBanner" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div
+              className="cardLike dealBanner"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
               <div style={{ minWidth: 0 }}>
-                <div className="dealBannerTitle">⚠️ Ovaj Deal je već prešao u projekat.</div>
+                <div className="dealBannerTitle">
+                  ⚠️ Ovaj Deal je već prešao u projekat.
+                </div>
                 <div className="dealBannerText">
                   Budžet i stavke u projektu su snapshotovani.{" "}
                   {isProjectArchived || isProjectCancelled ? (
@@ -1047,9 +1350,14 @@ export default function PonudaDetaljPage() {
                 </div>
               </div>
 
-              {row?.operativni_signal && row.operativni_signal !== "NORMALNO" ? (
+              {row?.operativni_signal &&
+              row.operativni_signal !== "NORMALNO" ? (
                 <div
-                  title={row.operativni_signal === "STOP" ? "STOP (owner): odmah zaustavi i provjeri" : "PAŽNJA (owner): obrati pažnju"}
+                  title={
+                    row.operativni_signal === "STOP"
+                      ? "STOP (owner): odmah zaustavi i provjeri"
+                      : "PAŽNJA (owner): obrati pažnju"
+                  }
                   style={{
                     flex: "0 0 auto",
                     display: "inline-flex",
@@ -1057,23 +1365,45 @@ export default function PonudaDetaljPage() {
                     gap: 10,
                     padding: "10px 12px",
                     borderRadius: 999,
-                    border: row.operativni_signal === "STOP" ? "1px solid rgba(255, 80, 80, .55)" : "1px solid rgba(255, 214, 102, .55)",
-                    background: row.operativni_signal === "STOP" ? "rgba(255, 80, 80, .12)" : "rgba(255, 193, 7, .12)",
+                    border:
+                      row.operativni_signal === "STOP"
+                        ? "1px solid rgba(255, 80, 80, .55)"
+                        : "1px solid rgba(255, 214, 102, .55)",
+                    background:
+                      row.operativni_signal === "STOP"
+                        ? "rgba(255, 80, 80, .12)"
+                        : "rgba(255, 193, 7, .12)",
                     fontWeight: 900,
                     letterSpacing: ".2px",
                     whiteSpace: "nowrap",
                   }}
                 >
-                  <span style={{ width: 12, height: 12, borderRadius: 999, display: "inline-block", background: row.operativni_signal === "STOP" ? "#ff3b30" : "#ffb020", boxShadow: "0 0 0 2px rgba(0,0,0,.15) inset" }} />
+                  <span
+                    style={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: 999,
+                      display: "inline-block",
+                      background:
+                        row.operativni_signal === "STOP"
+                          ? "#ff3b30"
+                          : "#ffb020",
+                      boxShadow: "0 0 0 2px rgba(0,0,0,.15) inset",
+                    }}
+                  />
                   <span style={{ fontSize: 12, opacity: 0.92 }}>OWNER</span>
-                  <span style={{ fontSize: 12 }}>{row.operativni_signal === "STOP" ? "STOP" : "PAŽNJA"}</span>
+                  <span style={{ fontSize: 12 }}>
+                    {row.operativni_signal === "STOP" ? "STOP" : "PAŽNJA"}
+                  </span>
                 </div>
               ) : null}
             </div>
           ) : null}
 
           {loading && <div className="cardLike">Učitavam...</div>}
-          {!!error && !loading && <div className="cardLike msgErr">Greška: {error}</div>}
+          {!!error && !loading && (
+            <div className="cardLike msgErr">Greška: {error}</div>
+          )}
           {!!msg && !loading && <div className="cardLike msgOk">{msg}</div>}
         </div>
       </div>
@@ -1084,44 +1414,85 @@ export default function PonudaDetaljPage() {
           {/* TIMELINE */}
           {!loading && (
             <div className="cardLike">
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                <div style={{ fontWeight: 750, fontSize: 16 }}>Timeline (Deal)</div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ fontWeight: 750, fontSize: 16 }}>
+                  Timeline (Deal)
+                </div>
 
                 <button
                   onClick={saveTimeline}
                   disabled={savingTimeline || dealReadOnly}
                   className="glassbtn actionBtn"
                   type="button"
-                  style={{ opacity: savingTimeline ? 0.7 : dealReadOnly ? 0.55 : 1, pointerEvents: dealReadOnly ? "none" : "auto" }}
-                  title={dealReadOnly ? "Deal je read-only (status projekta zaključava)." : "Snima novi timeline zapis (stari se ne briše)."}
+                  style={{
+                    opacity: savingTimeline ? 0.7 : dealReadOnly ? 0.55 : 1,
+                    pointerEvents: dealReadOnly ? "none" : "auto",
+                  }}
+                  title={
+                    dealReadOnly
+                      ? "Deal je read-only (status projekta zaključava)."
+                      : "Snima novi timeline zapis (stari se ne briše)."
+                  }
                 >
                   {savingTimeline ? "Snima..." : "Sačuvaj timeline"}
                 </button>
               </div>
 
-              <div className="grid2" style={{ marginTop: 10, opacity: dealReadOnly ? 0.65 : 1, pointerEvents: dealReadOnly ? "none" : "auto" }}>
+              <div
+                className="grid2"
+                style={{
+                  marginTop: 10,
+                  opacity: dealReadOnly ? 0.65 : 1,
+                  pointerEvents: dealReadOnly ? "none" : "auto",
+                }}
+              >
                 <div className="label">Otvoren Deal</div>
-                <div style={{ ...inputStyle, opacity: 0.9 }}>{formatHumanDT(row?.opened_at ?? null)}</div>
+                <div style={{ ...inputStyle, opacity: 0.9 }}>
+                  {formatHumanDT(row?.opened_at ?? null)}
+                </div>
 
-                <div className="label deadlineLabel">Deadline / vrijeme događaja</div>
+                <div className="label deadlineLabel">
+                  Deadline / vrijeme događaja
+                </div>
                 <div className="deadlineWrap">
-                  <DateTimePickerDDMMYYYYHHMM value={t_accepted} onChange={setTAccepted} placeholder="dd.mm.yyyy HH:mm" />
+                  <DateTimePickerDDMMYYYYHHMM
+                    value={t_accepted}
+                    onChange={setTAccepted}
+                    placeholder="dd.mm.yyyy HH:mm"
+                  />
 
                   <div className="deadlineMeta">
                     <span className={`sem ${sem.cls}`} title={sem.title} />
                     <span className="deadlineBadge" title={sem.title}>
                       {sem.label}
                     </span>
-                    <span className="muted">{acceptedIsoDateOnly ? `datum: ${acceptedIsoDateOnly}` : "nema unesenog roka"}</span>
+                    <span className="muted">
+                      {acceptedIsoDateOnly
+                        ? `datum: ${acceptedIsoDateOnly}`
+                        : "nema unesenog roka"}
+                    </span>
                   </div>
 
                   <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-                    * Ovo je jedini rok koji je bitan za otvaranje projekta i prioritete.
+                    * Ovo je jedini rok koji je bitan za otvaranje projekta i
+                    prioritete.
                   </div>
                 </div>
 
                 <div className="label">Potvrđeno putem</div>
-                <select value={t_via} onChange={(e) => setTVia(e.target.value)} style={inputStyle}>
+                <select
+                  value={t_via}
+                  onChange={(e) => setTVia(e.target.value)}
+                  style={inputStyle}
+                >
                   {VIA_OPTIONS.map((o) => (
                     <option key={o.v} value={o.v}>
                       {o.label}
@@ -1130,12 +1501,17 @@ export default function PonudaDetaljPage() {
                 </select>
 
                 <div className="label">Bilješka</div>
-                <input value={t_note} onChange={(e) => setTNote(e.target.value)} placeholder="kratko…" style={inputStyle} />
+                <input
+                  value={t_note}
+                  onChange={(e) => setTNote(e.target.value)}
+                  placeholder="kratko…"
+                  style={inputStyle}
+                />
               </div>
             </div>
           )}
 
-                    {/* STAVKE */}
+          {/* STAVKE */}
           {!loading && (
             <div
               className="cardLike"
@@ -1207,7 +1583,8 @@ export default function PonudaDetaljPage() {
               ) : totalEUR > 0 ? (
                 <div className="muted" style={{ marginTop: 8, fontSize: 12 }}>
                   * EUR se preračunava fiksno u BAM (1 EUR = {EUR_TO_BAM} BAM).
-                  Kasnije ćemo ovo formalizovati kroz kursnu tabelu kad dođe red.
+                  Kasnije ćemo ovo formalizovati kroz kursnu tabelu kad dođe
+                  red.
                 </div>
               ) : null}
 
@@ -1311,8 +1688,7 @@ export default function PonudaDetaljPage() {
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns:
-                        "80px 1fr 120px 140px 140px 240px",
+                      gridTemplateColumns: "80px 1fr 120px 140px 140px 240px",
                       gap: 8,
                       fontWeight: 700,
                       marginBottom: 6,
@@ -1336,8 +1712,7 @@ export default function PonudaDetaljPage() {
                       key={s.inicijacija_stavka_id}
                       style={{
                         display: "grid",
-                        gridTemplateColumns:
-                          "80px 1fr 120px 140px 140px 240px",
+                        gridTemplateColumns: "80px 1fr 120px 140px 140px 240px",
                         gap: 8,
                         padding: "10px 0",
                         borderTop: "1px solid rgba(255,255,255,.08)",
@@ -1381,7 +1756,7 @@ export default function PonudaDetaljPage() {
                                   setEditSelected(it);
                                   if (it)
                                     setEditCijena(
-                                      String(it.cijena_default ?? "0")
+                                      String(it.cijena_default ?? "0"),
                                     );
                                 }}
                                 style={inputStyle}
@@ -1405,7 +1780,7 @@ export default function PonudaDetaljPage() {
                                   #{editSelected.stavka_id} •{" "}
                                   {editSelected.jedinica} •{" "}
                                   {Number(
-                                    editSelected.cijena_default ?? 0
+                                    editSelected.cijena_default ?? 0,
                                   ).toFixed(2)}{" "}
                                   {normCcy(editSelected.valuta_default)}
                                 </div>
@@ -1480,7 +1855,9 @@ export default function PonudaDetaljPage() {
                             <button
                               type="button"
                               className="glassbtn btnSmall"
-                              onClick={() => stornoItem(s.inicijacija_stavka_id)}
+                              onClick={() =>
+                                stornoItem(s.inicijacija_stavka_id)
+                              }
                               title="Storniraj stavku (ne briše se; samo se sakrije i ne računa u zbir)"
                             >
                               🧾 Storno
@@ -1571,9 +1948,7 @@ export default function PonudaDetaljPage() {
                 <div className="label">Napomene za produkciju</div>
                 <textarea
                   value={row.napomena ?? ""}
-                  onChange={(e) =>
-                    setRow({ ...row, napomena: e.target.value })
-                  }
+                  onChange={(e) => setRow({ ...row, napomena: e.target.value })}
                   rows={4}
                   style={{
                     ...inputStyle,
@@ -1583,7 +1958,11 @@ export default function PonudaDetaljPage() {
               </div>
 
               <div
-                style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}
+                style={{
+                  marginTop: 10,
+                  display: "flex",
+                  justifyContent: "flex-end",
+                }}
               >
                 <button
                   onClick={saveDeal}
@@ -1682,7 +2061,11 @@ export default function PonudaDetaljPage() {
               </div>
 
               <div
-                style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}
+                style={{
+                  marginTop: 10,
+                  display: "flex",
+                  justifyContent: "flex-end",
+                }}
               >
                 <button
                   onClick={saveDeal}
@@ -1696,7 +2079,7 @@ export default function PonudaDetaljPage() {
               </div>
             </div>
           )}
-       </div>
+        </div>
       </div>
     </div>
   );

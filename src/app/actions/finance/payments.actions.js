@@ -2,7 +2,13 @@
 "use server";
 
 import { query } from "@/lib/db";
-import { mustInt, mustDate, mustMoney, optStr, mustEnum } from "./finance.validate";
+import {
+  mustInt,
+  mustDate,
+  mustMoney,
+  optStr,
+  mustEnum,
+} from "./finance.validate";
 
 const ALLOWED_ENTITY = ["vendor", "talent", "other"];
 
@@ -22,7 +28,11 @@ export async function financeCreatePayment({
   let et = null;
   let eid = null;
 
-  if (entity_type !== null && entity_type !== undefined && String(entity_type).trim() !== "") {
+  if (
+    entity_type !== null &&
+    entity_type !== undefined &&
+    String(entity_type).trim() !== ""
+  ) {
     et = mustEnum("entity_type", entity_type, ALLOWED_ENTITY);
     eid = mustInt("entity_id", entity_id);
   }
@@ -34,7 +44,7 @@ export async function financeCreatePayment({
     VALUES
       (?, ?, ?, ?, 'ACTIVE', ?, ?)
     `,
-    [pid, d, o, km, et, eid]
+    [pid, d, o, km, et, eid],
   );
 
   return { ok: true, placanje_id: r?.insertId ?? null };
@@ -46,7 +56,7 @@ export async function financeSetPaymentStatus(placanje_id, status) {
 
   await query(
     "UPDATE placanja SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE placanje_id = ?",
-    [st, id]
+    [st, id],
   );
 
   return { ok: true, status: st };
@@ -61,7 +71,7 @@ export async function financeGetPayment(placanje_id) {
     WHERE placanje_id = ?
     LIMIT 1
     `,
-    [id]
+    [id],
   );
   const row = r?.rows?.[0];
   if (!row) throw new Error("Plaćanje ne postoji.");

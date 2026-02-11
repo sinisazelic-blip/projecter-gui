@@ -7,13 +7,15 @@ export function t(v) {
 
 export function mustInt(label, v) {
   const n = Number(v);
-  if (!Number.isInteger(n) || n <= 0) throw new Error(`${label} mora biti pozitivan integer.`);
+  if (!Number.isInteger(n) || n <= 0)
+    throw new Error(`${label} mora biti pozitivan integer.`);
   return n;
 }
 
 export function mustEnum(label, v, allowed) {
   const s = t(v);
-  if (!allowed.includes(s)) throw new Error(`${label} mora biti jedno od: ${allowed.join(", ")}`);
+  if (!allowed.includes(s))
+    throw new Error(`${label} mora biti jedno od: ${allowed.join(", ")}`);
   return s;
 }
 

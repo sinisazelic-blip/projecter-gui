@@ -13,15 +13,15 @@
   /* FIX: alias koji si koristio dole u .project-link */
   --fg: var(--text);
 
-  --border: rgba(255, 255, 255, 0.10);
+  --border: rgba(255, 255, 255, 0.1);
   --border-2: rgba(255, 255, 255, 0.14);
 
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 
-  --accent: #7dd3fc;      /* light blue */
-  --good: #22c55e;        /* green */
-  --warn: #f59e0b;        /* amber */
-  --bad: #ef4444;         /* red */
+  --accent: #7dd3fc; /* light blue */
+  --good: #22c55e; /* green */
+  --warn: #f59e0b; /* amber */
+  --bad: #ef4444; /* red */
 
   --radius: 14px;
 }
@@ -36,7 +36,6 @@
 @tailwind components;
 @tailwind utilities;
 
-
 html,
 body {
   height: 100%;
@@ -50,12 +49,21 @@ html {
 
 body {
   margin: 0;
-  background: radial-gradient(1200px 600px at 10% 0%, rgba(125, 211, 252, 0.10), transparent 60%),
-              radial-gradient(900px 500px at 80% 20%, rgba(34, 197, 94, 0.07), transparent 60%),
-              var(--bg);
+  background:
+    radial-gradient(
+      1200px 600px at 10% 0%,
+      rgba(125, 211, 252, 0.1),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 500px at 80% 20%,
+      rgba(34, 197, 94, 0.07),
+      transparent 60%
+    ), var(--bg);
   color: var(--text);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji",
-    "Segoe UI Emoji";
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, "Apple Color Emoji", "Segoe UI Emoji";
   line-height: 1.45;
 }
 
@@ -64,7 +72,9 @@ a {
   text-decoration: none;
 }
 
-h1, h2, h3 {
+h1,
+h2,
+h3 {
   margin: 0;
 }
 
@@ -96,7 +106,7 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: rgba(125, 211, 252, 0.45);
-  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.10);
+  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.1);
 }
 
 /* da select ne "pobijeli" na Windows */
@@ -113,7 +123,11 @@ option {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.03),
+    rgba(255, 255, 255, 0.015)
+  );
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
@@ -155,8 +169,12 @@ option {
 }
 
 /* Listing: utišaj zatvorene projekte */
-.table tr[data-closed="1"] { opacity: 0.65; }
-.table tr[data-closed="1"]:hover { opacity: 0.85; }
+.table tr[data-closed="1"] {
+  opacity: 0.65;
+}
+.table tr[data-closed="1"]:hover {
+  opacity: 0.85;
+}
 
 /* =========================
    WRAP cell (Radni naziv)
@@ -187,9 +205,18 @@ option {
 }
 
 /* Finansijski status (postojeće) */
-.badge[data-status="u_plusu"] { border-color: rgba(34,197,94,0.35); background: rgba(34,197,94,0.10); }
-.badge[data-status="na_nuli"] { border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.10); }
-.badge[data-status="u_minusu"] { border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.10); }
+.badge[data-status="u_plusu"] {
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.1);
+}
+.badge[data-status="na_nuli"] {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.1);
+}
+.badge[data-status="u_minusu"] {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.1);
+}
 
 /* =========================
    Project CORE faze (Fluxa)
@@ -198,17 +225,17 @@ option {
 
 .badge[data-status="draft"] {
   border-color: rgba(125, 211, 252, 0.35);
-  background: rgba(125, 211, 252, 0.10);
+  background: rgba(125, 211, 252, 0.1);
 }
 
 .badge[data-status="planned"] {
   border-color: rgba(245, 158, 11, 0.35);
-  background: rgba(245, 158, 11, 0.10);
+  background: rgba(245, 158, 11, 0.1);
 }
 
 .badge[data-status="active"] {
   border-color: rgba(34, 197, 94, 0.35);
-  background: rgba(34, 197, 94, 0.10);
+  background: rgba(34, 197, 94, 0.1);
 }
 
 /* 🔴 ZATVOREN / ARHIVIRAN */
@@ -278,31 +305,38 @@ option {
   }
 }
 
-.num { text-align: right; }
-.table td.num, .table th.num { text-align: right; }
+.num {
+  text-align: right;
+}
+.table td.num,
+.table th.num {
+  text-align: right;
+}
 
 .card {
-  border: 1px solid rgba(255,255,255,.12);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
   padding: 14px;
-  background: rgba(255,255,255,.04);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .btn {
-  border: 1px solid rgba(255,255,255,.18);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 10px;
   padding: 10px 12px;
-  background: rgba(255,255,255,.06);
+  background: rgba(255, 255, 255, 0.06);
   color: inherit;
   cursor: pointer;
 }
 
-.btn:hover { background: rgba(255,255,255,.10); }
+.btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
 
 .skeleton-row {
   height: 14px;
   border-radius: 8px;
-  background: rgba(255,255,255,.08);
+  background: rgba(255, 255, 255, 0.08);
   margin: 10px 0;
 }
 
@@ -313,11 +347,20 @@ option {
 }
 
 @media (max-width: 900px) {
-  .grid { grid-template-columns: 1fr; }
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }
 
-.kpiLabel { opacity: 0.75; font-size: 13px; margin-bottom: 6px; }
-.kpiValue { font-size: 24px; font-weight: 700; }
+.kpiLabel {
+  opacity: 0.75;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.kpiValue {
+  font-size: 24px;
+  font-weight: 700;
+}
 
 .project-link {
   color: var(--fg);
@@ -330,107 +373,107 @@ option {
   opacity: 0.85;
 }
 /* ========== Project status badge ========== */
-.status-badge{
-  display:inline-flex;
-  align-items:center;
-  gap:.45rem;
-  padding:.18rem .55rem;
-  border-radius:999px;
-  font-size:.75rem;
-  line-height:1.1;
-  font-weight:600;
-  border:1px solid rgba(148,163,184,.25); /* slate-ish */
-  background: rgba(148,163,184,.10);
-  color: rgba(226,232,240,.95);
-  user-select:none;
-  white-space:nowrap;
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  line-height: 1.1;
+  font-weight: 600;
+  border: 1px solid rgba(148, 163, 184, 0.25); /* slate-ish */
+  background: rgba(148, 163, 184, 0.1);
+  color: rgba(226, 232, 240, 0.95);
+  user-select: none;
+  white-space: nowrap;
 }
 
-.status-badge__dot{
-  width:.45rem;
-  height:.45rem;
-  border-radius:999px;
+.status-badge__dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
   background: currentColor;
-  opacity:.95;
+  opacity: 0.95;
 }
 
 /* Variants */
-.status-badge--draft{
-  border-color: rgba(148,163,184,.30);
-  background: rgba(148,163,184,.12);
-  color: rgba(226,232,240,.92);
+.status-badge--draft {
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(148, 163, 184, 0.12);
+  color: rgba(226, 232, 240, 0.92);
 }
 
-.status-badge--planned{
-  border-color: rgba(56,189,248,.35);   /* sky */
-  background: rgba(56,189,248,.12);
-  color: rgba(186,230,253,.95);
+.status-badge--planned {
+  border-color: rgba(56, 189, 248, 0.35); /* sky */
+  background: rgba(56, 189, 248, 0.12);
+  color: rgba(186, 230, 253, 0.95);
 }
 
-.status-badge--active{
-  border-color: rgba(34,197,94,.35);    /* green */
-  background: rgba(34,197,94,.12);
-  color: rgba(187,247,208,.95);
+.status-badge--active {
+  border-color: rgba(34, 197, 94, 0.35); /* green */
+  background: rgba(34, 197, 94, 0.12);
+  color: rgba(187, 247, 208, 0.95);
 }
 
-.status-badge--closed{
-  border-color: rgba(239,68,68,.35);    /* red */
-  background: rgba(239,68,68,.10);
-  color: rgba(254,202,202,.95);
+.status-badge--closed {
+  border-color: rgba(239, 68, 68, 0.35); /* red */
+  background: rgba(239, 68, 68, 0.1);
+  color: rgba(254, 202, 202, 0.95);
 }
 
-.status-badge--unknown{
-  border-color: rgba(234,179,8,.35);    /* amber */
-  background: rgba(234,179,8,.12);
-  color: rgba(254,243,199,.95);
+.status-badge--unknown {
+  border-color: rgba(234, 179, 8, 0.35); /* amber */
+  background: rgba(234, 179, 8, 0.12);
+  color: rgba(254, 243, 199, 0.95);
 }
 /* ========== Financial status badge ========== */
-.fin-badge{
-  display:inline-flex;
-  align-items:center;
-  gap:.45rem;
-  padding:.18rem .55rem;
-  border-radius:999px;
-  font-size:.75rem;
-  line-height:1.1;
-  font-weight:600;
-  border:1px solid rgba(148,163,184,.25);
-  background: rgba(148,163,184,.10);
-  color: rgba(226,232,240,.95);
-  user-select:none;
-  white-space:nowrap;
+.fin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  line-height: 1.1;
+  font-weight: 600;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(148, 163, 184, 0.1);
+  color: rgba(226, 232, 240, 0.95);
+  user-select: none;
+  white-space: nowrap;
 }
 
-.fin-badge__dot{
-  width:.45rem;
-  height:.45rem;
-  border-radius:999px;
+.fin-badge__dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
   background: currentColor;
-  opacity:.95;
+  opacity: 0.95;
 }
 
-.fin-badge--bez_budzeta{
-  border-color: rgba(148,163,184,.30);
-  background: rgba(148,163,184,.12);
-  color: rgba(226,232,240,.92);
+.fin-badge--bez_budzeta {
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(148, 163, 184, 0.12);
+  color: rgba(226, 232, 240, 0.92);
 }
 
-.fin-badge--u_plusu{
-  border-color: rgba(34,197,94,.35);
-  background: rgba(34,197,94,.12);
-  color: rgba(187,247,208,.95);
+.fin-badge--u_plusu {
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.12);
+  color: rgba(187, 247, 208, 0.95);
 }
 
-.fin-badge--u_minusu{
-  border-color: rgba(239,68,68,.35);
-  background: rgba(239,68,68,.10);
-  color: rgba(254,202,202,.95);
+.fin-badge--u_minusu {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.1);
+  color: rgba(254, 202, 202, 0.95);
 }
 
-.fin-badge--unknown{
-  border-color: rgba(234,179,8,.35);
-  background: rgba(234,179,8,.12);
-  color: rgba(254,243,199,.95);
+.fin-badge--unknown {
+  border-color: rgba(234, 179, 8, 0.35);
+  background: rgba(234, 179, 8, 0.12);
+  color: rgba(254, 243, 199, 0.95);
 }
 
 .btn--active {
@@ -447,7 +490,10 @@ option {
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.06);
-  transition: transform 0.08s ease, filter 0.12s ease, background 0.12s ease;
+  transition:
+    transform 0.08s ease,
+    filter 0.12s ease,
+    background 0.12s ease;
 }
 .navCard:hover {
   filter: brightness(1.05);
@@ -466,7 +512,10 @@ option {
   text-decoration: none;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.04);
-  transition: transform 0.08s ease, filter 0.12s ease, background 0.12s ease;
+  transition:
+    transform 0.08s ease,
+    filter 0.12s ease,
+    background 0.12s ease;
 }
 .navPill:hover {
   filter: brightness(1.05);
@@ -490,7 +539,11 @@ option {
   z-index: 50;
   padding-bottom: 12px;
   /* suptilna “glass” pozadina da se tabela ne probija ispod */
-  background: linear-gradient(180deg, rgba(8, 10, 16, 0.86), rgba(8, 10, 16, 0.62));
+  background: linear-gradient(
+    180deg,
+    rgba(8, 10, 16, 0.86),
+    rgba(8, 10, 16, 0.62)
+  );
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }

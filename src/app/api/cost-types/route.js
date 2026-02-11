@@ -18,7 +18,7 @@ export async function GET() {
   } catch (e) {
     return NextResponse.json(
       { ok: false, message: e?.message ?? "Greška" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

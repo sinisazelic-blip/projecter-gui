@@ -22,17 +22,23 @@ export async function POST(req: NextRequest) {
         : Number(body?.limit);
 
     if (!Number.isFinite(batch_id) || batch_id <= 0) {
-      return NextResponse.json({ ok: false, error: "Invalid batch_id" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Invalid batch_id" },
+        { status: 400 },
+      );
     }
     if (limit !== null && (!Number.isFinite(limit) || limit <= 0)) {
-      return NextResponse.json({ ok: false, error: "Invalid limit" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Invalid limit" },
+        { status: 400 },
+      );
     }
 
     const out = await withTransaction(async (conn: any) => {
       // 0) batch postoji?
       const [brows]: any = await conn.execute(
         `SELECT batch_id FROM bank_import_batch WHERE batch_id = ? LIMIT 1`,
-        [batch_id]
+        [batch_id],
       );
       if (!Array.isArray(brows) || brows.length === 0) {
         return { ok: false, error: "BATCH_NOT_FOUND" as const };
@@ -45,7 +51,7 @@ export async function POST(req: NextRequest) {
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
           AND TABLE_NAME = 'bank_tx_staging'
-        `
+        `,
       );
       const [mColsRows]: any = await conn.execute(
         `
@@ -53,11 +59,15 @@ export async function POST(req: NextRequest) {
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
           AND TABLE_NAME = 'bank_tx_match'
-        `
+        `,
       );
 
-      const stCols = new Set<string>((stColsRows ?? []).map((r: any) => String(r.COLUMN_NAME)));
-      const mCols = new Set<string>((mColsRows ?? []).map((r: any) => String(r.COLUMN_NAME)));
+      const stCols = new Set<string>(
+        (stColsRows ?? []).map((r: any) => String(r.COLUMN_NAME)),
+      );
+      const mCols = new Set<string>(
+        (mColsRows ?? []).map((r: any) => String(r.COLUMN_NAME)),
+      );
 
       const colTxId = pickCol(stCols, ["tx_id"]);
       const colBatchId = pickCol(stCols, ["batch_id"]);
@@ -67,7 +77,11 @@ export async function POST(req: NextRequest) {
       const colAccountId = pickCol(stCols, ["account_id"]); // optional
 
       if (!colTxId || !colBatchId) {
-        return { ok: false, error: "STAGING_SCHEMA_MISSING", debug: { colTxId, colBatchId } };
+        return {
+          ok: false,
+          error: "STAGING_SCHEMA_MISSING",
+          debug: { colTxId, colBatchId },
+        };
       }
 
       const colMatchTx = pickCol(mCols, ["tx_id"]);
@@ -80,7 +94,13 @@ export async function POST(req: NextRequest) {
         return {
           ok: false,
           error: "MATCH_SCHEMA_MISSING",
-          debug: { colMatchTx, colMatchProj, colMatchKat, colMatchBy, colMatchNar },
+          debug: {
+            colMatchTx,
+            colMatchProj,
+            colMatchKat,
+            colMatchBy,
+            colMatchNar,
+          },
         };
       }
 
@@ -94,7 +114,7 @@ export async function POST(req: NextRequest) {
         FROM bank_tx_match_rule
         WHERE is_active = 1
         ORDER BY priority ASC, rule_id ASC
-        `
+        `,
       );
       const rulesList = Array.isArray(rules) ? rules : [];
 
@@ -115,7 +135,11 @@ export async function POST(req: NextRequest) {
           if (colCp) p.push(`%${rule.match_text}%`);
         }
 
-        if (rule.match_amount !== null && rule.match_amount !== undefined && rule.match_amount !== "") {
+        if (
+          rule.match_amount !== null &&
+          rule.match_amount !== undefined &&
+          rule.match_amount !== ""
+        ) {
           if (colAmount) {
             w.push(`t.${colAmount} = ?`);
             p.push(rule.match_amount);
@@ -161,13 +185,19 @@ export async function POST(req: NextRequest) {
           WHERE ${whereSql}
             AND ${gateSql}
           `,
-          params
+          params,
         );
         const candidates = Number(cntRows?.[0]?.cnt ?? 0);
         total_candidates += candidates;
 
         if (dry_run) {
-          per_rule.push({ rule_id: rule.rule_id, priority: rule.priority, candidates, updated: 0, inserted: 0 });
+          per_rule.push({
+            rule_id: rule.rule_id,
+            priority: rule.priority,
+            candidates,
+            updated: 0,
+            inserted: 0,
+          });
           continue;
         }
 
@@ -176,8 +206,19 @@ export async function POST(req: NextRequest) {
         const out_narucilac_id = rule.narucilac_id ?? null;
 
         // ako nema output, preskoči
-        if (out_projekat_id === null && out_kategorija === null && (colMatchNar ? out_narucilac_id === null : true)) {
-          per_rule.push({ rule_id: rule.rule_id, priority: rule.priority, candidates, updated: 0, inserted: 0, skipped: "NO_OUTPUT" });
+        if (
+          out_projekat_id === null &&
+          out_kategorija === null &&
+          (colMatchNar ? out_narucilac_id === null : true)
+        ) {
+          per_rule.push({
+            rule_id: rule.rule_id,
+            priority: rule.priority,
+            candidates,
+            updated: 0,
+            inserted: 0,
+            skipped: "NO_OUTPUT",
+          });
           continue;
         }
 
@@ -202,13 +243,18 @@ export async function POST(req: NextRequest) {
             AND (m.${colMatchBy} IS NULL OR m.${colMatchBy} = 'rule')
           ${limitSql}
           `,
-          updateParams
+          updateParams,
         );
         const updAff = Number(upd?.affectedRows ?? 0);
         updated_rows += updAff;
 
         // (B) INSERT novih (gdje match ne postoji)
-        const insertCols: string[] = [colMatchTx, colMatchProj, colMatchKat, colMatchBy];
+        const insertCols: string[] = [
+          colMatchTx,
+          colMatchProj,
+          colMatchKat,
+          colMatchBy,
+        ];
         const selectCols: string[] = [`t.${colTxId}`, `?`, `?`, `'rule'`];
         const insertParams: any[] = [out_projekat_id, out_kategorija];
 
@@ -228,7 +274,7 @@ export async function POST(req: NextRequest) {
             AND m.${colMatchTx} IS NULL
           ${limitSql}
           `,
-          [...insertParams, ...params]
+          [...insertParams, ...params],
         );
         const insAff = Number(ins?.affectedRows ?? 0);
         inserted_rows += insAff;
@@ -249,7 +295,7 @@ export async function POST(req: NextRequest) {
         JOIN bank_tx_staging t ON t.${colTxId} = m.${colMatchTx}
         WHERE t.${colBatchId} = ?
         `,
-        [batch_id]
+        [batch_id],
       );
 
       return {
@@ -267,11 +313,17 @@ export async function POST(req: NextRequest) {
     });
 
     if (!out.ok && out.error === "BATCH_NOT_FOUND") {
-      return NextResponse.json({ ok: false, error: "BATCH_NOT_FOUND" }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: "BATCH_NOT_FOUND" },
+        { status: 404 },
+      );
     }
     if (!out.ok) return NextResponse.json(out, { status: 400 });
     return NextResponse.json(out);
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Server error" },
+      { status: 500 },
+    );
   }
 }

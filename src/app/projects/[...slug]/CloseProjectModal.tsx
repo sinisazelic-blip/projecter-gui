@@ -56,13 +56,12 @@ export function CloseProjectModal({
       </div>
 
       <div style={{ opacity: 0.9, marginBottom: 12 }}>
-        Ova akcija će zaključati projekat. Nakon toga izmjene neće biti dozvoljene.
+        Ova akcija će zaključati projekat. Nakon toga izmjene neće biti
+        dozvoljene.
       </div>
 
       {error && (
-        <div style={{ color: "#ef4444", marginBottom: 10 }}>
-          {error}
-        </div>
+        <div style={{ color: "#ef4444", marginBottom: 10 }}>{error}</div>
       )}
 
       {needsConfirm && (

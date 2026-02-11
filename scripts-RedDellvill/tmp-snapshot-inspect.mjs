@@ -52,7 +52,7 @@ const rows = await query(
   WHERE p.projekat_id = ?
   GROUP BY p.projekat_id, ls.snapshot_id
   `,
-  [projekatId]
+  [projekatId],
 );
 
 console.log(JSON.stringify(rows, null, 2));

@@ -14,7 +14,7 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
     if (!Number.isFinite(batch_id) || batch_id <= 0) {
       return NextResponse.json(
         { ok: false, error: "Invalid batch_id", marker: "COMMIT_V2_UPSERT" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -22,11 +22,15 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
       // 0) provjera batch + account_id
       const [brows]: any = await conn.execute(
         `SELECT batch_id, account_id FROM bank_import_batch WHERE batch_id = ? LIMIT 1`,
-        [batch_id]
+        [batch_id],
       );
 
       if (!Array.isArray(brows) || brows.length === 0) {
-        return { ok: false, error: `Batch ${batch_id} ne postoji`, code: "BATCH_NOT_FOUND" };
+        return {
+          ok: false,
+          error: `Batch ${batch_id} ne postoji`,
+          code: "BATCH_NOT_FOUND",
+        };
       }
 
       const account_id = brows[0]?.account_id ?? null;
@@ -40,7 +44,7 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
         WHERE t.batch_id = ?
           AND m.tx_id IS NULL
         `,
-        [batch_id]
+        [batch_id],
       );
 
       const unmatched_cnt = Number(unmRows?.[0]?.cnt ?? 0);
@@ -87,7 +91,7 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
           matched_by   = VALUES(matched_by),
           rule_id      = VALUES(rule_id)
         `,
-        [account_id, batch_id]
+        [account_id, batch_id],
       );
 
       const affected_rows = Number(up?.affectedRows ?? 0);
@@ -95,7 +99,7 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
       // 3) status -> posted
       await conn.execute(
         `UPDATE bank_import_batch SET status = 'posted' WHERE batch_id = ?`,
-        [batch_id]
+        [batch_id],
       );
 
       return {
@@ -108,12 +112,20 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
       };
     });
 
-    if (!result.ok) return NextResponse.json({ ...result, marker: "COMMIT_V2_UPSERT" }, { status: 400 });
+    if (!result.ok)
+      return NextResponse.json(
+        { ...result, marker: "COMMIT_V2_UPSERT" },
+        { status: 400 },
+      );
     return NextResponse.json(result);
   } catch (e: any) {
     return NextResponse.json(
-      { ok: false, error: e?.message ?? "Server error", marker: "COMMIT_V2_UPSERT" },
-      { status: 500 }
+      {
+        ok: false,
+        error: e?.message ?? "Server error",
+        marker: "COMMIT_V2_UPSERT",
+      },
+      { status: 500 },
     );
   }
 }

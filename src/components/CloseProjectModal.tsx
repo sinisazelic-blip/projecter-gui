@@ -60,7 +60,9 @@ export function CloseProjectModal({
     setLoading(true);
     setConfirmWarnings(false);
     try {
-      const res = await fetch(`/api/projects/${projekatId}/close-check`, { cache: "no-store" });
+      const res = await fetch(`/api/projects/${projekatId}/close-check`, {
+        cache: "no-store",
+      });
       const j = await res.json();
       if (!res.ok || !j?.ok) {
         setData(null);
@@ -138,10 +140,18 @@ export function CloseProjectModal({
           <div className="font-semibold mb-1">Nije moguće učitati provjeru</div>
           <div className="text-gray-700">{errorMsg ?? "—"}</div>
           <div className="mt-3 flex justify-end gap-2">
-            <button className="rounded-xl border px-4 py-2 hover:bg-gray-50" onClick={onClose} type="button">
+            <button
+              className="rounded-xl border px-4 py-2 hover:bg-gray-50"
+              onClick={onClose}
+              type="button"
+            >
               Zatvori
             </button>
-            <button className="rounded-xl bg-black px-4 py-2 text-white" onClick={load} type="button">
+            <button
+              className="rounded-xl bg-black px-4 py-2 text-white"
+              onClick={load}
+              type="button"
+            >
               Pokušaj ponovo
             </button>
           </div>
@@ -172,10 +182,15 @@ export function CloseProjectModal({
 
           {hasHardBlocks && (
             <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3">
-              <div className="mb-2 font-semibold text-red-800">Ne može se arhivirati</div>
+              <div className="mb-2 font-semibold text-red-800">
+                Ne može se arhivirati
+              </div>
               <ul className="space-y-2 text-sm text-red-900">
                 {data.hard_blocks.map((b) => (
-                  <li key={b.code} className="flex items-start justify-between gap-3">
+                  <li
+                    key={b.code}
+                    className="flex items-start justify-between gap-3"
+                  >
                     <span>
                       {b.message}
                       {typeof b.count === "number" ? ` (${b.count})` : ""}
@@ -198,15 +213,17 @@ export function CloseProjectModal({
 
           {hasWarnings && (
             <div className="mb-4 rounded-xl border border-yellow-200 bg-yellow-50 p-3">
-              <div className="mb-2 font-semibold text-yellow-900">Upozorenja</div>
+              <div className="mb-2 font-semibold text-yellow-900">
+                Upozorenja
+              </div>
               <ul className="space-y-2 text-sm text-yellow-900">
                 {data.warnings.map((w) => (
                   <li key={w.code}>
                     {w.message}
                     {w.code === "OVER_BUDGET" && w.value ? (
                       <span className="block text-xs text-yellow-900/80">
-                        Budžet: {formatKM(Number(w.value.budzet_planirani))} KM · Spent:{" "}
-                        {formatKM(Number(w.value.spent))} KM
+                        Budžet: {formatKM(Number(w.value.budzet_planirani))} KM
+                        · Spent: {formatKM(Number(w.value.spent))} KM
                       </span>
                     ) : null}
                   </li>
@@ -244,7 +261,9 @@ export function CloseProjectModal({
               className="rounded-xl bg-black px-4 py-2 text-white disabled:opacity-40"
               onClick={doClose}
               type="button"
-              disabled={saving || hasHardBlocks || (hasWarnings && !confirmWarnings)}
+              disabled={
+                saving || hasHardBlocks || (hasWarnings && !confirmWarnings)
+              }
             >
               <span className="inline-flex items-center gap-2">
                 <Flag className="h-4 w-4" />

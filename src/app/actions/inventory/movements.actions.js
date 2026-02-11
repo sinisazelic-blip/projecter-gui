@@ -22,10 +22,13 @@ async function getBalance(item_id, location_id) {
     WHERE item_id = ? AND location_id = ?
     LIMIT 1
     `,
-    [item_id, location_id]
+    [item_id, location_id],
   );
   const row = r?.rows?.[0];
-  const n = row?.qty_balance === null || row?.qty_balance === undefined ? 0 : Number(row.qty_balance);
+  const n =
+    row?.qty_balance === null || row?.qty_balance === undefined
+      ? 0
+      : Number(row.qty_balance);
   if (!Number.isFinite(n)) return 0;
   return n;
 }
@@ -36,14 +39,14 @@ async function getBalance(item_id, location_id) {
 async function assertActiveItemAndLocation(item_id, location_id) {
   const it = await query(
     "SELECT item_id, aktivan FROM inventory_items WHERE item_id = ? LIMIT 1",
-    [item_id]
+    [item_id],
   );
   if (!it?.rows?.length) throw new Error("Artikal ne postoji.");
   if (!it.rows[0].aktivan) throw new Error("Artikal je deaktiviran.");
 
   const loc = await query(
     "SELECT location_id, aktivan FROM inventory_locations WHERE location_id = ? LIMIT 1",
-    [location_id]
+    [location_id],
   );
   if (!loc?.rows?.length) throw new Error("Lokacija ne postoji.");
   if (!loc.rows[0].aktivan) throw new Error("Lokacija je deaktivirana.");
@@ -67,8 +70,10 @@ export async function inventoryPostMovement({
   const itemId = Number(item_id);
   const locId = Number(location_id);
 
-  if (!Number.isInteger(itemId) || itemId <= 0) throw new Error("Neispravan item_id.");
-  if (!Number.isInteger(locId) || locId <= 0) throw new Error("Neispravan location_id.");
+  if (!Number.isInteger(itemId) || itemId <= 0)
+    throw new Error("Neispravan item_id.");
+  if (!Number.isInteger(locId) || locId <= 0)
+    throw new Error("Neispravan location_id.");
 
   const type = assertEnum("movement_type", movement_type, ALLOWED_TYPES);
   const q = assertQtyPositive(qty);
@@ -77,9 +82,14 @@ export async function inventoryPostMovement({
   const who = assertOptionalStr("created_by", created_by, 120);
 
   let projId = null;
-  if (projekat_id !== null && projekat_id !== undefined && String(projekat_id).trim() !== "") {
+  if (
+    projekat_id !== null &&
+    projekat_id !== undefined &&
+    String(projekat_id).trim() !== ""
+  ) {
     const n = Number(projekat_id);
-    if (!Number.isInteger(n) || n <= 0) throw new Error("Neispravan projekat_id.");
+    if (!Number.isInteger(n) || n <= 0)
+      throw new Error("Neispravan projekat_id.");
     projId = n;
   }
 
@@ -89,7 +99,7 @@ export async function inventoryPostMovement({
     const bal = await getBalance(itemId, locId);
     if (bal - q < -0.0005) {
       throw new Error(
-        `Nema dovoljno stanja za izlaz. Trenutno: ${bal.toFixed(3)}, traženo: ${q.toFixed(3)}.`
+        `Nema dovoljno stanja za izlaz. Trenutno: ${bal.toFixed(3)}, traženo: ${q.toFixed(3)}.`,
       );
     }
   }
@@ -101,7 +111,7 @@ export async function inventoryPostMovement({
     VALUES
       (?, ?, ?, ?, ?, ?, ?, ?)
     `,
-    [itemId, locId, type, q, at, projId, note, who]
+    [itemId, locId, type, q, at, projId, note, who],
   );
 
   return { ok: true, movement_id: r?.insertId ?? null };
@@ -127,10 +137,14 @@ export async function inventoryTransfer({
   const fromId = Number(from_location_id);
   const toId = Number(to_location_id);
 
-  if (!Number.isInteger(itemId) || itemId <= 0) throw new Error("Neispravan item_id.");
-  if (!Number.isInteger(fromId) || fromId <= 0) throw new Error("Neispravan from_location_id.");
-  if (!Number.isInteger(toId) || toId <= 0) throw new Error("Neispravan to_location_id.");
-  if (fromId === toId) throw new Error("Transfer: from i to lokacija ne smiju biti iste.");
+  if (!Number.isInteger(itemId) || itemId <= 0)
+    throw new Error("Neispravan item_id.");
+  if (!Number.isInteger(fromId) || fromId <= 0)
+    throw new Error("Neispravan from_location_id.");
+  if (!Number.isInteger(toId) || toId <= 0)
+    throw new Error("Neispravan to_location_id.");
+  if (fromId === toId)
+    throw new Error("Transfer: from i to lokacija ne smiju biti iste.");
 
   const q = assertQtyPositive(qty);
   const at = assertMovementAt(movement_at);
@@ -138,9 +152,14 @@ export async function inventoryTransfer({
   const who = assertOptionalStr("created_by", created_by, 120);
 
   let projId = null;
-  if (projekat_id !== null && projekat_id !== undefined && String(projekat_id).trim() !== "") {
+  if (
+    projekat_id !== null &&
+    projekat_id !== undefined &&
+    String(projekat_id).trim() !== ""
+  ) {
     const n = Number(projekat_id);
-    if (!Number.isInteger(n) || n <= 0) throw new Error("Neispravan projekat_id.");
+    if (!Number.isInteger(n) || n <= 0)
+      throw new Error("Neispravan projekat_id.");
     projId = n;
   }
 
@@ -152,7 +171,7 @@ export async function inventoryTransfer({
   const bal = await getBalance(itemId, fromId);
   if (bal - q < -0.0005) {
     throw new Error(
-      `Nema dovoljno stanja za transfer. Trenutno: ${bal.toFixed(3)}, traženo: ${q.toFixed(3)}.`
+      `Nema dovoljno stanja za transfer. Trenutno: ${bal.toFixed(3)}, traženo: ${q.toFixed(3)}.`,
     );
   }
 
@@ -166,7 +185,7 @@ export async function inventoryTransfer({
     VALUES
       (?, ?, 'OUT', ?, ?, ?, ?, ?)
     `,
-    [itemId, fromId, q, at, projId, outRef, who]
+    [itemId, fromId, q, at, projId, outRef, who],
   );
 
   const r2 = await query(
@@ -176,17 +195,23 @@ export async function inventoryTransfer({
     VALUES
       (?, ?, 'IN', ?, ?, ?, ?, ?)
     `,
-    [itemId, toId, q, at, projId, inRef, who]
+    [itemId, toId, q, at, projId, inRef, who],
   );
 
-  return { ok: true, movement_out_id: r1?.insertId ?? null, movement_in_id: r2?.insertId ?? null };
+  return {
+    ok: true,
+    movement_out_id: r1?.insertId ?? null,
+    movement_in_id: r2?.insertId ?? null,
+  };
 }
 
 export async function inventoryGetBalance(item_id, location_id) {
   const itemId = Number(item_id);
   const locId = Number(location_id);
-  if (!Number.isInteger(itemId) || itemId <= 0) throw new Error("Neispravan item_id.");
-  if (!Number.isInteger(locId) || locId <= 0) throw new Error("Neispravan location_id.");
+  if (!Number.isInteger(itemId) || itemId <= 0)
+    throw new Error("Neispravan item_id.");
+  if (!Number.isInteger(locId) || locId <= 0)
+    throw new Error("Neispravan location_id.");
 
   const bal = await getBalance(itemId, locId);
   return { ok: true, qty_balance: bal };
@@ -203,23 +228,37 @@ export async function inventoryListMovements({
   const filters = [];
   const vals = [];
 
-  if (item_id !== null && item_id !== undefined && String(item_id).trim() !== "") {
+  if (
+    item_id !== null &&
+    item_id !== undefined &&
+    String(item_id).trim() !== ""
+  ) {
     const n = Number(item_id);
     if (!Number.isInteger(n) || n <= 0) throw new Error("Neispravan item_id.");
     filters.push("m.item_id = ?");
     vals.push(n);
   }
 
-  if (location_id !== null && location_id !== undefined && String(location_id).trim() !== "") {
+  if (
+    location_id !== null &&
+    location_id !== undefined &&
+    String(location_id).trim() !== ""
+  ) {
     const n = Number(location_id);
-    if (!Number.isInteger(n) || n <= 0) throw new Error("Neispravan location_id.");
+    if (!Number.isInteger(n) || n <= 0)
+      throw new Error("Neispravan location_id.");
     filters.push("m.location_id = ?");
     vals.push(n);
   }
 
-  if (projekat_id !== null && projekat_id !== undefined && String(projekat_id).trim() !== "") {
+  if (
+    projekat_id !== null &&
+    projekat_id !== undefined &&
+    String(projekat_id).trim() !== ""
+  ) {
     const n = Number(projekat_id);
-    if (!Number.isInteger(n) || n <= 0) throw new Error("Neispravan projekat_id.");
+    if (!Number.isInteger(n) || n <= 0)
+      throw new Error("Neispravan projekat_id.");
     filters.push("m.projekat_id = ?");
     vals.push(n);
   }
@@ -240,7 +279,7 @@ export async function inventoryListMovements({
     ORDER BY m.movement_at DESC, m.movement_id DESC
     LIMIT ${lim}
     `,
-    vals
+    vals,
   );
 
   return { ok: true, rows: r?.rows ?? [] };

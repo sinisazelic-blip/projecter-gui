@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withTransaction } from "@/lib/db";
 
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -12,13 +11,19 @@ function asIntOrNull(v: any) {
 }
 
 // PUT /api/bank/rules/:rule_id
-export async function PUT(req: NextRequest, ctx: { params: Promise<{ rule_id: string }> }) {
+export async function PUT(
+  req: NextRequest,
+  ctx: { params: Promise<{ rule_id: string }> },
+) {
   try {
     const { rule_id: rawRuleId } = await ctx.params;
     const rule_id = Number(rawRuleId);
 
     if (!Number.isFinite(rule_id) || rule_id <= 0) {
-      return NextResponse.json({ ok: false, error: "Invalid rule_id" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Invalid rule_id" },
+        { status: 400 },
+      );
     }
 
     const body = await req.json().catch(() => ({}));
@@ -41,22 +46,34 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ rule_id: st
     const kategorija = body?.kategorija ?? null;
 
     if (!Number.isFinite(priority)) {
-      return NextResponse.json({ ok: false, error: "Invalid priority" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Invalid priority" },
+        { status: 400 },
+      );
     }
     if (match_amount !== null && Number.isNaN(match_amount)) {
-      return NextResponse.json({ ok: false, error: "Invalid match_amount" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Invalid match_amount" },
+        { status: 400 },
+      );
     }
     if (projekat_id !== null && Number.isNaN(projekat_id)) {
-      return NextResponse.json({ ok: false, error: "Invalid projekat_id" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Invalid projekat_id" },
+        { status: 400 },
+      );
     }
     if (narucilac_id !== null && Number.isNaN(narucilac_id)) {
-      return NextResponse.json({ ok: false, error: "Invalid narucilac_id" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Invalid narucilac_id" },
+        { status: 400 },
+      );
     }
 
     const out = await withTransaction(async (conn: any) => {
       const [ex]: any = await conn.execute(
         `SELECT rule_id FROM bank_tx_match_rule WHERE rule_id = ? LIMIT 1`,
-        [rule_id]
+        [rule_id],
       );
       if (!Array.isArray(ex) || ex.length === 0) {
         return { ok: false, error: "RULE_NOT_FOUND" as const };
@@ -88,7 +105,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ rule_id: st
           narucilac_id,
           kategorija,
           rule_id,
-        ]
+        ],
       );
 
       const [rows]: any = await conn.execute(
@@ -102,36 +119,48 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ rule_id: st
         WHERE rule_id = ?
         LIMIT 1
         `,
-        [rule_id]
+        [rule_id],
       );
 
       return { ok: true, rule: rows?.[0] ?? null };
     });
 
     if (!out.ok && out.error === "RULE_NOT_FOUND") {
-      return NextResponse.json({ ok: false, error: "RULE_NOT_FOUND" }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: "RULE_NOT_FOUND" },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json(out);
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Server error" },
+      { status: 500 },
+    );
   }
 }
 
 // DELETE /api/bank/rules/:rule_id
-export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ rule_id: string }> }) {
+export async function DELETE(
+  _req: NextRequest,
+  ctx: { params: Promise<{ rule_id: string }> },
+) {
   try {
     const { rule_id: rawRuleId } = await ctx.params;
     const rule_id = Number(rawRuleId);
 
     if (!Number.isFinite(rule_id) || rule_id <= 0) {
-      return NextResponse.json({ ok: false, error: "Invalid rule_id" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Invalid rule_id" },
+        { status: 400 },
+      );
     }
 
     const out = await withTransaction(async (conn: any) => {
       const [ins]: any = await conn.execute(
         `DELETE FROM bank_tx_match_rule WHERE rule_id = ?`,
-        [rule_id]
+        [rule_id],
       );
       const affected = Number(ins?.affectedRows ?? 0);
       return { ok: true, deleted: affected };
@@ -139,6 +168,9 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ rule_id
 
     return NextResponse.json(out);
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Server error" },
+      { status: 500 },
+    );
   }
 }

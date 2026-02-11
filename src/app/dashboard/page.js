@@ -17,8 +17,19 @@ const GROUPS = [
     sub: "Operativni finansijski tokovi (email / fakture / naplate).",
     items: [
       { label: "Narudžbenice", href: "/narudzbenice" },
-      { label: "Interna blagajna (owner)", href: "/cash", title: "Interna blagajna — owner-only signal" },
-      { label: "Fakture", href: null },
+      {
+        label: "Interna blagajna (owner)",
+        href: "/cash",
+        title: "Interna blagajna — owner-only signal",
+      },
+
+      // ✅ aktiviramo wizard entry
+      {
+        label: "Fakture",
+        href: "/fakture/za-fakturisanje",
+        title: "Za fakturisanje → wizard",
+      },
+
       { label: "Naplata (novi modul)", href: null },
       { label: "Dugovanja", href: null },
       { label: "Import izvoda", href: null },
@@ -52,7 +63,11 @@ const GROUPS = [
 function ActionBtn({ label, href, title }) {
   if (!href) {
     return (
-      <span className="btn btn--disabled" aria-disabled="true" title={title || "Još nije implementirano"}>
+      <span
+        className="btn btn--disabled"
+        aria-disabled="true"
+        title={title || "Još nije implementirano"}
+      >
         {label}
       </span>
     );
@@ -70,7 +85,9 @@ function GroupCard({ group }) {
   const disabled = tone === "disabled";
 
   return (
-    <div className={`card ${legacy ? "card--legacy" : ""} ${disabled ? "card--disabled" : ""}`}>
+    <div
+      className={`card ${legacy ? "card--legacy" : ""} ${disabled ? "card--disabled" : ""}`}
+    >
       <div className="cardHead">
         <div className="cardTitleRow">
           <div className="cardTitle">{group.title}</div>
@@ -82,7 +99,12 @@ function GroupCard({ group }) {
 
       <div className="cardBtns">
         {group.items.map((it) => (
-          <ActionBtn key={it.label} label={it.label} href={it.href} title={it.title} />
+          <ActionBtn
+            key={it.label}
+            label={it.label}
+            href={it.href}
+            title={it.title}
+          />
         ))}
       </div>
     </div>
@@ -231,28 +253,34 @@ export default function Page() {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+                <img
+                  src="/fluxa/logo-light.png"
+                  alt="FLUXA"
+                  className="brandLogo"
+                />
                 <div>
                   <div className="brandTitle">Dashboard</div>
-                  <div className="brandSub">Tok: Deal → Projekti → Finansije</div>
+                  <div className="brandSub">
+                    Tok: Deal → Projekti → Finansije
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                <Link href="/inicijacije" className="btn" title="Lista dealova">
-                  Dealovi
-                </Link>
-                <Link href="/projects" className="btn" title="Lista projekata">
-                  Projekti
-                </Link>
-                <Link href="/narudzbenice" className="btn" title="Narudžbenice">
-                  Narudžbenice
-                </Link>
-                <Link href="/cash" className="btn" title="Interna blagajna (owner-only signal)">
+              {/* ✅ TOPBAR: samo Blagajna */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+              >
+                <Link
+                  href="/cash"
+                  className="btn"
+                  title="Interna blagajna (owner-only signal)"
+                >
                   Blagajna
-                </Link>
-                <Link href="/studio/firma" className="btn" title="Firma / identitet studija">
-                  Firma
                 </Link>
               </div>
             </div>

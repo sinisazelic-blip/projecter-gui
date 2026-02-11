@@ -1,7 +1,11 @@
-export async function generateMetadata({ params }: { params: { id?: string } }) {
+export async function generateMetadata({
+  params,
+}: {
+  params: { id?: string };
+}) {
   const id = params?.id;
   return {
-//    title: id ? `Fluxa – Deal #${id}` : "Fluxa – Deal",
+    //    title: id ? `Fluxa – Deal #${id}` : "Fluxa – Deal",
   };
 }
 
