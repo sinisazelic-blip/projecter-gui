@@ -29,21 +29,34 @@ function CardLink({ title, desc, href, href2, href2Label }) {
 export default async function FinanceHomePage() {
   return (
     <div className="container">
-      <div className="topbar glass">
-        <div className="topbar-left">
-          <h1 className="h1">Finansije</h1>
-          <div className="subtle">
-            Banka je canonical truth. Business tabele su meaning + linkovi.
+      <div className="pageWrap">
+        <div className="topBlock">
+          <div className="topInner">
+            <div className="topRow">
+              <div className="brandWrap">
+                <img
+                  src="/fluxa/logo-light.png"
+                  alt="FLUXA"
+                  className="brandLogo"
+                />
+                <div>
+                  <div className="brandTitle">Finansije</div>
+                  <div className="brandSub">
+                    Banka je canonical truth. Business tabele su meaning + linkovi.
+                  </div>
+                </div>
+              </div>
+
+              <Link href="/dashboard" className="btn" title="Dashboard">
+                🏠 Dashboard
+              </Link>
+            </div>
+
+            <div className="divider" />
           </div>
         </div>
 
-        <div className="topbar-right" style={{ display: "flex", gap: 8 }}>
-          <Link className="btn" href="/">
-            Home
-          </Link>
-        </div>
-      </div>
-
+        <div className="bodyWrap">
       {/* QUICK GRID */}
       <div
         style={{
@@ -65,6 +78,24 @@ export default async function FinanceHomePage() {
         />
 
         <CardLink
+          title="Naplate"
+          desc="Šta dospijeva uskoro ili kasni. Projekti status 4/6, neplaćeno."
+          href="/naplate"
+        />
+
+        <CardLink
+          title="KUF (ulazne fakture)"
+          desc="Import ulaznih faktura + rasknjižavanje: projektni, fiksni, vanredni, investicije."
+          href="/finance/kuf"
+        />
+
+        <CardLink
+          title="Dugovanja"
+          desc="Obaveze prema dobavljačima/talentima. Lista + detalj sa paid sum."
+          href="/finance/dugovanja"
+        />
+
+        <CardLink
           title="Prihodi"
           desc="Business prihodi (meaning). Detalj pokazuje bank linkove + veze na potraživanja."
           href="/finance/prihodi"
@@ -74,6 +105,18 @@ export default async function FinanceHomePage() {
           title="Plaćanja"
           desc="Business plaćanja (meaning). Detalj pokazuje bank linkove + stavke (ako postoje)."
           href="/finance/placanja"
+        />
+
+        <CardLink
+          title="CashFlow"
+          desc="Hronologija plaćanja — šta je sljedeće za plaćanje. Fiksni troškovi poredani po datumu."
+          href="/finance/cashflow"
+        />
+
+        <CardLink
+          title="Krediti"
+          desc="Ukupan iznos, broj rata, uplaćeno, ostatak duga, posljednja rata."
+          href="/finance/krediti"
         />
 
         <CardLink
@@ -87,12 +130,14 @@ export default async function FinanceHomePage() {
 
       {/* NOTE */}
       <div className="card" style={{ marginTop: 12 }}>
-        <div className="h2" style={{ marginTop: 0 }}>
+        <div className="cardTitle" style={{ marginTop: 0 }}>
           Napomena
         </div>
-        <div className="subtle" style={{ lineHeight: 1.7 }}>
+        <div className="cardSub" style={{ lineHeight: 1.7 }}>
           Ovo je read-only skeleton faza. Linkovanje i pravila dolaze kasnije,
           ali navigacija i prikazi moraju biti stabilni i jasni.
+        </div>
+      </div>
         </div>
       </div>
     </div>

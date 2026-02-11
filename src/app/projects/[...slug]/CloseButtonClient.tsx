@@ -23,10 +23,8 @@ async function readJson(res: Response) {
 
 export function CloseButtonClient({
   projekatId,
-  bankImportHref = "/bank",
 }: {
   projekatId: number;
-  bankImportHref?: string;
 }) {
   const [loading, setLoading] = useState(false);
 
@@ -142,10 +140,6 @@ export function CloseButtonClient({
         <button className="btn" disabled={loading} onClick={onPrimaryClick}>
           {loading ? "Provjeravam…" : "Arhiviraj"}
         </button>
-
-        <a className="btn" href={bankImportHref}>
-          Banka
-        </a>
 
         {msg && <span style={{ opacity: 0.85, fontSize: 13 }}>{msg}</span>}
       </div>

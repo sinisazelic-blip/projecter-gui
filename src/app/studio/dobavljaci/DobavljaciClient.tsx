@@ -118,13 +118,6 @@ const pageTitleRowStyle: React.CSSProperties = {
   gap: 10,
 };
 
-const logoStyle: React.CSSProperties = {
-  width: 90,
-  height: 35,
-  objectFit: "contain",
-  opacity: 0.95,
-};
-
 export default function DobavljaciClient({
   initialItems,
 }: {
@@ -358,7 +351,6 @@ export default function DobavljaciClient({
       <div style={topbarStyle()}>
         <div style={{ minWidth: 280 }}>
           <div style={pageTitleRowStyle}>
-            <img src="/fluxa/logo-light.png" alt="Fluxa" style={logoStyle} />
             <h1
               style={{
                 fontSize: 22,
@@ -497,12 +489,19 @@ export default function DobavljaciClient({
       </div>
 
       <div style={tableScrollWrapStyle}>
-        <table className="table">
+        <table className="table" style={{ tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: "34%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "28%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "10%" }} />
+          </colgroup>
           <thead>
             <tr>
               <th>Naziv</th>
               <th>Vrsta</th>
-              <th>Lokacija</th>
+              <th>Adresa</th>
               <th>Kontakt</th>
               <th>Status</th>
             </tr>
@@ -521,18 +520,12 @@ export default function DobavljaciClient({
                   Number(selectedId) === Number(it.dobavljac_id);
                 const isActive = Number(it.aktivan) === 1;
 
-                const lok = [
-                  it.grad ? it.grad : null,
-                  it.drzava_iso2 ? it.drzava_iso2 : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ");
-                const kontakt = [
-                  it.email ? it.email : null,
-                  it.telefon ? it.telefon : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ");
+                const adresaParts = [
+                  it.adresa ?? null,
+                  it.grad ?? null,
+                  it.postanski_broj ?? null,
+                  it.drzava_iso2 ?? null,
+                ].filter(Boolean);
 
                 return (
                   <tr
@@ -564,60 +557,37 @@ export default function DobavljaciClient({
                           }}
                         />
                         <span style={{ fontWeight: 800 }}>{it.naziv}</span>
-                        {it.pravno_lice ? (
-                          <span
-                            className="badge"
-                            data-status="draft"
-                            style={{ marginLeft: 6 }}
-                          >
-                            pravno lice
-                          </span>
-                        ) : (
+                        {Number(it.pravno_lice) !== 1 ? (
                           <span
                             className="badge"
                             data-status="planned"
                             style={{ marginLeft: 6 }}
                           >
-                            fizičko lice
+                            Nije pravno lice
                           </span>
-                        )}
+                        ) : null}
                       </div>
-                      {it.adresa ? (
-                        <div
-                          style={{
-                            marginTop: 4,
-                            color: "var(--muted)",
-                            fontSize: 13,
-                          }}
-                        >
-                          {it.adresa}
-                        </div>
-                      ) : null}
                     </td>
 
                     <td>{badgeVrsta(it.vrsta)}</td>
 
-                    <td style={{ color: lok ? "var(--text)" : "var(--muted)" }}>
-                      {lok || "—"}
-                      {it.postanski_broj ? (
-                        <div
-                          style={{
-                            marginTop: 4,
-                            color: "var(--muted)",
-                            fontSize: 13,
-                          }}
-                        >
-                          {it.postanski_broj}
-                        </div>
-                      ) : null}
+                    <td
+                      className="cell-wrap"
+                      style={{
+                        color: adresaParts.length ? "var(--text)" : "var(--muted)",
+                        fontSize: 13,
+                      }}
+                    >
+                      {adresaParts.length ? adresaParts.join(" · ") : "—"}
                     </td>
 
                     <td
                       style={{
-                        color: kontakt ? "var(--text)" : "var(--muted)",
+                        color: it.telefon ? "var(--text)" : "var(--muted)",
+                        whiteSpace: "nowrap",
                       }}
                     >
-                      {kontakt || "—"}
+                      {it.telefon || "—"}
                     </td>
 
                     <td>{badgeStatus(isActive)}</td>

@@ -1,22 +1,64 @@
+import Link from "next/link";
+
 export default function HomePage() {
   return (
     <main
       style={{
         minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
         padding: 24,
-        backgroundColor: "#0f172a", // dark slate
-        color: "#e5e7eb", // light text
+        background: "var(--bg)",
       }}
     >
-      <h1 style={{ fontSize: 28, marginBottom: 8 }}>Studio TAF · Fluxa</h1>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 20,
+          textAlign: "center",
+        }}
+      >
+        <img
+          src="/fluxa/logo-light.png"
+          alt="Fluxa"
+          style={{
+            width: 200,
+            maxWidth: "90%",
+            height: "auto",
+            objectFit: "contain",
+            opacity: 0.95,
+          }}
+        />
 
-      <p style={{ opacity: 0.85 }}>Početni GUI ekran — radi.</p>
-
-      <div style={{ marginTop: 16, opacity: 0.75 }}>
-        <p>
-          Napomena: Fluxa je nova platforma (proJECTer je stara
-          Excel/platforma).
+        <p
+          style={{
+            margin: 0,
+            fontSize: 18,
+            fontWeight: 500,
+            letterSpacing: "0.06em",
+            color: "var(--muted)",
+            textTransform: "uppercase",
+          }}
+        >
+          Projects & Finance Engine
         </p>
+
+        <Link
+          href="/dashboard"
+          className="btn btn--active"
+          style={{
+            marginTop: 24,
+            padding: "12px 28px",
+            fontSize: 15,
+            fontWeight: 600,
+          }}
+        >
+          Uđi u aplikaciju
+        </Link>
       </div>
     </main>
   );

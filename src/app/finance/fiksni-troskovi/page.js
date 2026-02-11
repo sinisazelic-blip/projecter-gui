@@ -3,12 +3,6 @@ import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-const fmtKM = (v) => {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return n.toFixed(2) + " KM";
-};
-
 export default async function FiksniTroskoviPage({ searchParams }) {
   const sp = await Promise.resolve(searchParams);
   const q = (sp?.q ?? "").trim();
@@ -31,10 +25,13 @@ export default async function FiksniTroskoviPage({ searchParams }) {
       f.frekvencija,
       f.dan_u_mjesecu,
       f.datum_dospijeca,
-      f.zadnje_placeno
+      f.zadnje_placeno,
+      f.iznos,
+      f.valuta,
+      f.aktivan
     FROM fiksni_troskovi f
     ${whereSql}
-    ORDER BY f.trosak_id DESC
+    ORDER BY f.aktivan DESC, f.trosak_id DESC
     LIMIT 200
     `,
     params,
@@ -53,20 +50,43 @@ export default async function FiksniTroskoviPage({ searchParams }) {
 
   return (
     <div className="container">
-      <div className="topbar glass">
-        <div className="topbar-left">
-          <h1 className="h1">Fiksni troškovi</h1>
-          <div className="subtle">
-            Read-only skeleton (SOON: raspored + bank linkovi)
+      <div className="pageWrap">
+        <div className="topBlock">
+          <div className="topInner">
+            <div className="topRow">
+              <div className="brandWrap">
+                <img
+                  src="/fluxa/logo-light.png"
+                  alt="FLUXA"
+                  className="brandLogo"
+                />
+                <div>
+                  <div className="brandTitle">Fiksni troškovi</div>
+                  <div className="brandSub">Finansije / Pretplate, zakupi, porezi</div>
+                </div>
+              </div>
+
+              <div className="actions">
+                <Link className="btn" href="/finance/cashflow" title="Hronologija plaćanja">
+                  CashFlow
+                </Link>
+                <Link className="btn" href="/finance/fiksni-troskovi/raspored">
+                  Raspored
+                </Link>
+                <Link className="btn" href="/finance" title="Finansije">
+                  Finansije
+                </Link>
+                <Link className="btn" href="/dashboard" title="Dashboard">
+                  🏠 Dashboard
+                </Link>
+              </div>
+            </div>
+
+            <div className="divider" />
           </div>
         </div>
-        <div className="topbar-right">
-          <Link className="btn" href="/finance">
-            Nazad
-          </Link>
-        </div>
-      </div>
 
+        <div className="bodyWrap">
       <div className="card">
         <form className="card-row" method="GET" style={{ gap: 12 }}>
           <div style={{ minWidth: 260 }}>
@@ -90,23 +110,25 @@ export default async function FiksniTroskoviPage({ searchParams }) {
       </div>
 
       <div className="card">
-        <div className="card-row" style={{ justifyContent: "space-between" }}>
-          <div className="subtle">
-            Prikazano: {rows?.length ?? 0} (limit 200)
+        <div className="cardHead">
+          <div className="cardTitleRow">
+            <div className="cardTitle">Šifrarnik fiksnih troškova</div>
+            <span className="muted">Prikazano: {rows?.length ?? 0} (limit 200)</span>
           </div>
-          <div className="subtle">Raspored (vw_*) ćemo u sljedećem koraku.</div>
         </div>
 
-        <div className="table-wrap">
-          <table className="table">
+        <div className="tableCard">
+          <table>
             <thead>
               <tr>
-                <th style={{ width: 110 }}>ID</th>
+                <th style={{ width: 70 }}>ID</th>
                 <th>Naziv</th>
-                <th style={{ width: 140 }}>Frekvencija</th>
-                <th style={{ width: 140 }}>Dan</th>
+                <th style={{ width: 100 }}>Frekvencija</th>
+                <th style={{ width: 70 }}>Dan</th>
                 <th style={{ width: 160 }}>Dospijeće</th>
-                <th style={{ width: 160 }}>Zadnje plaćeno</th>
+                <th style={{ width: 100 }} className="num">Iznos</th>
+                <th style={{ width: 130 }}>Zadnje plaćeno</th>
+                <th style={{ width: 70 }}>Aktivan</th>
               </tr>
             </thead>
             <tbody>
@@ -119,20 +141,26 @@ export default async function FiksniTroskoviPage({ searchParams }) {
                       </td>
                       <td>{r.frekvencija ?? "—"}</td>
                       <td>{r.dan_u_mjesecu ?? "—"}</td>
-                      <td>
+                      <td className="nowrap">
                         {r.datum_dospijeca
                           ? String(r.datum_dospijeca).slice(0, 10)
                           : "—"}
                       </td>
-                      <td>
+                      <td className="num">
+                        {r.iznos != null
+                          ? `${Number(r.iznos).toFixed(2)} ${r.valuta ?? "BAM"}`
+                          : "—"}
+                      </td>
+                      <td className="nowrap">
                         {r.zadnje_placeno
                           ? String(r.zadnje_placeno).slice(0, 10)
                           : "—"}
                       </td>
+                      <td>{r.aktivan != null ? (r.aktivan ? "Da" : "—") : "—"}</td>
                     </tr>
                   ))
                 : <tr>
-                    <td colSpan={6} className="subtle" style={{ padding: 16 }}>
+                    <td colSpan={8} className="muted" style={{ padding: 16 }}>
                       Nema rezultata.
                     </td>
                   </tr>}
@@ -142,13 +170,17 @@ export default async function FiksniTroskoviPage({ searchParams }) {
       </div>
 
       <div className="card" style={{ marginTop: 14 }}>
-        <div className="h2" style={{ marginTop: 0 }}>
+        <div className="cardTitle" style={{ marginTop: 0 }}>
           Napomena
         </div>
-        <div className="subtle" style={{ lineHeight: 1.6 }}>
-          Ovdje je cilj prvo stabilan read-only prikaz. Kasnije dodajemo
-          raspored (vw_fiksni_troskovi_*), kao i povezivanje plaćanja sa bank
-          postinzima preko <code>bank_tx_fixed_link</code>.
+        <div className="cardSub" style={{ lineHeight: 1.6 }}>
+          Read-only prikaz. Raspored dospijeća je na{" "}
+          <Link href="/finance/fiksni-troskovi/raspored" className="btn" style={{ display: "inline-flex" }}>
+            Raspored
+          </Link>
+          . Kasnije: CRUD + povezivanje plaćanja sa bank postinzima.
+        </div>
+      </div>
         </div>
       </div>
     </div>

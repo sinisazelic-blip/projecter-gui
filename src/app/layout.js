@@ -4,6 +4,9 @@ import "@/lib/ui/common-styles.css";
 export const metadata = {
   title: "Studio TAF · Fluxa",
   description: "Fluxa — upravljanje projektima i finansijama (GUI).",
+  icons: {
+    icon: "/fluxa/Icon.png",
+  },
 };
 
 export default function RootLayout({ children }) {

@@ -79,6 +79,27 @@ export async function query<T = any>(
 }
 
 /**
+ * Wrapper za transakcije: prima callback koji dobija connection.
+ * Koristi conn.execute() umjesto pool.query().
+ */
+export async function withTransaction<T>(
+  fn: (conn: mysql.PoolConnection) => Promise<T>,
+): Promise<T> {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const result = await fn(conn as mysql.PoolConnection);
+    await conn.commit();
+    return result;
+  } catch (e) {
+    await conn.rollback().catch(() => null);
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+
+/**
  * Kompatibilnost sa starim fajlovima koji rade:
  * import pool from "@/lib/db"
  */

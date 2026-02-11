@@ -89,7 +89,7 @@ export async function getCloseCheck(
         "Projekat je već fakturisan (read-only). Zatvaranje nije moguće.",
     });
   }
-  if (status_id === 10) {
+  if (status_id === 10 || status_id === 11) {
     hard_blocks.push({
       code: "ALREADY_ARCHIVED",
       message: "Projekat je već arhiviran. Zatvaranje nije moguće.",

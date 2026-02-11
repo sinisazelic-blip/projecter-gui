@@ -135,13 +135,6 @@ const pageTitleRowStyle: React.CSSProperties = {
   gap: 10,
 };
 
-const logoStyle: React.CSSProperties = {
-  width: 90,
-  height: 35,
-  objectFit: "contain",
-  opacity: 0.95,
-};
-
 export default function CjenovnikClient({
   initialItems,
 }: {
@@ -335,7 +328,6 @@ export default function CjenovnikClient({
       <div style={topbarStyle()}>
         <div style={{ minWidth: 280 }}>
           <div style={pageTitleRowStyle}>
-            <img src="/fluxa/logo-light.png" alt="Fluxa" style={logoStyle} />
             <h1
               style={{
                 fontSize: 22,

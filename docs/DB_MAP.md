@@ -183,3 +183,24 @@ Operativne tabele koje si importovao:
 
 Napomena:
 - Nazive FK constrainta držati jedinstvenim (imali smo konflikt sa fk_di_dobavljac ranije).
+
+## Šifarnici (Studio)
+### radne_faze
+- PK: faza_id
+- naziv, opis_poslova, slozenost_posla, vrsta_posla
+- created_at, updated_at
+
+### users
+- PK: user_id
+- username (UNIQUE), password, grupa
+- created_at, updated_at
+
+### roles
+- PK: role_id
+- naziv, nivo_ovlastenja (INT), opis
+- created_at, updated_at
+
+### radnici
+- PK: radnik_id
+- ime, prezime, adresa, broj_telefona, email, datum_rodjenja, jib, aktivan, opis
+- created_at, updated_at

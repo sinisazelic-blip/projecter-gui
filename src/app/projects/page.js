@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 function statusToneById(statusId) {
   const id = Number(statusId ?? 0);
   if (id === 9) return "status-badge--invoiced"; // Fakturisan
-  if (id === 10) return "status-badge--archived"; // Arhiviran
+  if (id === 10 || id === 11) return "status-badge--archived"; // Arhiviran / Arhiva (import)
   if (id === 12) return "status-badge--cancelled"; // Otkazan
   if (id === 8) return "status-badge--closed"; // Zatvoren
   if (id === 7) return "status-badge--done"; // Završen
@@ -316,8 +316,8 @@ const FLOW_STEPS = [
 function flowIndexForProjectStatusId(statusId) {
   const id = Number(statusId ?? 0);
 
-  // 10/12 (arhiva/otkazan) => zadnji korak
-  if (id === 10 || id === 12) return 5;
+  // 10/11/12 (arhiva/import/otkazan) => zadnji korak
+  if (id === 10 || id === 11 || id === 12) return 5;
 
   // 9 = fakturisan
   if (id === 9) return 4;
@@ -341,8 +341,8 @@ function flowIndexForProjectStatusId(statusId) {
 function flowAccentByProjectStatusId(statusId) {
   const id = Number(statusId ?? 0);
 
-  // Arhiva/otkazan
-  if (id === 10 || id === 12) {
+  // Arhiva/import/otkazan
+  if (id === 10 || id === 11 || id === 12) {
     return {
       dot: "rgba(180, 180, 180, .85)",
       line: "rgba(180, 180, 180, .45)",
@@ -484,7 +484,6 @@ export default async function Page({ searchParams }) {
   const sp = await Promise.resolve(searchParams);
 
   const finRaw = sp?.fin_status ?? "";
-  const legacyRaw = sp?.legacy ?? "";
   const qRaw = sp?.q ?? "";
   const showDoneRaw = sp?.show_done ?? "";
   const showDone = String(showDoneRaw) === "1";
@@ -510,7 +509,6 @@ export default async function Page({ searchParams }) {
     status_group,
     status_id: status_id ? String(status_id) : "",
     fin_status: finRaw,
-    legacy: legacyRaw,
     q: qRaw,
     show_done: showDone ? "1" : "",
     page: String(page),
@@ -532,7 +530,6 @@ export default async function Page({ searchParams }) {
     return buildQuery({
       status_pick,
       fin_status: finRaw,
-      legacy: legacyRaw,
       q: qRaw,
       show_done: showDone ? "1" : "",
       page: String(nextPage),
@@ -550,7 +547,7 @@ export default async function Page({ searchParams }) {
       <div className="pageWrap">
         <div className="topBlock">
         <div className="topInner">
-          <div className="topRow">
+          <div className="topRow" style={{ justifyContent: "space-between", alignItems: "center" }}>
             <div className="brandWrap">
               <img
                 src="/fluxa/logo-light.png"
@@ -563,11 +560,22 @@ export default async function Page({ searchParams }) {
               </div>
             </div>
 
-            {/* ✅ Tabs samo postavljaju status_pick */}
-            <div className="tabRow">
+            <Link
+              href="/dashboard"
+              className="btn"
+              style={{ fontSize: 15, padding: "10px 18px", minWidth: 130, fontWeight: 700 }}
+              title="Povratak na Dashboard"
+            >
+              🏠 Dashboard
+            </Link>
+          </div>
+
+          <div style={{ marginTop: 14 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, fontSize: 13 }}>
               <Link
                 href={`/projects?status_pick=${encodeURIComponent("group:active")}`}
                 className={`btn ${status_group === "active" && !status_id ? "btn--active" : ""}`}
+                style={{ fontSize: 13, padding: "6px 12px" }}
                 title="Filter: aktivni (1–8)"
               >
                 Aktivni
@@ -575,151 +583,85 @@ export default async function Page({ searchParams }) {
               <Link
                 href={`/projects?status_pick=${encodeURIComponent("group:archive")}`}
                 className={`btn ${status_group === "archive" && !status_id ? "btn--active" : ""}`}
-                title="Filter: arhiva (10)"
+                style={{ fontSize: 13, padding: "6px 12px" }}
+                title="Filter: arhiva (10, 11 — importovani)"
               >
                 Arhiva
               </Link>
               <Link
+                href={`/projects?status_pick=${encodeURIComponent("11")}`}
+                className={`btn ${status_id === 11 ? "btn--active" : ""}`}
+                style={{ fontSize: 13, padding: "6px 12px" }}
+                title="Samo importovani (status 11)"
+              >
+                Arhiva (import)
+              </Link>
+              <Link
                 href={`/projects?status_pick=${encodeURIComponent("group:all")}`}
                 className={`btn ${status_group === "all" && !status_id ? "btn--active" : ""}`}
+                style={{ fontSize: 13, padding: "6px 12px" }}
                 title="Filter: svi statusi"
               >
                 Svi projekti
               </Link>
             </div>
-          </div>
 
-          <div style={{ marginTop: 12 }}>
             <form method="GET" style={{ width: "100%" }} className="filters">
               <input type="hidden" name="page" value="1" />
               <input type="hidden" name="limit" value={String(limit)} />
 
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  alignItems: "flex-start",
-                  flexWrap: "nowrap",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                    flex: 1,
-                    minWidth: 0,
-                  }}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", fontSize: 13 }}>
+                <span className="label" style={{ fontSize: 12 }}>Status:</span>
+                <select
+                  name="status_pick"
+                  defaultValue={statusSelectValue}
+                  className="input"
+                  style={{ minWidth: 170, fontSize: 12, padding: "6px 10px" }}
                 >
-                  <span className="label">Status:</span>
-
-                  <select
-                    name="status_pick"
-                    defaultValue={statusSelectValue}
-                    className="input"
-                    style={{ minWidth: 200 }}
-                  >
-                    <option value="group:active">Aktivni (grupa 1–8)</option>
-                    <option value="group:archive">Arhiva (samo 10)</option>
-                    <option value="group:all">Svi statusi (grupa)</option>
-                    <option disabled value="__sep__">
-                      ────────
+                  <option value="group:active">Aktivni (grupa 1–8)</option>
+                  <option value="group:archive">Arhiva (10 + 11)</option>
+                  <option value="group:all">Svi statusi (grupa)</option>
+                  <option disabled value="__sep__">────────</option>
+                  {statuses.map((s) => (
+                    <option key={s.status_id} value={String(s.status_id)}>
+                      {s.status_id} — {s.naziv_statusa}
                     </option>
-                    {statuses.map((s) => (
-                      <option key={s.status_id} value={String(s.status_id)}>
-                        {s.status_id} — {s.naziv_statusa}
-                      </option>
-                    ))}
-                  </select>
+                  ))}
+                </select>
 
-                  <span className="label">Fin:</span>
-                  <select
-                    name="fin_status"
-                    defaultValue={String(finRaw)}
-                    className="input"
-                    style={{ minWidth: 140 }}
-                  >
-                    <option value="">Svi</option>
-                    <option value="bez_budzeta">Bez budžeta</option>
-                    <option value="u_plusu">U plusu</option>
-                    <option value="u_minusu">U minusu</option>
-                  </select>
+                <span className="label" style={{ fontSize: 12 }}>Fin:</span>
+                <select
+                  name="fin_status"
+                  defaultValue={String(finRaw)}
+                  className="input"
+                  style={{ minWidth: 120, fontSize: 12, padding: "6px 10px" }}
+                >
+                  <option value="">Svi</option>
+                  <option value="bez_budzeta">Bez budžeta</option>
+                  <option value="u_plusu">U plusu</option>
+                  <option value="u_minusu">U minusu</option>
+                </select>
 
-                  <span className="label">Legacy:</span>
-                  <select
-                    name="legacy"
-                    defaultValue={String(legacyRaw)}
-                    className="input"
-                    style={{ minWidth: 140 }}
-                  >
-                    <option value="">Sve</option>
-                    <option value="ima_legacy">Ima legacy</option>
-                    <option value="nema_legacy">Nema legacy</option>
-                  </select>
+                <span className="label" style={{ fontSize: 12 }}>Traži:</span>
+                <input
+                  name="q"
+                  defaultValue={String(qRaw)}
+                  placeholder="ID ili naziv..."
+                  className="input"
+                  style={{ width: 180, fontSize: 12, padding: "6px 10px" }}
+                />
 
-                  <span className="label">Traži:</span>
-                  <input
-                    name="q"
-                    defaultValue={String(qRaw)}
-                    placeholder="ID ili naziv..."
-                    className="input"
-                    style={{ width: 220 }}
-                  />
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, opacity: 0.9, fontSize: 12 }}>
+                  <input type="checkbox" name="show_done" value="1" defaultChecked={showDone} />
+                  Prikaži završene
+                </label>
 
-                  <label
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                      opacity: 0.9,
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      name="show_done"
-                      value="1"
-                      defaultChecked={showDone}
-                    />
-                    Prikaži završene
-                  </label>
-                </div>
-
-                <div className="actions">
-                  <Link
-                    href="/dashboard"
-                    className="btn"
-                    style={{ minWidth: 90 }}
-                    title="Povratak na Dashboard"
-                  >
-                    🏠 Dashboard
-                  </Link>
-
-                  <Link
-                    href="/naplate"
-                    className="btn"
-                    style={{ minWidth: 90 }}
-                  >
-                    Naplate
-                  </Link>
-
-                  <button
-                    type="submit"
-                    className="btn"
-                    style={{ minWidth: 110 }}
-                  >
-                    Filtriraj
-                  </button>
-
-                  <Link
-                    href="/projects"
-                    className="btn"
-                    style={{ minWidth: 90 }}
-                  >
-                    Reset
-                  </Link>
-                </div>
+                <button type="submit" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}>
+                  Filtriraj
+                </button>
+                <Link href="/projects" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}>
+                  Reset
+                </Link>
               </div>
             </form>
           </div>

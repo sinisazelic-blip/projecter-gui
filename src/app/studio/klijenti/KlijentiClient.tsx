@@ -104,19 +104,13 @@ const tableScrollWrapStyle: React.CSSProperties = {
   flex: 1,
   overflow: "auto",
   borderRadius: 16,
+  paddingRight: 12,
 };
 
 const pageTitleRowStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 10,
-};
-
-const logoStyle: React.CSSProperties = {
-  width: 90,
-  height: 35,
-  objectFit: "contain",
-  opacity: 0.95,
 };
 
 export default function KlijentiClient({
@@ -344,7 +338,6 @@ export default function KlijentiClient({
       <div style={topbarStyle()}>
         <div style={{ minWidth: 280 }}>
           <div style={pageTitleRowStyle}>
-            <img src="/fluxa/logo-light.png" alt="Fluxa" style={logoStyle} />
             <h1
               style={{
                 fontSize: 22,
@@ -494,7 +487,16 @@ export default function KlijentiClient({
       </div>
 
       <div style={tableScrollWrapStyle}>
-        <table className="table">
+        <table className="table" style={{ tableLayout: "fixed", minWidth: 900 }}>
+          <colgroup>
+            <col style={{ width: "28%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "15%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "12%" }} />
+          </colgroup>
           <thead>
             <tr>
               <th>Naziv</th>
@@ -575,8 +577,10 @@ export default function KlijentiClient({
                     <td>{badgeTrziste(isIno)}</td>
 
                     <td
+                      className="cell-wrap"
                       style={{
                         color: gradDrzava ? "var(--text)" : "var(--muted)",
+                        fontSize: 13,
                       }}
                     >
                       {gradDrzava || "—"}

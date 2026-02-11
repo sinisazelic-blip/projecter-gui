@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
+import Link from "next/link";
 
 type ImportResponse = {
   ok: boolean;
@@ -160,7 +161,7 @@ export default function BankImportPage() {
       fd.append("account_id", accountId.trim());
       fd.append("mode", "staging");
 
-      const r = await fetch("/api/bank/import/bam", {
+      const r = await fetch("/api/bank/import/xml-v2", {
         method: "POST",
         body: fd,
       });
@@ -492,64 +493,65 @@ export default function BankImportPage() {
   }, [txs, filter]);
 
   return (
-    <div style={{ padding: 16, maxWidth: 1200, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12 }}>
-        Fluxa — Bank Import (BAM XML v2) + Matching
-      </h1>
+    <div className="container">
+      <div className="pageWrap">
+        <div className="topBlock">
+          <div className="topInner">
+            <div className="topRow">
+              <div className="brandWrap">
+                <img
+                  src="/fluxa/logo-light.png"
+                  alt="FLUXA"
+                  className="brandLogo"
+                />
+                <div>
+                  <div className="brandTitle">Import izvoda</div>
+                  <div className="brandSub">Bank Import (BAM XML v2) + Matching</div>
+                </div>
+              </div>
 
+              <Link href="/dashboard" className="btn" title="Dashboard">
+                🏠 Dashboard
+              </Link>
+            </div>
+
+            <div className="divider" />
+          </div>
+        </div>
+
+        <div className="bodyWrap">
       {/* Import bar */}
-      <div
-        style={{
-          display: "flex",
-          gap: 12,
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="actions">
         <input
           type="file"
           accept=".xml,application/xml,text/xml"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          className="input"
+          style={{ width: "auto", minWidth: 200 }}
         />
 
-        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <span>account_id</span>
+        <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="label">account_id</span>
           <input
             value={accountId}
             onChange={(e) => setAccountId(e.target.value)}
-            style={{
-              width: 80,
-              padding: "6px 8px",
-              border: "1px solid #ccc",
-              borderRadius: 8,
-            }}
+            className="input small"
+            style={{ width: 80 }}
           />
         </label>
 
         <button
           onClick={onImport}
           disabled={importing}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 10,
-            border: "1px solid #111",
-            background: importing ? "#eee" : "#fff",
-            cursor: importing ? "not-allowed" : "pointer",
-            fontWeight: 700,
-          }}
+          className={`btn ${importing ? "btn--disabled" : ""}`}
+          aria-disabled={importing}
         >
           {importing ? "Importujem..." : "Importuj u staging"}
         </button>
 
         <button
           onClick={loadBatchList}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 10,
-            border: "1px solid #ccc",
-            background: "#fff",
-            cursor: "pointer",
-          }}
+          className="btn"
         >
           Osvježi listu batch-eva
         </button>
@@ -557,14 +559,8 @@ export default function BankImportPage() {
         <button
           onClick={runAutoMatch}
           disabled={!batchId || autoMatching}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 10,
-            border: "1px solid #0a7a2f",
-            background: !batchId || autoMatching ? "#eee" : "#fff",
-            cursor: !batchId || autoMatching ? "not-allowed" : "pointer",
-            fontWeight: 800,
-          }}
+          className={`btn btn--active ${!batchId || autoMatching ? "btn--disabled" : ""}`}
+          aria-disabled={!batchId || autoMatching}
           title={!batchId ? "Odaberi batch prvo" : "Primijeni match pravila"}
         >
           {autoMatching ? "Auto-match..." : "Auto-match"}
@@ -573,14 +569,8 @@ export default function BankImportPage() {
         <button
           onClick={commitBatch}
           disabled={!batchId || committing}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 10,
-            border: "1px solid #003a8c",
-            background: !batchId || committing ? "#eee" : "#fff",
-            cursor: !batchId || committing ? "not-allowed" : "pointer",
-            fontWeight: 900,
-          }}
+          className={`btn ${!batchId || committing ? "btn--disabled" : ""}`}
+          aria-disabled={!batchId || committing}
           title={
             !batchId
               ? "Odaberi batch prvo"
@@ -593,14 +583,8 @@ export default function BankImportPage() {
         <button
           onClick={commitToProjectCosts}
           disabled={!batchId || costing}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 10,
-            border: "1px solid #6a00a8",
-            background: !batchId || costing ? "#eee" : "#fff",
-            cursor: !batchId || costing ? "not-allowed" : "pointer",
-            fontWeight: 900,
-          }}
+          className={`btn ${!batchId || costing ? "btn--disabled" : ""}`}
+          aria-disabled={!batchId || costing}
           title={
             !batchId
               ? "Odaberi batch prvo"
@@ -613,14 +597,7 @@ export default function BankImportPage() {
 
       {/* Import result */}
       {importRes && (
-        <div
-          style={{
-            marginTop: 12,
-            padding: 12,
-            borderRadius: 12,
-            border: "1px solid #ddd",
-          }}
-        >
+        <div className="card" style={{ marginTop: 12 }}>
           {importRes.ok ? (
             <>
               <div style={{ fontWeight: 800 }}>✅ Import OK</div>
@@ -636,7 +613,7 @@ export default function BankImportPage() {
             </>
           ) : (
             <>
-              <div style={{ fontWeight: 800, color: "#b00020" }}>
+              <div style={{ fontWeight: 800, color: "var(--bad)" }}>
                 ❌ Import greška
               </div>
               <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>
@@ -649,14 +626,7 @@ export default function BankImportPage() {
 
       {/* Auto-match result */}
       {autoMatchRes && (
-        <div
-          style={{
-            marginTop: 12,
-            padding: 12,
-            borderRadius: 12,
-            border: "1px solid #ddd",
-          }}
-        >
+        <div className="card" style={{ marginTop: 12 }}>
           {autoMatchRes.ok ? (
             <>
               <div style={{ fontWeight: 800 }}>✅ Auto-match OK</div>
@@ -669,7 +639,7 @@ export default function BankImportPage() {
             </>
           ) : (
             <>
-              <div style={{ fontWeight: 800, color: "#b00020" }}>
+              <div style={{ fontWeight: 800, color: "var(--bad)" }}>
                 ❌ Auto-match greška
               </div>
               <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>
@@ -682,14 +652,7 @@ export default function BankImportPage() {
 
       {/* Commit result */}
       {commitRes && (
-        <div
-          style={{
-            marginTop: 12,
-            padding: 12,
-            borderRadius: 12,
-            border: "1px solid #ddd",
-          }}
-        >
+        <div className="card" style={{ marginTop: 12 }}>
           {commitRes.ok ? (
             <div>
               <div style={{ fontWeight: 900 }}>✅ Commit OK</div>
@@ -700,7 +663,7 @@ export default function BankImportPage() {
               </div>
             </div>
           ) : (
-            <div style={{ color: "#b00020" }}>
+            <div style={{ color: "var(--bad)" }}>
               <div style={{ fontWeight: 900 }}>❌ Commit greška</div>
               <div style={{ marginTop: 6 }}>{commitRes.error}</div>
             </div>
@@ -710,14 +673,7 @@ export default function BankImportPage() {
 
       {/* Costs result */}
       {costRes && (
-        <div
-          style={{
-            marginTop: 12,
-            padding: 12,
-            borderRadius: 12,
-            border: "1px solid #ddd",
-          }}
-        >
+        <div className="card" style={{ marginTop: 12 }}>
           {costRes.ok ? (
             <div>
               <div style={{ fontWeight: 900 }}>
@@ -731,23 +687,24 @@ export default function BankImportPage() {
                 mapping: {JSON.stringify(costRes.mapping)}
               </div>
               {Array.isArray(costRes.errors) && costRes.errors.length > 0 && (
-                <div style={{ marginTop: 10, color: "#b00020", fontSize: 13 }}>
+                <div style={{ marginTop: 10, color: "var(--bad)", fontSize: 13 }}>
                   errors: {costRes.errors.length} (pogledaj JSON u response)
                 </div>
               )}
             </div>
           ) : (
-            <div style={{ color: "#b00020" }}>
+            <div style={{ color: "var(--bad)" }}>
               <div style={{ fontWeight: 900 }}>❌ Greška</div>
               <div style={{ marginTop: 6 }}>{costRes.error}</div>
               {costRes.debug && (
                 <pre
                   style={{
                     marginTop: 10,
-                    background: "#fafafa",
+                    background: "rgba(255,255,255,0.04)",
                     padding: 10,
                     borderRadius: 10,
                     overflowX: "auto",
+                    border: "1px solid var(--border)",
                   }}
                 >
                   {JSON.stringify(costRes.debug, null, 2)}
@@ -760,14 +717,7 @@ export default function BankImportPage() {
 
       {/* Batch header */}
       {batchRes?.ok && batchRes.batch && (
-        <div
-          style={{
-            marginTop: 16,
-            padding: 12,
-            borderRadius: 12,
-            border: "1px solid #ddd",
-          }}
-        >
+        <div className="card" style={{ marginTop: 16 }}>
           <div
             style={{
               display: "flex",
@@ -799,22 +749,12 @@ export default function BankImportPage() {
             </div>
           </div>
 
-          <div
-            style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}
-          >
+          <div className="tabRow" style={{ marginTop: 10 }}>
             {(["ALL", "FEES", "EXCH", "IN", "OUT"] as const).map((k) => (
               <button
                 key={k}
                 onClick={() => setFilter(k)}
-                style={{
-                  padding: "6px 10px",
-                  borderRadius: 999,
-                  border: "1px solid #ccc",
-                  background: filter === k ? "#111" : "#fff",
-                  color: filter === k ? "#fff" : "#111",
-                  cursor: "pointer",
-                  fontWeight: 700,
-                }}
+                className={`btn ${filter === k ? "btn--active" : ""}`}
               >
                 {k === "ALL"
                   ? "Sve"
@@ -833,26 +773,12 @@ export default function BankImportPage() {
 
       {/* Matching tabs */}
       {batchRes?.ok && batchRes.batch && (
-        <div
-          style={{
-            marginTop: 14,
-            padding: 12,
-            borderRadius: 12,
-            border: "1px solid #ddd",
-          }}
-        >
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div className="card" style={{ marginTop: 14 }}>
+          <div className="tabRow" style={{ justifyContent: "space-between" }}>
+            <div className="tabRow">
             <button
               onClick={() => setView("UNMATCHED")}
-              style={{
-                padding: "6px 10px",
-                borderRadius: 10,
-                border: "1px solid #ccc",
-                background: view === "UNMATCHED" ? "#111" : "#fff",
-                color: view === "UNMATCHED" ? "#fff" : "#111",
-                cursor: "pointer",
-                fontWeight: 800,
-              }}
+              className={`btn ${view === "UNMATCHED" ? "btn--active" : ""}`}
             >
               Unmatched (
               {unmatchedRes?.ok ? unmatchedRes.unmatched.length : "?"})
@@ -860,29 +786,15 @@ export default function BankImportPage() {
 
             <button
               onClick={() => setView("MATCHED")}
-              style={{
-                padding: "6px 10px",
-                borderRadius: 10,
-                border: "1px solid #ccc",
-                background: view === "MATCHED" ? "#111" : "#fff",
-                color: view === "MATCHED" ? "#fff" : "#111",
-                cursor: "pointer",
-                fontWeight: 800,
-              }}
+              className={`btn ${view === "MATCHED" ? "btn--active" : ""}`}
             >
               Matched ({matchedRes?.ok ? matchedRes.matched.length : "?"})
             </button>
+            </div>
 
             <button
               onClick={() => batchId && loadMatching(batchId)}
-              style={{
-                marginLeft: "auto",
-                padding: "6px 10px",
-                borderRadius: 10,
-                border: "1px solid #ccc",
-                background: "#fff",
-                cursor: "pointer",
-              }}
+              className="btn"
             >
               Refresh match list
             </button>
@@ -895,74 +807,20 @@ export default function BankImportPage() {
                   Nema podataka (učitaj batch).
                 </div>
               ) : !unmatchedRes.ok ? (
-                <div style={{ color: "#b00020" }}>
+                <div style={{ color: "var(--bad)" }}>
                   Greška: {unmatchedRes.error}
                 </div>
               ) : (
-                <div
-                  style={{
-                    overflowX: "auto",
-                    border: "1px solid #eee",
-                    borderRadius: 12,
-                  }}
-                >
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <div className="tableCard">
+                  <table>
                     <thead>
-                      <tr style={{ background: "#fafafa" }}>
-                        <th
-                          style={{
-                            textAlign: "left",
-                            padding: 10,
-                            borderBottom: "1px solid #eee",
-                          }}
-                        >
-                          Datum
-                        </th>
-                        <th
-                          style={{
-                            textAlign: "left",
-                            padding: 10,
-                            borderBottom: "1px solid #eee",
-                          }}
-                        >
-                          Ref
-                        </th>
-                        <th
-                          style={{
-                            textAlign: "right",
-                            padding: 10,
-                            borderBottom: "1px solid #eee",
-                          }}
-                        >
-                          Iznos
-                        </th>
-                        <th
-                          style={{
-                            textAlign: "left",
-                            padding: 10,
-                            borderBottom: "1px solid #eee",
-                          }}
-                        >
-                          Partner
-                        </th>
-                        <th
-                          style={{
-                            textAlign: "left",
-                            padding: 10,
-                            borderBottom: "1px solid #eee",
-                          }}
-                        >
-                          Opis
-                        </th>
-                        <th
-                          style={{
-                            textAlign: "left",
-                            padding: 10,
-                            borderBottom: "1px solid #eee",
-                          }}
-                        >
-                          Akcija
-                        </th>
+                      <tr>
+                        <th>Datum</th>
+                        <th>Ref</th>
+                        <th style={{ textAlign: "right" }}>Iznos</th>
+                        <th>Partner</th>
+                        <th>Opis</th>
+                        <th>Akcija</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -970,76 +828,28 @@ export default function BankImportPage() {
                         const amount = Number(t.amount);
                         return (
                           <tr key={t.tx_id}>
+                            <td className="nowrap">{t.value_date ?? ""}</td>
+                            <td className="nowrap">{t.reference ?? ""}</td>
                             <td
+                              className="num"
                               style={{
-                                padding: 10,
-                                borderBottom: "1px solid #f0f0f0",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {t.value_date ?? ""}
-                            </td>
-                            <td
-                              style={{
-                                padding: 10,
-                                borderBottom: "1px solid #f0f0f0",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {t.reference ?? ""}
-                            </td>
-                            <td
-                              style={{
-                                padding: 10,
-                                borderBottom: "1px solid #f0f0f0",
-                                textAlign: "right",
-                                whiteSpace: "nowrap",
                                 fontWeight: 800,
                                 color:
                                   amount < 0
-                                    ? "#b00020"
+                                    ? "var(--bad)"
                                     : amount > 0
-                                      ? "#0a7a2f"
-                                      : "#111",
+                                      ? "var(--good)"
+                                      : undefined,
                               }}
                             >
                               {fmtMoney(amount)}
                             </td>
-                            <td
-                              style={{
-                                padding: 10,
-                                borderBottom: "1px solid #f0f0f0",
-                                minWidth: 260,
-                              }}
-                            >
-                              {cleanSpaces(t.counterparty)}
-                            </td>
-                            <td
-                              style={{
-                                padding: 10,
-                                borderBottom: "1px solid #f0f0f0",
-                                minWidth: 340,
-                              }}
-                            >
-                              {t.description ?? ""}
-                            </td>
-                            <td
-                              style={{
-                                padding: 10,
-                                borderBottom: "1px solid #f0f0f0",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
+                            <td style={{ minWidth: 260 }}>{cleanSpaces(t.counterparty)}</td>
+                            <td style={{ minWidth: 340 }}>{t.description ?? ""}</td>
+                            <td className="nowrap">
                               <button
                                 onClick={() => openManualMatch(t)}
-                                style={{
-                                  padding: "6px 10px",
-                                  borderRadius: 10,
-                                  border: "1px solid #111",
-                                  background: "#fff",
-                                  cursor: "pointer",
-                                  fontWeight: 800,
-                                }}
+                                className="btn"
                               >
                                 Ručni match
                               </button>
@@ -1069,74 +879,20 @@ export default function BankImportPage() {
                   Nema podataka (učitaj batch).
                 </div>
               ) : !matchedRes.ok ? (
-                <div style={{ color: "#b00020" }}>
+                <div style={{ color: "var(--bad)" }}>
                   Greška: {matchedRes.error}
                 </div>
               ) : (
-                <div
-                  style={{
-                    overflowX: "auto",
-                    border: "1px solid #eee",
-                    borderRadius: 12,
-                  }}
-                >
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <div className="tableCard">
+                  <table>
                     <thead>
-                      <tr style={{ background: "#fafafa" }}>
-                        <th
-                          style={{
-                            textAlign: "left",
-                            padding: 10,
-                            borderBottom: "1px solid #eee",
-                          }}
-                        >
-                          Datum
-                        </th>
-                        <th
-                          style={{
-                            textAlign: "right",
-                            padding: 10,
-                            borderBottom: "1px solid #eee",
-                          }}
-                        >
-                          Iznos
-                        </th>
-                        <th
-                          style={{
-                            textAlign: "left",
-                            padding: 10,
-                            borderBottom: "1px solid #eee",
-                          }}
-                        >
-                          Partner
-                        </th>
-                        <th
-                          style={{
-                            textAlign: "left",
-                            padding: 10,
-                            borderBottom: "1px solid #eee",
-                          }}
-                        >
-                          Opis
-                        </th>
-                        <th
-                          style={{
-                            textAlign: "left",
-                            padding: 10,
-                            borderBottom: "1px solid #eee",
-                          }}
-                        >
-                          Kategorija
-                        </th>
-                        <th
-                          style={{
-                            textAlign: "left",
-                            padding: 10,
-                            borderBottom: "1px solid #eee",
-                          }}
-                        >
-                          Matched
-                        </th>
+                      <tr>
+                        <th>Datum</th>
+                        <th style={{ textAlign: "right" }}>Iznos</th>
+                        <th>Partner</th>
+                        <th>Opis</th>
+                        <th>Kategorija</th>
+                        <th>Matched</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1144,69 +900,28 @@ export default function BankImportPage() {
                         const amount = Number(t.amount);
                         return (
                           <tr key={t.tx_id}>
+                            <td className="nowrap">{t.value_date ?? ""}</td>
                             <td
+                              className="num"
                               style={{
-                                padding: 10,
-                                borderBottom: "1px solid #f0f0f0",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {t.value_date ?? ""}
-                            </td>
-                            <td
-                              style={{
-                                padding: 10,
-                                borderBottom: "1px solid #f0f0f0",
-                                textAlign: "right",
-                                whiteSpace: "nowrap",
                                 fontWeight: 800,
                                 color:
                                   amount < 0
-                                    ? "#b00020"
+                                    ? "var(--bad)"
                                     : amount > 0
-                                      ? "#0a7a2f"
-                                      : "#111",
+                                      ? "var(--good)"
+                                      : undefined,
                               }}
                             >
                               {fmtMoney(amount)}
                             </td>
-                            <td
-                              style={{
-                                padding: 10,
-                                borderBottom: "1px solid #f0f0f0",
-                                minWidth: 260,
-                              }}
-                            >
-                              {cleanSpaces(t.counterparty)}
-                            </td>
-                            <td
-                              style={{
-                                padding: 10,
-                                borderBottom: "1px solid #f0f0f0",
-                                minWidth: 340,
-                              }}
-                            >
-                              {t.description ?? ""}
-                            </td>
-                            <td
-                              style={{
-                                padding: 10,
-                                borderBottom: "1px solid #f0f0f0",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
+                            <td style={{ minWidth: 260 }}>{cleanSpaces(t.counterparty)}</td>
+                            <td style={{ minWidth: 340 }}>{t.description ?? ""}</td>
+                            <td className="nowrap">
                               <b>{t.kategorija ?? ""}</b>
                               {t.projekat_id ? ` (P#${t.projekat_id})` : ""}
                             </td>
-                            <td
-                              style={{
-                                padding: 10,
-                                borderBottom: "1px solid #f0f0f0",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {t.matched_by} · {t.matched_at}
-                            </td>
+                            <td className="nowrap">{t.matched_by} · {t.matched_at}</td>
                           </tr>
                         );
                       })}
@@ -1229,67 +944,21 @@ export default function BankImportPage() {
 
       {/* Raw tx preview */}
       {batchRes?.ok && (
-        <div style={{ marginTop: 16 }}>
-          <div style={{ fontWeight: 800, marginBottom: 8 }}>
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="cardTitle" style={{ marginBottom: 8 }}>
             Raw stavke iz staginga (preview) ({filteredTxs.length} /{" "}
             {txs.length})
           </div>
 
-          <div
-            style={{
-              overflowX: "auto",
-              border: "1px solid #ddd",
-              borderRadius: 12,
-            }}
-          >
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div className="tableCard">
+            <table>
               <thead>
-                <tr style={{ background: "#fafafa" }}>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      padding: 10,
-                      borderBottom: "1px solid #eee",
-                    }}
-                  >
-                    Datum
-                  </th>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      padding: 10,
-                      borderBottom: "1px solid #eee",
-                    }}
-                  >
-                    Ref
-                  </th>
-                  <th
-                    style={{
-                      textAlign: "right",
-                      padding: 10,
-                      borderBottom: "1px solid #eee",
-                    }}
-                  >
-                    Iznos
-                  </th>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      padding: 10,
-                      borderBottom: "1px solid #eee",
-                    }}
-                  >
-                    Kome / Od koga
-                  </th>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      padding: 10,
-                      borderBottom: "1px solid #eee",
-                    }}
-                  >
-                    Opis
-                  </th>
+                <tr>
+                  <th>Datum</th>
+                  <th>Ref</th>
+                  <th style={{ textAlign: "right" }}>Iznos</th>
+                  <th>Kome / Od koga</th>
+                  <th>Opis</th>
                 </tr>
               </thead>
               <tbody>
@@ -1297,66 +966,31 @@ export default function BankImportPage() {
                   const amount = Number(t.amount);
                   return (
                     <tr key={t.tx_id}>
+                      <td className="nowrap">{t.value_date ?? ""}</td>
+                      <td className="nowrap">{t.reference ?? ""}</td>
                       <td
+                        className="num"
                         style={{
-                          padding: 10,
-                          borderBottom: "1px solid #f0f0f0",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {t.value_date ?? ""}
-                      </td>
-                      <td
-                        style={{
-                          padding: 10,
-                          borderBottom: "1px solid #f0f0f0",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {t.reference ?? ""}
-                      </td>
-                      <td
-                        style={{
-                          padding: 10,
-                          borderBottom: "1px solid #f0f0f0",
-                          textAlign: "right",
-                          whiteSpace: "nowrap",
                           fontWeight: 800,
                           color:
                             amount < 0
-                              ? "#b00020"
+                              ? "var(--bad)"
                               : amount > 0
-                                ? "#0a7a2f"
-                                : "#111",
+                                ? "var(--good)"
+                                : undefined,
                         }}
                       >
                         {fmtMoney(amount)}
                       </td>
-                      <td
-                        style={{
-                          padding: 10,
-                          borderBottom: "1px solid #f0f0f0",
-                          minWidth: 280,
-                        }}
-                      >
-                        {cleanSpaces(t.counterparty)}
-                      </td>
-                      <td
-                        style={{
-                          padding: 10,
-                          borderBottom: "1px solid #f0f0f0",
-                          minWidth: 360,
-                        }}
-                      >
-                        {t.description ?? ""}
-                      </td>
+                      <td style={{ minWidth: 280 }}>{cleanSpaces(t.counterparty)}</td>
+                      <td style={{ minWidth: 360 }}>{t.description ?? ""}</td>
                     </tr>
                   );
                 })}
 
                 {!filteredTxs.length && (
                   <tr>
-                    <td colSpan={5} style={{ padding: 12, opacity: 0.7 }}>
+                    <td colSpan={5} className="muted" style={{ padding: 12 }}>
                       Nema stavki za odabrani filter.
                     </td>
                   </tr>
@@ -1367,21 +1001,15 @@ export default function BankImportPage() {
 
           {batchList.length > 0 && (
             <div style={{ marginTop: 14 }}>
-              <div style={{ fontWeight: 800, marginBottom: 6 }}>
+              <div className="cardTitle" style={{ marginBottom: 6 }}>
                 Zadnji batch-evi
               </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div className="actions">
                 {batchList.slice(0, 12).map((b: any) => (
                   <button
                     key={b.batch_id}
                     onClick={() => loadBatch(Number(b.batch_id))}
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: 10,
-                      border: "1px solid #ddd",
-                      background: "#fff",
-                      cursor: "pointer",
-                    }}
+                    className="btn"
                     title={`Račun ${b.bank_account_no}`}
                   >
                     #{b.batch_id} · izvod {b.statement_no} ·{" "}
@@ -1395,15 +1023,7 @@ export default function BankImportPage() {
       )}
 
       {batchRes && !batchRes.ok && (
-        <div
-          style={{
-            marginTop: 12,
-            padding: 12,
-            borderRadius: 12,
-            border: "1px solid #ddd",
-            color: "#b00020",
-          }}
-        >
+        <div className="card" style={{ marginTop: 12, color: "var(--bad)" }}>
           Greška pri učitavanju batch-a: {batchRes.error}
         </div>
       )}
@@ -1411,30 +1031,22 @@ export default function BankImportPage() {
       {/* MANUAL MATCH MODAL */}
       {manualTx && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.4)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 50,
-          }}
+          className="modalOverlay"
           onClick={() => {
             setManualTx(null);
             resetProjectSearch();
           }}
         >
           <div
-            style={{
-              background: "#fff",
-              padding: 16,
-              borderRadius: 12,
-              width: 560,
-            }}
+            className="modalContent"
+            style={{ width: 560 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ fontWeight: 900, marginBottom: 8 }}>Ručni match</h3>
+            <div className="modalHeader">
+              <h3 className="modalTitleText">Ručni match</h3>
+            </div>
+
+            <div className="modalBody">
 
             <div style={{ fontSize: 14, marginBottom: 8 }}>
               <b>{fmtMoney(Number(manualTx.amount))}</b> ·{" "}
@@ -1443,21 +1055,13 @@ export default function BankImportPage() {
             <div style={{ marginBottom: 12 }}>{manualTx.description}</div>
 
             {/* Projekat search */}
-            <label style={{ display: "block", marginBottom: 10 }}>
-              <div style={{ fontSize: 13, marginBottom: 4 }}>
-                Projekat (upiši broj ili naziv)
-              </div>
-
+            <label className="field">
+              <span className="label">Projekat (upiši broj ili naziv)</span>
               <input
                 value={projectQuery}
                 onChange={(e) => onProjectQueryChange(e.target.value)}
                 placeholder="npr. 123 ili 'kampanja'"
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 10,
-                  border: "1px solid #ccc",
-                }}
+                className="input"
               />
 
               <div style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>
@@ -1474,18 +1078,17 @@ export default function BankImportPage() {
               )}
 
               {!!projectHits.length && (
-                <div
-                  style={{
-                    marginTop: 8,
-                    border: "1px solid #eee",
-                    borderRadius: 10,
-                    overflow: "hidden",
-                  }}
-                >
+                <div className="card" style={{ marginTop: 8 }}>
                   {projectHits.slice(0, 10).map((p: any, idx: number) => (
                     <button
                       key={`${p.projekat_id}-${idx}`}
                       type="button"
+                      className="btn"
+                      style={{
+                        width: "100%",
+                        justifyContent: "flex-start",
+                        marginBottom: idx < 9 ? 4 : 0,
+                      }}
                       onClick={() => {
                         setManualTx({
                           ...manualTx,
@@ -1495,15 +1098,6 @@ export default function BankImportPage() {
                           `#${p.projekat_id} — ${String(p.radni_naziv ?? "").slice(0, 60)}`,
                         );
                         setProjectHits([]);
-                      }}
-                      style={{
-                        width: "100%",
-                        textAlign: "left",
-                        padding: "8px 10px",
-                        border: "none",
-                        borderTop: idx === 0 ? "none" : "1px solid #f2f2f2",
-                        background: "#fff",
-                        cursor: "pointer",
                       }}
                     >
                       <b>#{p.projekat_id}</b>{" "}
@@ -1515,27 +1109,14 @@ export default function BankImportPage() {
                 </div>
               )}
 
-              <div
-                style={{
-                  marginTop: 8,
-                  display: "flex",
-                  gap: 8,
-                  flexWrap: "wrap",
-                }}
-              >
+              <div className="actions" style={{ marginTop: 8 }}>
                 <button
                   type="button"
                   onClick={() => {
                     setManualTx({ ...manualTx, projekat_id: "" });
                     resetProjectSearch();
                   }}
-                  style={{
-                    padding: "6px 10px",
-                    borderRadius: 10,
-                    border: "1px solid #ccc",
-                    background: "#fff",
-                    cursor: "pointer",
-                  }}
+                  className="btn"
                 >
                   Bez projekta
                 </button>
@@ -1548,13 +1129,7 @@ export default function BankImportPage() {
                       setManualTx({ ...manualTx, projekat_id: onlyNum });
                     setProjectHits([]);
                   }}
-                  style={{
-                    padding: "6px 10px",
-                    borderRadius: 10,
-                    border: "1px solid #ccc",
-                    background: "#fff",
-                    cursor: "pointer",
-                  }}
+                  className="btn"
                   title="Ako si upisao broj, postavi ga kao projekat_id"
                 >
                   Postavi broj iz inputa
@@ -1563,64 +1138,41 @@ export default function BankImportPage() {
             </label>
 
             {/* kategorija */}
-            <label style={{ display: "block", marginBottom: 10 }}>
-              <div style={{ fontSize: 13, marginBottom: 4 }}>Kategorija</div>
+            <label className="field">
+              <span className="label">Kategorija</span>
               <input
                 value={manualTx.kategorija ?? ""}
                 onChange={(e) =>
                   setManualTx({ ...manualTx, kategorija: e.target.value })
                 }
                 placeholder="npr. GORIVO"
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 10,
-                  border: "1px solid #ccc",
-                }}
+                className="input"
               />
             </label>
 
             {/* Save as rule */}
-            <label style={{ display: "block", marginBottom: 10 }}>
-              <div style={{ fontSize: 13, marginBottom: 4 }}>
-                Save as rule (tekst za prepoznavanje)
-              </div>
+            <label className="field">
+              <span className="label">Save as rule (tekst za prepoznavanje)</span>
               <input
                 value={ruleText}
                 onChange={(e) => setRuleText(e.target.value)}
                 placeholder="npr. AERO CENTAR KRILA ili EXCH KONVERZIJA"
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 10,
-                  border: "1px solid #ccc",
-                }}
+                className="input"
               />
-              <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75 }}>
+              <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
                 Savjet: za partnere koristi dio imena (npr. “AERO CENTAR”), za
                 konverziju “EXCH”, za interne prenose “PRENOS”.
               </div>
             </label>
 
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                justifyContent: "flex-end",
-                flexWrap: "wrap",
-              }}
-            >
+            </div>
+
+            <div className="modalFooter">
               <button
                 onClick={saveRuleFromModal}
                 disabled={savingRule}
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: 10,
-                  border: "1px solid #0a7a2f",
-                  background: savingRule ? "#eee" : "#fff",
-                  cursor: savingRule ? "not-allowed" : "pointer",
-                  fontWeight: 900,
-                }}
+                className={`btn btn--active ${savingRule ? "btn--disabled" : ""}`}
+                aria-disabled={savingRule}
               >
                 {savingRule ? "Snima rule..." : "Save as rule"}
               </button>
@@ -1630,12 +1182,7 @@ export default function BankImportPage() {
                   setManualTx(null);
                   resetProjectSearch();
                 }}
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: 10,
-                  border: "1px solid #ccc",
-                  background: "#fff",
-                }}
+                className="btn"
               >
                 Otkaži
               </button>
@@ -1643,14 +1190,8 @@ export default function BankImportPage() {
               <button
                 onClick={saveManualMatch}
                 disabled={savingManual}
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: 10,
-                  border: "1px solid #111",
-                  background: savingManual ? "#eee" : "#fff",
-                  cursor: savingManual ? "not-allowed" : "pointer",
-                  fontWeight: 900,
-                }}
+                className={`btn btn--active ${savingManual ? "btn--disabled" : ""}`}
+                aria-disabled={savingManual}
               >
                 {savingManual ? "Snima..." : "Sačuvaj (MANUAL)"}
               </button>
@@ -1658,6 +1199,8 @@ export default function BankImportPage() {
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

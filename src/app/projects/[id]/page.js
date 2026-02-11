@@ -875,23 +875,6 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                 </button>
               </form>
 
-              <Link
-                href={`/finance/banka?projekat_id=${project.projekat_id}`}
-                title="Banka (projekat)"
-                className="glassbtn payBtn"
-              >
-                <span style={{ fontSize: 16, lineHeight: 1 }}>🦦</span>
-                Banka
-              </Link>
-
-              <Link
-                href={`/naplate?projekat_id=${project.projekat_id}`}
-                title="Naplate"
-                className="glassbtn payBtn"
-              >
-                <span style={{ fontSize: 16, lineHeight: 1 }}>💳</span>
-                Naplate
-              </Link>
             </div>
           </div>
 

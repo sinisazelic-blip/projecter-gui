@@ -10,6 +10,7 @@ const GROUPS = [
     items: [
       { label: "Dealovi (lista)", href: "/inicijacije" },
       { label: "Projekti (lista)", href: "/projects" },
+      { label: "Arhiva (import)", href: "/projects?status_pick=11", title: "5600+ importovanih projekata, read-only" },
     ],
   },
   {
@@ -17,11 +18,6 @@ const GROUPS = [
     sub: "Operativni finansijski tokovi (email / fakture / naplate).",
     items: [
       { label: "Narudžbenice", href: "/narudzbenice" },
-      {
-        label: "Interna blagajna (owner)",
-        href: "/cash",
-        title: "Interna blagajna — owner-only signal",
-      },
 
       // ✅ aktiviramo wizard entry
       {
@@ -30,9 +26,12 @@ const GROUPS = [
         title: "Za fakturisanje → wizard",
       },
 
-      { label: "Naplata (novi modul)", href: null },
-      { label: "Dugovanja", href: null },
-      { label: "Import izvoda", href: null },
+      { label: "CashFlow", href: "/finance/cashflow", title: "Hronologija plaćanja — šta je sljedeće" },
+      { label: "KUF (ulazne fakture)", href: "/finance/kuf", title: "Import i rasknjižavanje ulaznih faktura" },
+      { label: "Krediti", href: "/finance/krediti", title: "Pregled kreditnih obaveza" },
+      { label: "Naplate", href: "/naplate" },
+      { label: "Dugovanja", href: "/finance/dugovanja" },
+      { label: "Import izvoda", href: "/banking/import" },
       { label: "Izvještaji", href: null },
     ],
     tone: "disabled",
@@ -46,6 +45,10 @@ const GROUPS = [
       { label: "Talenti", href: "/studio/talenti" },
       { label: "Dobavljači", href: "/studio/dobavljaci" },
       { label: "Klijenti", href: "/studio/klijenti" },
+      { label: "Radne faze", href: "/studio/radne-faze" },
+      { label: "Korisnici", href: "/studio/users" },
+      { label: "Uloge", href: "/studio/roles" },
+      { label: "Radnici", href: "/studio/radnici" },
     ],
   },
   {
@@ -54,7 +57,6 @@ const GROUPS = [
     tone: "legacy",
     items: [
       { label: "Finance", href: "/finance" },
-      { label: "Naplate", href: "/naplate" },
       { label: "Finance Tools", href: "/studio/finance-tools" },
     ],
   },

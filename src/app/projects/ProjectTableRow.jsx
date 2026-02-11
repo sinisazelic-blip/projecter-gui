@@ -79,7 +79,7 @@ const fmt = (v) => {
 function statusToneById(statusId) {
   const id = Number(statusId ?? 0);
   if (id === 9) return "status-badge--invoiced";
-  if (id === 10) return "status-badge--archived";
+  if (id === 10 || id === 11) return "status-badge--archived";
   if (id === 12) return "status-badge--cancelled";
   if (id === 8) return "status-badge--closed";
   if (id === 7) return "status-badge--done";
@@ -220,7 +220,7 @@ const FLOW_STEPS = [
 
 function flowIndexForProjectStatusId(statusId) {
   const id = Number(statusId ?? 0);
-  if (id === 10 || id === 12) return 5;
+  if (id === 10 || id === 11 || id === 12) return 5;
   if (id === 9) return 4;
   if (id === 8) return 3;
   if (id === 7) return 2;
@@ -231,7 +231,7 @@ function flowIndexForProjectStatusId(statusId) {
 
 function flowAccentByProjectStatusId(statusId) {
   const id = Number(statusId ?? 0);
-  if (id === 10 || id === 12) {
+  if (id === 10 || id === 11 || id === 12) {
     return {
       dot: "rgba(180, 180, 180, .85)",
       line: "rgba(180, 180, 180, .45)",

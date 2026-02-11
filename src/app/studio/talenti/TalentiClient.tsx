@@ -110,13 +110,6 @@ const pageTitleRowStyle: React.CSSProperties = {
   gap: 10,
 };
 
-const logoStyle: React.CSSProperties = {
-  width: 90,
-  height: 35,
-  objectFit: "contain",
-  opacity: 0.95,
-};
-
 export default function TalentiClient({
   initialItems,
 }: {
@@ -339,7 +332,6 @@ export default function TalentiClient({
       <div style={topbarStyle()}>
         <div style={{ minWidth: 280 }}>
           <div style={pageTitleRowStyle}>
-            <img src="/fluxa/logo-light.png" alt="Fluxa" style={logoStyle} />
             <h1
               style={{
                 fontSize: 22,

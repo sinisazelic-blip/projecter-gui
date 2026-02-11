@@ -30,7 +30,7 @@ function parseIdFromPathname(pathname: string): string | null {
 
 // Core faza = interni signal za UI (boja), NE prikazujemo kao tekst korisniku.
 function getCorePhase(p: any) {
-  if (Number(p?.status_id) === 10) return "closed";
+  if (Number(p?.status_id) === 10 || Number(p?.status_id) === 11) return "closed";
 
   const cf = String(p?.core_faza || "").toLowerCase();
   if (cf === "draft" || cf === "planned" || cf === "active" || cf === "closed")
@@ -223,10 +223,7 @@ export default function ProjectDetailsClient() {
         </div>
 
         {!isClosed && (
-          <CloseButtonClient
-            projekatId={Number(p.projekat_id)}
-            bankImportHref="/bank"
-          />
+          <CloseButtonClient projekatId={Number(p.projekat_id)} />
         )}
       </div>
 

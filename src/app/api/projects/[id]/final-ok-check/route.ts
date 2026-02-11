@@ -85,7 +85,7 @@ export async function GET(req: Request) {
       message: "Projekat je već fakturisan (read-only). FINAL OK nije moguće.",
     });
   }
-  if (status_id === 10) {
+  if (status_id === 10 || status_id === 11) {
     hard_blocks.push({
       code: "ALREADY_ARCHIVED",
       message: "Projekat je već arhiviran. FINAL OK nije moguće.",

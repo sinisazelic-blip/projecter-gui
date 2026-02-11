@@ -99,7 +99,7 @@ export async function GET(req) {
     // - ako je status_id (exact) dat → tačno taj status
     // - inače koristimo status_group:
     //   active  => 1–8
-    //   archive => 10 (Arhiviran)
+    //   archive => 10 i 11 (Arhiviran + importovani za analizu)
     //   all     => bez filtera
     if (status_id !== null) {
       where.push("p.status_id = ?");
@@ -107,7 +107,7 @@ export async function GET(req) {
     } else if (status_group === "active") {
       where.push("p.status_id BETWEEN 1 AND 8");
     } else if (status_group === "archive") {
-      where.push("p.status_id = 10");
+      where.push("p.status_id IN (10, 11)");
     } else {
       // all => no filter
     }

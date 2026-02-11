@@ -104,111 +104,53 @@ export default async function Page({ searchParams }) {
 
   return (
     <div className="container">
-      {/* ✅ TOP NAV: povratak + (ako ima) nazad na projekat */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 12,
-          marginBottom: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          <Link
-            href="/projects"
-            className="navCard"
-            title="Povratak na projekte"
-          >
-            <span className="navIcon" aria-hidden="true">
-              ←
-            </span>
-            <span
-              className="navText"
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                lineHeight: 1.2,
-              }}
-            >
-              <strong>Projekti</strong>
-              <span className="muted navSub" style={{ marginTop: 2 }}>
-                povratak na listu
-              </span>
-            </span>
-          </Link>
+      <div className="pageWrap">
+        <div className="topBlock">
+          <div className="topInner">
+            <div className="topRow">
+              <div className="brandWrap">
+                <img
+                  src="/fluxa/logo-light.png"
+                  alt="FLUXA"
+                  className="brandLogo"
+                />
+                <div>
+                  <div className="brandTitle">Naplate</div>
+                  <div className="brandSub">
+                    {periodText}
+                    {projekatId ? ` · Projekat #${projekatId}` : ""}
+                  </div>
+                </div>
+              </div>
 
-          {projekatId
-            ? <Link
-                href={`/projects/${encodeURIComponent(projekatId)}`}
-                className="navPill"
-                title={`Nazad na projekat #${projekatId}`}
-              >
-                <span
-                  aria-hidden="true"
-                  style={{ fontSize: 16, lineHeight: 1 }}
-                >
-                  ↩
-                </span>
-                <span>
-                  <strong>Projekat</strong>{" "}
-                  <span className="muted">#{projekatId}</span>
-                </span>
-              </Link>
-            : null}
-        </div>
+              <div className="actions">
+                {projekatId && (
+                  <Link
+                    href={`/projects/${encodeURIComponent(projekatId)}`}
+                    className="btn"
+                    title={`Projekat #${projekatId}`}
+                  >
+                    Projekat #{projekatId}
+                  </Link>
+                )}
+                <Link href="/finance" className="btn" title="Finansije">
+                  Finansije
+                </Link>
+                <Link href="/projects" className="btn" title="Projekti">
+                  Projekti
+                </Link>
+                <Link href="/dashboard" className="btn" title="Dashboard">
+                  🏠 Dashboard
+                </Link>
+              </div>
+            </div>
 
-        <div />
-      </div>
-
-      {/* Header: naslov + period */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 4,
-          marginBottom: 10,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            alignItems: "baseline",
-            flexWrap: "wrap",
-          }}
-        >
-          <h1 style={{ fontSize: 22, marginBottom: 0 }}>Naplate</h1>
-
-          {/* mali indikator kad je filtrirano po projektu */}
-          {projekatId && (
-            <span className="badge" style={{ opacity: 0.9 }}>
-              Projekat #{projekatId}
-            </span>
-          )}
-        </div>
-
-        <div style={{ opacity: 0.75, whiteSpace: "nowrap" }}>{periodText}</div>
-
-        {/* link da se lako vrati na globalne naplate */}
-        {projekatId && (
-          <div style={{ marginTop: 4 }}>
-            <Link href="/naplate" style={{ opacity: 0.8 }}>
-              ← Sve naplate (svi projekti)
-            </Link>
+            <div className="divider" />
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* Filter bar */}
+        <div className="bodyWrap">
+      <div className="card">
       <form method="GET">
         {/* da projekat_id ostane kad filtriraš */}
         {projekatId && (
@@ -318,14 +260,16 @@ export default async function Page({ searchParams }) {
                 type="date"
                 name="due_from"
                 defaultValue={String(dueFrom)}
-                style={inputStyle}
+                className="input"
+                style={{ width: "auto" }}
               />
               <span style={{ opacity: 0.65 }}>do</span>
               <input
                 type="date"
                 name="due_to"
                 defaultValue={String(dueTo)}
-                style={inputStyle}
+                className="input"
+                style={{ width: "auto" }}
               />
 
               <span style={{ opacity: 0.55, fontSize: 12 }}>
@@ -361,16 +305,10 @@ export default async function Page({ searchParams }) {
           </div>
         </div>
       </form>
+      </div>
 
-      {/* Separator */}
-      <div
-        style={{
-          height: 1,
-          background: "rgba(255,255,255,.12)",
-          margin: "12px 0 14px",
-        }}
-      />
-
+      <div className="card" style={{ marginTop: 12 }}>
+      <div className="tableCard">
       <table className="table">
         <thead>
           <tr>
@@ -405,14 +343,17 @@ export default async function Page({ searchParams }) {
           ))}
         </tbody>
       </table>
+      </div>
 
       {rows.length === 0 && (
-        <div style={{ marginTop: 12, opacity: 0.7 }}>
+        <div className="muted" style={{ marginTop: 12, padding: 12 }}>
           Nema stavki za prikaz (po trenutnim filterima).
         </div>
       )}
+      </div>
 
-      {/* ✅ hover/press efekti bez event handlera */}
+        </div>
+      </div>
     </div>
   );
 }

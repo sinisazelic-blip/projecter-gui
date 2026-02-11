@@ -67,28 +67,41 @@ export default async function PrihodiListPage({ searchParams }) {
 
   return (
     <div className="container">
-      <div className="topbar glass">
-        <div className="topbar-left">
-          <h1 className="h1">Prihodi</h1>
-          <div className="subtle">
-            Read-only · global crosslinks: Banka filter po redu
+      <div className="pageWrap">
+        <div className="topBlock">
+          <div className="topInner">
+            <div className="topRow">
+              <div className="brandWrap">
+                <img
+                  src="/fluxa/logo-light.png"
+                  alt="FLUXA"
+                  className="brandLogo"
+                />
+                <div>
+                  <div className="brandTitle">Prihodi</div>
+                  <div className="brandSub">Finansije · Banka filter po redu</div>
+                </div>
+              </div>
+
+              <div className="actions">
+                <Link href="/finance" className="btn" title="Finansije">
+                  Finansije
+                </Link>
+                <Link href="/dashboard" className="btn" title="Dashboard">
+                  🏠 Dashboard
+                </Link>
+              </div>
+            </div>
+
+            <div className="divider" />
           </div>
         </div>
-        <div className="topbar-right" style={{ display: "flex", gap: 8 }}>
-          <Link className="btn" href="/finance">
-            Nazad
-          </Link>
-        </div>
-      </div>
 
+        <div className="bodyWrap">
       <div className="card">
-        <form
-          className="card-row"
-          method="GET"
-          style={{ gap: 12, flexWrap: "wrap" }}
-        >
-          <div style={{ minWidth: 260 }}>
-            <div className="label">Pretraga</div>
+        <form className="filters" method="GET" style={{ flexWrap: "wrap" }}>
+          <div className="field">
+            <span className="label">Pretraga</span>
             <input
               className="input"
               name="q"
@@ -97,8 +110,8 @@ export default async function PrihodiListPage({ searchParams }) {
             />
           </div>
 
-          <div style={{ width: 180 }}>
-            <div className="label">projekat_id</div>
+          <div className="field">
+            <span className="label">projekat_id</span>
             <input
               className="input"
               name="projekat_id"
@@ -107,8 +120,8 @@ export default async function PrihodiListPage({ searchParams }) {
             />
           </div>
 
-          <div style={{ alignSelf: "flex-end", display: "flex", gap: 8 }}>
-            <button className="btn btn-primary" type="submit">
+          <div className="actions">
+            <button className="btn btn--active" type="submit">
               Primijeni
             </button>
             <Link className="btn" href="/finance/prihodi">
@@ -119,9 +132,14 @@ export default async function PrihodiListPage({ searchParams }) {
       </div>
 
       <div className="card">
-        <div className="subtle">Prikazano: {list.length} (limit 200)</div>
+        <div className="cardHead">
+          <div className="cardTitleRow">
+            <div className="cardTitle">Lista prihoda</div>
+            <span className="muted">Prikazano: {list.length} (limit 200)</span>
+          </div>
+        </div>
 
-        <div className="table-wrap">
+        <div className="tableCard">
           <table className="table">
             <thead>
               <tr>
@@ -185,6 +203,8 @@ export default async function PrihodiListPage({ searchParams }) {
                   </tr>}
             </tbody>
           </table>
+        </div>
+      </div>
         </div>
       </div>
     </div>
