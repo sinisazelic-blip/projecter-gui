@@ -1,6 +1,7 @@
 // src/app/projects/page.js
 import Link from "next/link";
 import { query } from "@/lib/db";
+import ProjectTableRow from "./ProjectTableRow";
 
 export const dynamic = "force-dynamic";
 
@@ -228,14 +229,7 @@ const fmt = (v) => {
   return n.toFixed(2) + " KM";
 };
 
-const inputStyle = {
-  padding: "8px 10px",
-  borderRadius: 10,
-  border: "1px solid rgba(255,255,255,.18)",
-  background: "rgba(255,255,255,.06)",
-  color: "inherit",
-  outline: "none",
-};
+// inputStyle je sada u common-styles.css kao .input klasa
 
 function buildQuery(paramsObj) {
   const parts = [];
@@ -553,428 +547,187 @@ export default async function Page({ searchParams }) {
 
   return (
     <div className="container">
-      <style>{`
-        /* ✅ Minimal “glass” kozmetika (Fluxa official) */
-        .pageWrap {
-          display: flex;
-          flex-direction: column;
-          height: 100vh;
-          overflow: hidden;
-        }
-
-        .topBlock {
-          position: sticky;
-          top: 0;
-          z-index: 30;
-          padding: 14px 0 12px;
-          background: rgba(255,255,255,.04);
-          border: 1px solid rgba(255,255,255,.10);
-          border-radius: 18px;
-          box-shadow: 0 14px 40px rgba(0,0,0,.22);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-        }
-
-        .topInner {
-          padding: 0 14px;
-        }
-
-        .brandWrap { display:flex; align-items:center; gap:12px; }
-        .brandLogo { height: 30px; width:auto; opacity:.92; }
-        .brandTitle { font-size: 22px; font-weight: 800; line-height: 1.1; margin: 0; }
-        .brandSub { font-size: 12px; opacity: .75; margin-top: 4px; }
-
-        .topRow {
-          display:flex;
-          justify-content: space-between;
-          gap: 12px;
-          align-items: center;
-          flex-wrap: wrap;
-        }
-
-        .tabRow {
-          display:flex;
-          gap: 8px;
-          align-items: center;
-          flex-wrap: wrap;
-        }
-
-        .divider {
-          height: 1px;
-          background: rgba(255,255,255,.12);
-          margin: 12px 0 12px;
-        }
-
-        .listWrap {
-          flex: 1;
-          min-height: 0;
-          overflow: auto;
-          padding: 14px 0 18px;
-        }
-
-        /* Card osjećaj za tabelu */
-        .tableCard {
-          border: 1px solid rgba(255,255,255,.10);
-          background: rgba(255,255,255,.03);
-          border-radius: 18px;
-          box-shadow: 0 10px 30px rgba(0,0,0,.16);
-          overflow: hidden;
-        }
-
-        /* Fino: tabela header ostaje vidljiv dok skrola listWrap */
-        .table thead th {
-          position: sticky;
-          top: 0;
-          z-index: 5;
-          background: rgba(10,10,10,.35);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-        }
-
-        .pagerBar {
-          display:flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 10px;
-          margin-top: 10px;
-          flex-wrap: wrap;
-        }
-        .pagerInfo { opacity: .8; font-size: 12px; }
-        .pagerBtns { display:flex; gap:8px; align-items:center; }
-      `}</style>
-
       <div className="pageWrap">
-        {/* ✅ TOPBLOCK (glass, sticky) */}
         <div className="topBlock">
-          <div className="topInner">
-            <div className="topRow">
-              <div className="brandWrap">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
-                <div>
-                  <div className="brandTitle">Projekti</div>
-                  <div className="brandSub">Project &amp; Finance Engine</div>
-                </div>
-              </div>
-
-              {/* ✅ Tabs samo postavljaju status_pick */}
-              <div className="tabRow">
-                <Link
-                  href={`/projects?status_pick=${encodeURIComponent("group:active")}`}
-                  className={`btn ${status_group === "active" && !status_id ? "btn--active" : ""}`}
-                  title="Filter: aktivni (1–8)"
-                >
-                  Aktivni
-                </Link>
-                <Link
-                  href={`/projects?status_pick=${encodeURIComponent("group:archive")}`}
-                  className={`btn ${status_group === "archive" && !status_id ? "btn--active" : ""}`}
-                  title="Filter: arhiva (10)"
-                >
-                  Arhiva
-                </Link>
-                <Link
-                  href={`/projects?status_pick=${encodeURIComponent("group:all")}`}
-                  className={`btn ${status_group === "all" && !status_id ? "btn--active" : ""}`}
-                  title="Filter: svi statusi"
-                >
-                  Svi projekti
-                </Link>
+        <div className="topInner">
+          <div className="topRow">
+            <div className="brandWrap">
+              <img
+                src="/fluxa/logo-light.png"
+                alt="FLUXA"
+                className="brandLogo"
+              />
+              <div>
+                <div className="brandTitle">Projekti</div>
+                <div className="brandSub">Project &amp; Finance Engine</div>
               </div>
             </div>
 
-            <div style={{ marginTop: 12 }}>
-              <form method="GET" style={{ width: "100%" }}>
-                <input type="hidden" name="page" value="1" />
-                <input type="hidden" name="limit" value={String(limit)} />
+            {/* ✅ Tabs samo postavljaju status_pick */}
+            <div className="tabRow">
+              <Link
+                href={`/projects?status_pick=${encodeURIComponent("group:active")}`}
+                className={`btn ${status_group === "active" && !status_id ? "btn--active" : ""}`}
+                title="Filter: aktivni (1–8)"
+              >
+                Aktivni
+              </Link>
+              <Link
+                href={`/projects?status_pick=${encodeURIComponent("group:archive")}`}
+                className={`btn ${status_group === "archive" && !status_id ? "btn--active" : ""}`}
+                title="Filter: arhiva (10)"
+              >
+                Arhiva
+              </Link>
+              <Link
+                href={`/projects?status_pick=${encodeURIComponent("group:all")}`}
+                className={`btn ${status_group === "all" && !status_id ? "btn--active" : ""}`}
+                title="Filter: svi statusi"
+              >
+                Svi projekti
+              </Link>
+            </div>
+          </div>
 
+          <div style={{ marginTop: 12 }}>
+            <form method="GET" style={{ width: "100%" }} className="filters">
+              <input type="hidden" name="page" value="1" />
+              <input type="hidden" name="limit" value={String(limit)} />
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  alignItems: "flex-start",
+                  flexWrap: "nowrap",
+                }}
+              >
                 <div
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    alignItems: "flex-start",
-                    flexWrap: "nowrap",
+                    gap: 8,
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    flex: 1,
+                    minWidth: 0,
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 8,
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                      flex: 1,
-                      minWidth: 0,
-                    }}
-                  >
-                    <span style={{ opacity: 0.75 }}>Status:</span>
+                  <span className="label">Status:</span>
 
-                    <select
-                      name="status_pick"
-                      defaultValue={statusSelectValue}
-                      style={inputStyle}
-                    >
-                      <option value="group:active">Aktivni (grupa 1–8)</option>
-                      <option value="group:archive">Arhiva (samo 10)</option>
-                      <option value="group:all">Svi statusi (grupa)</option>
-                      <option disabled value="__sep__">
-                        ────────
+                  <select
+                    name="status_pick"
+                    defaultValue={statusSelectValue}
+                    className="input"
+                    style={{ minWidth: 200 }}
+                  >
+                    <option value="group:active">Aktivni (grupa 1–8)</option>
+                    <option value="group:archive">Arhiva (samo 10)</option>
+                    <option value="group:all">Svi statusi (grupa)</option>
+                    <option disabled value="__sep__">
+                      ────────
+                    </option>
+                    {statuses.map((s) => (
+                      <option key={s.status_id} value={String(s.status_id)}>
+                        {s.status_id} — {s.naziv_statusa}
                       </option>
-                      {statuses.map((s) => (
-                        <option key={s.status_id} value={String(s.status_id)}>
-                          {s.status_id} — {s.naziv_statusa}
-                        </option>
-                      ))}
-                    </select>
+                    ))}
+                  </select>
 
-                    <span style={{ opacity: 0.75 }}>Fin:</span>
-                    <select
-                      name="fin_status"
-                      defaultValue={String(finRaw)}
-                      style={inputStyle}
-                    >
-                      <option value="">Svi</option>
-                      <option value="bez_budzeta">Bez budžeta</option>
-                      <option value="u_plusu">U plusu</option>
-                      <option value="u_minusu">U minusu</option>
-                    </select>
+                  <span className="label">Fin:</span>
+                  <select
+                    name="fin_status"
+                    defaultValue={String(finRaw)}
+                    className="input"
+                    style={{ minWidth: 140 }}
+                  >
+                    <option value="">Svi</option>
+                    <option value="bez_budzeta">Bez budžeta</option>
+                    <option value="u_plusu">U plusu</option>
+                    <option value="u_minusu">U minusu</option>
+                  </select>
 
-                    <span style={{ opacity: 0.75 }}>Legacy:</span>
-                    <select
-                      name="legacy"
-                      defaultValue={String(legacyRaw)}
-                      style={inputStyle}
-                    >
-                      <option value="">Sve</option>
-                      <option value="ima_legacy">Ima legacy</option>
-                      <option value="nema_legacy">Nema legacy</option>
-                    </select>
+                  <span className="label">Legacy:</span>
+                  <select
+                    name="legacy"
+                    defaultValue={String(legacyRaw)}
+                    className="input"
+                    style={{ minWidth: 140 }}
+                  >
+                    <option value="">Sve</option>
+                    <option value="ima_legacy">Ima legacy</option>
+                    <option value="nema_legacy">Nema legacy</option>
+                  </select>
 
-                    <span style={{ opacity: 0.75 }}>Traži:</span>
-                    <input
-                      name="q"
-                      defaultValue={String(qRaw)}
-                      placeholder="ID ili naziv..."
-                      style={{ ...inputStyle, width: 220 }}
-                    />
+                  <span className="label">Traži:</span>
+                  <input
+                    name="q"
+                    defaultValue={String(qRaw)}
+                    placeholder="ID ili naziv..."
+                    className="input"
+                    style={{ width: 220 }}
+                  />
 
-                    <label
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        opacity: 0.9,
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        name="show_done"
-                        value="1"
-                        defaultChecked={showDone}
-                      />
-                      Prikaži završene
-                    </label>
-                  </div>
-
-                  <div
+                  <label
                     style={{
-                      display: "flex",
-                      gap: 8,
+                      display: "inline-flex",
                       alignItems: "center",
-                      flexShrink: 0,
+                      gap: 6,
+                      opacity: 0.9,
                     }}
                   >
-                    <Link
-                      href="/naplate"
-                      className="btn"
-                      style={{
-                        padding: "10px 12px",
-                        minWidth: 90,
-                        textAlign: "center",
-                      }}
-                    >
-                      Naplate
-                    </Link>
-
-                    <button
-                      type="submit"
-                      className="btn"
-                      style={{ minWidth: 110 }}
-                    >
-                      Filtriraj
-                    </button>
-
-                    <Link
-                      href="/projects"
-                      className="btn"
-                      style={{
-                        padding: "10px 12px",
-                        minWidth: 90,
-                        textAlign: "center",
-                      }}
-                    >
-                      Reset
-                    </Link>
-                  </div>
+                    <input
+                      type="checkbox"
+                      name="show_done"
+                      value="1"
+                      defaultChecked={showDone}
+                    />
+                    Prikaži završene
+                  </label>
                 </div>
-              </form>
-            </div>
 
-            <div className="divider" />
+                <div className="actions">
+                  <Link
+                    href="/dashboard"
+                    className="btn"
+                    style={{ minWidth: 90 }}
+                    title="Povratak na Dashboard"
+                  >
+                    🏠 Dashboard
+                  </Link>
 
-            {/* ✅ pager info u headeru */}
-            <div className="pagerBar">
-              <div className="pagerInfo">
-                Prikaz: <b>{from}</b>–<b>{to}</b> od <b>{total}</b> (strana{" "}
-                {page})
+                  <Link
+                    href="/naplate"
+                    className="btn"
+                    style={{ minWidth: 90 }}
+                  >
+                    Naplate
+                  </Link>
+
+                  <button
+                    type="submit"
+                    className="btn"
+                    style={{ minWidth: 110 }}
+                  >
+                    Filtriraj
+                  </button>
+
+                  <Link
+                    href="/projects"
+                    className="btn"
+                    style={{ minWidth: 90 }}
+                  >
+                    Reset
+                  </Link>
+                </div>
               </div>
-              <div className="pagerBtns">
-                <Link
-                  className={`btn ${hasPrev ? "" : "btn--disabled"}`}
-                  href={hasPrev ? `/projects${pageLink(page - 1)}` : "#"}
-                  aria-disabled={!hasPrev}
-                >
-                  ← Prethodna
-                </Link>
-                <Link
-                  className={`btn ${hasNext ? "" : "btn--disabled"}`}
-                  href={hasNext ? `/projects${pageLink(page + 1)}` : "#"}
-                  aria-disabled={!hasNext}
-                >
-                  Sljedeća →
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ✅ LISTA (skrola) */}
-        <div className="listWrap">
-          <div className="tableCard">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Radni naziv</th>
-                  <th>Rok</th>
-                  <th className="num">Budžet</th>
-                  <th className="num">Troškovi</th>
-                  <th className="num">Zarada</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {projects.map((p) => {
-                  const d0 = parseToDateOnly(p?.rok_glavni);
-                  const rokText = fmtDDMMYYYY(d0);
-                  const diff = computeDaysDiff(d0);
-                  const sem = semColor(diff);
-                  const label = semLabel(diff);
-
-                  return (
-                    <tr key={p.projekat_id}>
-                      <td>{p.projekat_id}</td>
-
-                      <td className="cell-wrap">
-                        <div>
-                          <Link
-                            href={`/projects/${p.projekat_id}`}
-                            className="project-link"
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 10,
-                            }}
-                          >
-                            <img
-                              src={
-                                p.operativni_signal === "STOP"
-                                  ? "/fluxa/Icon_red.png"
-                                  : p.operativni_signal === "PAZNJA"
-                                    ? "/fluxa/Icon_zuta.png"
-                                    : "/fluxa/Icon.png"
-                              }
-                              alt=""
-                              width={18}
-                              height={18}
-                              style={{ opacity: 0.9 }}
-                            />
-                            <span>{p.radni_naziv}</span>
-                          </Link>
-
-                          {/* ✅ STATUS FLOW (ispod naziva, preko širine ćelije) */}
-                          <StatusFlowInline project={p} />
-                        </div>
-                      </td>
-
-                      <td>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          <span style={{ fontWeight: 650 }}>{rokText}</span>
-                          <span
-                            title={label}
-                            style={{
-                              width: 10,
-                              height: 10,
-                              borderRadius: 999,
-                              display: "inline-block",
-                              background: dotBg(sem),
-                              boxShadow: "0 0 0 3px rgba(255,255,255,.06)",
-                            }}
-                          />
-                          <span style={{ opacity: 0.7, fontSize: 12 }}>
-                            {label}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="num">{fmt(p.budzet_planirani)}</td>
-                      <td className="num">{fmt(p.troskovi_ukupno)}</td>
-                      <td className="num">{fmt(p.planirana_zarada)}</td>
-
-                      <td>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: 8,
-                            alignItems: "center",
-                          }}
-                        >
-                          <SignalBadge project={p} />
-                          <span style={{ opacity: 0.45 }}>·</span>
-                          <StatusBadge project={p} />
-                          <span style={{ opacity: 0.45 }}>·</span>
-                          <FinancialBadge project={p} />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-
-                {projects.length === 0 && (
-                  <tr>
-                    <td colSpan={7} style={{ opacity: 0.7, padding: 18 }}>
-                      Nema projekata za zadate filtere.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+            </form>
           </div>
 
-          {/* ✅ pager i na dnu */}
-          <div className="pagerBar" style={{ paddingTop: 12 }}>
+          <div className="divider" />
+
+          {/* ✅ pager info u headeru */}
+          <div className="pagerBar" style={{ marginTop: 10 }}>
             <div className="pagerInfo">
               Prikaz: <b>{from}</b>–<b>{to}</b> od <b>{total}</b> (strana {page}
               )
@@ -997,6 +750,66 @@ export default async function Page({ searchParams }) {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ✅ LISTA (skrola) */}
+      <div className="listWrap">
+        <div className="tableCard">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Radni naziv</th>
+                <th>Rok</th>
+                <th className="num">Budžet</th>
+                <th className="num">Troškovi</th>
+                <th className="num">Zarada</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {projects.map((p) => (
+                <ProjectTableRow
+                  key={p.projekat_id}
+                  project={p}
+                />
+              ))}
+
+              {projects.length === 0 && (
+                <tr>
+                  <td colSpan={7} style={{ opacity: 0.7, padding: 18 }}>
+                    Nema projekata za zadate filtere.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ✅ pager i na dnu */}
+        <div className="pagerBar" style={{ paddingTop: 12 }}>
+          <div className="pagerInfo">
+            Prikaz: <b>{from}</b>–<b>{to}</b> od <b>{total}</b> (strana {page})
+          </div>
+          <div className="pagerBtns">
+            <Link
+              className={`btn ${hasPrev ? "" : "btn--disabled"}`}
+              href={hasPrev ? `/projects${pageLink(page - 1)}` : "#"}
+              aria-disabled={!hasPrev}
+            >
+              ← Prethodna
+            </Link>
+            <Link
+              className={`btn ${hasNext ? "" : "btn--disabled"}`}
+              href={hasNext ? `/projects${pageLink(page + 1)}` : "#"}
+              aria-disabled={!hasNext}
+            >
+              Sljedeća →
+            </Link>
+          </div>
+        </div>
+      </div>
       </div>
     </div>
   );

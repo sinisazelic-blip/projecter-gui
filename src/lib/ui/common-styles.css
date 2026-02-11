@@ -1,0 +1,464 @@
+/* =========================
+   Zajednički UI stilovi za konzistentnost
+   ========================= */
+
+/* Page Layout */
+.pageWrap {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.topBlock {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  padding: 14px 0 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.topInner {
+  padding: 0 14px;
+}
+
+.topRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 12px 0 0;
+}
+
+.bodyWrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 0 18px;
+}
+
+/* Brand/Logo */
+.brandWrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brandLogo {
+  height: 30px;
+  width: auto;
+  opacity: 0.92;
+}
+
+.brandTitle {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.brandSub {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-top: 4px;
+}
+
+/* Buttons */
+.btn {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-weight: 650;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: inherit;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+.btn:active {
+  transform: scale(0.985);
+}
+
+.btn[aria-disabled="true"],
+.btn.btn--disabled {
+  opacity: 0.55;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* Cards */
+.card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+  padding: 14px;
+}
+
+.tableCard {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+  overflow: hidden;
+}
+
+/* Modal Overlay */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modalContent {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+  max-height: 85vh;
+  overflow: auto;
+  width: min(980px, 100%);
+}
+
+.modalHeader {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.modalTitle {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.modalTitleIcon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  opacity: 0.9;
+  margin-top: 2px;
+}
+
+.modalTitleText {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.modalSubtitle {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.modalBody {
+  padding: 16px;
+}
+
+.modalFooter {
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Form Elements */
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  outline: none;
+}
+
+.input:focus {
+  border-color: rgba(125, 211, 252, 0.45);
+  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.1);
+}
+
+.input.small {
+  min-width: 160px;
+}
+
+.input:not(.small) {
+  min-width: 220px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+/* Pills/Badges */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.25px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  opacity: 0.9;
+}
+
+.pill--legacy {
+  border-color: rgba(255, 190, 90, 0.35);
+  background: rgba(255, 190, 90, 0.1);
+}
+
+.pill--soon {
+  border-color: rgba(180, 180, 180, 0.35);
+  background: rgba(180, 180, 180, 0.1);
+}
+
+/* Actions Row */
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Filters */
+.filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+/* List Wrap */
+.listWrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 0 18px;
+}
+
+/* Grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Card Variants */
+.cardHead {
+  margin-bottom: 10px;
+}
+
+.cardTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cardTitle {
+  font-size: 14px;
+  font-weight: 850;
+  letter-spacing: 0.2px;
+}
+
+.cardSub {
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.72;
+}
+
+.card--legacy {
+  border-color: rgba(255, 190, 90, 0.22);
+  background: rgba(255, 190, 90, 0.06);
+}
+
+.card--disabled {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.cardBtns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead tr {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+th {
+  padding: 10px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.25px;
+  opacity: 0.85;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+}
+
+td {
+  padding: 12px 10px;
+  font-size: 13.5px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  vertical-align: top;
+}
+
+tbody tr:nth-child(2n) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+tbody tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ✅ Klikabilni redovi tabele */
+tbody tr.clickable-row {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+tbody tr.clickable-row:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.muted {
+  opacity: 0.78;
+  font-size: 12px;
+}
+
+/* Links */
+.projectLink {
+  text-decoration: none;
+}
+
+.projectLink:hover {
+  text-decoration: underline;
+}
+
+/* Footer */
+.footer {
+  padding-top: 14px;
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* Tab Row */
+.tabRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Pager */
+.pagerBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.pagerInfo {
+  opacity: 0.8;
+  font-size: 12px;
+}
+
+.pagerBtns {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Button Active State */
+.btn--active {
+  background: rgba(125, 211, 252, 0.15);
+  border-color: rgba(125, 211, 252, 0.35);
+}
+
+.btn--active:hover {
+  background: rgba(125, 211, 252, 0.2);
+  border-color: rgba(125, 211, 252, 0.45);
+}
+
+/* Table Sticky Header */
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(10, 10, 10, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}

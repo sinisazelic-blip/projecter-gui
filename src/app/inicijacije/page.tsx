@@ -1,6 +1,7 @@
 // src/app/inicijacije/page.tsx
 import Link from "next/link";
 import { query } from "@/lib/db";
+import DealTableRow from "./DealTableRow";
 
 export const dynamic = "force-dynamic";
 
@@ -410,6 +411,14 @@ export default async function DealsPage({ searchParams }: any) {
 
               <div className="actions">
                 <Link
+                  href="/dashboard"
+                  className="glassbtn"
+                  title="Povratak na Dashboard"
+                >
+                  🏠 Dashboard
+                </Link>
+
+                <Link
                   href="/inicijacije/novo"
                   className="glassbtn"
                   title="Novi Deal"
@@ -515,81 +524,17 @@ export default async function DealsPage({ searchParams }: any) {
                     const sig = opened ? signalMeta(r.operativni_signal) : null;
 
                     return (
-                      <tr key={r.inicijacija_id}>
-                        <td style={{ width: 80 }}>{r.inicijacija_id}</td>
-
-                        <td className="cell-wrap">
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              flexWrap: "wrap",
-                              gap: 8,
-                            }}
-                          >
-                            {/* ✅ IKONICA + naziv */}
-                            <div className="dealNameWrap">
-                              <img
-                                src="/fluxa/Icon.png"
-                                alt=""
-                                className="dealIcon"
-                              />
-                              <Link
-                                href={`/inicijacije/${r.inicijacija_id}`}
-                                className="dealLink"
-                              >
-                                {r.radni_naziv}
-                              </Link>
-                            </div>
-
-                            {/* ✅ Signal samo kad je PAŽNJA/STOP */}
-                            {sig ? (
-                              <span
-                                className="sigPill"
-                                title={sig.title}
-                                style={{
-                                  background: sig.bg,
-                                  borderColor: sig.border,
-                                }}
-                              >
-                                <span
-                                  className="sigDot"
-                                  style={{ background: sig.dot }}
-                                />
-                                {sig.label}
-                              </span>
-                            ) : null}
-                          </div>
-
-                          {opened && (
-                            <div className="mutedSmall">
-                              Projekat:{" "}
-                              <Link
-                                href={`/projects/${r.projekat_id}`}
-                                className="project-link"
-                              >
-                                #{r.projekat_id}
-                              </Link>
-                            </div>
-                          )}
-                        </td>
-
-                        <td style={{ width: 170 }}>
-                          <span
-                            className={`sem ${sem.cls}`}
-                            title={sem.title}
-                          />{" "}
-                          <span style={{ marginLeft: 8 }}>
-                            {rokIso ? fmtDate(rokIso) : "—"}
-                          </span>
-                        </td>
-
-                        <td style={{ width: 210 }}>{statusLabel}</td>
-
-                        <td style={{ width: 190 }}>
-                          {fmtDateTime(r.updated_at || r.created_at)}
-                        </td>
-                      </tr>
+                      <DealTableRow
+                        key={r.inicijacija_id}
+                        deal={r}
+                        opened={opened}
+                        projectStatusName={projectStatusName}
+                        dealStatusName={dealStatusName}
+                        statusLabel={statusLabel}
+                        rokIso={rokIso}
+                        sem={sem}
+                        sig={sig}
+                      />
                     );
                   })
                 )}

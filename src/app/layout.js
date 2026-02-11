@@ -1,4 +1,5 @@
 import "./globals.css";
+import "@/lib/ui/common-styles.css";
 
 export const metadata = {
   title: "Studio TAF · Fluxa",

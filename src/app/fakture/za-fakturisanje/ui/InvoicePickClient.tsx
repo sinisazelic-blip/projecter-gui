@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 type Row = {
@@ -33,6 +33,42 @@ function fmtDDMMYYYY(value: string | null | undefined): string {
   return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
 }
 
+// Helper funkcije za konverziju između ISO (YYYY-MM-DD) i dd.mm.yyyy formata
+const isISODate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || "").trim());
+const isDDMMYYYY = (s: string) => /^\d{2}\.\d{2}\.\d{4}$/.test(String(s || "").trim());
+
+const isoToDDMMYYYY = (iso: string): string | null => {
+  if (!isISODate(iso)) return null;
+  const [y, m, d] = String(iso).split("-");
+  return `${d}.${m}.${y}`;
+};
+
+const ddmmyyyyToISO = (ddmmyyyy: string): string | null => {
+  const s = String(ddmmyyyy || "").trim();
+  if (!isDDMMYYYY(s)) return null;
+  const [dd, mm, yyyy] = s.split(".");
+  const d = Number(dd);
+  const m = Number(mm);
+  const y = Number(yyyy);
+  if (!Number.isFinite(d) || !Number.isFinite(m) || !Number.isFinite(y))
+    return null;
+  if (y < 1900 || y > 2200) return null;
+  if (m < 1 || m > 12) return null;
+  if (d < 1 || d > 31) return null;
+
+  // real-date check
+  const test = new Date(y, m - 1, d);
+  if (Number.isNaN(test.getTime())) return null;
+  if (
+    test.getFullYear() !== y ||
+    test.getMonth() !== m - 1 ||
+    test.getDate() !== d
+  )
+    return null;
+
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 function fmtKM(v: any): string {
   if (v === null || v === undefined) return "—";
   const n = Number(v);
@@ -54,8 +90,25 @@ export default function InvoicePickClient({
   const [narucilacId, setNarucilacId] = useState<string>(
     initial.narucilac_id || "",
   );
-  const [od, setOd] = useState<string>(initial.od || "");
-  const [doD, setDoD] = useState<string>(initial.do || "");
+  
+  // Konvertujemo initial ISO format u dd.mm.yyyy za UI
+  const initialOdDDMM = initial.od && isISODate(initial.od) 
+    ? (isoToDDMMYYYY(initial.od) || "") 
+    : (initial.od || "");
+  const initialDoDDMM = initial.do && isISODate(initial.do)
+    ? (isoToDDMMYYYY(initial.do) || "")
+    : (initial.do || "");
+  
+  const [od, setOd] = useState<string>(initialOdDDMM);
+  const [doD, setDoD] = useState<string>(initialDoDDMM);
+  
+  // Skriveni date input refs za date picker
+  const odDateRef = useRef<HTMLInputElement>(null);
+  const doDateRef = useRef<HTMLInputElement>(null);
+  
+  // Konvertujemo dd.mm.yyyy u ISO format za date input value
+  const odISO = useMemo(() => ddmmyyyyToISO(od) || "", [od]);
+  const doISO = useMemo(() => ddmmyyyyToISO(doD) || "", [doD]);
 
   const [picked, setPicked] = useState<Record<number, boolean>>({});
 
@@ -87,9 +140,27 @@ export default function InvoicePickClient({
   function applyFilters() {
     const qs = new URLSearchParams();
     if (narucilacId) qs.set("narucilac_id", narucilacId);
-    if (od) qs.set("od", od);
-    if (doD) qs.set("do", doD);
+    // Konvertujemo dd.mm.yyyy u ISO format za URL
+    const odISO = ddmmyyyyToISO(od);
+    const doISO = ddmmyyyyToISO(doD);
+    if (odISO) qs.set("od", odISO);
+    if (doISO) qs.set("do", doISO);
     router.push(`/fakture/za-fakturisanje?${qs.toString()}`);
+  }
+  
+  function openDatePicker(ref: React.RefObject<HTMLInputElement>) {
+    const el = ref.current;
+    if (!el) return;
+    // Chrome/Edge support
+    // @ts-expect-error showPicker exists in Chromium
+    if (typeof el.showPicker === "function") {
+      // @ts-expect-error
+      el.showPicker();
+      return;
+    }
+    // fallback
+    el.focus();
+    el.click();
   }
 
   function goWizard() {
@@ -101,111 +172,6 @@ export default function InvoicePickClient({
 
   return (
     <div className="container">
-      <style>{`
-        .pageWrap { display:flex; flex-direction:column; height:100vh; overflow:hidden; }
-
-        .topBlock {
-          position: sticky; top:0; z-index:30;
-          padding: 14px 0 12px;
-          background: rgba(255,255,255,.04);
-          border: 1px solid rgba(255,255,255,.10);
-          border-radius: 18px;
-          box-shadow: 0 14px 40px rgba(0,0,0,.22);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-        }
-        .topInner { padding: 0 14px; }
-        .topRow { display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; }
-
-        .brandWrap { display:flex; align-items:center; gap:12px; }
-        .brandLogo { height:30px; width:auto; opacity:.92; }
-        .brandTitle { font-size:20px; font-weight:800; line-height:1.1; margin:0; }
-        .brandSub { font-size:12px; opacity:.75; margin-top:4px; }
-
-        .actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-        .btn {
-          border: 1px solid rgba(255,255,255,.18);
-          background: rgba(255,255,255,.06);
-          box-shadow: 0 10px 30px rgba(0,0,0,.18);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          transition: transform .12s ease, background .12s ease, border-color .12s ease;
-          text-decoration: none;
-          cursor: pointer;
-          user-select: none;
-          padding: 10px 12px;
-          border-radius: 14px;
-          font-weight: 650;
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          color: inherit;
-          white-space: nowrap;
-        }
-        .btn:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.26); }
-        .btn:active { transform: scale(.985); }
-        .btn[aria-disabled="true"] { opacity:.55; pointer-events:none; }
-
-        .divider { height:1px; background: rgba(255,255,255,.12); margin: 12px 0 12px; }
-
-        .filters{
-          display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;
-        }
-        .field{ display:flex; flex-direction:column; gap:6px; }
-        .label{ font-size:12px; opacity:.75; }
-        .input{
-          min-width: 220px;
-          padding: 10px 12px;
-          border-radius: 12px;
-          border: 1px solid rgba(255,255,255,.18);
-          background: rgba(255,255,255,.06);
-          color: inherit;
-          outline: none;
-        }
-        .input.small{ min-width: 160px; }
-
-        .listWrap { flex:1; min-height:0; overflow:auto; padding: 14px 0 18px; }
-        .tableCard {
-          border: 1px solid rgba(255,255,255,.10);
-          background: rgba(255,255,255,.03);
-          border-radius: 18px;
-          box-shadow: 0 10px 30px rgba(0,0,0,.16);
-          overflow: hidden;
-        }
-        table{ width:100%; border-collapse:collapse; }
-        thead tr{ background: rgba(255,255,255,.04); }
-        th{
-          padding: 10px 10px;
-          font-size: 12px;
-          font-weight: 700;
-          letter-spacing: .25px;
-          opacity: .85;
-          border-bottom: 1px solid rgba(255,255,255,.10);
-          white-space: nowrap;
-        }
-        td{
-          padding: 12px 10px;
-          font-size: 13.5px;
-          border-top: 1px solid rgba(255,255,255,.08);
-          vertical-align: top;
-        }
-        tbody tr:nth-child(2n){ background: rgba(255,255,255,.02); }
-        tbody tr:hover{ background: rgba(255,255,255,.05); }
-
-        .num{ text-align:right; white-space:nowrap; }
-        .nowrap{ white-space:nowrap; }
-        .muted{ opacity:.78; font-size:12px; }
-        .projectLink{ text-decoration:none; }
-        .projectLink:hover{ text-decoration: underline; }
-
-        .footer{
-          padding-top: 14px;
-          text-align:center;
-          font-size: 12px;
-          opacity: .7;
-        }
-      `}</style>
-
       <div className="pageWrap">
         <div className="topBlock">
           <div className="topInner">
@@ -225,8 +191,8 @@ export default function InvoicePickClient({
               </div>
 
               <div className="actions">
-                <Link href="/dashboard" className="btn" title="Dashboard">
-                  ← Dashboard
+                <Link href="/dashboard" className="btn" title="Povratak na Dashboard">
+                  🏠 Dashboard
                 </Link>
 
                 <button
@@ -279,22 +245,124 @@ export default function InvoicePickClient({
 
               <div className="field">
                 <div className="label">Od datuma</div>
-                <input
-                  className="input small"
-                  type="date"
-                  value={od}
-                  onChange={(e) => setOd(e.target.value)}
-                />
+                <div style={{ position: "relative" }}>
+                  <input
+                    className="input small"
+                    type="text"
+                    inputMode="numeric"
+                    value={od}
+                    onChange={(e) => setOd(e.target.value)}
+                    placeholder="dd.mm.yyyy"
+                    style={{ paddingRight: 44 }}
+                  />
+                  <div
+                    title="Izaberi datum"
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      right: 6,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: 34,
+                      height: 34,
+                      borderRadius: 10,
+                      border: "1px solid rgba(255,255,255,.16)",
+                      background: "rgba(255,255,255,.06)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      pointerEvents: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    📅
+                  </div>
+                  <input
+                    ref={odDateRef}
+                    type="date"
+                    value={odISO}
+                    onChange={(e) => {
+                      const iso = e.target.value;
+                      const human = isoToDDMMYYYY(iso);
+                      if (human) setOd(human);
+                    }}
+                    aria-label="Izaberi datum"
+                    style={{
+                      position: "absolute",
+                      right: 6,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: 34,
+                      height: 34,
+                      opacity: 0,
+                      cursor: "pointer",
+                      border: "none",
+                      background: "transparent",
+                    }}
+                    onClick={() => openDatePicker(odDateRef)}
+                  />
+                </div>
               </div>
 
               <div className="field">
                 <div className="label">Do datuma</div>
-                <input
-                  className="input small"
-                  type="date"
-                  value={doD}
-                  onChange={(e) => setDoD(e.target.value)}
-                />
+                <div style={{ position: "relative" }}>
+                  <input
+                    className="input small"
+                    type="text"
+                    inputMode="numeric"
+                    value={doD}
+                    onChange={(e) => setDoD(e.target.value)}
+                    placeholder="dd.mm.yyyy"
+                    style={{ paddingRight: 44 }}
+                  />
+                  <div
+                    title="Izaberi datum"
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      right: 6,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: 34,
+                      height: 34,
+                      borderRadius: 10,
+                      border: "1px solid rgba(255,255,255,.16)",
+                      background: "rgba(255,255,255,.06)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      pointerEvents: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    📅
+                  </div>
+                  <input
+                    ref={doDateRef}
+                    type="date"
+                    value={doISO}
+                    onChange={(e) => {
+                      const iso = e.target.value;
+                      const human = isoToDDMMYYYY(iso);
+                      if (human) setDoD(human);
+                    }}
+                    aria-label="Izaberi datum"
+                    style={{
+                      position: "absolute",
+                      right: 6,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: 34,
+                      height: 34,
+                      opacity: 0,
+                      cursor: "pointer",
+                      border: "none",
+                      background: "transparent",
+                    }}
+                    onClick={() => openDatePicker(doDateRef)}
+                  />
+                </div>
               </div>
 
               <button

@@ -759,7 +759,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                 title="Povratak na sve projekte"
                 className="glassbtn backIcon"
               >
-                <span style={{ fontSize: 22, lineHeight: 1 }}>←</span>
+                <span style={{ fontSize: 20, lineHeight: 1 }}>📁</span>
               </Link>
 
               <div className="backText">
@@ -790,6 +790,16 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                 justifyContent: "flex-end",
               }}
             >
+              {/* ✅ Dashboard dugme */}
+              <Link
+                href="/dashboard"
+                className="btn"
+                style={{ minWidth: 90 }}
+                title="Povratak na Dashboard"
+              >
+                🏠 Dashboard
+              </Link>
+
               {/* ✅ Status (informativno) */}
               <span className="statusBadge" title={`Status ID: ${statusIdNum}`}>
                 {statusName}

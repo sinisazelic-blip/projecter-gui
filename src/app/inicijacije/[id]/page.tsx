@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { DateTimePickerDDMMYYYYHHMM } from "@/components/DatePickers";
+import { DatePickerDDMMYYYY } from "@/components/DatePickers";
 import StatusTimelineBar from "@/components/StatusTimelineBar";
 
 type Row = {
@@ -116,25 +116,46 @@ function parseHumanToIso(v: string): string | null {
   const s = (v ?? "").toString().trim();
   if (!s) return null;
 
-  const m = s.match(/^(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})$/);
-  if (!m) return null;
+  // Pokušaj prvo sa formatom sa vremenom (dd.mm.yyyy HH:mm)
+  let m = s.match(/^(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})$/);
+  if (m) {
+    const dd = Number(m[1]);
+    const mm = Number(m[2]);
+    const yyyy = Number(m[3]);
+    const HH = Number(m[4]);
+    const MI = Number(m[5]);
 
-  const dd = Number(m[1]);
-  const mm = Number(m[2]);
-  const yyyy = Number(m[3]);
-  const HH = Number(m[4]);
-  const MI = Number(m[5]);
+    if (mm < 1 || mm > 12) return null;
+    if (dd < 1 || dd > 31) return null;
+    if (HH < 0 || HH > 23) return null;
+    if (MI < 0 || MI > 59) return null;
 
-  if (mm < 1 || mm > 12) return null;
-  if (dd < 1 || dd > 31) return null;
-  if (HH < 0 || HH > 23) return null;
-  if (MI < 0 || MI > 59) return null;
+    const iso = `${yyyy}-${pad2(mm)}-${pad2(dd)}T${pad2(HH)}:${pad2(MI)}:00`;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
 
-  const iso = `${yyyy}-${pad2(mm)}-${pad2(dd)}T${pad2(HH)}:${pad2(MI)}:00`;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
+    return iso;
+  }
 
-  return iso;
+  // Ako nema vrijeme, pokušaj samo datum (dd.mm.yyyy) i postavi defaultno vrijeme 16:00
+  m = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (m) {
+    const dd = Number(m[1]);
+    const mm = Number(m[2]);
+    const yyyy = Number(m[3]);
+
+    if (mm < 1 || mm > 12) return null;
+    if (dd < 1 || dd > 31) return null;
+
+    // Defaultno vrijeme: 16:00
+    const iso = `${yyyy}-${pad2(mm)}-${pad2(dd)}T16:00:00`;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+
+    return iso;
+  }
+
+  return null;
 }
 
 function toHumanInput(v: string | null | undefined): string {
@@ -142,9 +163,9 @@ function toHumanInput(v: string | null | undefined): string {
   const s = String(v).replace(" ", "T");
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return "";
-  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(
-    d.getMinutes(),
-  )}`;
+  // Prikaži samo datum (bez vremena) za date picker
+  // Vrijeme će biti dodato pri čuvanju ako nije ručno uneseno
+  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
 }
 
 const inputStyle = {
@@ -548,7 +569,7 @@ export default function PonudaDetaljPage() {
 
     if (t_accepted.trim() && !accepted_iso) {
       setSavingTimeline(false);
-      setError("Deadline mora biti u formatu: dd.mm.yyyy HH:mm (24h).");
+      setError("Deadline mora biti u formatu: dd.mm.yyyy (ili dd.mm.yyyy HH:mm za ručno vrijeme).");
       return;
     }
 
@@ -909,7 +930,7 @@ export default function PonudaDetaljPage() {
                 title="Povratak na Deals"
                 className="glassbtn backIcon"
               >
-                <span style={{ fontSize: 22, lineHeight: 1 }}>←</span>
+                <span style={{ fontSize: 20, lineHeight: 1 }}>📋</span>
               </Link>
               <div className="backText">
                 <div className="mutedLine">Povratak</div>
@@ -933,6 +954,14 @@ export default function PonudaDetaljPage() {
             </div>
 
             <div className="actions">
+              <Link
+                href="/dashboard"
+                className="glassbtn actionBtn"
+                title="Povratak na Dashboard"
+              >
+                🏠 Dashboard
+              </Link>
+
               {row?.projekat_id ? (
                 <>
                   <button
@@ -1463,10 +1492,11 @@ export default function PonudaDetaljPage() {
                   Deadline / vrijeme događaja
                 </div>
                 <div className="deadlineWrap">
-                  <DateTimePickerDDMMYYYYHHMM
+                  <DatePickerDDMMYYYY
                     value={t_accepted}
                     onChange={setTAccepted}
                     placeholder="dd.mm.yyyy HH:mm"
+                    defaultTime="16:00"
                   />
 
                   <div className="deadlineMeta">

@@ -201,8 +201,8 @@ export default async function Page({ searchParams }) {
                   flexWrap: "wrap",
                 }}
               >
-                <Link href="/dashboard" className="btn">
-                  Dashboard
+                <Link href="/dashboard" className="btn" title="Povratak na Dashboard">
+                  🏠 Dashboard
                 </Link>
                 <Link href="/projects" className="btn">
                   Projekti

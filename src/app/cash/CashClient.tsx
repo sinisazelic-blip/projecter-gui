@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import styles from "./CashClient.module.css";
 
 type CashDirection = "IN" | "OUT";
@@ -183,9 +184,21 @@ export default function CashClient() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <div className={styles.title}>Cash (Blagajna)</div>
-        <div className={styles.subtitle}>
-          Signalni sloj (append-only, DRAFT). Ne utiče na banku/ledger.
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <div className={styles.title}>Cash (Blagajna)</div>
+            <div className={styles.subtitle}>
+              Signalni sloj (append-only, DRAFT). Ne utiče na banku/ledger.
+            </div>
+          </div>
+          <Link
+            href="/dashboard"
+            className="btn"
+            style={{ minWidth: 90 }}
+            title="Povratak na Dashboard"
+          >
+            🏠 Dashboard
+          </Link>
         </div>
       </div>
 

@@ -345,6 +345,14 @@ export default function Page() {
 
         .cols2{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         @media (max-width: 760px){ .cols2{ grid-template-columns: 1fr; } }
+        
+        /* ✅ Desna kolona (Klijent/Naručioc) - desno poravnanje */
+        .cols2 > div:last-child {
+          text-align: right;
+        }
+        .cols2 > div:last-child .blockTitle {
+          text-align: right;
+        }
 
         .blockTitle{
           font-size: 12px;
@@ -445,16 +453,104 @@ export default function Page() {
         .fluxaSig img{ height: 12px; width: 12px; object-fit: contain; opacity: .85; }
 
         @media print {
-          .topBlock, .divider { display:none !important; }
-          .body { padding: 0 !important; }
-          .paperStage { padding: 0 !important; }
-          .paper{
-            width: auto !important;
-            min-height: auto !important;
+          @page {
+            size: A4;
+            margin: 0;
+          }
+          
+          * {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          
+          html {
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            color-scheme: light !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            color: #111111 !important;
+          }
+          
+          .container {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+          }
+          
+          .pageWrap {
+            display: block !important;
+            height: auto !important;
+            overflow: visible !important;
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          
+          .topBlock, .divider { 
+            display: none !important; 
+          }
+          
+          .body { 
+            padding: 0 !important; 
+            margin: 0 !important;
+            overflow: visible !important;
+            flex: none !important;
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+          }
+          
+          .paperStage { 
+            padding: 0 !important; 
+            margin: 0 !important;
+            display: block !important;
+            width: 100% !important;
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+          }
+          
+          .paper {
+            width: 210mm !important;
+            min-height: 297mm !important;
+            max-width: 210mm !important;
             border: none !important;
             box-shadow: none !important;
             border-radius: 0 !important;
-            padding: 0 !important;
+            padding: 18mm 16mm !important;
+            margin: 0 auto !important;
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            color: #111111 !important;
+            page-break-after: always;
+            page-break-inside: avoid;
+          }
+          
+          .cols2 {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 14px !important;
+          }
+          
+          table {
+            page-break-inside: auto;
+          }
+          
+          tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
           }
         }
       `}</style>

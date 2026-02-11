@@ -141,59 +141,11 @@ export default function InvoiceWizard() {
   return (
     <div className="container">
       <style>{`
-        .pageWrap { display:flex; flex-direction:column; height:100vh; overflow:hidden; }
-        .topBlock {
-          position: sticky; top:0; z-index: 30;
-          padding: 14px 0 12px;
-          background: rgba(255,255,255,.04);
-          border: 1px solid rgba(255,255,255,.10);
-          border-radius: 18px;
-          box-shadow: 0 14px 40px rgba(0,0,0,.22);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-        }
-        .topInner { padding: 0 14px; }
-        .topRow { display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; }
-        .brandWrap { display:flex; align-items:center; gap:12px; }
-        .brandLogo { height: 30px; width:auto; opacity:.92; }
-        .brandTitle { font-size: 22px; font-weight: 800; line-height: 1.1; margin: 0; }
-        .brandSub { font-size: 12px; opacity: .75; margin-top: 4px; }
-
         .scrollWrap { flex:1; overflow:auto; padding: 14px 0 18px; }
         .cardLike { border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.05); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.14); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 14px; margin-top: 12px; }
         .grid2 { display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; }
         @media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
-        .label { opacity:.75; font-size:13px; }
-
-        .input {
-          width: 100%;
-          padding: 10px 12px;
-          border-radius: 12px;
-          border: 1px solid rgba(255,255,255,.18);
-          background: rgba(255,255,255,.06);
-          color: inherit;
-          outline: none;
-        }
-
-        .btn {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          padding: 10px 12px;
-          min-width: 120px;
-          text-align: center;
-          white-space: nowrap;
-          border-radius: 14px;
-          cursor: pointer;
-          border: 1px solid rgba(255,255,255,.12);
-          background: rgba(255,255,255,.03);
-          font-weight: 650;
-          color: inherit;
-        }
-        .btn:hover { border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.05); }
-
-        .hint { margin-top: 10px; opacity: .8; fontSize: 12px; }
+        .hint { margin-top: 10px; opacity: .8; font-size: 12px; }
         .err {
           margin-top: 10px;
           padding: 10px 12px;
@@ -224,14 +176,7 @@ export default function InvoiceWizard() {
                 </div>
               </div>
 
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                }}
-              >
+              <div className="actions">
                 <Link
                   href={`/fakture/za-fakturisanje`}
                   className="btn"
@@ -262,7 +207,7 @@ export default function InvoiceWizard() {
               </div>
             </div>
 
-            <div style={{ marginTop: 10, opacity: 0.8, fontSize: 13 }}>
+            <div className="muted" style={{ marginTop: 10 }}>
               Projekti u fakturi: <b>{ids.length}</b> (
               {ids.slice(0, 12).join(", ")}
               {ids.length > 12 ? "…" : ""})
