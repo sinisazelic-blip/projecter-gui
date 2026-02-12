@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 
 // Helper funkcije
 function pad2(n) {
@@ -368,6 +369,13 @@ export default function ProjectTableRow({ project }) {
   const sem = semColor(diff);
   const label = semLabel(diff);
 
+  // ✅ Provera da li je owner (za sada proveravamo localStorage, kasnije će biti pravi owner sistem)
+  const [isOwner, setIsOwner] = useState(false);
+  useEffect(() => {
+    const token = window.localStorage.getItem("FLUXA_OWNER_TOKEN");
+    setIsOwner(token?.trim().length > 0 || false);
+  }, []);
+
   return (
     <tr
       onClick={(e) => {
@@ -445,9 +453,57 @@ export default function ProjectTableRow({ project }) {
         </div>
       </td>
 
-      <td className="num">{fmt(project.budzet_planirani)}</td>
+      <td className="num">
+        {(() => {
+          // ✅ Izračunaj budžet vidljiv radnicima (procenat od punog budžeta)
+          const punBudzet = Number(project.budzet_planirani) || 0;
+          const procenatZaTim = Number(project.budzet_procenat_za_tim) || 50.00;
+          const budzetZaTim = punBudzet * (procenatZaTim / 100);
+          
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span>{fmt(budzetZaTim)}</span>
+              {/* ✅ Procenat vidljiv samo owneru */}
+              {isOwner && procenatZaTim !== 100 && punBudzet > 0 && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    opacity: 0.6,
+                    fontStyle: "italic",
+                  }}
+                  title={`Puni budžet: ${fmt(punBudzet)}`}
+                >
+                  ({procenatZaTim.toFixed(0)}%)
+                </span>
+              )}
+            </div>
+          );
+        })()}
+      </td>
       <td className="num">{fmt(project.troskovi_ukupno)}</td>
-      <td className="num">{fmt(project.planirana_zarada)}</td>
+      <td className="num">
+        {(() => {
+          // ✅ Izračunaj planiranu zaradu na osnovu budžeta za tim
+          const punBudzet = Number(project.budzet_planirani) || 0;
+          const procenatZaTim = Number(project.budzet_procenat_za_tim) || 50.00;
+          const budzetZaTim = punBudzet * (procenatZaTim / 100);
+          const planiranaZaradaZaTim = budzetZaTim - (Number(project.troskovi_ukupno) || 0);
+          
+          // ✅ Crvena boja ako je zarada negativna (u minusu)
+          const isNegative = planiranaZaradaZaTim < 0;
+          
+          return (
+            <span
+              style={{
+                color: isNegative ? "rgba(255, 80, 80, 0.95)" : "inherit",
+                fontWeight: isNegative ? 700 : "inherit",
+              }}
+            >
+              {fmt(planiranaZaradaZaTim)}
+            </span>
+          );
+        })()}
+      </td>
 
       <td>
         <div
@@ -461,8 +517,6 @@ export default function ProjectTableRow({ project }) {
           <SignalBadge project={project} />
           <span style={{ opacity: 0.45 }}>·</span>
           <StatusBadge project={project} />
-          <span style={{ opacity: 0.45 }}>·</span>
-          <FinancialBadge project={project} />
         </div>
       </td>
     </tr>

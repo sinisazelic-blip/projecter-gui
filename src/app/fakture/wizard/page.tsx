@@ -193,7 +193,16 @@ export default function InvoiceWizard() {
                     pnbLoading ||
                     !/^\d{8}$/.test(pozivNaBroj)
                   }
-                  style={{ opacity: ids.length === 0 || pnbLoading ? 0.55 : 1 }}
+                  style={{
+                    opacity: ids.length === 0 || pnbLoading ? 0.55 : 1,
+                    background: ids.length === 0 || pnbLoading || !/^\d{8}$/.test(pozivNaBroj)
+                      ? undefined
+                      : "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1))",
+                    borderColor: ids.length === 0 || pnbLoading || !/^\d{8}$/.test(pozivNaBroj)
+                      ? undefined
+                      : "rgba(59, 130, 246, 0.4)",
+                    fontWeight: ids.length === 0 || pnbLoading || !/^\d{8}$/.test(pozivNaBroj) ? undefined : 700,
+                  }}
                   title={
                     ids.length === 0
                       ? "Nema selekcije"

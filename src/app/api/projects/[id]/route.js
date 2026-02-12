@@ -28,6 +28,9 @@ export async function GET(req, { params }) {
         -- ✅ NOVO: operativni signal (owner -> tim)
         p.operativni_signal,
 
+        -- ✅ NOVO: procenat budžeta vidljiv radnicima (default 50.00)
+        COALESCE(p.budzet_procenat_za_tim, 50.00) AS budzet_procenat_za_tim,
+
         COALESCE(ps.budzet_km, v.budzet_planirani, 0) AS budzet_planirani,
 
         v.troskovi_ukupno,

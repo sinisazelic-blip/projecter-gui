@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
         counterparty, counterparty_bank,
         description, full_description,
         tx_type, direction_flag, is_fee, fee_for_reference,
-        status, created_at
+        status, created_at, raw_json
       FROM bank_tx_staging
       WHERE batch_id = ?
       ORDER BY tx_id ASC
@@ -60,17 +60,44 @@ export async function GET(req: NextRequest) {
   }
 
   // lista
+  const account = req.nextUrl.searchParams.get("account")?.trim() || "";
+  const dateFrom = req.nextUrl.searchParams.get("date_from")?.trim() || "";
+  const dateTo = req.nextUrl.searchParams.get("date_to")?.trim() || "";
+
+  const where: string[] = [];
+  const params: any[] = [];
+
+  if (account) {
+    where.push("bank_account_no LIKE ?");
+    params.push(`%${account}%`);
+  }
+
+  if (dateFrom) {
+    where.push("statement_date >= ?");
+    params.push(dateFrom);
+  }
+
+  if (dateTo) {
+    where.push("statement_date <= ?");
+    params.push(dateTo);
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
   const rows = await query(
     `
     SELECT
       batch_id, source, bank_account_no, statement_no,
       DATE_FORMAT(statement_date, '%Y-%m-%d') AS statement_date,
       opening_balance, closing_balance, total_debit, total_credit,
-      imported_at
+      currency,
+      DATE_FORMAT(imported_at, '%Y-%m-%d') AS imported_at
     FROM bank_import_batch
+    ${whereSql}
     ORDER BY batch_id DESC
-    LIMIT 50
+    LIMIT 100
     `,
+    params,
   );
 
   return NextResponse.json({ ok: true, batches: rows });

@@ -375,6 +375,51 @@ async function setOperativniSignal(formData) {
   redirect(returnTo);
 }
 
+/**
+ * ✅ OWNER: postavljanje procenta budžeta vidljivog radnicima
+ * - projekti.budzet_procenat_za_tim je procenat (default 50.00)
+ * - Ako nije postavljeno, koristi se default 50%
+ */
+async function setBudzetProcenatZaTim(formData) {
+  "use server";
+
+  const projekatId = Number(formData.get("projekat_id"));
+  const returnTo = String(
+    formData.get("return_to") ||
+      (Number.isFinite(projekatId) ? `/projects/${projekatId}` : "/projects"),
+  );
+
+  const procenatRaw = formData.get("budzet_procenat_za_tim");
+  let procenat = null;
+
+  if (procenatRaw && String(procenatRaw).trim()) {
+    const parsed = Number(String(procenatRaw).trim());
+    if (Number.isFinite(parsed) && parsed >= 0 && parsed <= 100) {
+      procenat = parsed;
+    }
+  }
+
+  if (!Number.isFinite(projekatId)) redirect("/projects");
+
+  // Ako je procenat null ili prazan, postavi na default 50.00
+  const finalProcenat = procenat !== null ? procenat : 50.00;
+
+  await query(
+    `
+    UPDATE projekti
+    SET budzet_procenat_za_tim = ?
+    WHERE projekat_id = ?
+    LIMIT 1
+    `,
+    [finalProcenat, projekatId],
+  );
+
+  revalidatePath(`/projects/${projekatId}`);
+  revalidatePath(`/projects`);
+
+  redirect(returnTo);
+}
+
 /** ✅ Signal badge helpers */
 function signalMeta(sigRaw) {
   const sig = String(sigRaw || "NORMALNO")
@@ -429,6 +474,9 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
 
       -- ✅ NOVO: operativni signal (owner -> tim)
       p.operativni_signal,
+
+      -- ✅ NOVO: procenat budžeta vidljiv radnicima (default 50.00)
+      COALESCE(p.budzet_procenat_za_tim, 50.00) AS budzet_procenat_za_tim,
 
       -- ✅ FIX: view nema radni_naziv
       p.radni_naziv AS radni_naziv,
@@ -872,6 +920,71 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                 >
                   <span style={{ fontSize: 16, lineHeight: 1 }}>✅</span>
                   Snimi
+                </button>
+              </form>
+
+              {/* ✅ OWNER: PROCENAT BUDŽETA ZA TIM */}
+              <form
+                action={setBudzetProcenatZaTim}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  opacity: isReadOnly ? 0.55 : 1,
+                  pointerEvents: isReadOnly ? "none" : "auto",
+                }}
+                title={
+                  isReadOnly
+                    ? "Projekat je fakturisan (read-only)."
+                    : "Owner: procenat budžeta vidljiv radnicima (default 50%)"
+                }
+              >
+                <input
+                  type="hidden"
+                  name="projekat_id"
+                  value={project.projekat_id}
+                />
+                <input type="hidden" name="return_to" value={returnTo} />
+
+                <label
+                  style={{
+                    fontSize: 12,
+                    opacity: 0.85,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Budžet za tim (%):
+                </label>
+                <input
+                  type="number"
+                  name="budzet_procenat_za_tim"
+                  defaultValue={String(
+                    project?.budzet_procenat_za_tim ?? 50.00,
+                  )}
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  style={{
+                    width: 70,
+                    padding: "6px 8px",
+                    borderRadius: 6,
+                    border: "1px solid rgba(255,255,255,.2)",
+                    background: "rgba(255,255,255,.05)",
+                    color: "inherit",
+                    fontSize: 13,
+                  }}
+                  placeholder="50"
+                  title="Procenat budžeta vidljiv radnicima (0-100, default 50%)"
+                />
+
+                <button
+                  type="submit"
+                  className="glassbtn payBtn"
+                  title="Snimi procenat budžeta"
+                >
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>💾</span>
+                  Snimi %
                 </button>
               </form>
 

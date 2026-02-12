@@ -209,6 +209,15 @@ export default function InvoicePickClient({
                   className="btn"
                   onClick={goWizard}
                   aria-disabled={pickedIds.length === 0}
+                  style={{
+                    background: pickedIds.length === 0
+                      ? undefined
+                      : "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1))",
+                    borderColor: pickedIds.length === 0
+                      ? undefined
+                      : "rgba(59, 130, 246, 0.4)",
+                    fontWeight: pickedIds.length === 0 ? undefined : 700,
+                  }}
                   title={
                     pickedIds.length === 0
                       ? "Prvo označi projekte"

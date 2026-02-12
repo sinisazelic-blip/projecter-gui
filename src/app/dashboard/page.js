@@ -237,6 +237,16 @@ export default function Page() {
           box-shadow: 0 6px 20px rgba(125, 211, 252, 0.2);
         }
 
+        .btn--orange-accent {
+          border-color: rgba(251, 146, 60, 0.25) !important;
+          background: linear-gradient(135deg, rgba(251, 146, 60, 0.08), rgba(249, 115, 22, 0.05)) !important;
+        }
+
+        .btn--orange-accent:hover {
+          border-color: rgba(251, 146, 60, 0.35) !important;
+          background: linear-gradient(135deg, rgba(251, 146, 60, 0.12), rgba(249, 115, 22, 0.08)) !important;
+        }
+
         @media (max-width: 1200px) {
           .sifarniciRow--equal {
             grid-template-columns: repeat(2, 1fr);
@@ -360,6 +370,8 @@ export default function Page() {
 
                 <div className="finansijeRow">
                   <ActionBtn label="Import izvoda" href="/banking/import" />
+                  <ActionBtn label="Izvodi" href="/izvodi" title="Lista bankovnih izvoda" className="btn--orange-accent" />
+                  <ActionBtn label="Fakture" href="/fakture" title="Lista izdatih faktura" className="btn--orange-accent" />
                   <ActionBtn label="KUF" href="/finance/kuf" title="Import i rasknjižavanje ulaznih faktura" />
                   <ActionBtn label="CashFlow" href="/finance/cashflow" title="Hronologija plaćanja — šta je sljedeće" />
                   <ActionBtn label="Krediti" href="/finance/krediti" title="Pregled kreditnih obaveza" />

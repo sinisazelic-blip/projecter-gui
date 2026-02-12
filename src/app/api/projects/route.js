@@ -200,6 +200,9 @@ export async function GET(req) {
 
         p.operativni_signal,
 
+        -- ✅ NOVO: procenat budžeta vidljiv radnicima (default 50.00)
+        COALESCE(p.budzet_procenat_za_tim, 50.00) AS budzet_procenat_za_tim,
+
         -- ✅ Rok kao STRING (timezone safe)
         DATE_FORMAT(p.rok_glavni, '%Y-%m-%d %H:%i:%s') AS rok_glavni,
         p.tip_roka,

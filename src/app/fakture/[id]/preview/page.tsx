@@ -1,9 +1,9 @@
-// src/app/fakture/wizard/preview/page.tsx
+// src/app/fakture/[id]/preview/page.tsx
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 
 function fmtDDMMYYYYFromISO(isoLike: string | null): string {
   if (!isoLike) return "—";
@@ -55,39 +55,36 @@ type ApiProject = {
 
 type ApiBuyer = {
   klijent_id: number;
-  naziv_klijenta: string | null;
-  tip_klijenta: string | null;
-  porezni_id: string | null;
+  naziv_klijenta: string;
   adresa: string | null;
   grad: string | null;
-  postanski_broj?: string | null;
+  postanski_broj: string | null;
   drzava: string | null;
+  porezni_id: string | null;
+  email: string | null;
+  telefon: string | null;
   rok_placanja_dana: number | null;
-  is_ino?: number | boolean;
+  is_ino?: boolean;
 };
 
 type ApiFirma = {
   firma_id: number;
-  is_active: number;
   naziv: string | null;
   pravni_naziv: string | null;
   adresa: string | null;
   grad: string | null;
   postanski_broj: string | null;
   drzava: string | null;
-  telefon: string | null;
-  email: string | null;
-  web: string | null;
-  jib: string | null;
-  pib: string | null;
   pdv_broj: string | null;
-  broj_rjesenja: string | null;
-  bank_naziv: string | null;
-  bank_racun: string | null;
-  swift: string | null;
-  iban: string | null;
-  logo_path: string | null;
-  bank_accounts?: any[];
+  pib: string | null;
+  jib: string | null;
+  bank_accounts: Array<{
+    bank_account_id: number;
+    bank_naziv: string | null;
+    bank_racun: string | null;
+    iban: string | null;
+    swift: string | null;
+  }>;
 };
 
 type PreviewData = {
@@ -104,94 +101,20 @@ function safeLineJoin(
   parts: Array<string | null | undefined>,
   sep = ", ",
 ): string {
-  return parts
-    .map((p) => String(p ?? "").trim())
-    .filter(Boolean)
-    .join(sep);
+  return parts.filter((p) => p != null && String(p).trim() !== "").join(sep);
 }
 
-function fmtBankLine(acc: any): string {
-  const bank = String(
-    acc?.bank_naziv ?? acc?.banka_naziv ?? acc?.bank ?? acc?.naziv_bank ?? "",
-  ).trim();
-  const account = String(
-    acc?.bank_racun ??
-      acc?.racun ??
-      acc?.broj_racuna ??
-      acc?.account_no ??
-      acc?.account ??
-      "",
-  ).trim();
-  const iban = String(acc?.iban ?? "").trim();
-  const swift = String(acc?.swift ?? acc?.bic ?? "").trim();
+export default function FakturaPreviewPage() {
+  const params = useParams();
+  const router = useRouter();
+  const fakturaId = Number(params.id);
 
-  const chunks: string[] = [];
-  if (bank) chunks.push(bank);
-  if (account) chunks.push(account);
-  if (iban) chunks.push(`IBAN ${iban}`);
-  if (swift) chunks.push(`SWIFT ${swift}`);
-
-  const out = chunks.join(" · ");
-  return out || "—";
-}
-
-export default function Page() {
-  const sp = useSearchParams();
-
-  const ids = useMemo(() => parseIds(String(sp.get("ids") ?? "")), [sp]);
-
-  const invoiceDateISO = sp.get("date") ?? "";
-  const dueDateISO = sp.get("due") ?? "";
-  const ccy = (sp.get("ccy") ?? "KM").toUpperCase();
-  const fisk = sp.get("pfr") ?? sp.get("fisk") ?? ""; // Podržavamo oba parametra za kompatibilnost
-  const pnb = sp.get("pnb") ?? "";
-  const invoiceNumberFromUrl = sp.get("invoice_number") ?? ""; // Broj fakture iz URL-a (kada se učitava postojeća)
-
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [faktura, setFaktura] = useState<any>(null);
   const [data, setData] = useState<PreviewData | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [created, setCreated] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
-  const [createdInvoice, setCreatedInvoice] = useState<any>(null);
-  const [invoiceNumber, setInvoiceNumber] = useState<string>(invoiceNumberFromUrl);
-  const [calculatedDueDate, setCalculatedDueDate] = useState<string>(dueDateISO || "");
 
-  // Ažuriraj invoiceNumber kada se promeni URL parametar
-  useEffect(() => {
-    if (invoiceNumberFromUrl) {
-      setInvoiceNumber(invoiceNumberFromUrl);
-    }
-  }, [invoiceNumberFromUrl]);
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const qs = new URLSearchParams();
-        qs.set("ids", ids.join(","));
-        const res = await fetch(
-          `/api/fakture/wizard/preview-data?${qs.toString()}`,
-          { cache: "no-store" },
-        );
-        const j = (await res.json()) as PreviewData;
-        if (alive) setData(j);
-      } catch (e: any) {
-        if (alive)
-          setData({
-            ok: false,
-            ids,
-            projects: [],
-            buyer: null,
-            firma: null,
-            narucioc_count: 0,
-            error: e?.message ?? "Error",
-          });
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [ids.join(",")]);
-
+  // Svi hookovi moraju biti pre bilo kakvih early return-ova
   const buyer = data?.buyer ?? null;
   const firma = data?.firma ?? null;
   const projects = Array.isArray(data?.projects) ? data!.projects : [];
@@ -203,92 +126,11 @@ export default function Page() {
     [lang],
   );
 
-  // Funkcija za kreiranje fakture
-  async function handleCreateInvoice() {
-    if (creating || created) return;
-
-    setCreating(true);
-    setCreateError(null);
-
-    try {
-      const res = await fetch("/api/fakture/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ids: ids.join(","),
-          date: invoiceDateISO,
-          ccy: ccy,
-          vat: bh ? "BH_17" : "INO_0",
-          pfr: fisk ? Number(fisk) : null,
-          pnb: pnb,
-        }),
-      });
-
-      const result = await res.json();
-
-      if (!res.ok || !result.ok) {
-        throw new Error(result.error || "Greška pri kreiranju fakture");
-      }
-
-      setCreated(true);
-      setCreatedInvoice(result);
-      // Postavi broj fakture i datum dospijeća za prikaz
-      if (result.broj_fakture) {
-        setInvoiceNumber(result.broj_fakture);
-      }
-      if (result.datum_dospijeca) {
-        setCalculatedDueDate(result.datum_dospijeca);
-      } else if (invoiceDateISO && data?.buyer?.rok_placanja_dana) {
-        // Fallback: izračunaj datum dospijeća ako nije vraćen iz API-ja
-        const rokDana = Number(data.buyer.rok_placanja_dana) || 30;
-        const dueDate = new Date(invoiceDateISO);
-        dueDate.setDate(dueDate.getDate() + rokDana);
-        setCalculatedDueDate(dueDate.toISOString().slice(0, 10));
-      }
-    } catch (err: any) {
-      setCreateError(err?.message || "Greška pri kreiranju fakture");
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  // Funkcija za kreiranje PDF-a i prikaz
-  function handleCreatePDFAndShow() {
-    if (!created) {
-      alert("Prvo kreirajte račun!");
-      return;
-    }
-    window.print();
-  }
-
-  // Funkcija za PDF Save as
-  function handlePDFSaveAs() {
-    if (!created) {
-      alert("Prvo kreirajte račun!");
-      return;
-    }
-    // TODO: Implementirati PDF generisanje i download
-    alert("PDF Save as - u implementaciji");
-  }
-
-  // Funkcija za slanje mail-om
-  function handleSendEmail() {
-    if (!created) {
-      alert("Prvo kreirajte račun!");
-      return;
-    }
-    // TODO: Implementirati slanje mail-om
-    alert("Pošalji mail-om - u implementaciji");
-  }
-
-  // Funkcija za zatvaranje prozora
-  function handleClose() {
-    if (created) {
-      window.location.href = "/fakture";
-    } else {
-      window.location.href = "/dashboard";
-    }
-  }
+  const invoiceDateISO = faktura?.datum_izdavanja || "";
+  const dueDateISO = faktura?.datum_dospijeca || "";
+  const ccy = (faktura?.valuta || "KM").toUpperCase();
+  const fisk = faktura?.broj_fiskalni ? String(faktura.broj_fiskalni) : "";
+  const invoiceNumber = faktura?.broj_fakture || "—";
 
   const items = useMemo(
     () =>
@@ -328,16 +170,6 @@ export default function Page() {
     [baseAmount, vatAmount],
   );
 
-  const lastClosed = useMemo(
-    () =>
-      (items
-        .map((x) => x.closed_at)
-        .filter(Boolean)
-        .sort()
-        .slice(-1)[0] as string | undefined),
-    [items],
-  );
-
   const sellerName = String(
     firma?.naziv || firma?.pravni_naziv || "Studio TAF",
   ).trim();
@@ -365,6 +197,86 @@ export default function Page() {
   const buyerCountry = String(buyer?.drzava ?? "—").trim();
   const buyerTax = String(buyer?.porezni_id ?? "—").trim();
 
+  useEffect(() => {
+    if (!Number.isFinite(fakturaId) || fakturaId <= 0) {
+      setError("Neispravan ID fakture");
+      setLoading(false);
+      return;
+    }
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Učitaj fakturu
+        const fakturaRes = await fetch(`/api/fakture/${fakturaId}`, {
+          cache: "no-store",
+        });
+        const fakturaData = await fakturaRes.json();
+
+        if (!fakturaRes.ok || !fakturaData.ok) {
+          throw new Error(fakturaData.error || "Greška pri učitavanju fakture");
+        }
+
+        setFaktura(fakturaData.faktura);
+
+        // Učitaj podatke za preview (projekti, buyer, firma)
+        if (fakturaData.faktura.projekti_ids?.length > 0) {
+          const qs = new URLSearchParams();
+          qs.set("ids", fakturaData.faktura.projekti_ids.join(","));
+          const previewRes = await fetch(
+            `/api/fakture/wizard/preview-data?${qs.toString()}`,
+            { cache: "no-store" },
+          );
+          const previewData = await previewRes.json();
+
+          if (previewRes.ok && previewData.ok) {
+            setData(previewData);
+          }
+        }
+      } catch (err: any) {
+        setError(err?.message || "Greška");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
+  }, [fakturaId]);
+
+  if (loading) {
+    return (
+      <div className="container">
+        <div style={{ padding: 40, textAlign: "center", opacity: 0.7 }}>
+          Učitavanje...
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !faktura) {
+    return (
+      <div className="container">
+        <div
+          style={{
+            padding: 20,
+            background: "rgba(255, 59, 48, 0.1)",
+            borderRadius: 8,
+            color: "#ff3b30",
+          }}
+        >
+          ⚠️ {error || "Faktura nije pronađena"}
+        </div>
+        <div style={{ marginTop: 20 }}>
+          <Link href="/fakture" className="btn">
+            ← Nazad na listu faktura
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container">
       <style>{`
@@ -386,8 +298,6 @@ export default function Page() {
         .brandLogo { height: 30px; width:auto; opacity:.92; }
         .brandTitle { font-size: 18px; font-weight: 800; line-height: 1.1; margin: 0; }
         .brandSub { font-size: 12px; opacity: .75; margin-top: 4px; }
-
-        .actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 
         .btn {
           border: 1px solid rgba(255,255,255,.18);
@@ -447,7 +357,6 @@ export default function Page() {
         .cols2{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         @media (max-width: 760px){ .cols2{ grid-template-columns: 1fr; } }
         
-        /* ✅ Desna kolona (Klijent/Naručioc) - desno poravnanje */
         .cols2 > div:last-child {
           text-align: right;
         }
@@ -497,12 +406,11 @@ export default function Page() {
         .desc{ color:#111; font-weight: 650; }
         .mutedSmall{ font-size: 11px; color:#666; margin-top: 2px; }
 
-        /* ✅ manji razmak prije obračuna */
         .totalsRow{
           display:flex;
           justify-content:flex-end;
           gap: 18px;
-          margin-top: 8px; /* was 14px */
+          margin-top: 8px;
         }
 
         .totalsBox{
@@ -525,7 +433,6 @@ export default function Page() {
         .totLine.total .k{ color:#111; font-weight: 800; }
         .totLine.total .v{ font-weight: 900; }
 
-        /* ✅ Info line unutar obračuna (umjesto između tabele i obračuna) */
         .completedLine{
           margin-top: 10px;
           font-size: 11px;
@@ -667,128 +574,23 @@ export default function Page() {
                   className="brandLogo"
                 />
                 <div>
-                  <div className="brandTitle">
-                    {lang === "EN"
-                      ? "Invoice preview (3/3)"
-                      : "Preview računa (3/3)"}
-                  </div>
-                  <div className="brandSub">
-                    {lang === "EN"
-                      ? "Paper simulation — this is how the PDF/print will look."
-                      : "Paper simulacija — ovako izgleda PDF/štampa."}
-                  </div>
+                  <div className="brandTitle">📄 Faktura #{invoiceNumber}</div>
+                  <div className="brandSub">Pregled fakture</div>
                 </div>
               </div>
 
-              <div className="actions">
-                {!created ? (
-                  <>
-                    <Link className="btn" href="/dashboard" title="Dashboard">
-                      ← Dashboard
-                    </Link>
-
-                    <Link
-                      className="btn"
-                      href={`/fakture/wizard?ids=${encodeURIComponent(ids.join(","))}`}
-                      title="Nazad na wizard"
-                    >
-                      ← {lang === "EN" ? "Back (2/3)" : "Nazad (2/3)"}
-                    </Link>
-
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={handleCreateInvoice}
-                      disabled={creating}
-                      style={{
-                        background: creating
-                          ? "rgba(255, 80, 80, 0.3)"
-                          : "linear-gradient(135deg, rgba(255, 80, 80, 0.15), rgba(239, 68, 68, 0.1))",
-                        borderColor: "rgba(255, 80, 80, 0.4)",
-                        fontWeight: 700,
-                      }}
-                      title={lang === "EN" ? "Create invoice" : "Kreiraj račun"}
-                    >
-                      {creating ? "⏳" : "📄"}{" "}
-                      {lang === "EN" ? "Create Invoice" : "Kreiraj račun"}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={handleCreatePDFAndShow}
-                      title={lang === "EN" ? "Create PDF and show" : "Kreiraj PDF i prikaži"}
-                    >
-                      📄 {lang === "EN" ? "PDF & Show" : "PDF & Prikaži"}
-                    </button>
-
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={handlePDFSaveAs}
-                      title={lang === "EN" ? "PDF Save as" : "PDF Sačuvaj kao"}
-                    >
-                      💾 {lang === "EN" ? "PDF Save as" : "PDF Sačuvaj"}
-                    </button>
-
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={handleSendEmail}
-                      title={lang === "EN" ? "Send by email" : "Pošalji mail-om"}
-                    >
-                      📧 {lang === "EN" ? "Send Email" : "Pošalji mail"}
-                    </button>
-
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={handleClose}
-                      style={{
-                        background: "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1))",
-                        borderColor: "rgba(59, 130, 246, 0.4)",
-                        fontWeight: 700,
-                      }}
-                      title={lang === "EN" ? "Close window" : "Zatvori prozor"}
-                    >
-                      ✕ {lang === "EN" ? "Close" : "Zatvori"}
-                    </button>
-                  </>
-                )}
-
-                {createError && (
-                  <div
-                    style={{
-                      color: "#ff3b30",
-                      fontSize: 13,
-                      marginLeft: 10,
-                      padding: "6px 12px",
-                      background: "rgba(255, 59, 48, 0.1)",
-                      borderRadius: 6,
-                    }}
-                  >
-                    ⚠️ {createError}
-                  </div>
-                )}
-
-                {created && createdInvoice && (
-                  <div
-                    style={{
-                      color: "#34c759",
-                      fontSize: 13,
-                      marginLeft: 10,
-                      padding: "6px 12px",
-                      background: "rgba(52, 199, 89, 0.1)",
-                      borderRadius: 6,
-                      fontWeight: 600,
-                    }}
-                  >
-                    ✅ Račun kreiran: {createdInvoice.broj_fakture}
-                  </div>
-                )}
-              </div>
+              <Link
+                href="/fakture"
+                className="btn"
+                style={{
+                  background: "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1))",
+                  borderColor: "rgba(59, 130, 246, 0.4)",
+                  fontWeight: 700,
+                }}
+                title="Nazad na listu faktura"
+              >
+                ← Nazad
+              </Link>
             </div>
 
             <div className="divider" />
@@ -814,9 +616,7 @@ export default function Page() {
                       <div className="k kStrong">
                         {lang === "EN" ? "Invoice No." : "Broj računa"}
                       </div>
-                      <div className="v">
-                        {invoiceNumber || invoiceNumberFromUrl || (createdInvoice?.broj_fakture) || "—"}
-                      </div>
+                      <div className="v">{invoiceNumber}</div>
                     </div>
                     <div className="line">
                       <div className="k">
@@ -831,8 +631,8 @@ export default function Page() {
                         {lang === "EN" ? "Due date" : "Datum dospijeća"}
                       </div>
                       <div className="v">
-                        {calculatedDueDate || createdInvoice?.datum_dospijeca || dueDateISO
-                          ? fmtDDMMYYYYFromISO(calculatedDueDate || createdInvoice?.datum_dospijeca || dueDateISO)
+                        {dueDateISO
+                          ? fmtDDMMYYYYFromISO(dueDateISO)
                           : "—"}
                       </div>
                     </div>
@@ -848,12 +648,6 @@ export default function Page() {
                       </div>
                       <div className="v">{fisk ? fisk : "—"}</div>
                     </div>
-                    <div className="line">
-                      <div className="k">
-                        {lang === "EN" ? "Payment reference" : "Poziv na broj"}
-                      </div>
-                      <div className="v">{pnb ? pnb : "—"}</div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -863,49 +657,46 @@ export default function Page() {
               <div className="cols2">
                 <div>
                   <div className="blockTitle">
-                    {lang === "EN" ? "Legal entity" : "PRAVNO LICE"}
+                    {lang === "EN" ? "Seller" : "Prodavac"}
                   </div>
                   <div className="addr">
                     <div className="name">{sellerName}</div>
-                    <div className="muted">{sellerAddr1}</div>
-                    {sellerCityLine ? (
-                      <div className="muted">{sellerCityLine}</div>
-                    ) : null}
-                    <div className="muted">{sellerCountry}</div>
-                    <div className="muted">PIB/PDV: {sellerTax}</div>
-
-                    {bankAccounts.length ? (
+                    {sellerAddr1 !== "—" && <div>{sellerAddr1}</div>}
+                    {sellerCityLine && <div>{sellerCityLine}</div>}
+                    {sellerCountry && <div>{sellerCountry}</div>}
+                    <div className="muted">
+                      {lang === "EN" ? "Tax ID:" : "PIB:"} {sellerTax}
+                    </div>
+                    {bankAccounts.length > 0 && (
                       <div className="bankList">
-                        <div className="muted" style={{ marginTop: 8 }}>
-                          Bankovni računi:
-                        </div>
-                        {bankAccounts.map((acc, i) => (
-                          <div
-                            key={String(acc?.bank_account_id ?? i)}
-                            className="bankLine"
-                          >
-                            • {fmtBankLine(acc)}
+                        {bankAccounts.map((acc) => (
+                          <div key={acc.bank_account_id} className="bankLine">
+                            {acc.bank_naziv && `${acc.bank_naziv} `}
+                            {acc.iban && `IBAN: ${acc.iban}`}
+                            {acc.swift && acc.swift.trim() !== "" && ` SWIFT: ${acc.swift}`}
                           </div>
                         ))}
                       </div>
-                    ) : null}
+                    )}
                   </div>
                 </div>
 
                 <div>
                   <div className="blockTitle">
-                    {lang === "EN"
-                      ? "Buyer / Ordering party"
-                      : "KLIJENT/NARUČILAC"}
+                    {lang === "EN" ? "Buyer" : "Kupac"}
                   </div>
                   <div className="addr">
                     <div className="name">{buyerName}</div>
-                    <div className="muted">{buyerAddr1}</div>
-                    {buyerCityLine ? (
-                      <div className="muted">{buyerCityLine}</div>
-                    ) : null}
-                    <div className="muted">{buyerCountry}</div>
-                    <div className="muted">PIB/PDV: {buyerTax}</div>
+                    {buyerAddr1 !== "—" && <div>{buyerAddr1}</div>}
+                    {buyerCityLine && <div>{buyerCityLine}</div>}
+                    {buyerCountry && buyerCountry !== "—" && (
+                      <div>{buyerCountry}</div>
+                    )}
+                    {buyerTax && buyerTax !== "—" && (
+                      <div className="muted">
+                        {lang === "EN" ? "Tax ID:" : "PIB:"} {buyerTax}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -914,49 +705,38 @@ export default function Page() {
                 <table>
                   <thead>
                     <tr>
-                      <th style={{ width: 44 }}>#</th>
                       <th>
-                        {lang === "EN"
-                          ? "Service / Project"
-                          : "USLUGA / PROJEKAT"}
+                        {lang === "EN" ? "Description" : "Opis"}
                       </th>
-                      <th className="num" style={{ width: 72 }}>
-                        {lang === "EN" ? "Qty" : "KOL."}
+                      <th className="num">
+                        {lang === "EN" ? "Qty" : "Kol."}
                       </th>
-                      <th className="num" style={{ width: 120 }}>
-                        {lang === "EN" ? "Unit price" : "JED. CIJENA"}
+                      <th className="num">
+                        {lang === "EN" ? "Unit Price" : "Cijena"}
                       </th>
-                      <th className="num" style={{ width: 120 }}>
-                        {lang === "EN" ? "Total" : "UKUPNO"}
+                      <th className="num">
+                        {lang === "EN" ? "Total" : "Ukupno"}
                       </th>
                     </tr>
                   </thead>
-
                   <tbody>
-                    {items.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} style={{ padding: 14, color: "#666" }}>
-                          {lang === "EN"
-                            ? "No selected projects."
-                            : "Nema izabranih projekata."}
+                    {items.map((it) => (
+                      <tr key={it.id}>
+                        <td>
+                          <div className="desc">{it.title}</div>
+                          {it.sub && (
+                            <div className="mutedSmall">{it.sub}</div>
+                          )}
+                        </td>
+                        <td className="num">{it.qty}</td>
+                        <td className="num">
+                          {fmtMoney(it.unit, ccy)}
+                        </td>
+                        <td className="num">
+                          {fmtMoney(it.total, ccy)}
                         </td>
                       </tr>
-                    ) : (
-                      items.map((it, idx) => (
-                        <tr key={it.id}>
-                          <td>{idx + 1}</td>
-                          <td>
-                            <div className="desc">{it.title}</div>
-                            {it.sub ? (
-                              <div className="mutedSmall">{it.sub}</div>
-                            ) : null}
-                          </td>
-                          <td className="num">{it.qty}</td>
-                          <td className="num">{fmtMoney(it.unit, ccy)}</td>
-                          <td className="num">{fmtMoney(it.total, ccy)}</td>
-                        </tr>
-                      ))
-                    )}
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -969,75 +749,38 @@ export default function Page() {
                     </div>
                     <div className="v">{fmtMoney(baseAmount, ccy)}</div>
                   </div>
-
-                  <div className="totLine">
-                    <div className="k">{lang === "EN" ? "VAT" : "PDV"}</div>
-                    <div className="v">
-                      {bh ? fmtMoney(vatAmount, ccy) : "—"}
-                    </div>
-                  </div>
-
+                  {vatRate > 0 && (
+                    <>
+                      <div className="totLine">
+                        <div className="k">
+                          {lang === "EN"
+                            ? `VAT (${(vatRate * 100).toFixed(0)}%)`
+                            : `PDV (${(vatRate * 100).toFixed(0)}%)`}
+                        </div>
+                        <div className="v">{fmtMoney(vatAmount, ccy)}</div>
+                      </div>
+                    </>
+                  )}
                   <div className="totLine total">
                     <div className="k">
-                      {lang === "EN" ? "Total due" : "Ukupno za plaćanje"}
+                      {lang === "EN" ? "Total" : "Ukupno"}
                     </div>
                     <div className="v">{fmtMoney(totalAmount, ccy)}</div>
-                  </div>
-
-                  {/* ✅ Proj completion ovdje, da se “rupa” iznad obračuna zatvori */}
-                  <div className="completedLine">
-                    {lang === "EN"
-                      ? `Project completed: ${lastClosed ? fmtDDMMYYYYFromISO(lastClosed) : "—"}`
-                      : `Projekat je završen ${lastClosed ? fmtDDMMYYYYFromISO(lastClosed) : "—"}`}
-                  </div>
-
-                  {!bh ? (
-                    <div
-                      style={{
-                        marginTop: 10,
-                        fontSize: 11,
-                        color: "#555",
-                        lineHeight: 1.35,
-                      }}
-                    >
-                      VAT exemption: In accordance with the VAT Law, this
-                      service is exempt from VAT pursuant to Article 27,
-                      paragraph 1.
-                    </div>
-                  ) : null}
-
-                  <div
-                    style={{
-                      marginTop: 10,
-                      fontSize: 11,
-                      color: "#555",
-                      lineHeight: 1.35,
-                    }}
-                  >
-                    {lang === "EN"
-                      ? "This invoice was generated electronically and is valid without signature and stamp."
-                      : "Račun je generisan elektronskim putem i važeći je bez pečata i potpisa."}
                   </div>
                 </div>
               </div>
 
               <div className="footer">
-                <div className="fluxaSig">
-                  <img src="/fluxa/Icon.png" alt="FLUXA" />
-                  <span>Made by FLUXA Project &amp; Finance Engine</span>
+                <div>
+                  {lang === "EN"
+                    ? "Thank you for your business!"
+                    : "Hvala na saradnji!"}
                 </div>
-
-                <div style={{ color: "#777" }}>
-                  {lang === "EN" ? "Preview only" : "Samo preview"} ·{" "}
-                  {lang === "EN" ? "not yet finalized" : "nije finalizovano"}
+                <div className="fluxaSig">
+                  <img src="/fluxa/logo-icon.png" alt="FLUXA" />
+                  <span>FLUXA</span>
                 </div>
               </div>
-
-              {!data?.ok ? (
-                <div style={{ marginTop: 12, fontSize: 11, color: "#b00" }}>
-                  {data?.error ? `API error: ${data.error}` : "API not ready"}
-                </div>
-              ) : null}
             </div>
           </div>
         </div>
