@@ -11,7 +11,7 @@ export type RadnikRow = {
   adresa: string | null;
   broj_telefona: string | null;
   email: string | null;
-  datum_rodjenja: string | null;
+  datum_rodjenja: string | Date | null;
   jib: string | null;
   aktivan: number;
   opis: string | null;

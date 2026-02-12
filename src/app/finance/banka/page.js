@@ -180,61 +180,42 @@ export default async function BankaPage({ searchParams }) {
 
   return (
     <div className="container">
-      <div className="topbar glass">
-        <div className="topbar-left">
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              flexWrap: "wrap",
-            }}
-          >
-            <h1 className="h1" style={{ margin: 0 }}>
-              Banka
-            </h1>
-
-            {/* ✅ 2.23: projekat badge */}
-            {hasProject
-              ? <span
-                  title="Aktivan filter: projekat_id"
-                  className="badge badge-green"
-                >
-                  PROJEKAT #{projekatId}
-                </span>
-              : null}
-
-            {alloc ? <span className="badge">{alloc}</span> : null}
-            {q ? <span className="badge">q</span> : null}
-          </div>
-
-          <div className="subtle">
-            Canonical ledger (read-only). Filteri su UX.
+      <div className="pageWrap">
+        <div className="topBlock">
+          <div className="topInner">
+            <div className="topRow">
+              <div className="brandWrap">
+                <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <span className="brandTitle">Banka</span>
+                    {hasProject && (
+                      <span className="badge badge-green" title="Aktivan filter">
+                        PROJEKAT #{projekatId}
+                      </span>
+                    )}
+                    {alloc && <span className="badge">{alloc}</span>}
+                    {q && <span className="badge">q</span>}
+                  </div>
+                  <div className="brandSub">Canonical ledger (read-only). Filteri su UX.</div>
+                </div>
+              </div>
+              <div className="actions">
+                {hasProject && (
+                  <Link className="btn" href={resetProjectHref} title="Ukloni projekat filter">
+                    Reset projekat
+                  </Link>
+                )}
+                <Link className="btn" href="/finance">Finansije</Link>
+                <Link className="btn" href="/dashboard" title="Dashboard">🏠 Dashboard</Link>
+              </div>
+            </div>
+            <div className="divider" />
           </div>
         </div>
 
-        <div
-          className="topbar-right"
-          style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
-        >
-          {/* ✅ 2.23: quick reset samo projekat */}
-          {hasProject
-            ? <Link
-                className="btn"
-                href={resetProjectHref}
-                title="Ukloni projekat filter (ostavi ostale filtere)"
-              >
-                Reset projekat
-              </Link>
-            : null}
-
-          <Link className="btn" href="/finance">
-            Finansije
-          </Link>
-        </div>
-      </div>
-
-      <div className="card">
+        <div className="bodyWrap">
+      <div className="card tableCard" style={{ marginBottom: 14 }}>
         <form
           className="card-row"
           method="GET"
@@ -304,7 +285,7 @@ export default async function BankaPage({ searchParams }) {
           </div>
 
           <div style={{ alignSelf: "flex-end", display: "flex", gap: 8 }}>
-            <button className="btn btn-primary" type="submit">
+            <button className="btn btn--active" type="submit">
               Primijeni
             </button>
             <Link className="btn" href="/finance/banka">
@@ -314,9 +295,10 @@ export default async function BankaPage({ searchParams }) {
         </form>
       </div>
 
-      <div className="card">
-        <div className="subtle">Prikazano: {rows.length} (limit 200)</div>
-
+      <div className="card tableCard">
+        <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
+          <span className="muted">Prikazano: {rows.length} (limit 200)</span>
+        </div>
         <div className="table-wrap">
           <table className="table">
             <thead>
@@ -378,6 +360,8 @@ export default async function BankaPage({ searchParams }) {
                   </tr>}
             </tbody>
           </table>
+        </div>
+      </div>
         </div>
       </div>
     </div>

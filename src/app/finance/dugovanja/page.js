@@ -129,8 +129,8 @@ export default async function DugovanjaListPage({ searchParams }) {
         </div>
 
         <div className="bodyWrap">
-      <div className="card">
-        <form className="filters" method="GET" style={{ flexWrap: "wrap" }}>
+      <div className="card tableCard" style={{ marginBottom: 14 }}>
+        <form className="filters" method="GET" style={{ flexWrap: "wrap", padding: 16 }}>
           <div className="field">
             <span className="label">Pretraga</span>
             <input
@@ -162,15 +162,12 @@ export default async function DugovanjaListPage({ searchParams }) {
         </form>
       </div>
 
-      <div className="card">
-        <div className="cardHead">
-          <div className="cardTitleRow">
-            <div className="cardTitle">Lista dugovanja</div>
-            <span className="muted">Prikazano: {list.length} (limit 200)</span>
-          </div>
+      <div className="card tableCard">
+        <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <span style={{ fontWeight: 700, fontSize: 15 }}>Lista dugovanja</span>
+          <span className="muted">Prikazano: {list.length} (limit 200)</span>
         </div>
-
-        <div className="tableCard">
+        <div>
           <table>
             <thead>
               <tr>
@@ -207,7 +204,7 @@ export default async function DugovanjaListPage({ searchParams }) {
                         <td>
                           <Link
                             href={`/finance/dugovanja/${id}`}
-                            className="projectLink"
+                            className="link"
                           >
                             {id}
                           </Link>

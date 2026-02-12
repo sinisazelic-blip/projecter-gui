@@ -149,7 +149,7 @@ function getReadOnlyStatusLabel(project) {
   return statusLabelFallbackById(project?.status_id);
 }
 
-export default function ProjectHeader({ project }) {
+export default function ProjectHeader({ project, hideTitle }) {
   const dateOnly = parseToDateOnly(project?.rok_glavni);
   const rokText = fmtDDMMYYYY(dateOnly);
   const daysDiff = computeDaysDiff(dateOnly);
@@ -181,9 +181,11 @@ export default function ProjectHeader({ project }) {
       }}
     >
       <div>
-        <h1 style={{ fontSize: 22, marginBottom: 6 }}>
-          #{project.projekat_id} — {project.radni_naziv}
-        </h1>
+        {!hideTitle && (
+          <h1 style={{ fontSize: 22, marginBottom: 6 }}>
+            #{project.projekat_id} — {project.radni_naziv}
+          </h1>
+        )}
 
         <div
           style={{

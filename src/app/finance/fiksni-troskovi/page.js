@@ -87,8 +87,8 @@ export default async function FiksniTroskoviPage({ searchParams }) {
         </div>
 
         <div className="bodyWrap">
-      <div className="card">
-        <form className="card-row" method="GET" style={{ gap: 12 }}>
+      <div className="card tableCard" style={{ marginBottom: 14 }}>
+        <form className="card-row" method="GET" style={{ gap: 12, padding: 16 }}>
           <div style={{ minWidth: 260 }}>
             <div className="label">Pretraga</div>
             <input
@@ -99,7 +99,7 @@ export default async function FiksniTroskoviPage({ searchParams }) {
             />
           </div>
           <div style={{ alignSelf: "flex-end", display: "flex", gap: 8 }}>
-            <button className="btn btn-primary" type="submit">
+            <button className="btn btn--active" type="submit">
               Primijeni
             </button>
             <Link className="btn" href="/finance/fiksni-troskovi">
@@ -109,15 +109,12 @@ export default async function FiksniTroskoviPage({ searchParams }) {
         </form>
       </div>
 
-      <div className="card">
-        <div className="cardHead">
-          <div className="cardTitleRow">
-            <div className="cardTitle">Šifrarnik fiksnih troškova</div>
-            <span className="muted">Prikazano: {rows?.length ?? 0} (limit 200)</span>
-          </div>
+      <div className="card tableCard">
+        <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <span style={{ fontWeight: 700, fontSize: 15 }}>Šifrarnik fiksnih troškova</span>
+          <span className="muted">Prikazano: {rows?.length ?? 0} (limit 200)</span>
         </div>
-
-        <div className="tableCard">
+        <div>
           <table>
             <thead>
               <tr>
@@ -169,11 +166,9 @@ export default async function FiksniTroskoviPage({ searchParams }) {
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: 14 }}>
-        <div className="cardTitle" style={{ marginTop: 0 }}>
-          Napomena
-        </div>
-        <div className="cardSub" style={{ lineHeight: 1.6 }}>
+      <div className="card" style={{ marginTop: 14, padding: 18, border: "1px solid var(--border)", borderRadius: 16 }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>Napomena</div>
+        <div className="subtle" style={{ lineHeight: 1.6, fontSize: 13 }}>
           Read-only prikaz. Raspored dospijeća je na{" "}
           <Link href="/finance/fiksni-troskovi/raspored" className="btn" style={{ display: "inline-flex" }}>
             Raspored

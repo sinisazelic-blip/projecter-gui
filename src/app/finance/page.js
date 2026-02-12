@@ -4,23 +4,32 @@ export const dynamic = "force-dynamic";
 
 function CardLink({ title, desc, href, href2, href2Label }) {
   return (
-    <div className="card" style={{ margin: 0 }}>
-      <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 6 }}>
+    <div
+      className="card"
+      style={{
+        margin: 0,
+        border: "1px solid var(--border)",
+        borderRadius: 16,
+        background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
+        boxShadow: "var(--shadow)",
+        padding: 18,
+      }}
+    >
+      <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 8, letterSpacing: "-0.01em" }}>
         {title}
       </div>
-      <div className="subtle" style={{ lineHeight: 1.6, marginBottom: 12 }}>
+      <div className="subtle" style={{ lineHeight: 1.6, marginBottom: 14, fontSize: 13 }}>
         {desc}
       </div>
-
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <Link className="btn btn-primary" href={href}>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Link className="btn btn--active" href={href} style={{ padding: "10px 16px" }}>
           Otvori
         </Link>
-        {href2
-          ? <Link className="btn" href={href2}>
-              {href2Label ?? "Drugo"}
-            </Link>
-          : null}
+        {href2 ? (
+          <Link className="btn" href={href2} style={{ padding: "10px 16px" }}>
+            {href2Label ?? "Drugo"}
+          </Link>
+        ) : null}
       </div>
     </div>
   );
@@ -57,12 +66,11 @@ export default async function FinanceHomePage() {
         </div>
 
         <div className="bodyWrap">
-      {/* QUICK GRID */}
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: 12,
+          gap: 16,
         }}
       >
         <CardLink
@@ -128,12 +136,19 @@ export default async function FinanceHomePage() {
         />
       </div>
 
-      {/* NOTE */}
-      <div className="card" style={{ marginTop: 12 }}>
-        <div className="cardTitle" style={{ marginTop: 0 }}>
-          Napomena
-        </div>
-        <div className="cardSub" style={{ lineHeight: 1.7 }}>
+      <div
+        className="card"
+        style={{
+          marginTop: 20,
+          gridColumn: "1 / -1",
+          border: "1px solid var(--border)",
+          borderRadius: 16,
+          background: "rgba(255,255,255,0.03)",
+          padding: 18,
+        }}
+      >
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Napomena</div>
+        <div className="subtle" style={{ lineHeight: 1.7, fontSize: 13 }}>
           Ovo je read-only skeleton faza. Linkovanje i pravila dolaze kasnije,
           ali navigacija i prikazi moraju biti stabilni i jasni.
         </div>

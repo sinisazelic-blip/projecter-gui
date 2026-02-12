@@ -650,8 +650,9 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          gap: 12px;
-          margin-bottom: 10px;
+          gap: 20px;
+          margin-bottom: 16px;
+          padding: 8px 0;
         }
         .glassbtn {
           border: 1px solid rgba(255,255,255,.18);
@@ -709,24 +710,21 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
         }
-        .brandLogo {
-          height: 28px;
+        .projekatBrandLogo {
+          height: 32px;
           width: auto;
           display: block;
-          opacity: .95;
+          opacity: .92;
         }
-        .brandTitle {
-          font-size: 12px;
+        .projekatBrandTitle {
+          font-size: 22px;
           font-weight: 800;
-          letter-spacing: .6px;
           line-height: 1.05;
         }
-        .brandSub {
-          font-size: 11px;
-          opacity: .72;
-          line-height: 1.05;
-          margin-top: 2px;
-          white-space: nowrap;
+        .projekatBrandSub {
+          font-size: 12px;
+          opacity: .75;
+          margin-top: 4px;
         }
 
         .payBtn {
@@ -799,203 +797,187 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
       {/* ✅ Topbar uvijek vidljiv; scroll je isključivo u donjem sadržaju */}
       <div style={{ flex: "0 0 auto", position: "sticky", top: 0, zIndex: 20 }}>
         <div className="container">
+          {/* Row 1: Topblock - lijevo logo+naziv, desno Povratak na PP | Dashboard */}
           <div className="topbar">
-            <div className="backCluster">
-              <Link
-                href="/projects"
-                aria-label="Povratak na sve projekte"
-                title="Povratak na sve projekte"
-                className="glassbtn backIcon"
-              >
-                <span style={{ fontSize: 20, lineHeight: 1 }}>📁</span>
-              </Link>
-
-              <div className="backText">
-                <div className="mutedLine">Povratak</div>
-                <div className="strongLine">na sve projekte</div>
-              </div>
-            </div>
-
-            {/* ✅ FLUXA BRAND */}
             <div className="brandWrap" title="FLUXA — Project & Finance Engine">
-              <img
-                src="/fluxa/logo-light.png"
-                alt="FLUXA"
-                className="brandLogo"
-              />
+              <img src="/fluxa/logo-light.png" alt="FLUXA" className="projekatBrandLogo" />
               <div>
-                <div className="brandTitle">Projekat</div>
-                <div className="brandSub">Project & Finance Engine</div>
+                <div className="projekatBrandTitle">Projekti</div>
+                <div className="projekatBrandSub">Project & Finance Engine</div>
               </div>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                flexWrap: "wrap",
-                justifyContent: "flex-end",
-              }}
-            >
-              {/* ✅ Dashboard dugme */}
-              <Link
-                href="/dashboard"
-                className="btn"
-                style={{ minWidth: 90 }}
-                title="Povratak na Dashboard"
-              >
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Link href="/projects" className="btn" title="Povratak na Pregled Projekata">
+                Povratak na PP
+              </Link>
+              <Link href="/dashboard" className="btn" title="Dashboard">
                 🏠 Dashboard
               </Link>
-
-              {/* ✅ Status (informativno) */}
-              <span className="statusBadge" title={`Status ID: ${statusIdNum}`}>
-                {statusName}
-              </span>
-
-              {/* ✅ Operativni signal (vidljiv timu) */}
-              <span
-                className="signalBadge"
-                title={sig.title}
-                style={{ background: sig.bg, borderColor: sig.border }}
-              >
-                <span className="signalDot" style={{ background: sig.dot }} />
-                {sig.label}
-              </span>
-
-              {/* ✅ FINAL OK (produkcija završena; ne zaključava) */}
-              <FinalOkButtonClient
-                projekatId={project.projekat_id}
-                disabled={isReadOnly}
-              />
-
-              {/* ✅ OWNER KONTROLA SIGNALA */}
-              <form
-                action={setOperativniSignal}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  flexWrap: "wrap",
-                  opacity: isReadOnly ? 0.55 : 1,
-                  pointerEvents: isReadOnly ? "none" : "auto",
-                }}
-                title={
-                  isReadOnly
-                    ? "Projekat je fakturisan (read-only)."
-                    : "Owner: operativni signal"
-                }
-              >
-                <input
-                  type="hidden"
-                  name="projekat_id"
-                  value={project.projekat_id}
-                />
-                <input type="hidden" name="return_to" value={returnTo} />
-
-                <select
-                  name="operativni_signal"
-                  defaultValue={String(
-                    project?.operativni_signal ?? "NORMALNO",
-                  )}
-                  className="sigSelect"
-                >
-                  <option value="NORMALNO">NORMALNO</option>
-                  <option value="PAZNJA">PAŽNJA</option>
-                  <option value="STOP">STOP</option>
-                </select>
-
-                <input
-                  name="note"
-                  placeholder="bilješka (opciono)…"
-                  className="sigNote"
-                  maxLength={500}
-                  title="Bilješka (ide u log)"
-                />
-
-                <button
-                  type="submit"
-                  className="glassbtn payBtn"
-                  title="Snimi signal (upiši u log)"
-                >
-                  <span style={{ fontSize: 16, lineHeight: 1 }}>✅</span>
-                  Snimi
-                </button>
-              </form>
-
-              {/* ✅ OWNER: PROCENAT BUDŽETA ZA TIM */}
-              <form
-                action={setBudzetProcenatZaTim}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  flexWrap: "wrap",
-                  opacity: isReadOnly ? 0.55 : 1,
-                  pointerEvents: isReadOnly ? "none" : "auto",
-                }}
-                title={
-                  isReadOnly
-                    ? "Projekat je fakturisan (read-only)."
-                    : "Owner: procenat budžeta vidljiv radnicima (default 50%)"
-                }
-              >
-                <input
-                  type="hidden"
-                  name="projekat_id"
-                  value={project.projekat_id}
-                />
-                <input type="hidden" name="return_to" value={returnTo} />
-
-                <label
-                  style={{
-                    fontSize: 12,
-                    opacity: 0.85,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Budžet za tim (%):
-                </label>
-                <input
-                  type="number"
-                  name="budzet_procenat_za_tim"
-                  defaultValue={String(
-                    project?.budzet_procenat_za_tim ?? 50.00,
-                  )}
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  style={{
-                    width: 70,
-                    padding: "6px 8px",
-                    borderRadius: 6,
-                    border: "1px solid rgba(255,255,255,.2)",
-                    background: "rgba(255,255,255,.05)",
-                    color: "inherit",
-                    fontSize: 13,
-                  }}
-                  placeholder="50"
-                  title="Procenat budžeta vidljiv radnicima (0-100, default 50%)"
-                />
-
-                <button
-                  type="submit"
-                  className="glassbtn payBtn"
-                  title="Snimi procenat budžeta"
-                >
-                  <span style={{ fontSize: 16, lineHeight: 1 }}>💾</span>
-                  Snimi %
-                </button>
-              </form>
-
             </div>
           </div>
 
-          {/* ✅ NEW: Timeline ispod naslova/topbar-a */}
-          <FluxaTimeline
-            phase={phaseFromProjectStatusId(project?.status_id)}
-            title="Faza"
-          />
+          {/* Row 2: Owner - semafor + budžet %, desno profit signal (ostatak + zarada = zbir) */}
+          <div
+            className="ownerRow"
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 14,
+              marginBottom: 14,
+              padding: "10px 0",
+            }}
+          >
+            {/* Semafor + komentar + Snimi */}
+            <form
+              action={setOperativniSignal}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+                opacity: isReadOnly ? 0.55 : 1,
+                pointerEvents: isReadOnly ? "none" : "auto",
+              }}
+              title={isReadOnly ? "Projekat je fakturisan (read-only)." : "Owner: operativni signal"}
+            >
+              <input type="hidden" name="projekat_id" value={project.projekat_id} />
+              <input type="hidden" name="return_to" value={returnTo} />
+              <select
+                name="operativni_signal"
+                defaultValue={String(project?.operativni_signal ?? "NORMALNO")}
+                className="sigSelect"
+              >
+                <option value="NORMALNO">NORMALNO</option>
+                <option value="PAZNJA">PAŽNJA</option>
+                <option value="STOP">STOP</option>
+              </select>
+              <input
+                name="note"
+                placeholder="bilješka (opciono)…"
+                className="sigNote"
+                maxLength={500}
+                title="Bilješka (ide u log)"
+              />
+              <button type="submit" className="glassbtn payBtn" title="Snimi signal">
+                <span style={{ fontSize: 16, lineHeight: 1 }}>✅</span> Snimi
+              </button>
+            </form>
+
+            {/* Budžet % za tim + Snimi */}
+            <form
+              action={setBudzetProcenatZaTim}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+                opacity: isReadOnly ? 0.55 : 1,
+                pointerEvents: isReadOnly ? "none" : "auto",
+              }}
+              title={isReadOnly ? "Projekat je fakturisan (read-only)." : "Owner: procenat budžeta vidljiv radnicima"}
+            >
+              <input type="hidden" name="projekat_id" value={project.projekat_id} />
+              <input type="hidden" name="return_to" value={returnTo} />
+              <label style={{ fontSize: 12, opacity: 0.85, whiteSpace: "nowrap" }}>Budžet za tim (%):</label>
+              <input
+                type="number"
+                name="budzet_procenat_za_tim"
+                defaultValue={String(project?.budzet_procenat_za_tim ?? 50.00)}
+                min="0"
+                max="100"
+                step="0.01"
+                style={{
+                  width: 70,
+                  padding: "6px 8px",
+                  borderRadius: 6,
+                  border: "1px solid rgba(255,255,255,.2)",
+                  background: "rgba(255,255,255,.05)",
+                  color: "inherit",
+                  fontSize: 13,
+                }}
+              />
+              <button type="submit" className="glassbtn payBtn" title="Snimi procenat">
+                <span style={{ fontSize: 16, lineHeight: 1 }}>💾</span> Snimi %
+              </button>
+            </form>
+
+            {/* Profit signal - desno: ostatak + zarada_razlike = zbir (bez teksta) */}
+            <div
+              style={{
+                marginLeft: "auto",
+                fontSize: 13,
+                opacity: 0.85,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontVariantNumeric: "tabular-nums",
+              }}
+              title="Ostatak (studio profit od %) + zarada od razlike (budžet dozvoljen − troškovi) = zbir"
+            >
+              {(() => {
+                const budzet = Number(project?.budzet_planirani) || 0;
+                const troskovi = Number(project?.troskovi_ukupno) || 0;
+                const procenat = Number(project?.budzet_procenat_za_tim) ?? 50;
+                const budzetZaTim = budzet * (procenat / 100);
+                const ostatak = budzet * ((100 - procenat) / 100);
+                const zaradaRazlike = budzetZaTim - troskovi;
+                const zbir = ostatak + zaradaRazlike;
+                const fmt = (n) => (Number.isFinite(n) ? n.toLocaleString("bs-BA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—");
+                return (
+                  <>
+                    <span>{fmt(ostatak)}</span>
+                    <span style={{ opacity: 0.7 }}>+</span>
+                    <span style={{ color: zaradaRazlike >= 0 ? "var(--good)" : "var(--bad)" }}>
+                      {zaradaRazlike >= 0 ? "" : "−"} {fmt(Math.abs(zaradaRazlike))}
+                    </span>
+                    <span style={{ opacity: 0.7 }}>=</span>
+                    <span style={{ fontWeight: 700, color: zbir >= 0 ? "var(--good)" : "var(--bad)" }}>
+                      {fmt(zbir)} KM
+                    </span>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* Row 3: Faze, Final OK - desno */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              gap: 10,
+              flexWrap: "wrap",
+              marginBottom: 12,
+              padding: "6px 0",
+            }}
+          >
+            <Link
+              href={`/projects/${projekatId}/faze`}
+              className="btn"
+              title="Faze projekta, radnici, deadline, %"
+            >
+              📋 Faze
+            </Link>
+            <FinalOkButtonClient projekatId={project.projekat_id} disabled={isReadOnly} />
+          </div>
+
+          {/* Row 4: Timeline Status projekta */}
+          <div style={{ marginTop: 4 }}>
+            <FluxaTimeline
+              phase={phaseFromProjectStatusId(project?.status_id)}
+              title="Status projekta"
+            />
+          </div>
+
+          {/* Naziv projekta - uvijek vidljiv, scroll počinje ispod (~15mm) */}
+          <div style={{ marginTop: 16, marginBottom: 20, paddingBottom: 8 }}>
+            <h1 style={{ fontSize: 22, margin: 0, fontWeight: 800 }}>
+              #{project.projekat_id} — {project.radni_naziv}
+            </h1>
+          </div>
         </div>
       </div>
 
@@ -1021,7 +1003,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
             </div>
           )}
 
-          <ProjectHeader project={project} />
+          <ProjectHeader project={project} hideTitle />
           <ProjectSummaryCard project={project} />
 
           {!!project?.napomena && (

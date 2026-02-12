@@ -1563,6 +1563,22 @@ export default function PonudaDetaljPage() {
                   Stavke – određivanje budžeta
                 </div>
 
+                {!dealReadOnly && (
+                  <Link
+                    href={`/studio/strategic-core?inicijacija_id=${id}`}
+                    className="btn"
+                    style={{
+                      padding: "8px 14px",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
+                    }}
+                    title="Brzo određivanje budžeta putem StrategicCore"
+                  >
+                    🎛️ SC
+                  </Link>
+                )}
+
                 <div
                   className="sumPill"
                   title="Budžet (KM/BAM) = BAM + (EUR→BAM)"

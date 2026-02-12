@@ -723,7 +723,7 @@ export default async function BankPostingDetailPage({ params, searchParams }) {
                     <div
                       style={{ alignSelf: "flex-end", display: "flex", gap: 8 }}
                     >
-                      <button className="btn btn-primary" type="submit">
+                      <button className="btn btn--active" type="submit">
                         Kreiraj prihod
                       </button>
                     </div>
@@ -796,7 +796,7 @@ export default async function BankPostingDetailPage({ params, searchParams }) {
                     <div
                       style={{ alignSelf: "flex-end", display: "flex", gap: 8 }}
                     >
-                      <button className="btn btn-primary" type="submit">
+                      <button className="btn btn--active" type="submit">
                         Kreiraj plaćanje
                       </button>
                     </div>
@@ -844,7 +844,7 @@ export default async function BankPostingDetailPage({ params, searchParams }) {
           Quick navigacija
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Link className="btn btn-primary" href={bankFilterHref}>
+          <Link className="btn btn--active" href={bankFilterHref}>
             Nazad (filter)
           </Link>
           <Link className="btn" href="/finance/banka">

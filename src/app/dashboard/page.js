@@ -296,8 +296,15 @@ export default function Page() {
                 </div>
               </div>
 
-              {/* ✅ TOPBAR: samo Blagajna */}
+              {/* ✅ TOPBAR: Blagajna + Mobile */}
               <div className="actions">
+                <Link
+                  href="/mobile"
+                  className="btn"
+                  title="Pojednostavljena mobilna verzija (StrategicCore)"
+                >
+                  📱 Mobile
+                </Link>
                 <Link
                   href="/cash"
                   className="btn"
@@ -346,7 +353,7 @@ export default function Page() {
               <Link
                 href="/studio/strategic-core"
                 className="btn deskSCBtn"
-                title="Strategic Core (u izradi)"
+                title="Strategic Core – brzi budžet u pregovorima"
               >
                 SC Strategic Core
               </Link>
@@ -397,7 +404,7 @@ export default function Page() {
                   </div>
                   <div className="finansijeRow">
                     <ActionBtn label="Periodični" href={null} className="btn--disabled" />
-                    <ActionBtn label="Grafički" href={null} className="btn--disabled" />
+                    <ActionBtn label="Grafički" href="/izvjestaji/graficki" title="Promet, troškovi i zarada po godinama i mjesecima" />
                     <ActionBtn label="All" href={null} className="btn--disabled" />
                   </div>
                 </div>

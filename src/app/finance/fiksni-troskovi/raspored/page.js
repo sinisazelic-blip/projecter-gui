@@ -215,7 +215,7 @@ export default async function FiksniRasporedPage({ searchParams }) {
           </label>
 
           <div style={{ alignSelf: "flex-end", display: "flex", gap: 8 }}>
-            <button className="btn btn-primary" type="submit">
+            <button className="btn btn--active" type="submit">
               Primijeni
             </button>
             <Link className="btn" href="/finance/fiksni-troskovi/raspored">

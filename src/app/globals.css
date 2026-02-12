@@ -563,3 +563,154 @@ option {
   background: rgba(8, 10, 16, 0.85);
   backdrop-filter: blur(8px);
 }
+
+/* =========================
+   Grafički izvještaj
+   ========================= */
+.reportBody {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.reportLoading,
+.reportError {
+  padding: 40px;
+  text-align: center;
+  color: var(--muted);
+}
+.reportError {
+  color: var(--bad, #ef4444);
+}
+.reportSection {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 18px;
+}
+.reportSectionTitle {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 14px 0;
+  opacity: 0.9;
+}
+.reportTableWrap {
+  overflow-x: auto;
+}
+.reportTableTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  opacity: 0.85;
+}
+.reportTable {
+  font-size: 12px;
+  border-collapse: collapse;
+}
+.reportTable th,
+.reportTable td {
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+}
+.reportTable th {
+  background: rgba(255, 255, 255, 0.06);
+  font-weight: 600;
+}
+.reportTable .num {
+  text-align: right;
+}
+.reportTable .bold {
+  font-weight: 700;
+}
+.reportTable .trendIcon {
+  margin-left: 4px;
+  font-size: 11px;
+  opacity: 0.8;
+}
+.reportTable .trendIcon.trendUp {
+  color: #4ade80;
+}
+.reportTable .trendIcon.trendDown {
+  color: #f87171;
+}
+.reportTable .mjesecCount {
+  margin-left: 4px;
+  font-size: 10px;
+  opacity: 0.6;
+}
+.reportTable .footerRow td {
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 600;
+}
+.reportCharts {
+  padding: 20px;
+}
+.reportCharts .chartGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 20px;
+}
+.reportCharts .chartCard {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  min-height: 320px;
+}
+.reportCharts .chartTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.reportNote {
+  font-size: 11px;
+  opacity: 0.6;
+  margin-top: 8px;
+}
+
+/* Faze projekta */
+.fazeForm {
+  padding: 18px;
+}
+.fazeFormTitle {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.fazeFormGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.fazeFormGrid .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.checkboxGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.checkboxLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.fazeTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.fazeTable th,
+.fazeTable td {
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  text-align: left;
+}
+.fazeTable th {
+  background: rgba(255,255,255,0.06);
+  font-weight: 600;
+}

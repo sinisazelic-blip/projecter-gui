@@ -26,6 +26,19 @@ async function hasColumn(table: string, column: string): Promise<boolean> {
   return (cols ?? []).length > 0;
 }
 
+/** Vraća stvarno ime kolone za nivo (nivo_ovlascenja ili nivo_ovlastenja) */
+async function getNivoColumnName(): Promise<string | null> {
+  const cols: any[] = await query(
+    `SELECT COLUMN_NAME
+       FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'roles'
+        AND COLUMN_NAME IN ('nivo_ovlascenja', 'nivo_ovlastenja')`,
+  );
+  const name = (cols ?? [])[0]?.COLUMN_NAME;
+  return name ? String(name) : null;
+}
+
 export async function createRole(input: {
   naziv: string;
   nivo_ovlastenja?: number | string;
@@ -34,14 +47,14 @@ export async function createRole(input: {
   const naziv = String(input?.naziv ?? "").trim();
   if (!naziv) throw new Error("Naziv je obavezan.");
 
-  const nivo_ovlastenja = cleanInt(input?.nivo_ovlastenja);
+  const nivo = cleanInt(input?.nivo_ovlastenja);
   const opis = cleanStr(input?.opis);
-  const hasNivo = await hasColumn("roles", "nivo_ovlastenja");
+  const nivoCol = await getNivoColumnName();
 
-  if (hasNivo) {
+  if (nivoCol) {
     await query(
-      `INSERT INTO roles (naziv, nivo_ovlastenja, opis) VALUES (?,?,?)`,
-      [naziv, nivo_ovlastenja, opis],
+      `INSERT INTO roles (naziv, ${nivoCol}, opis) VALUES (?,?,?)`,
+      [naziv, nivo, opis],
     );
   } else {
     await query(
@@ -66,14 +79,14 @@ export async function updateRole(input: {
   const naziv = String(input?.naziv ?? "").trim();
   if (!naziv) throw new Error("Naziv je obavezan.");
 
-  const nivo_ovlastenja = cleanInt(input?.nivo_ovlastenja);
+  const nivo = cleanInt(input?.nivo_ovlastenja);
   const opis = cleanStr(input?.opis);
-  const hasNivo = await hasColumn("roles", "nivo_ovlastenja");
+  const nivoCol = await getNivoColumnName();
 
-  if (hasNivo) {
+  if (nivoCol) {
     await query(
-      `UPDATE roles SET naziv=?, nivo_ovlastenja=?, opis=? WHERE role_id=?`,
-      [naziv, nivo_ovlastenja, opis, id],
+      `UPDATE roles SET naziv=?, ${nivoCol}=?, opis=? WHERE role_id=?`,
+      [naziv, nivo, opis, id],
     );
   } else {
     await query(

@@ -19,12 +19,16 @@ export default async function RolesPage() {
        FROM INFORMATION_SCHEMA.COLUMNS
       WHERE TABLE_SCHEMA = DATABASE()
         AND TABLE_NAME = 'roles'
-        AND COLUMN_NAME IN ('nivo_ovlastenja', 'updated_at')`,
+        AND COLUMN_NAME IN ('nivo_ovlastenja', 'nivo_ovlascenja', 'updated_at')`,
   )) as any[];
 
-  const hasNivoOvlastenja = (cols ?? []).some(
-    (r) => String(r.COLUMN_NAME).toLowerCase() === "nivo_ovlastenja",
+  const nivoCol = (cols ?? []).find(
+    (r) =>
+      String(r.COLUMN_NAME).toLowerCase() === "nivo_ovlastenja" ||
+      String(r.COLUMN_NAME).toLowerCase() === "nivo_ovlascenja",
   );
+  const nivoColName = nivoCol ? String(nivoCol.COLUMN_NAME) : null;
+  const hasNivoOvlastenja = !!nivoColName;
   const hasUpdatedAt = (cols ?? []).some(
     (r) => String(r.COLUMN_NAME).toLowerCase() === "updated_at",
   );
@@ -32,13 +36,13 @@ export default async function RolesPage() {
   const selectCols = [
     "role_id",
     "naziv",
-    hasNivoOvlastenja ? "nivo_ovlastenja" : "0 AS nivo_ovlastenja",
+    hasNivoOvlastenja ? `${nivoColName} AS nivo_ovlastenja` : "0 AS nivo_ovlastenja",
     "opis",
     "created_at",
     hasUpdatedAt ? "updated_at" : "NULL AS updated_at",
   ].join(", ");
-  const orderBy = hasNivoOvlastenja
-    ? "nivo_ovlastenja DESC, naziv ASC"
+  const orderBy = hasNivoOvlastenja && nivoColName
+    ? `${nivoColName} DESC, naziv ASC`
     : "naziv ASC";
 
   const rows = await query(

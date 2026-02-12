@@ -158,9 +158,9 @@ export default async function KreditiPage({ searchParams }) {
 
           {!tableMissing && (
             <>
-              <div className="card">
-                <div className="cardHead">
-                  <div className="cardTitle">Ukupno (aktivni krediti)</div>
+              <div className="card tableCard" style={{ marginBottom: 14 }}>
+                <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", marginBottom: 0 }}>
+                  <span style={{ fontWeight: 700, fontSize: 15 }}>Ukupno (aktivni krediti)</span>
                 </div>
                 <div
                   style={{
@@ -168,6 +168,7 @@ export default async function KreditiPage({ searchParams }) {
                     gap: 24,
                     flexWrap: "wrap",
                     alignItems: "baseline",
+                    padding: 16,
                   }}
                 >
                   <div>
@@ -191,8 +192,8 @@ export default async function KreditiPage({ searchParams }) {
 
               <KreditForm />
 
-              <div className="card" style={{ marginTop: 12 }}>
-                <form method="GET" className="filters" style={{ flexWrap: "wrap" }}>
+              <div className="card tableCard" style={{ marginTop: 14, marginBottom: 14 }}>
+                <form method="GET" className="filters" style={{ flexWrap: "wrap", padding: 16 }}>
                   <div className="field">
                     <span className="label">Pretraga</span>
                     <input
@@ -213,15 +214,12 @@ export default async function KreditiPage({ searchParams }) {
                 </form>
               </div>
 
-              <div className="card" style={{ marginTop: 12 }}>
-                <div className="cardHead">
-                  <div className="cardTitleRow">
-                    <div className="cardTitle">Lista kredita</div>
-                    <span className="muted">Prikazano: {list.length}</span>
-                  </div>
+              <div className="card tableCard" style={{ marginTop: 14 }}>
+                <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                  <span style={{ fontWeight: 700, fontSize: 15 }}>Lista kredita</span>
+                  <span className="muted">Prikazano: {list.length}</span>
                 </div>
-
-                <div className="tableCard">
+                <div>
                   <table className="table">
                     <thead>
                       <tr>

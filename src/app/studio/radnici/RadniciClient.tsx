@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { RadnikRow } from "./page";
-import { createRadnik, setRadnikActive, updateRadnik } from "./actions";
+import { setRadnikActive } from "./actions";
 
 type FormState = {
   radnik_id?: number;
@@ -32,21 +32,32 @@ const emptyForm = (): FormState => ({
   opis: "",
 });
 
-const fmtDate = (dt: string | null | undefined) => {
-  if (!dt) return "—";
-  const s = String(dt).slice(0, 10);
-  const [y, m, d] = s.split("-");
-  if (!y || !m || !d) return "—";
-  return `${d.padStart(2, "0")}.${m.padStart(2, "0")}.${y}`;
-};
-
-function toDisplayDate(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const s = String(iso).slice(0, 10);
-  const [y, m, d] = s.split("-");
-  if (!y || !m || !d) return "";
-  return `${d.padStart(2, "0")}.${m.padStart(2, "0")}.${y}`;
+/** Iz bilo kojeg formata (Date, ISO string, itd.) vrati YYYY-MM-DD za input type="date" */
+function toIsoDateOnly(dt: string | Date | null | undefined): string {
+  if (!dt) return "";
+  if (dt instanceof Date) {
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, "0");
+    const d = String(dt.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(dt).trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  const d2 = new Date(s);
+  if (!Number.isNaN(d2.getTime())) {
+    return toIsoDateOnly(d2);
+  }
+  return "";
 }
+
+const fmtDate = (dt: string | Date | null | undefined) => {
+  if (!dt) return "—";
+  const iso = toIsoDateOnly(dt);
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-");
+  return `${d}.${m}.${y}`;
+};
 
 function toIsoDate(display: string): string | null {
   const s = String(display ?? "").trim();
@@ -150,6 +161,8 @@ export default function RadniciClient({
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const modalFormRef = useRef<HTMLFormElement>(null);
+  const datumRef = useRef<string>("");
 
   const items = initialItems ?? [];
 
@@ -201,6 +214,8 @@ export default function RadniciClient({
   }
 
   function loadToForm(it: RadnikRow) {
+    const datum = toIsoDateOnly(it.datum_rodjenja);
+    datumRef.current = datum;
     setForm({
       radnik_id: it.radnik_id,
       ime: it.ime ?? "",
@@ -208,7 +223,7 @@ export default function RadniciClient({
       adresa: it.adresa ?? "",
       broj_telefona: it.broj_telefona ?? "",
       email: it.email ?? "",
-      datum_rodjenja: toDisplayDate(it.datum_rodjenja),
+      datum_rodjenja: datum,
       jib: it.jib ?? "",
       aktivan: Number(it.aktivan) === 1,
       opis: it.opis ?? "",
@@ -246,6 +261,7 @@ export default function RadniciClient({
     setError(null);
     setSelectedId(null);
     setModalMode("new");
+    datumRef.current = "";
     setForm(emptyForm());
     setModalOpen(true);
   }
@@ -281,28 +297,54 @@ export default function RadniciClient({
   const btnDisabled = (cond: boolean) =>
     cond ? { opacity: 0.45, cursor: "not-allowed" as const } : {};
 
-  async function onSave() {
+  async function onSave(e?: React.FormEvent<HTMLFormElement>) {
+    e?.preventDefault?.();
     setError(null);
 
+    const formEl = modalFormRef.current;
+    const fd = formEl ? new FormData(formEl) : null;
+    const datumVal =
+      datumRef.current ||
+      (fd ? (fd.get("datum_rodjenja") as string) ?? "" : "") ||
+      form.datum_rodjenja ||
+      "";
+
     const payload = {
-      ime: form.ime,
-      prezime: form.prezime,
-      adresa: form.adresa || null,
-      broj_telefona: form.broj_telefona || null,
-      email: form.email || null,
-      datum_rodjenja: toIsoDate(form.datum_rodjenja),
-      jib: form.jib || null,
-      aktivan: !!form.aktivan,
-      opis: form.opis || null,
+      ime: fd?.get("ime") ? String(fd.get("ime")).trim() : form.ime,
+      prezime: fd?.get("prezime") ? String(fd.get("prezime")).trim() : form.prezime,
+      adresa: (fd?.get("adresa") ? String(fd.get("adresa")).trim() : form.adresa) || null,
+      broj_telefona: (fd?.get("broj_telefona") ? String(fd.get("broj_telefona")).trim() : form.broj_telefona) || null,
+      email: (fd?.get("email") ? String(fd.get("email")).trim() : form.email) || null,
+      datum_rodjenja: toIsoDate(datumVal) || (datumVal && datumVal.trim() ? datumVal.trim() : null),
+      jib: (fd?.get("jib") ? String(fd.get("jib")).trim() : form.jib) || null,
+      aktivan: fd ? fd.get("aktivan") === "on" : !!form.aktivan,
+      opis: (fd?.get("opis") ? String(fd.get("opis")).trim() : form.opis) || null,
     };
 
     startTransition(async () => {
       try {
-        if (modalMode === "new") {
-          await createRadnik(payload);
-        } else {
-          if (!form.radnik_id) throw new Error("Nedostaje ID za izmjenu.");
-          await updateRadnik({ radnik_id: form.radnik_id, ...payload });
+        const body: Record<string, unknown> = {
+          ime: payload.ime,
+          prezime: payload.prezime,
+          adresa: payload.adresa,
+          broj_telefona: payload.broj_telefona,
+          email: payload.email,
+          datum_rodjenja: payload.datum_rodjenja,
+          jib: payload.jib,
+          aktivan: payload.aktivan,
+          opis: payload.opis,
+        };
+        if (modalMode === "edit" && form.radnik_id) {
+          body.radnik_id = form.radnik_id;
+        }
+        const res = await fetch("/api/radnici/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const j = await res.json();
+        if (!j?.ok) {
+          throw new Error(j?.error ?? "Greška pri snimanju.");
         }
         setModalOpen(false);
         setSelectedId(null);
@@ -646,6 +688,11 @@ export default function RadniciClient({
               </button>
             </div>
 
+            <form
+              ref={modalFormRef}
+              onSubmit={(e) => onSave(e)}
+              style={{ display: "contents" }}
+            >
             <div style={{ padding: 16 }}>
               <div
                 className="grid"
@@ -662,6 +709,7 @@ export default function RadniciClient({
                     Ime (obavezno)
                   </div>
                   <input
+                    name="ime"
                     value={form.ime}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, ime: e.target.value }))
@@ -683,6 +731,7 @@ export default function RadniciClient({
                     Prezime (obavezno)
                   </div>
                   <input
+                    name="prezime"
                     value={form.prezime}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, prezime: e.target.value }))
@@ -703,13 +752,16 @@ export default function RadniciClient({
                     Datum rođenja
                   </div>
                   <input
-                    type="text"
+                    name="datum_rodjenja"
+                    type="date"
                     value={form.datum_rodjenja}
-                    onChange={(e) =>
-                      setForm((s) => ({ ...s, datum_rodjenja: e.target.value }))
-                    }
-                    placeholder="dd.mm.yyyy"
-                    style={{ width: "100%" }}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      datumRef.current = v;
+                      setForm((s) => ({ ...s, datum_rodjenja: v }));
+                    }}
+                    title="Datum rođenja"
+                    className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
                   />
                 </div>
 
@@ -724,6 +776,7 @@ export default function RadniciClient({
                     Adresa
                   </div>
                   <input
+                    name="adresa"
                     value={form.adresa}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, adresa: e.target.value }))
@@ -744,6 +797,7 @@ export default function RadniciClient({
                     Broj telefona
                   </div>
                   <input
+                    name="broj_telefona"
                     value={form.broj_telefona}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, broj_telefona: e.target.value }))
@@ -764,6 +818,7 @@ export default function RadniciClient({
                     Email
                   </div>
                   <input
+                    name="email"
                     type="email"
                     value={form.email}
                     onChange={(e) =>
@@ -785,6 +840,7 @@ export default function RadniciClient({
                     JIB
                   </div>
                   <input
+                    name="jib"
                     value={form.jib}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, jib: e.target.value }))
@@ -796,6 +852,7 @@ export default function RadniciClient({
 
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <input
+                    name="aktivan"
                     type="checkbox"
                     checked={form.aktivan}
                     onChange={(e) =>
@@ -825,6 +882,7 @@ export default function RadniciClient({
                     Opis
                   </div>
                   <textarea
+                    name="opis"
                     value={form.opis}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, opis: e.target.value }))
@@ -901,6 +959,7 @@ export default function RadniciClient({
                   }}
                 >
                   <button
+                    type="button"
                     className="btn"
                     onClick={goPrev}
                     disabled={isPending || !canPrev}
@@ -910,18 +969,20 @@ export default function RadniciClient({
                     ◀
                   </button>
                   <button
+                    type="button"
                     className="btn"
                     onClick={goNext}
                     disabled={isPending || !canNext}
                     style={btnDisabled(isPending || !canNext)}
                     title="Naredni"
                   >
-                    ▶
-                  </button>
-                </div>
+                  ▶
+                </button>
+              </div>
               ) : null}
 
               <button
+                type="button"
                 className="btn"
                 onClick={closeAllModals}
                 disabled={isPending}
@@ -930,14 +991,15 @@ export default function RadniciClient({
                 Otkaži
               </button>
               <button
+                type="submit"
                 className="btn btn--active"
-                onClick={onSave}
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
                 {isPending ? "Snima..." : "Snimi"}
               </button>
             </div>
+            </form>
           </div>
         </div>
       ) : null}
