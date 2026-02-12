@@ -404,7 +404,7 @@ export default async function DealsPage({ searchParams }: any) {
                   className="brandLogo"
                 />
                 <div>
-                  <div className="brandTitle">Deals</div>
+                  <div className="brandTitle">📋 Deals</div>
                   <div className="brandSub">Project & Finance Engine</div>
                 </div>
               </div>

@@ -555,8 +555,8 @@ export default async function Page({ searchParams }) {
                 className="brandLogo"
               />
               <div>
-                <div className="brandTitle">Projekti</div>
-                <div className="brandSub">Project &amp; Finance Engine</div>
+                <div className="brandTitle">📊 PP</div>
+                <div className="brandSub" style={{ fontSize: '10px', opacity: 0.7 }}>Pregled Projekata</div>
               </div>
             </div>
 
@@ -578,7 +578,7 @@ export default async function Page({ searchParams }) {
                 style={{ fontSize: 13, padding: "6px 12px" }}
                 title="Filter: aktivni (1–8)"
               >
-                Aktivni
+                ✅ Aktivni
               </Link>
               <Link
                 href={`/projects?status_pick=${encodeURIComponent("group:archive")}`}
@@ -586,7 +586,7 @@ export default async function Page({ searchParams }) {
                 style={{ fontSize: 13, padding: "6px 12px" }}
                 title="Filter: arhiva (10, 11 — importovani)"
               >
-                Arhiva
+                📦 Arhiva
               </Link>
               <Link
                 href={`/projects?status_pick=${encodeURIComponent("11")}`}
@@ -594,7 +594,7 @@ export default async function Page({ searchParams }) {
                 style={{ fontSize: 13, padding: "6px 12px" }}
                 title="Samo importovani (status 11)"
               >
-                Arhiva (import)
+                📥 Arhiva (import)
               </Link>
               <Link
                 href={`/projects?status_pick=${encodeURIComponent("group:all")}`}
@@ -602,7 +602,7 @@ export default async function Page({ searchParams }) {
                 style={{ fontSize: 13, padding: "6px 12px" }}
                 title="Filter: svi statusi"
               >
-                Svi projekti
+                📋 Svi projekti
               </Link>
             </div>
 
@@ -657,10 +657,10 @@ export default async function Page({ searchParams }) {
                 </label>
 
                 <button type="submit" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}>
-                  Filtriraj
+                  🔎 Filtriraj
                 </button>
                 <Link href="/projects" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}>
-                  Reset
+                  🔄 Reset
                 </Link>
               </div>
             </form>
@@ -675,20 +675,20 @@ export default async function Page({ searchParams }) {
               )
             </div>
             <div className="pagerBtns">
-              <Link
-                className={`btn ${hasPrev ? "" : "btn--disabled"}`}
-                href={hasPrev ? `/projects${pageLink(page - 1)}` : "#"}
-                aria-disabled={!hasPrev}
-              >
-                ← Prethodna
-              </Link>
-              <Link
-                className={`btn ${hasNext ? "" : "btn--disabled"}`}
-                href={hasNext ? `/projects${pageLink(page + 1)}` : "#"}
-                aria-disabled={!hasNext}
-              >
-                Sljedeća →
-              </Link>
+            <Link
+              className={`btn ${hasPrev ? "" : "btn--disabled"}`}
+              href={hasPrev ? `/projects${pageLink(page - 1)}` : "#"}
+              aria-disabled={!hasPrev}
+            >
+              ⬅️ Prethodna
+            </Link>
+            <Link
+              className={`btn ${hasNext ? "" : "btn--disabled"}`}
+              href={hasNext ? `/projects${pageLink(page + 1)}` : "#"}
+              aria-disabled={!hasNext}
+            >
+              Sljedeća ➡️
+            </Link>
             </div>
           </div>
         </div>
@@ -740,14 +740,14 @@ export default async function Page({ searchParams }) {
               href={hasPrev ? `/projects${pageLink(page - 1)}` : "#"}
               aria-disabled={!hasPrev}
             >
-              ← Prethodna
+              ⬅️ Prethodna
             </Link>
             <Link
               className={`btn ${hasNext ? "" : "btn--disabled"}`}
               href={hasNext ? `/projects${pageLink(page + 1)}` : "#"}
               aria-disabled={!hasNext}
             >
-              Sljedeća →
+              Sljedeća ➡️
             </Link>
           </div>
         </div>

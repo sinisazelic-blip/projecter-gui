@@ -776,7 +776,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                 className="brandLogo"
               />
               <div>
-                <div className="brandTitle">DETALJI PROJEKTA</div>
+                <div className="brandTitle">Projekat</div>
                 <div className="brandSub">Project & Finance Engine</div>
               </div>
             </div>
