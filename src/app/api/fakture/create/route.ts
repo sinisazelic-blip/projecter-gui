@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
       vat, // BH_17 ili INO_0
       pfr, // PFR broj (opciono, ako nije dat, generiše se)
       pnb, // poziv na broj (8 cifara)
+      project_names, // override nazivi projekata (format: "id:naziv,id2:naziv2")
     } = body;
 
     const projekatIds = parseIds(ids);

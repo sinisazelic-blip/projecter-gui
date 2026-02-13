@@ -35,61 +35,99 @@ export async function GET(req) {
     const where = [];
     const args = [];
 
-    // Naplate: završeni/archived (kako smo se dogovorili)
-    where.push("p.status_id IN (4, 6)");
+    // Naplate: fakturisane fakture (status_id = 9 = FAKTURISAN)
+    where.push("p.status_id = 9");
 
-    // nije plaćeno (default logika naplate)
-    where.push("(v.placeno_datum IS NULL)");
+    // nije plaćeno (default logika naplate) - fakture koje nisu plaćene
+    // Fakture sa status_id = 9 su fakturisane, prikaži sve koje nisu eksplicitno plaćene
+    // Možda fakture nemaju eksplicitni status plaćanja u fiskalni_status, pa prikažimo sve fakturisane
 
     // ✅ NOVO: projekat filter (ako je došao u URL-u)
     if (projekatIdRaw && Number.isFinite(Number(projekatIdRaw))) {
-      where.push("v.projekat_id = ?");
+      where.push("fp.projekat_id = ?");
       args.push(Number(projekatIdRaw));
     }
 
     // only late
     if (onlyLate) {
-      where.push("v.naplata_status = 'kasni'");
-    } else {
-      // pametan default: ili kasni ili dospijeva uskoro (ako ima valutu)
-      // a projekte bez valute ćemo sakriti dok korisnik ne odabere filtere (jer ih je previše)
-      where.push(
-        "(v.naplata_status = 'kasni' OR (v.datum_valute IS NOT NULL AND v.dana_do_valute BETWEEN 0 AND ?))",
-      );
-      args.push(Number.isFinite(upcomingDays) ? upcomingDays : 14);
+      where.push("f.datum_dospijeca < CURDATE()");
     }
 
-    // fakturisano filter
-    if (fakt === "1" || fakt === "0") {
-      where.push("v.fakturisano = ?");
-      args.push(Number(fakt));
-    }
+    // fakturisano filter (sve su fakturisane jer su status_id = 9)
+    // Ne treba filter jer sve su fakturisane
 
     // naručilac filter
     if (narIdRaw && Number.isFinite(Number(narIdRaw))) {
-      where.push("v.narucilac_id = ?");
+      where.push("f.bill_to_klijent_id = ?");
       args.push(Number(narIdRaw));
     }
 
     // valuta range filter
     if (dueFrom) {
-      where.push("v.datum_valute >= ?");
+      where.push("f.datum_dospijeca >= ?");
       args.push(dueFrom);
     }
     if (dueTo) {
-      where.push("v.datum_valute <= ?");
+      where.push("f.datum_dospijeca <= ?");
       args.push(dueTo);
     }
 
+    // ✅ Direktno uzmi podatke iz fakture tabele za fakturisane fakture
+    // Umjesto view-a vw_naplate, direktno uzimamo iz faktura_projekti -> fakture -> projekti
+    // Datum dospijeća se računa dinamički: datum_izdavanja + rok_placanja_dana
     const sql = `
-      SELECT v.*
-      FROM vw_naplate v
-      JOIN projekti p ON p.projekat_id = v.projekat_id
-      ${where.length ? "WHERE " + where.join(" AND ") : ""}
+      SELECT 
+        fp.projekat_id,
+        p.radni_naziv,
+        p.narucilac_id,
+        kn.naziv_klijenta AS narucilac_naziv,
+        p.krajnji_klijent_id,
+        kk.naziv_klijenta AS krajnji_klijent_naziv,
+        f.faktura_id,
+        COALESCE(f.broj_fakture_puni, CONCAT(LPAD(f.broj_u_godini, 3, '0'), '/', f.godina)) AS broj_fakture,
+        f.datum_izdavanja,
+        -- Izračunaj datum dospijeća: datum_izdavanja + rok_placanja_dana (ili 30 dana ako nije definisan)
+        DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(kn.rok_placanja_dana, 30) DAY) AS datum_valute,
+        f.iznos_ukupno_km AS iznos,
+        f.valuta,
+        f.fiskalni_status AS faktura_status,
+        -- Izračunaj dane do valute ili dane kašnjenja
+        CASE
+          WHEN f.datum_izdavanja IS NULL THEN NULL
+          WHEN DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(kn.rok_placanja_dana, 30) DAY) < CURDATE() THEN NULL
+          ELSE DATEDIFF(DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(kn.rok_placanja_dana, 30) DAY), CURDATE())
+        END AS dana_do_valute,
+        CASE
+          WHEN f.datum_izdavanja IS NULL THEN NULL
+          WHEN DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(kn.rok_placanja_dana, 30) DAY) < CURDATE() 
+            THEN DATEDIFF(CURDATE(), DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(kn.rok_placanja_dana, 30) DAY))
+          ELSE NULL
+        END AS dana_kasni,
+        CASE
+          WHEN f.datum_izdavanja IS NULL THEN 'bez_valute'
+          WHEN DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(kn.rok_placanja_dana, 30) DAY) < CURDATE() THEN 'kasni'
+          ELSE 'ceka'
+        END AS naplata_status,
+        1 AS fakturisano,
+        NULL AS placeno_datum
+      FROM faktura_projekti fp
+      JOIN projekti p ON p.projekat_id = fp.projekat_id
+      JOIN fakture f ON f.faktura_id = fp.faktura_id
+      LEFT JOIN klijenti kn ON kn.klijent_id = f.bill_to_klijent_id
+      LEFT JOIN klijenti kk ON kk.klijent_id = p.krajnji_klijent_id
+      ${where.length ? "WHERE " + where.map(w => {
+        // Mapiranje filtera - zamijeni reference na datum_dospijeca sa DATE_ADD izračunom
+        return w
+          .replace(/f\.datum_dospijeca/g, "DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(kn.rok_placanja_dana, 30) DAY)");
+      }).join(" AND ") : ""}
       ORDER BY
-        v.dana_kasni DESC,
-        v.datum_valute ASC,
-        v.projekat_id DESC
+        CASE 
+          WHEN DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(kn.rok_placanja_dana, 30) DAY) < CURDATE() 
+            THEN DATEDIFF(CURDATE(), DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(kn.rok_placanja_dana, 30) DAY))
+          ELSE 0 
+        END DESC,
+        DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(kn.rok_placanja_dana, 30) DAY) ASC,
+        fp.projekat_id DESC
       LIMIT 500;
     `;
 

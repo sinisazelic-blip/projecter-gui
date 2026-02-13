@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { downloadExcel } from "@/lib/exportExcel";
 
 function fmtDDMMYYYY(iso: string | null): string {
   if (!iso) return "—";
@@ -159,6 +160,34 @@ export default function IzvodiPage() {
               >
                 🏠 Dashboard
               </Link>
+              {izvodi.length > 0 && (
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ fontSize: 13 }}
+                  onClick={() => {
+                    const headers = ["Broj izvoda", "Datum izvoda", "Broj računa", "Otvaranje", "Zatvaranje", "Valuta", "Uvezeno"];
+                    const rows = izvodi.map((i) => [
+                      i.statement_no || `#${i.batch_id}`,
+                      fmtDDMMYYYY(i.statement_date),
+                      i.bank_account_no ?? "—",
+                      i.opening_balance ?? "",
+                      i.closing_balance ?? "",
+                      i.currency ?? "—",
+                      i.imported_at ? String(i.imported_at).slice(0, 19) : "—",
+                    ]);
+                    downloadExcel({
+                      filename: "izvodi_lista",
+                      sheetName: "Izvodi",
+                      headers,
+                      rows,
+                    });
+                  }}
+                  title="Preuzmi listu u Excel"
+                >
+                  Export u Excel
+                </button>
+              )}
             </div>
 
             <div style={{ marginTop: 14 }}>

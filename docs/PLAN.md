@@ -1,6 +1,6 @@
 # Plan razvoja – Fluxa / Projecter
 
-*Sačuvano: 11.02.2025*
+*Sačuvano: 11.02.2026*
 
 ---
 
@@ -9,7 +9,7 @@
 - Modul za prikaz izvoda **hronološki / po broju**
 - Mogućnost odabira i **štampe** ako inspekcija traži izvod
 
-*Detalji za razradu pri implementaciji.*
+**Status:** ✅ Implementirano. Lista izvoda (Broj izvoda, Datum, Broj računa), detaljni prikaz sa transakcijama, konverzija EUR→BAM za EUR izvode. Dashboard → Izvodi.
 
 ---
 
@@ -104,6 +104,42 @@
 
 ---
 
+## 4b. SmartPhone Owner Dashboard – brzi pregled
+
+**Cilj:** Brzi i vrlo uprošćen model za owner-a na smartphone-u sa ključnim informacijama za produktivnost i zaradu.
+
+**Lokacija:** Dodatno u smartphone layout-u (pored StrategicCore i linka na Fluxa punu verziju).
+
+**Funkcionalnosti:**
+
+1. **Dugovanja čije je dospijeće prošlo**
+   - Lista fiksnih troškova i projektnih troškova koji su prekoračili rok plaćanja
+   - Prikaz iznosa i broja dana kašnjenja
+
+2. **Potraživanja čije je dospijeće prošlo**
+   - Lista faktura koje nisu naplaćene i čiji je datum dospijeća prošao
+   - Prikaz iznosa i broja dana kašnjenja
+
+3. **Pregled finansija: Fakturisano - Troškovi = Dobit**
+   - Sumarni pregled fakturisanih iznosa
+   - Sumarni pregled troškova
+   - Izračunata dobit (razlika)
+   - Opciono: periodni filter (mjesec/godina)
+
+4. **Iznos projekata u fazi izrade (status 1-8)**
+   - Suma budžeta svih projekata koji su u aktivnoj fazi izrade
+   - Prikaz po statusima ili ukupno
+
+5. **Ostale signalizacije** (na razradu)
+   - Dodatne metrike koje mogu uticati na produktivnost i zaradu
+   - Notifikacije/alerti za kritične situacije
+
+**Dizajn:** Minimalistički, kartice sa ključnim brojevima, brz pristup detaljima.
+
+**Status:** Planirano – na redu nakon testiranja trenutnih funkcionalnosti.
+
+---
+
 ## 5. Promet i troškovi – tabele i grafovi (2006+)
 
 **Cilj:** Prikaz kao na referentnim slikama – tabele po godinama/mjesecima, grafovi, izbor metrika.
@@ -131,7 +167,7 @@
 
 **Ruta:** `/finance/izvjestaji` ili `/studio/izvjestaji` – na razradu pri implementaciji.
 
-**Status:** Grafički (promet/troškovi/zarada) implementiran. Dashboard → Izvještaji → Grafički.
+**Status:** ✅ Grafički i sumarni pregled po godinama i mjesecima implementiran. Dashboard → Izvještaji → Grafički. **Skinuo sa aktivne liste** – eventualno poliranje kasnije.
 
 ---
 
@@ -151,7 +187,68 @@
 
 ---
 
-## 7. Finalna faza: Korisnici, uloge i nivoi pristupa
+## 7. CSV/XLSX Import u šifarnike
+
+**Cilj:** Omogućiti masovni unos podataka u šifarnike (cjenovnik, klijenti, dobavljači, talenti, itd.) direktno kroz UI.
+
+**Funkcionalnosti:**
+
+- **Upload fajla:** CSV ili XLSX format
+- **Validacija:** Provjera formata i strukture kolona preko UI-a
+- **Mapiranje kolona:** Korisnik može mapirati kolone iz fajla na polja u bazi
+- **Preview:** Prikaz prvih redova prije importa
+- **Error handling:** Prikaz grešaka za neispravne redove
+- **Rollback:** Opcija za vraćanje ako nešto pođe po zlu
+
+**Primjena:** 
+- Cjenovnik (artikli, cijene)
+- Klijenti (naziv, PIB/JIB, adresa, kontakt)
+- Dobavljači
+- Talenti
+- Ostali šifarnici po potrebi
+
+**Status:** Planirano.
+
+---
+
+## 8. Upload logotipa firme
+
+**Cilj:** Omogućiti upload logotipa firme kroz UI u prozoru Firma, sa validacijom i automatskim smještanjem u `/public` folder.
+
+**Lokacija:** Prozor Firma (Studio → Firma ili slično), polje za putanju logotipa.
+
+**Funkcionalnosti:**
+
+1. **Upload komponenta:**
+   - Drag & drop ili file picker
+   - Podržani formati: PNG, JPG, JPEG, SVG (validacija preko UI-a)
+   - Preporučene dimenzije: prikaz upute u UI-u (npr. "Preporučeno: 300x100px, max 500x200px")
+   - Maksimalna veličina fajla: validacija (npr. max 2MB)
+
+2. **Validacija:**
+   - Format fajla (dozvoljeni: PNG, JPG, JPEG, SVG)
+   - Dimenzije slike (prikaz upozorenja ako prelazi preporučene)
+   - Veličina fajla
+
+3. **Smještanje:**
+   - Automatsko smještanje u `/public/logos/` ili `/public/firma/logo/`
+   - Generisanje jedinstvenog imena fajla (npr. `logo-firma-{timestamp}.png`)
+   - Ažuriranje putanje u bazi (polje `logo_path` ili slično u tabeli firma)
+
+4. **Prikaz:**
+   - Preview logotipa nakon uploada
+   - Prikaz putanje u polju (npr. `/logos/logo-firma-1234567890.png`)
+   - Opcija za zamjenu postojećeg logotipa
+
+5. **Korištenje:**
+   - Logotip se koristi pri štampanju faktura
+   - Referenca u PDF generisanju faktura
+
+**Status:** Planirano.
+
+---
+
+## 9. Finalna faza: Korisnici, uloge i nivoi pristupa
 
 *Na kraju, kad je sve ostalo gotovo.*
 

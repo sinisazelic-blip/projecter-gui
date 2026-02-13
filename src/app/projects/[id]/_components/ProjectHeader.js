@@ -195,27 +195,6 @@ export default function ProjectHeader({ project, hideTitle }) {
             flexWrap: "wrap",
           }}
         >
-          {/* ✅ STATUS: read-only box (manual dropdown removed) */}
-          <div
-            style={{ display: "grid", gap: 6, maxWidth: 420, marginTop: 10 }}
-          >
-            <div className="muted">Status projekta</div>
-            <div
-              title="Read-only status (ručna promjena je isključena)"
-              style={{
-                padding: "8px 10px",
-                borderRadius: 8,
-                border: "1px solid rgba(255,255,255,.18)",
-                background: "rgba(255,255,255,.05)",
-                fontWeight: 650,
-                opacity: 0.95,
-                userSelect: "none",
-              }}
-            >
-              {statusLabel}
-            </div>
-          </div>
-
           {/* ✅ Operativni signal */}
           <span
             title={sigM.title}

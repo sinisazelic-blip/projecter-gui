@@ -135,6 +135,85 @@ function fmtBankLine(acc: any): string {
   return out || "—";
 }
 
+// ✅ Formatiraj bankovne račune prema traženom formatu: Naziv banke - (KM) broj - (EUR) IBAN - SWIFT
+function formatBankAccounts(accounts: any[]): string[] {
+  if (!accounts || accounts.length === 0) return [];
+
+  // Grupiši račune po banci
+  const byBank: Record<string, any[]> = {};
+
+  for (const acc of accounts) {
+    const bankName = String(
+      acc?.bank_naziv ?? acc?.banka_naziv ?? acc?.bank ?? acc?.naziv_bank ?? "",
+    ).trim();
+    
+    if (!bankName) continue;
+
+    if (!byBank[bankName]) {
+      byBank[bankName] = [];
+    }
+    byBank[bankName].push(acc);
+  }
+
+  // Formatiraj svaku banku
+  const formatted: string[] = [];
+  
+  for (const [bankName, bankAccounts] of Object.entries(byBank)) {
+    const parts: string[] = [bankName];
+    
+    // Pronađi KM broj računa (bank_racun)
+    let kmAccount = "";
+    for (const acc of bankAccounts) {
+      const account = String(
+        acc?.bank_racun ??
+        acc?.racun ??
+        acc?.broj_racuna ??
+        acc?.account_no ??
+        acc?.account ??
+        "",
+      ).trim();
+      if (account && !account.toUpperCase().startsWith("BA")) {
+        kmAccount = account;
+        break;
+      }
+    }
+    
+    if (kmAccount) {
+      parts.push(`(KM) ${kmAccount}`);
+    }
+    
+    // Pronađi IBAN i SWIFT (za EUR/INO račune)
+    let iban = "";
+    let swift = "";
+    
+    for (const acc of bankAccounts) {
+      const accIban = String(acc?.iban ?? "").trim();
+      const accSwift = String(acc?.swift ?? acc?.bic ?? "").trim();
+      
+      if (accIban && accIban.toUpperCase().startsWith("BA")) {
+        iban = accIban;
+      }
+      if (accSwift && !swift) {
+        swift = accSwift;
+      }
+    }
+    
+    // Dodaj (EUR) IBAN i SWIFT ako postoje
+    if (iban || swift) {
+      if (iban) {
+        parts.push(`(EUR) IBAN ${iban}`);
+      }
+      if (swift) {
+        parts.push(`SWIFT ${swift}`);
+      }
+    }
+    
+    formatted.push(parts.join(" - "));
+  }
+
+  return formatted;
+}
+
 export default function Page() {
   const sp = useSearchParams();
 
@@ -146,6 +225,21 @@ export default function Page() {
   const fisk = sp.get("pfr") ?? sp.get("fisk") ?? ""; // Podržavamo oba parametra za kompatibilnost
   const pnb = sp.get("pnb") ?? "";
   const invoiceNumberFromUrl = sp.get("invoice_number") ?? ""; // Broj fakture iz URL-a (kada se učitava postojeća)
+  
+  // ✅ Override nazivi projekata (projekat_id -> naziv_override)
+  const projectNameOverrides = useMemo(() => {
+    const overridesRaw = sp.get("project_names");
+    if (!overridesRaw) return {};
+    const map: Record<number, string> = {};
+    overridesRaw.split(",").forEach((pair) => {
+      const [idStr, naziv] = pair.split(":");
+      const id = Number(idStr);
+      if (Number.isFinite(id) && naziv) {
+        map[id] = decodeURIComponent(naziv);
+      }
+    });
+    return map;
+  }, [sp]);
 
   const [data, setData] = useState<PreviewData | null>(null);
   const [creating, setCreating] = useState(false);
@@ -221,6 +315,10 @@ export default function Page() {
           vat: bh ? "BH_17" : "INO_0",
           pfr: fisk ? Number(fisk) : null,
           pnb: pnb,
+          project_names: Object.entries(projectNameOverrides)
+            .filter(([_, val]) => val && String(val).trim())
+            .map(([id, naziv]) => `${id}:${String(naziv).trim()}`)
+            .join(","),
         }),
       });
 
@@ -293,8 +391,10 @@ export default function Page() {
   const items = useMemo(
     () =>
       projects.map((p) => {
+        // ✅ Koristi override naziv ako postoji, inače radni_naziv
+        const overrideNaziv = projectNameOverrides[p.projekat_id];
         const title = String(
-          p.radni_naziv ?? `Projekat #${p.projekat_id}`,
+          overrideNaziv || p.radni_naziv || `Projekat #${p.projekat_id}`,
         ).trim();
         const sub = p.klijent_naziv ? `Klijent: ${p.klijent_naziv}` : "";
         const qty = 1;
@@ -310,7 +410,7 @@ export default function Page() {
           closed_at: p.closed_at,
         };
       }),
-    [projects],
+    [projects, projectNameOverrides],
   );
 
   const baseAmount = useMemo(
@@ -356,6 +456,9 @@ export default function Page() {
   const bankAccounts = Array.isArray(firma?.bank_accounts)
     ? firma!.bank_accounts
     : [];
+  
+  // ✅ Formatiraj račune prema traženom formatu
+  const formattedBankAccounts = formatBankAccounts(bankAccounts);
 
   const buyerName = String(
     buyer?.naziv_klijenta ?? (lang === "EN" ? "Buyer" : "Kupac"),
@@ -506,7 +609,8 @@ export default function Page() {
         }
 
         .totalsBox{
-          min-width: 320px;
+          width: 50%;
+          max-width: 320px;
           border: 1px solid rgba(0,0,0,.10);
           border-radius: 10px;
           padding: 10px 12px;
@@ -527,10 +631,10 @@ export default function Page() {
 
         /* ✅ Info line unutar obračuna (umjesto između tabele i obračuna) */
         .completedLine{
-          margin-top: 10px;
-          font-size: 11px;
+          margin-top: 6px;
+          font-size: 10px;
           color:#555;
-          line-height: 1.35;
+          line-height: 1.25;
         }
 
         .footer{
@@ -872,19 +976,19 @@ export default function Page() {
                       <div className="muted">{sellerCityLine}</div>
                     ) : null}
                     <div className="muted">{sellerCountry}</div>
-                    <div className="muted">PIB/PDV: {sellerTax}</div>
+                    <div className="muted">PIB/JIB: {sellerTax}</div>
 
-                    {bankAccounts.length ? (
+                    {formattedBankAccounts.length > 0 ? (
                       <div className="bankList">
                         <div className="muted" style={{ marginTop: 8 }}>
                           Bankovni računi:
                         </div>
-                        {bankAccounts.map((acc, i) => (
+                        {formattedBankAccounts.map((formatted, i) => (
                           <div
-                            key={String(acc?.bank_account_id ?? i)}
+                            key={`bank-${i}`}
                             className="bankLine"
                           >
-                            • {fmtBankLine(acc)}
+                            • {formatted}
                           </div>
                         ))}
                       </div>
@@ -905,7 +1009,7 @@ export default function Page() {
                       <div className="muted">{buyerCityLine}</div>
                     ) : null}
                     <div className="muted">{buyerCountry}</div>
-                    <div className="muted">PIB/PDV: {buyerTax}</div>
+                    <div className="muted">PIB/JIB: {buyerTax}</div>
                   </div>
                 </div>
               </div>
@@ -994,24 +1098,22 @@ export default function Page() {
                   {!bh ? (
                     <div
                       style={{
-                        marginTop: 10,
-                        fontSize: 11,
+                        marginTop: 6,
+                        fontSize: 10,
                         color: "#555",
-                        lineHeight: 1.35,
+                        lineHeight: 1.25,
                       }}
                     >
-                      VAT exemption: In accordance with the VAT Law, this
-                      service is exempt from VAT pursuant to Article 27,
-                      paragraph 1.
+                      VAT exemption: In accordance with the VAT Law, this service is exempt from VAT pursuant to Article 27, paragraph 1.
                     </div>
                   ) : null}
 
                   <div
                     style={{
-                      marginTop: 10,
-                      fontSize: 11,
+                      marginTop: 6,
+                      fontSize: 10,
                       color: "#555",
-                      lineHeight: 1.35,
+                      lineHeight: 1.25,
                     }}
                   >
                     {lang === "EN"

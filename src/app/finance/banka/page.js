@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { query } from "@/lib/db";
+import { ExportExcelButton } from "@/components/ExportExcelButton";
 
 export const dynamic = "force-dynamic";
 
@@ -296,8 +297,25 @@ export default async function BankaPage({ searchParams }) {
       </div>
 
       <div className="card tableCard">
-        <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           <span className="muted">Prikazano: {rows.length} (limit 200)</span>
+          <ExportExcelButton
+            filename="banka_izvod"
+            sheetName="Banka"
+            headers={["posting_id", "tx_id", "Datum", "Iznos", "Valuta", "alloc_status", "linked_total_km", "Partner", "Opis", "reversed"]}
+            rows={rows.map((r) => [
+              r.posting_id,
+              r.tx_id ?? "",
+              fmtDate(r.value_date),
+              r.amount ?? "",
+              r.currency ?? "",
+              r.alloc_status ?? "",
+              r.linked_total_km ?? "",
+              r.counterparty ?? "",
+              r.description ?? "",
+              r.reversed_at || r.reversed_by_batch_id ? "DA" : "NE",
+            ])}
+          />
         </div>
         <div className="table-wrap">
           <table className="table">

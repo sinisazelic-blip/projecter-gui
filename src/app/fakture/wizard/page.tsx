@@ -56,6 +56,7 @@ export default function InvoiceWizard() {
   // Osnovno (ostavljam kako je bilo)
   const [currency, setCurrency] = useState<string>("KM");
   const [vatMode, setVatMode] = useState<"BH_17" | "INO_0">("BH_17");
+  const [isInoDetected, setIsInoDetected] = useState<boolean>(false);
 
   // Fiskalni/PFR (editable, ostavljam)
   const [pfrBroj, setPfrBroj] = useState<string>("");
@@ -65,6 +66,11 @@ export default function InvoiceWizard() {
   const [pnbLoading, setPnbLoading] = useState<boolean>(false);
   const [pnbErr, setPnbErr] = useState<string>("");
 
+  // ✅ Override nazivi projekata (projekat_id -> naziv_override)
+  const [projectNameOverrides, setProjectNameOverrides] = useState<Record<number, string>>({});
+  const [projectsData, setProjectsData] = useState<Array<{ projekat_id: number; radni_naziv: string | null }>>([]);
+
+  // ✅ Učitaj poziv na broj + detektuj INO klijenta
   useEffect(() => {
     let alive = true;
 
@@ -72,11 +78,13 @@ export default function InvoiceWizard() {
       setPnbErr("");
       if (ids.length === 0) {
         setPozivNaBroj("");
+        setIsInoDetected(false);
         return;
       }
 
       setPnbLoading(true);
       try {
+        // 1) Poziv na broj
         const qs = new URLSearchParams();
         qs.set("ids", ids.join(","));
         const res = await fetch(`/api/fakture/wizard/seed?${qs.toString()}`, {
@@ -94,6 +102,38 @@ export default function InvoiceWizard() {
         }
 
         if (alive) setPozivNaBroj(p);
+
+        // 2) Detektuj INO klijenta + učitaj projekte za override nazive
+        const previewRes = await fetch(`/api/fakture/wizard/preview-data?${qs.toString()}`, {
+          cache: "no-store",
+        });
+        const previewData = await previewRes.json();
+
+        if (previewData?.ok) {
+          // Učitaj projekte
+          if (Array.isArray(previewData.projects)) {
+            if (alive) {
+              setProjectsData(previewData.projects);
+            }
+          }
+
+          // Detektuj INO
+          if (previewData?.buyer) {
+            const buyer = previewData.buyer;
+            const drz = String(buyer.drzava ?? "").trim();
+            const isIno = drz !== "" && drz.toLowerCase() !== "bih";
+            // Takođe provjeri is_ino flag ako postoji
+            const isInoFlag = buyer.is_ino === 1 || buyer.is_ino === true || buyer.is_ino === "1";
+
+            if (alive && (isIno || isInoFlag)) {
+              setIsInoDetected(true);
+              setCurrency("EUR");
+              setVatMode("INO_0");
+            } else if (alive) {
+              setIsInoDetected(false);
+            }
+          }
+        }
       } catch (e: any) {
         if (alive) {
           setPozivNaBroj("");
@@ -134,6 +174,15 @@ export default function InvoiceWizard() {
 
     // ✅ AUTO poziv na broj ide uvijek
     qs.set("pnb", pozivNaBroj);
+
+    // ✅ Override nazivi projekata (ako postoje)
+    const overrides = Object.entries(projectNameOverrides)
+      .filter(([_, val]) => val && String(val).trim())
+      .map(([id, naziv]) => `${id}:${encodeURIComponent(String(naziv).trim())}`)
+      .join(",");
+    if (overrides) {
+      qs.set("project_names", overrides);
+    }
 
     router.push(`/fakture/wizard/preview?${qs.toString()}`);
   }
@@ -238,7 +287,14 @@ export default function InvoiceWizard() {
                   placeholder="dd.mm.yyyy"
                 />
 
-                <div className="label">Valuta plaćanja</div>
+                <div className="label">
+                  Valuta plaćanja
+                  {isInoDetected && (
+                    <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.8, fontWeight: 600, color: "rgba(59, 130, 246, 0.9)" }}>
+                      (auto: INO klijent)
+                    </span>
+                  )}
+                </div>
                 <select
                   className="input"
                   value={currency}
@@ -248,7 +304,14 @@ export default function InvoiceWizard() {
                   <option value="EUR">EUR</option>
                 </select>
 
-                <div className="label">PDV režim</div>
+                <div className="label">
+                  PDV režim
+                  {isInoDetected && (
+                    <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.8, fontWeight: 600, color: "rgba(59, 130, 246, 0.9)" }}>
+                      (auto: INO klijent)
+                    </span>
+                  )}
+                </div>
                 <select
                   className="input"
                   value={vatMode}
@@ -283,6 +346,44 @@ export default function InvoiceWizard() {
                 unosi kao <b>dd.mm.yyyy</b>.
               </div>
             </div>
+
+            {/* ✅ Override nazivi projekata */}
+            {projectsData.length > 0 && (
+              <div className="cardLike" style={{ marginTop: 16 }}>
+                <div style={{ fontWeight: 850, fontSize: 16, marginBottom: 10 }}>
+                  Nazivi projekata na fakturi
+                </div>
+                <div style={{ opacity: 0.85, fontSize: 13, marginBottom: 12 }}>
+                  Možeš promijeniti naziv projekta samo za ovu fakturu (ne mijenja bazu). Korisno za dodavanje PO broja naručioca.
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {projectsData.map((proj) => (
+                    <div key={proj.projekat_id} style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: 10, alignItems: "center" }}>
+                      <div style={{ fontSize: 13, opacity: 0.8, fontWeight: 600 }}>
+                        #{proj.projekat_id}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>
+                          Original: {proj.radni_naziv || "—"}
+                        </div>
+                        <input
+                          className="input"
+                          value={projectNameOverrides[proj.projekat_id] ?? ""}
+                          onChange={(e) => {
+                            setProjectNameOverrides((prev) => ({
+                              ...prev,
+                              [proj.projekat_id]: e.target.value,
+                            }));
+                          }}
+                          placeholder={`Naziv za fakturu (prazno = koristi "${proj.radni_naziv || "#" + proj.projekat_id}")`}
+                          style={{ width: "100%" }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

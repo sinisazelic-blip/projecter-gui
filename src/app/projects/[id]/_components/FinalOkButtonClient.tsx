@@ -128,11 +128,42 @@ export default function FinalOkButtonClient({
         onClick={() => setOpen(true)}
         disabled={disabled}
         style={{
+          fontSize: 15,
+          fontWeight: 800,
+          padding: "12px 20px",
+          background: disabled
+            ? "rgba(100, 100, 100, 0.3)"
+            : "linear-gradient(135deg, rgba(34, 197, 94, 0.9) 0%, rgba(22, 163, 74, 0.95) 100%)",
+          border: disabled
+            ? "1px solid rgba(100, 100, 100, 0.3)"
+            : "1px solid rgba(34, 197, 94, 0.5)",
+          color: "white",
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+          boxShadow: disabled
+            ? "none"
+            : "0 4px 12px rgba(34, 197, 94, 0.3)",
+          transition: "all 0.2s",
           opacity: disabled ? 0.5 : 1,
           pointerEvents: disabled ? "none" : "auto",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+        onMouseEnter={(e) => {
+          if (!disabled) {
+            e.currentTarget.style.transform = "translateY(-1px)";
+            e.currentTarget.style.boxShadow = "0 6px 16px rgba(34, 197, 94, 0.4)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!disabled) {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 4px 12px rgba(34, 197, 94, 0.3)";
+          }
         }}
       >
-        <Flag size={16} />
+        <Flag size={18} />
         FINAL OK
       </button>
 

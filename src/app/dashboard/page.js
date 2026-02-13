@@ -26,19 +26,47 @@ function ActionBtn({ label, href, title, icon, className = "" }) {
 
 export default function Page() {
   return (
-    <div className="container">
+    <div className="container dashboardPage">
       <style>{`
+        .dashboardPage {
+          height: 100vh;
+          max-height: 100dvh;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        .dashboardPage .topBlock {
+          padding: clamp(8px, 1vh, 14px) 0 clamp(8px, 1vh, 12px);
+          flex-shrink: 0;
+        }
+
+        .dashboardPage .pageWrap {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+          overflow: hidden;
+        }
+
+        .dashboardPage .bodyWrap {
+          flex: 1;
+          min-height: 0;
+          overflow: auto;
+          padding: clamp(6px, 0.8vh, 14px) 0 clamp(8px, 1vh, 18px);
+        }
+
         .dashboardWrap {
           display: flex;
           flex-direction: column;
-          gap: 20px;
-          padding: 20px 0;
+          gap: clamp(8px, 1.5vh, 20px);
+          padding: clamp(8px, 1.2vh, 20px) 0;
         }
 
         .finansijeContainer {
           display: grid;
           grid-template-columns: 1.2fr 1fr;
-          gap: 20px;
+          gap: clamp(10px, 1.2vh, 20px);
           align-items: stretch;
         }
 
@@ -60,19 +88,19 @@ export default function Page() {
           background: rgba(255, 255, 255, 0.03);
           border-radius: 18px;
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
-          padding: 18px 20px;
+          padding: clamp(10px, 1.2vh, 18px) clamp(12px, 1.5vw, 20px);
         }
 
         .groupHeader {
           display: flex;
           align-items: center;
           gap: 10px;
-          margin-bottom: 12px;
+          margin-bottom: clamp(6px, 0.8vh, 12px);
           flex-wrap: wrap;
         }
 
         .groupTitle {
-          font-size: 18px;
+          font-size: clamp(15px, 1.8vh, 18px);
           font-weight: 800;
           letter-spacing: 0.3px;
           margin: 0;
@@ -108,7 +136,7 @@ export default function Page() {
         .groupSubtitle {
           font-size: 12px;
           opacity: 0.75;
-          margin-bottom: 16px;
+          margin-bottom: clamp(8px, 1vh, 16px);
           margin-top: -4px;
         }
 
@@ -119,10 +147,10 @@ export default function Page() {
 
         .deskMainButtons {
           display: flex;
-          gap: 16px;
+          gap: clamp(10px, 1.2vw, 16px);
           align-items: center;
           justify-content: center;
-          margin-bottom: 12px;
+          margin-bottom: clamp(6px, 0.8vh, 12px);
           flex-wrap: wrap;
         }
 
@@ -130,8 +158,8 @@ export default function Page() {
           flex: 1;
           min-width: 200px;
           max-width: 300px;
-          padding: 14px 20px;
-          font-size: 16px;
+          padding: clamp(10px, 1.2vh, 14px) clamp(14px, 1.5vw, 20px);
+          font-size: clamp(14px, 1.6vh, 16px);
           font-weight: 750;
           border-radius: 16px;
           text-align: center;
@@ -187,13 +215,13 @@ export default function Page() {
         .finansijeRow {
           display: flex;
           gap: 10px;
-          margin-bottom: 12px;
+          margin-bottom: clamp(6px, 0.8vh, 12px);
           flex-wrap: wrap;
         }
 
         .finansijeSubsection {
-          margin-top: 20px;
-          padding-top: 16px;
+          margin-top: clamp(10px, 1.2vh, 20px);
+          padding-top: clamp(10px, 1.2vh, 16px);
           border-top: 1px solid rgba(255, 255, 255, 0.08);
         }
 
@@ -210,7 +238,7 @@ export default function Page() {
         .sifarniciRow {
           display: flex;
           gap: 10px;
-          margin-bottom: 12px;
+          margin-bottom: clamp(6px, 0.8vh, 12px);
           flex-wrap: wrap;
         }
 
@@ -403,9 +431,9 @@ export default function Page() {
                     <span className="groupPill groupPill--reports">reports</span>
                   </div>
                   <div className="finansijeRow">
-                    <ActionBtn label="Periodični" href={null} className="btn--disabled" />
+                    <ActionBtn label="Svi" href="/izvjestaji/svi" title="Svi izvještaji – filter i period" />
                     <ActionBtn label="Grafički" href="/izvjestaji/graficki" title="Promet, troškovi i zarada po godinama i mjesecima" />
-                    <ActionBtn label="All" href={null} className="btn--disabled" />
+                    <ActionBtn label="Periodični" href={null} className="btn--disabled" title="Još nije implementirano" />
                   </div>
                 </div>
               </div>

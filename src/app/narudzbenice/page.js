@@ -1,6 +1,7 @@
 // src/app/narudzbenice/page.js
 import Link from "next/link";
 import { query } from "@/lib/db";
+import { ExportExcelButton } from "@/components/ExportExcelButton";
 
 export const dynamic = "force-dynamic";
 
@@ -277,6 +278,23 @@ export default async function Page({ searchParams }) {
 
         <div className="listWrap">
           <div className="tableCard">
+            <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", flexWrap: "wrap", gap: 8 }}>
+              <ExportExcelButton
+                filename="narudzbenice"
+                sheetName="Narudžbenice"
+                headers={["Klijent", "Klijent ID", "Dobavljač", "Dobavljač ID", "Država", "Email", "Vrijednost (tekst)", "PO brojevi"]}
+                rows={list.map((g) => [
+                  g.klijent_naziv ?? "",
+                  g.klijent_id ?? "",
+                  g.dobavljac_naziv ?? "",
+                  g.dobavljac_id ?? "",
+                  g.drzava_iso2 ?? "",
+                  g.email ?? "",
+                  (g.values ?? []).map((v) => `${fmtAmount(v.ukupno)} ${v.valuta}`).join(", ") || "—",
+                  g.po_list ?? "",
+                ])}
+              />
+            </div>
             <table className="table">
               <thead>
                 <tr>

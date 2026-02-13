@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { query } from "@/lib/db";
+import { ExportExcelButton } from "@/components/ExportExcelButton";
 
 export const dynamic = "force-dynamic";
 
@@ -112,7 +113,25 @@ export default async function FiksniTroskoviPage({ searchParams }) {
       <div className="card tableCard">
         <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           <span style={{ fontWeight: 700, fontSize: 15 }}>Šifrarnik fiksnih troškova</span>
-          <span className="muted">Prikazano: {rows?.length ?? 0} (limit 200)</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <span className="muted">Prikazano: {rows?.length ?? 0} (limit 200)</span>
+            <ExportExcelButton
+              filename="fiksni_troskovi"
+              sheetName="Fiksni troškovi"
+              headers={["ID", "Naziv", "Frekvencija", "Dan", "Datum dospijeća", "Iznos", "Valuta", "Zadnje plaćeno", "Aktivan"]}
+              rows={(rows ?? []).map((r) => [
+                r.trosak_id ?? "",
+                r.naziv_troska ?? "",
+                r.frekvencija ?? "",
+                r.dan_u_mjesecu ?? "",
+                r.datum_dospijeca ? String(r.datum_dospijeca).slice(0, 10) : "",
+                r.iznos ?? "",
+                r.valuta ?? "BAM",
+                r.zadnje_placeno ? String(r.zadnje_placeno).slice(0, 10) : "",
+                r.aktivan != null ? (r.aktivan ? "Da" : "Ne") : "",
+              ])}
+            />
+          </span>
         </div>
         <div>
           <table>

@@ -63,6 +63,16 @@ export async function PATCH(req, { params }) {
       vals
     );
 
+    if (Array.isArray(body.dobavljac_ids)) {
+      await query(`DELETE FROM projekat_faza_dobavljaci WHERE projekat_faza_id = ?`, [projekatFazaId]).catch(() => {}); // Ignore ako tabela ne postoji
+      for (const did of body.dobavljac_ids.filter(Boolean)) {
+        await query(
+          `INSERT IGNORE INTO projekat_faza_dobavljaci (projekat_faza_id, dobavljac_id) VALUES (?, ?)`,
+          [projekatFazaId, Number(did)]
+        ).catch(() => {}); // Ignore ako tabela ne postoji
+      }
+    }
+
     if (Array.isArray(body.radnik_ids)) {
       await query(`DELETE FROM projekat_faza_radnici WHERE projekat_faza_id = ?`, [projekatFazaId]);
       for (const rid of body.radnik_ids.filter(Boolean)) {

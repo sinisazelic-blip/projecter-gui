@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { query } from "@/lib/db";
 import KufImportForm from "./KufImportForm";
+import { ExportExcelButton } from "@/components/ExportExcelButton";
 
 export const dynamic = "force-dynamic";
 
@@ -212,9 +213,30 @@ export default async function KufPage({ searchParams }) {
 
           <div className="card" style={{ marginTop: 12 }}>
             <div className="cardHead">
-              <div className="cardTitleRow">
+              <div className="cardTitleRow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                 <div className="cardTitle">Lista ulaznih faktura</div>
-                <span className="muted">Prikazano: {list.length} (limit 200)</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                  <span className="muted">Prikazano: {list.length} (limit 200)</span>
+                  <ExportExcelButton
+                    filename="kuf_ulazne_fakture"
+                    sheetName="KUF"
+                    headers={["ID", "Broj fakture", "Datum", "Dospijeće", "Partner", "Iznos", "Valuta", "Iznos (KM)", "Opis", "Tip rasknjižavanja", "Projekat", "Fiksni trošak"]}
+                    rows={list.map((r) => [
+                      r.kuf_id ?? "",
+                      r.broj_fakture ?? "",
+                      fmtDate(r.datum_fakture),
+                      fmtDate(r.datum_dospijeca),
+                      partnerName(r),
+                      r.iznos ?? "",
+                      r.valuta ?? "",
+                      r.iznos_km ?? "",
+                      r.opis ?? "",
+                      r.tip_rasknjizavanja ?? "",
+                      r.projekat_naziv ?? r.projekat_id ?? "",
+                      r.fiksni_trosak_naziv ?? r.fiksni_trosak_id ?? "",
+                    ])}
+                  />
+                </span>
               </div>
             </div>
 

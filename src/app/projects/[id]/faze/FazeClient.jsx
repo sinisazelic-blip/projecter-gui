@@ -9,11 +9,13 @@ function fmtDate(v) {
   return d && m && y ? `${d}.${m}.${y}` : s;
 }
 
-export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici }) {
+export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, dobavljaci }) {
   const [faze, setFaze] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [adding, setAdding] = useState(false);
+  const [dobavljacFilter, setDobavljacFilter] = useState("");
+  const [radnikFilter, setRadnikFilter] = useState("");
 
   const [form, setForm] = useState({
     faza_id: "",
@@ -22,6 +24,7 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici }
     datum_kraja: "",
     deadline: "",
     procenat_izvrsenosti: 0,
+    dobavljac_ids: [],
     radnik_ids: [],
   });
 
@@ -59,12 +62,13 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici }
           datum_kraja: form.datum_kraja || null,
           deadline: form.deadline || null,
           procenat_izvrsenosti: Number(form.procenat_izvrsenosti) || 0,
+          dobavljac_ids: form.dobavljac_ids,
           radnik_ids: form.radnik_ids,
         }),
       });
       const j = await res.json();
       if (!j?.ok) throw new Error(j?.error || "Greška");
-      setForm({ faza_id: "", naziv: "", datum_pocetka: "", datum_kraja: "", deadline: "", procenat_izvrsenosti: 0, radnik_ids: [] });
+      setForm({ faza_id: "", naziv: "", datum_pocetka: "", datum_kraja: "", deadline: "", procenat_izvrsenosti: 0, dobavljac_ids: [], radnik_ids: [] });
       await load();
     } catch (e) {
       setErr(e?.message || "Greška");
@@ -102,6 +106,15 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici }
     } catch (e) {
       setErr(e?.message || "Greška");
     }
+  }
+
+  function toggleDobavljac(did) {
+    setForm((s) => ({
+      ...s,
+      dobavljac_ids: s.dobavljac_ids.includes(did)
+        ? s.dobavljac_ids.filter((x) => x !== did)
+        : [...s.dobavljac_ids, did],
+    }));
   }
 
   function toggleRadnik(rid) {
@@ -199,25 +212,81 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici }
               className="input"
               value={form.procenat_izvrsenosti}
               onChange={(e) => setForm((s) => ({ ...s, procenat_izvrsenosti: e.target.value }))}
-              style={{ width: 80 }}
             />
           </div>
 
           <div className="field">
-            <label className="label">Radnici</label>
-            <div className="checkboxGroup">
-              {radnici.map((r) => (
-                <label key={r.radnik_id} className="checkboxLabel">
-                  <input
-                    type="checkbox"
-                    checked={form.radnik_ids.includes(r.radnik_id)}
-                    onChange={() => toggleRadnik(r.radnik_id)}
-                  />
-                  {r.ime} {r.prezime}
-                </label>
-              ))}
-              {radnici.length === 0 && <span className="muted">Nema radnika</span>}
+            <label className="label">Dobavljači</label>
+            <input
+              type="text"
+              className="input"
+              placeholder="Pretraži dobavljače..."
+              value={dobavljacFilter}
+              onChange={(e) => setDobavljacFilter(e.target.value)}
+              style={{ marginBottom: 8, fontSize: 13 }}
+            />
+            <div className="checkboxGroup" style={{ maxHeight: "200px", overflowY: "auto", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 6, padding: 8 }}>
+              {dobavljaci
+                .filter((d) => !dobavljacFilter || d.naziv.toLowerCase().includes(dobavljacFilter.toLowerCase()))
+                .map((d) => (
+                  <label key={d.dobavljac_id} className="checkboxLabel">
+                    <input
+                      type="checkbox"
+                      checked={form.dobavljac_ids.includes(d.dobavljac_id)}
+                      onChange={() => toggleDobavljac(d.dobavljac_id)}
+                    />
+                    {d.naziv}
+                  </label>
+                ))}
+              {dobavljaci.length === 0 && <span className="muted">Nema dobavljača</span>}
+              {dobavljacFilter && dobavljaci.filter((d) => d.naziv.toLowerCase().includes(dobavljacFilter.toLowerCase())).length === 0 && (
+                <span className="muted">Nema rezultata za "{dobavljacFilter}"</span>
+              )}
             </div>
+            {form.dobavljac_ids.length > 0 && (
+              <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
+                Izabrano: {form.dobavljac_ids.length} {form.dobavljac_ids.length === 1 ? "dobavljač" : "dobavljača"}
+              </div>
+            )}
+          </div>
+
+          <div className="field">
+            <label className="label">Radnici</label>
+            <input
+              type="text"
+              className="input"
+              placeholder="Pretraži radnike..."
+              value={radnikFilter}
+              onChange={(e) => setRadnikFilter(e.target.value)}
+              style={{ marginBottom: 8, fontSize: 13 }}
+            />
+            <div className="checkboxGroup" style={{ maxHeight: "200px", overflowY: "auto", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 6, padding: 8 }}>
+              {radnici
+                .filter((r) => {
+                  if (!radnikFilter) return true;
+                  const search = radnikFilter.toLowerCase();
+                  return `${r.ime} ${r.prezime}`.toLowerCase().includes(search);
+                })
+                .map((r) => (
+                  <label key={r.radnik_id} className="checkboxLabel">
+                    <input
+                      type="checkbox"
+                      checked={form.radnik_ids.includes(r.radnik_id)}
+                      onChange={() => toggleRadnik(r.radnik_id)}
+                    />
+                    {r.ime} {r.prezime}
+                  </label>
+                ))}
+              {radnici.length === 0 && <span className="muted">Nema radnika</span>}
+              {radnikFilter && radnici.filter((r) => `${r.ime} ${r.prezime}`.toLowerCase().includes(radnikFilter.toLowerCase())).length === 0 && (
+                <span className="muted">Nema rezultata za "{radnikFilter}"</span>
+              )}
+            </div>
+            {form.radnik_ids.length > 0 && (
+              <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
+                Izabrano: {form.radnik_ids.length} {form.radnik_ids.length === 1 ? "radnik" : "radnika"}
+              </div>
+            )}
           </div>
         </div>
 
@@ -237,6 +306,7 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici }
                 <th>Kraj</th>
                 <th>Deadline</th>
                 <th>%</th>
+                <th>Dobavljači</th>
                 <th>Radnici</th>
                 <th></th>
               </tr>
@@ -244,7 +314,7 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici }
             <tbody>
               {faze.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="muted">
+                  <td colSpan={8} className="muted">
                     Nema faza. Dodaj prvu fazu iznad.
                   </td>
                 </tr>
@@ -272,6 +342,9 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici }
                       }}
                       style={{ width: 60, padding: 4 }}
                     />
+                  </td>
+                  <td>
+                    {f.dobavljaci?.length ? f.dobavljaci.map((d) => d.naziv).join(", ") : "—"}
                   </td>
                   <td>
                     {f.radnici?.length ? f.radnici.map((r) => `${r.ime} ${r.prezime}`).join(", ") : "—"}

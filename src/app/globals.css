@@ -333,6 +333,25 @@ option {
   background: rgba(255, 255, 255, 0.1);
 }
 
+.btn-faze-important {
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  padding: 12px 20px !important;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.9) 0%, rgba(37, 99, 235, 0.95) 100%) !important;
+  border: 1px solid rgba(59, 130, 246, 0.5) !important;
+  color: white !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+  transition: all 0.2s !important;
+}
+
+.btn-faze-important:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4) !important;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 1) 100%) !important;
+}
+
 .skeleton-row {
   height: 14px;
   border-radius: 8px;
@@ -678,9 +697,45 @@ option {
 }
 .fazeFormGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(6, 1fr);
   gap: 14px;
   margin-bottom: 14px;
+}
+@media (max-width: 1400px) {
+  .fazeFormGrid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+@media (max-width: 1100px) {
+  .fazeFormGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+@media (max-width: 800px) {
+  .fazeFormGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .fazeFormGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.fazeFormGrid .field:nth-child(7),
+.fazeFormGrid .field:nth-child(8) {
+  grid-column: span 3;
+}
+@media (max-width: 800px) {
+  .fazeFormGrid .field:nth-child(7),
+  .fazeFormGrid .field:nth-child(8) {
+    grid-column: span 2;
+  }
+}
+@media (max-width: 600px) {
+  .fazeFormGrid .field:nth-child(7),
+  .fazeFormGrid .field:nth-child(8) {
+    grid-column: span 2;
+  }
 }
 .fazeFormGrid .field {
   display: flex;

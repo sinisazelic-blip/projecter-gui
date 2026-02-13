@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { query } from "@/lib/db";
+import { ExportExcelButton } from "@/components/ExportExcelButton";
 
 export const dynamic = "force-dynamic";
 
@@ -165,7 +166,30 @@ export default async function DugovanjaListPage({ searchParams }) {
       <div className="card tableCard">
         <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           <span style={{ fontWeight: 700, fontSize: 15 }}>Lista dugovanja</span>
-          <span className="muted">Prikazano: {list.length} (limit 200)</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <span className="muted">Prikazano: {list.length} (limit 200)</span>
+            <ExportExcelButton
+              filename="dugovanja"
+              sheetName="Dugovanja"
+              headers={["ID", "Projekat", "Datum", "Dospijeće", "Iznos (KM)", "Plaćeno (KM)", "Preostalo (KM)", "Opis", "Napomena"]}
+              rows={list.map((r) => {
+                const iznos = Number(r.iznos_km ?? r.iznos);
+                const paid = Number(r.paid_km ?? 0);
+                const rem = Number.isFinite(iznos) && Number.isFinite(paid) ? iznos - paid : null;
+                return [
+                  r.dugovanje_id,
+                  r.projekat_id ?? "",
+                  fmtDate(r.datum),
+                  fmtDate(r.datum_dospijeca),
+                  Number.isFinite(iznos) ? iznos : "",
+                  Number.isFinite(paid) ? paid : "",
+                  rem != null ? rem : "",
+                  r.opis ?? "",
+                  r.napomena ?? "",
+                ];
+              })}
+            />
+          </span>
         </div>
         <div>
           <table>

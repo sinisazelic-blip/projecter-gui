@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { downloadExcel } from "@/lib/exportExcel";
 
 function fmtDDMMYYYY(iso: string | null): string {
   if (!iso) return "—";
@@ -198,6 +199,37 @@ export default function FakturePage() {
                 >
                   🔄 Reset
                 </button>
+
+                {fakture.length > 0 && (
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{ fontSize: 13, marginLeft: 8 }}
+                    onClick={() => {
+                      const headers = ["Broj fakture", "PFR", "Datum izdavanja", "Datum dospijeća", "Naručioc", "Iznos", "Valuta", "PDV", "Status"];
+                      const rows = fakture.map((f) => [
+                        f.broj_fakture ?? "",
+                        f.broj_fiskalni ?? "",
+                        fmtDDMMYYYY(f.datum_izdavanja),
+                        fmtDDMMYYYY(f.datum_dospijeca),
+                        f.narucilac_naziv ?? "",
+                        f.iznos_sa_pdv ?? "",
+                        f.valuta ?? "",
+                        f.pdv_iznos ?? "",
+                        f.status ?? "",
+                      ]);
+                      downloadExcel({
+                        filename: "fakture_lista",
+                        sheetName: "Fakture",
+                        headers,
+                        rows,
+                      });
+                    }}
+                    title="Preuzmi listu u Excel"
+                  >
+                    Export u Excel
+                  </button>
+                )}
               </div>
             </div>
 

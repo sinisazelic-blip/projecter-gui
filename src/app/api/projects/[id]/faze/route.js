@@ -36,17 +36,30 @@ export async function GET(req, { params }) {
       [projekatId]
     );
 
-    const radniciByFaza = await query(
-      `
-      SELECT pfr.projekat_faza_id, pfr.radnik_id, r.ime, r.prezime
-      FROM projekat_faza_radnici pfr
-      JOIN radnici r ON r.radnik_id = pfr.radnik_id
-      WHERE pfr.projekat_faza_id IN (
-        SELECT projekat_faza_id FROM projekat_faze WHERE projekat_id = ?
-      )
-      `,
-      [projekatId]
-    );
+    const [radniciByFaza, dobavljaciByFaza] = await Promise.all([
+      query(
+        `
+        SELECT pfr.projekat_faza_id, pfr.radnik_id, r.ime, r.prezime
+        FROM projekat_faza_radnici pfr
+        JOIN radnici r ON r.radnik_id = pfr.radnik_id
+        WHERE pfr.projekat_faza_id IN (
+          SELECT projekat_faza_id FROM projekat_faze WHERE projekat_id = ?
+        )
+        `,
+        [projekatId]
+      ),
+      query(
+        `
+        SELECT pfd.projekat_faza_id, pfd.dobavljac_id, d.naziv
+        FROM projekat_faza_dobavljaci pfd
+        JOIN dobavljaci d ON d.dobavljac_id = pfd.dobavljac_id
+        WHERE pfd.projekat_faza_id IN (
+          SELECT projekat_faza_id FROM projekat_faze WHERE projekat_id = ?
+        )
+        `,
+        [projekatId]
+      ).catch(() => []),
+    ]);
 
     const radMap = {};
     for (const r of radniciByFaza || []) {
@@ -55,8 +68,16 @@ export async function GET(req, { params }) {
       radMap[fid].push({ radnik_id: r.radnik_id, ime: r.ime, prezime: r.prezime });
     }
 
+    const dobMap = {};
+    for (const d of dobavljaciByFaza || []) {
+      const fid = d.projekat_faza_id;
+      if (!dobMap[fid]) dobMap[fid] = [];
+      dobMap[fid].push({ dobavljac_id: d.dobavljac_id, naziv: d.naziv });
+    }
+
     for (const f of faze || []) {
       f.radnici = radMap[f.projekat_faza_id] || [];
+      f.dobavljaci = dobMap[f.projekat_faza_id] || [];
     }
 
     return NextResponse.json({ ok: true, faze: faze || [] });
@@ -84,6 +105,7 @@ export async function POST(req, { params }) {
     const procenat = Math.min(100, Math.max(0, Number(body.procenat_izvrsenosti) || 0));
     const redoslijed = Number(body.redoslijed) || 0;
     const napomena = body.napomena ? String(body.napomena).trim() : null;
+    const dobavljacIds = Array.isArray(body.dobavljac_ids) ? body.dobavljac_ids.map(Number).filter(Boolean) : [];
     const radnikIds = Array.isArray(body.radnik_ids) ? body.radnik_ids.map(Number).filter(Boolean) : [];
 
     const [maxOrder] = await query(
@@ -103,6 +125,13 @@ export async function POST(req, { params }) {
 
     const projekatFazaId = ins?.insertId;
     if (!projekatFazaId) throw new Error("Insert nije vratio ID");
+
+    for (const did of dobavljacIds) {
+      await query(
+        `INSERT IGNORE INTO projekat_faza_dobavljaci (projekat_faza_id, dobavljac_id) VALUES (?, ?)`,
+        [projekatFazaId, did]
+      ).catch(() => {}); // Ignore ako tabela ne postoji
+    }
 
     for (const rid of radnikIds) {
       await query(

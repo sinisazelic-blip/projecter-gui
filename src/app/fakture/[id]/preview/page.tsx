@@ -104,6 +104,85 @@ function safeLineJoin(
   return parts.filter((p) => p != null && String(p).trim() !== "").join(sep);
 }
 
+// ✅ Formatiraj bankovne račune prema traženom formatu: Naziv banke - (KM) broj - (EUR) IBAN - SWIFT
+function formatBankAccounts(accounts: any[]): string[] {
+  if (!accounts || accounts.length === 0) return [];
+
+  // Grupiši račune po banci
+  const byBank: Record<string, any[]> = {};
+
+  for (const acc of accounts) {
+    const bankName = String(
+      acc?.bank_naziv ?? acc?.banka_naziv ?? acc?.bank ?? acc?.naziv_bank ?? "",
+    ).trim();
+    
+    if (!bankName) continue;
+
+    if (!byBank[bankName]) {
+      byBank[bankName] = [];
+    }
+    byBank[bankName].push(acc);
+  }
+
+  // Formatiraj svaku banku
+  const formatted: string[] = [];
+  
+  for (const [bankName, bankAccounts] of Object.entries(byBank)) {
+    const parts: string[] = [bankName];
+    
+    // Pronađi KM broj računa (bank_racun)
+    let kmAccount = "";
+    for (const acc of bankAccounts) {
+      const account = String(
+        acc?.bank_racun ??
+        acc?.racun ??
+        acc?.broj_racuna ??
+        acc?.account_no ??
+        acc?.account ??
+        "",
+      ).trim();
+      if (account && !account.toUpperCase().startsWith("BA")) {
+        kmAccount = account;
+        break;
+      }
+    }
+    
+    if (kmAccount) {
+      parts.push(`(KM) ${kmAccount}`);
+    }
+    
+    // Pronađi IBAN i SWIFT (za EUR/INO račune)
+    let iban = "";
+    let swift = "";
+    
+    for (const acc of bankAccounts) {
+      const accIban = String(acc?.iban ?? "").trim();
+      const accSwift = String(acc?.swift ?? acc?.bic ?? "").trim();
+      
+      if (accIban && accIban.toUpperCase().startsWith("BA")) {
+        iban = accIban;
+      }
+      if (accSwift && !swift) {
+        swift = accSwift;
+      }
+    }
+    
+    // Dodaj (EUR) IBAN i SWIFT ako postoje
+    if (iban || swift) {
+      if (iban) {
+        parts.push(`(EUR) IBAN ${iban}`);
+      }
+      if (swift) {
+        parts.push(`SWIFT ${swift}`);
+      }
+    }
+    
+    formatted.push(parts.join(" - "));
+  }
+
+  return formatted;
+}
+
 export default function FakturaPreviewPage() {
   const params = useParams();
   const router = useRouter();
@@ -188,6 +267,9 @@ export default function FakturaPreviewPage() {
   const bankAccounts = Array.isArray(firma?.bank_accounts)
     ? firma!.bank_accounts
     : [];
+  
+  // ✅ Formatiraj račune prema traženom formatu
+  const formattedBankAccounts = formatBankAccounts(bankAccounts);
 
   const buyerName = String(
     buyer?.naziv_klijenta ?? (lang === "EN" ? "Buyer" : "Kupac"),
@@ -414,7 +496,8 @@ export default function FakturaPreviewPage() {
         }
 
         .totalsBox{
-          min-width: 320px;
+          width: 50%;
+          max-width: 320px;
           border: 1px solid rgba(0,0,0,.10);
           border-radius: 10px;
           padding: 10px 12px;
@@ -434,10 +517,10 @@ export default function FakturaPreviewPage() {
         .totLine.total .v{ font-weight: 900; }
 
         .completedLine{
-          margin-top: 10px;
-          font-size: 11px;
+          margin-top: 6px;
+          font-size: 10px;
           color:#555;
-          line-height: 1.35;
+          line-height: 1.25;
         }
 
         .footer{
@@ -579,18 +662,48 @@ export default function FakturaPreviewPage() {
                 </div>
               </div>
 
-              <Link
-                href="/fakture"
-                className="btn"
-                style={{
-                  background: "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1))",
-                  borderColor: "rgba(59, 130, 246, 0.4)",
-                  fontWeight: 700,
-                }}
-                title="Nazad na listu faktura"
-              >
-                ← Nazad
-              </Link>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <Link
+                  href="/fakture"
+                  className="btn"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1))",
+                    borderColor: "rgba(59, 130, 246, 0.4)",
+                    fontWeight: 700,
+                  }}
+                  title="Nazad na listu faktura"
+                >
+                  ← Nazad
+                </Link>
+                
+                <button
+                  className="btn"
+                  onClick={() => window.print()}
+                  style={{
+                    background: "linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.1))",
+                    borderColor: "rgba(34, 197, 94, 0.4)",
+                    fontWeight: 600,
+                  }}
+                  title="Štampaj fakturu"
+                >
+                  🖨️ Štampaj
+                </button>
+                
+                <button
+                  className="btn"
+                  onClick={() => {
+                    window.print();
+                  }}
+                  style={{
+                    background: "linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(147, 51, 234, 0.1))",
+                    borderColor: "rgba(168, 85, 247, 0.4)",
+                    fontWeight: 600,
+                  }}
+                  title="Sačuvaj kao PDF (koristi Save as PDF u print dialogu)"
+                >
+                  💾 Save as PDF
+                </button>
+              </div>
             </div>
 
             <div className="divider" />
@@ -667,13 +780,11 @@ export default function FakturaPreviewPage() {
                     <div className="muted">
                       {lang === "EN" ? "Tax ID:" : "PIB:"} {sellerTax}
                     </div>
-                    {bankAccounts.length > 0 && (
+                    {formattedBankAccounts.length > 0 && (
                       <div className="bankList">
-                        {bankAccounts.map((acc) => (
-                          <div key={acc.bank_account_id} className="bankLine">
-                            {acc.bank_naziv && `${acc.bank_naziv} `}
-                            {acc.iban && `IBAN: ${acc.iban}`}
-                            {acc.swift && acc.swift.trim() !== "" && ` SWIFT: ${acc.swift}`}
+                        {formattedBankAccounts.map((formatted, i) => (
+                          <div key={`bank-${i}`} className="bankLine">
+                            {formatted}
                           </div>
                         ))}
                       </div>

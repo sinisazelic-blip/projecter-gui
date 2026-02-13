@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { apiGet } from "@/lib/api";
 import { query } from "@/lib/db";
+import { ExportExcelButton } from "@/components/ExportExcelButton";
 
 const inputStyle = {
   padding: "8px 10px",
@@ -72,7 +73,8 @@ export default async function Page({ searchParams }) {
   if (projekatId) params.set("projekat_id", projekatId);
 
   if (onlyLate) params.set("only_late", "1");
-  // Fakturisano: samo "DA" ili svi (NE nema smisla)
+  // Fakturisano: po defaultu prikaži sve fakturisane (status_id = 9)
+  // Ako je eksplicitno odabrano "DA", filtriraj po v.fakturisano = 1
   if (fakt === "1") params.set("fakturisano", "1");
   if (narId) params.set("narucilac_id", narId);
   if (dueFrom) params.set("due_from", dueFrom);
@@ -308,6 +310,25 @@ export default async function Page({ searchParams }) {
       </div>
 
       <div className="card" style={{ marginTop: 12 }}>
+      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+        <span className="muted">Prikazano: {rows.length} stavki</span>
+        <ExportExcelButton
+          filename="naplate"
+          sheetName="Naplate"
+          headers={["Projekat ID", "Projekat", "Naručilac", "Krajnji klijent", "Iznos", "Valuta", "Datum valute", "Dani", "Status"]}
+          rows={rows.map((r) => [
+            r.projekat_id ?? "",
+            r.radni_naziv ?? "",
+            r.narucilac_naziv ?? "—",
+            r.krajnji_klijent_naziv ?? "—",
+            r.iznos ?? "",
+            r.valuta ?? "",
+            r.datum_valute ? fmtDateDMY(r.datum_valute) : "—",
+            r.dana_do_valute ?? r.dana_kasni ?? "—",
+            r.naplata_status ?? "",
+          ])}
+        />
+      </div>
       <div className="tableCard">
       <table className="table">
         <thead>

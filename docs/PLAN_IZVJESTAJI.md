@@ -141,3 +141,9 @@ Svaki izvještaj ima:
 Kad budeš spreman: prvo jedan jednostavan izvještaj (npr. „Talenti – ukupno i po projektu”) kao prototip, pa ostalo po prioritetu.
 
 **Napomena:** Sutra u studiju, prije kolegija – napraviti bar nešto od ovoga.
+
+---
+
+## 11. Formalni (knjigovodstveni) izvještaji
+
+Uobičajeni knjigovodstveni izvještaji koje Fluxa može nuditi (knjiga prihoda, rashoda, PDV, potraživanja, dugovanja, banka vs knjige itd.) – **predlog varijanti i redoslijed:** `docs/PLAN_IZVJESTAJI_FORMALNI.md`.

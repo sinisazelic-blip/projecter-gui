@@ -948,7 +948,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "flex-end",
-              gap: 10,
+              gap: 12,
               flexWrap: "wrap",
               marginBottom: 12,
               padding: "6px 0",
@@ -956,10 +956,10 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
           >
             <Link
               href={`/projects/${projekatId}/faze`}
-              className="btn"
+              className="btn btn-faze-important"
               title="Faze projekta, radnici, deadline, %"
             >
-              📋 Faze
+              📋 FAZE
             </Link>
             <FinalOkButtonClient projekatId={project.projekat_id} disabled={isReadOnly} />
           </div>

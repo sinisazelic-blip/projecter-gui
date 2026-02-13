@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { query } from "@/lib/db";
 import KreditForm from "./KreditForm";
+import { ExportExcelButton } from "@/components/ExportExcelButton";
 
 export const dynamic = "force-dynamic";
 
@@ -217,7 +218,28 @@ export default async function KreditiPage({ searchParams }) {
               <div className="card tableCard" style={{ marginTop: 14 }}>
                 <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                   <span style={{ fontWeight: 700, fontSize: 15 }}>Lista kredita</span>
-                  <span className="muted">Prikazano: {list.length}</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <span className="muted">Prikazano: {list.length}</span>
+                    <ExportExcelButton
+                      filename="krediti"
+                      sheetName="Krediti"
+                      headers={["ID", "Naziv", "Banka", "Ukupan iznos", "Valuta", "Broj rata", "Uplaćeno rata", "Ostatak duga", "Ostalo rata", "Posljednja rata", "Aktivan", "Napomena"]}
+                      rows={enriched.map((r) => [
+                        r.kredit_id,
+                        r.naziv ?? "",
+                        r.banka_naziv ?? "",
+                        r.ukupan_iznos ?? "",
+                        r.valuta ?? "",
+                        r.broj_rata ?? "",
+                        r.uplaceno_rata ?? "",
+                        r.ostatak_duga ?? "",
+                        r.ostalo_rata ?? "",
+                        fmtMjesecGodina(r.datum_posljednja_rata),
+                        r.aktivan ? "Da" : "Ne",
+                        r.napomena ?? "",
+                      ])}
+                    />
+                  </span>
                 </div>
                 <div>
                   <table className="table">

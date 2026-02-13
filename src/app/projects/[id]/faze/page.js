@@ -22,6 +22,9 @@ export default async function ProjekatFazePage({ params }) {
   const radnici = await query(
     `SELECT radnik_id, ime, prezime FROM radnici WHERE aktivan = 1 ORDER BY ime, prezime ASC`
   );
+  const dobavljaci = await query(
+    `SELECT dobavljac_id, naziv FROM dobavljaci WHERE aktivan = 1 ORDER BY naziv ASC`
+  );
 
   return (
     <div className="container">
@@ -59,6 +62,7 @@ export default async function ProjekatFazePage({ params }) {
             rokGlavni={proj.rok_glavni ? String(proj.rok_glavni).slice(0, 10) : null}
             radneFaze={radneFaze || []}
             radnici={radnici || []}
+            dobavljaci={dobavljaci || []}
           />
         </div>
       </div>

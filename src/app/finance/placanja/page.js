@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { query } from "@/lib/db";
+import { ExportExcelButton } from "@/components/ExportExcelButton";
 
 export const dynamic = "force-dynamic";
 
@@ -121,7 +122,23 @@ export default async function PlacanjaListPage({ searchParams }) {
       <div className="card tableCard">
         <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           <span style={{ fontWeight: 700, fontSize: 15 }}>Lista plaćanja</span>
-          <span className="muted">Prikazano: {list.length} (limit 200)</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <span className="muted">Prikazano: {list.length} (limit 200)</span>
+            <ExportExcelButton
+              filename="placanja"
+              sheetName="Plaćanja"
+              headers={["ID", "Datum", "Iznos (KM)", "Partner", "Opis", "Napomena", "Status"]}
+              rows={list.map((r) => [
+                r.placanje_id ?? r.id,
+                fmtDate(r.datum),
+                r.iznos_km ?? "",
+                r.partner ?? "",
+                r.opis ?? "",
+                r.napomena ?? "",
+                r.status ?? "",
+              ])}
+            />
+          </span>
         </div>
         <div>
           <table className="table">
