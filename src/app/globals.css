@@ -279,6 +279,103 @@ option {
   white-space: nowrap;
 }
 
+/* Evidencija početnih stanja: Naziv i Napomena mogu da se prelamaju */
+.pocetna-stanja-table thead th:nth-child(1),
+.pocetna-stanja-table tbody td:nth-child(1),
+.pocetna-stanja-table thead th:nth-child(3),
+.pocetna-stanja-table tbody td:nth-child(3) {
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* Evidencija početnih stanja: jednostavan layout, bez preklapanja */
+.pocetna-stanja-layout {
+  padding: 20px 0 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+/* Svaka tabela u svom okviru sa unutrašnjim skrolom */
+.pocetna-stanja-table-wrap {
+  max-height: 380px;
+  overflow: auto;
+  overflow-x: auto;
+  border-top: 1px solid var(--border);
+}
+.pocetna-stanja-table-wrap .table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--panel);
+  box-shadow: 0 1px 0 var(--border);
+}
+
+/* Tabela potraživanja: datumi lijevo, kompaktan prikaz */
+.potrazivanja-table th:nth-child(3),
+.potrazivanja-table th:nth-child(4),
+.potrazivanja-table td:nth-child(3),
+.potrazivanja-table td:nth-child(4) {
+  text-align: left;
+}
+.potrazivanja-table td:nth-child(3),
+.potrazivanja-table td:nth-child(4) {
+  white-space: nowrap;
+}
+
+/* Stranica Banka: layout bez preklapanja, filteri u redovima */
+.banka-page-layout {
+  padding: 20px 0 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.banka-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.banka-filters {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.banka-filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+}
+.banka-field {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.banka-field.label {
+  min-width: 140px;
+}
+.banka-field .label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.banka-field .input {
+  width: 100%;
+  min-width: 140px;
+  max-width: 220px;
+}
+.banka-field.banka-field--wide .input {
+  max-width: 280px;
+  min-width: 180px;
+}
+.banka-field.banka-actions .input {
+  max-width: none;
+}
+.banka-actions .label + div {
+  margin-top: 0;
+}
+
 /* =========================
    Small screens
    ========================= */

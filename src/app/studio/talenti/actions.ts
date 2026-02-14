@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { query } from "@/lib/db";
 
 type VrstaTalenta =
@@ -48,11 +49,12 @@ export async function createTalent(input: {
   const aktivan = input?.aktivan === false ? 0 : 1;
 
   await query(
-    `INSERT INTO talenti (ime_prezime, vrsta, email, telefon, napomena, aktivan)
-     VALUES (?,?,?,?,?,?)`,
+    `INSERT INTO talenti (ime_prezime, vrsta, email, telefon, napomena, aktivan, created_at, updated_at)
+     VALUES (?,?,?,?,?,?, NOW(), NOW())`,
     [ime, vrsta, email, telefon, napomena, aktivan],
   );
 
+  revalidatePath("/studio/talenti");
   return { ok: true };
 }
 
@@ -79,12 +81,25 @@ export async function updateTalent(input: {
 
   await query(
     `UPDATE talenti
-        SET ime_prezime=?, vrsta=?, email=?, telefon=?, napomena=?, aktivan=?
+        SET ime_prezime=?, vrsta=?, email=?, telefon=?, napomena=?, aktivan=?,
+            updated_at=NOW()
       WHERE talent_id=?`,
     [ime, vrsta, email, telefon, napomena, aktivan, id],
   );
 
-  return { ok: true };
+  const [row] = (await query(
+    `SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+            DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+       FROM talenti WHERE talent_id = ?`,
+    [id],
+  )) as { created_at: string | null; updated_at: string | null }[];
+
+  revalidatePath("/studio/talenti");
+  return {
+    ok: true,
+    created_at: row?.created_at ?? null,
+    updated_at: row?.updated_at ?? null,
+  };
 }
 
 export async function setTalentActive(input: {
@@ -94,9 +109,10 @@ export async function setTalentActive(input: {
   const id = Number(input?.talent_id);
   if (!Number.isFinite(id) || id <= 0) throw new Error("Neispravan talent_id.");
 
-  await query(`UPDATE talenti SET aktivan=? WHERE talent_id=?`, [
+  await query(`UPDATE talenti SET aktivan=?, updated_at=NOW() WHERE talent_id=?`, [
     input?.aktivan ? 1 : 0,
     id,
   ]);
+  revalidatePath("/studio/talenti");
   return { ok: true };
 }

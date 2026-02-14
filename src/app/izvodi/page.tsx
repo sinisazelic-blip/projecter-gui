@@ -152,42 +152,44 @@ export default function IzvodiPage() {
                 </div>
               </div>
 
-              <Link
-                href="/dashboard"
-                className="btn"
-                style={{ minWidth: 130 }}
-                title="Povratak na Dashboard"
-              >
-                🏠 Dashboard
-              </Link>
-              {izvodi.length > 0 && (
-                <button
-                  type="button"
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {izvodi.length > 0 && (
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{ fontSize: 13 }}
+                    onClick={() => {
+                      const headers = ["Broj izvoda", "Datum izvoda", "Broj računa", "Otvaranje", "Zatvaranje", "Valuta", "Uvezeno"];
+                      const rows = izvodi.map((i) => [
+                        i.statement_no || `#${i.batch_id}`,
+                        fmtDDMMYYYY(i.statement_date),
+                        i.bank_account_no ?? "—",
+                        i.opening_balance ?? "",
+                        i.closing_balance ?? "",
+                        i.currency ?? "—",
+                        i.imported_at ? String(i.imported_at).slice(0, 19) : "—",
+                      ]);
+                      downloadExcel({
+                        filename: "izvodi_lista",
+                        sheetName: "Izvodi",
+                        headers,
+                        rows,
+                      });
+                    }}
+                    title="Preuzmi listu u Excel"
+                  >
+                    Export u Excel
+                  </button>
+                )}
+                <Link
+                  href="/dashboard"
                   className="btn"
-                  style={{ fontSize: 13 }}
-                  onClick={() => {
-                    const headers = ["Broj izvoda", "Datum izvoda", "Broj računa", "Otvaranje", "Zatvaranje", "Valuta", "Uvezeno"];
-                    const rows = izvodi.map((i) => [
-                      i.statement_no || `#${i.batch_id}`,
-                      fmtDDMMYYYY(i.statement_date),
-                      i.bank_account_no ?? "—",
-                      i.opening_balance ?? "",
-                      i.closing_balance ?? "",
-                      i.currency ?? "—",
-                      i.imported_at ? String(i.imported_at).slice(0, 19) : "—",
-                    ]);
-                    downloadExcel({
-                      filename: "izvodi_lista",
-                      sheetName: "Izvodi",
-                      headers,
-                      rows,
-                    });
-                  }}
-                  title="Preuzmi listu u Excel"
+                  style={{ minWidth: 130 }}
+                  title="Povratak na Dashboard"
                 >
-                  Export u Excel
-                </button>
-              )}
+                  🏠 Dashboard
+                </Link>
+              </div>
             </div>
 
             <div style={{ marginTop: 14 }}>

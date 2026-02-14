@@ -1,4 +1,5 @@
 import Link from "next/link";
+import MobileDashboardClient from "./MobileDashboardClient";
 
 export const dynamic = "force-dynamic";
 
@@ -25,15 +26,14 @@ export default function MobilePage() {
       style={{
         minHeight: "100vh",
         minHeight: "100dvh",
-        padding: "24px 20px",
+        padding: "24px 20px 32px",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-        gap: 24,
+        gap: 20,
       }}
     >
-      <div style={{ textAlign: "center", marginBottom: 8 }}>
+      <div style={{ textAlign: "center", marginBottom: 4 }}>
         <img
           src="/fluxa/logo-light.png"
           alt="Fluxa"
@@ -52,11 +52,40 @@ export default function MobilePage() {
         </div>
       </div>
 
+      {/* Owner Dashboard – brzi pregled */}
+      <div style={{ width: "100%", maxWidth: 400 }}>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.12em",
+            opacity: 0.6,
+            marginBottom: 10,
+            paddingLeft: 4,
+          }}
+        >
+          Pregled
+        </div>
+        <MobileDashboardClient />
+      </div>
+
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 360,
+          height: 1,
+          background: "rgba(255,255,255,0.08)",
+          margin: "8px 0",
+        }}
+      />
+
       <Link
         href="/studio/strategic-core"
         style={{
           ...BTN_STYLE,
-          background: "linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.08))",
+          background:
+            "linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.08))",
           borderColor: "rgba(34, 197, 94, 0.4)",
           color: "rgba(134, 239, 172, 0.98)",
           boxShadow: "0 8px 32px rgba(34, 197, 94, 0.15)",

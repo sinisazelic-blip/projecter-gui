@@ -1,6 +1,6 @@
 // src/app/api/narudzbenice/send/route.js
+// Slanje mailova se obavlja putem Windows mail klijenta; ovaj endpoint samo validira payload.
 import { query } from "@/lib/db";
-import nodemailer from "nodemailer";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,6 @@ function okJson(data, status = 200) {
   });
 }
 
-// prima payload ili kao JSON (fetch) ili kao form field "payload"
 async function readPayload(request) {
   const ct = request.headers.get("content-type") || "";
 
@@ -35,11 +34,6 @@ async function readPayload(request) {
   }
 
   return null;
-}
-
-function requireEnv(name) {
-  const v = process.env[name];
-  return v && String(v).trim() ? String(v).trim() : null;
 }
 
 export async function POST(request) {
@@ -68,7 +62,6 @@ export async function POST(request) {
     );
   }
 
-  // ✅ dobavljač email
   const suppliers = await query(
     `SELECT dobavljac_id, naziv, email FROM dobavljaci WHERE dobavljac_id = ? LIMIT 1`,
     [dobavljac_id],
@@ -82,57 +75,14 @@ export async function POST(request) {
     );
   }
 
-  // ✅ minimal SMTP config (env)
-  const SMTP_HOST = requireEnv("FLUXA_SMTP_HOST");
-  const SMTP_PORT = Number(requireEnv("FLUXA_SMTP_PORT") || "587");
-  const SMTP_USER = requireEnv("FLUXA_SMTP_USER");
-  const SMTP_PASS = requireEnv("FLUXA_SMTP_PASS");
-  const SMTP_FROM = requireEnv("FLUXA_SMTP_FROM");
-
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
-    return okJson(
-      {
-        ok: false,
-        error:
-          "SMTP not configured. Set env: FLUXA_SMTP_HOST, FLUXA_SMTP_PORT, FLUXA_SMTP_USER, FLUXA_SMTP_PASS, FLUXA_SMTP_FROM",
-      },
-      500,
-    );
-  }
-
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: SMTP_PORT,
-    secure: SMTP_PORT === 465, // 465 = true, 587 = false
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
+  // Slanje se obavlja putem Windows mail klijenta; ovdje samo potvrda podataka.
+  return okJson({
+    ok: true,
+    message: "Podaci pripremljeni za slanje putem Windows mail klijenta.",
+    sent_to: supplier.email,
+    supplier_id: dobavljac_id,
+    client_id: klijent_id,
+    project_ids,
+    subject,
   });
-
-  // ✅ send
-  try {
-    const info = await transporter.sendMail({
-      from: SMTP_FROM,
-      to: supplier.email,
-      subject,
-      text: body,
-    });
-
-    // (Opcionalno) ovdje kasnije možemo logovati u DB (ako odlučimo tabelu)
-    return okJson({
-      ok: true,
-      sent_to: supplier.email,
-      supplier_id: dobavljac_id,
-      client_id: klijent_id,
-      project_ids,
-      message_id: info?.messageId || null,
-    });
-  } catch (err) {
-    return okJson(
-      {
-        ok: false,
-        error: "Send failed",
-        details: String(err?.message || err),
-      },
-      500,
-    );
-  }
 }

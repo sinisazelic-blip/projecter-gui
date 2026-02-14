@@ -62,8 +62,8 @@ export async function createCjenovnikItem(data: {
 
   await query(
     `INSERT INTO cjenovnik_stavke
-      (naziv, jedinica, cijena_default, cijena_ino_eur, valuta_default, sort_order, active)
-     VALUES (?, ?, ?, ?, ?, 1000, ?)`,
+      (naziv, jedinica, cijena_default, cijena_ino_eur, valuta_default, sort_order, active, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, 1000, ?, NOW(), NOW())`,
     [data.naziv.trim(), data.jedinica, cijena, cijenaIno, valutaDb, active],
   );
 
@@ -98,13 +98,25 @@ export async function updateCjenovnikItem(data: {
          cijena_default = ?,
          cijena_ino_eur = ?,
          valuta_default = ?,
-         active = ?
+         active = ?,
+         updated_at = NOW()
      WHERE stavka_id = ?`,
     [data.naziv.trim(), data.jedinica, cijena, cijenaIno, valutaDb, active, id],
   );
 
+  const [row] = (await query(
+    `SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+            DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+       FROM cjenovnik_stavke WHERE stavka_id = ?`,
+    [id],
+  )) as { created_at: string | null; updated_at: string | null }[];
+
   revalidatePath("/studio/cjenovnik");
-  return { ok: true };
+  return {
+    ok: true,
+    created_at: row?.created_at ?? null,
+    updated_at: row?.updated_at ?? null,
+  };
 }
 
 export async function setCjenovnikActive(data: {
@@ -116,7 +128,7 @@ export async function setCjenovnikActive(data: {
 
   const active = data.active ? 1 : 0;
 
-  await query(`UPDATE cjenovnik_stavke SET active = ? WHERE stavka_id = ?`, [
+  await query(`UPDATE cjenovnik_stavke SET active = ?, updated_at = NOW() WHERE stavka_id = ?`, [
     active,
     id,
   ]);

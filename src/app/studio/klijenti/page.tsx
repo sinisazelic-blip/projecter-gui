@@ -23,39 +23,30 @@ export type KlijentRow = {
 };
 
 export default async function KlijentiPage() {
-  // NOTE: updated_at možda ne postoji u tvojoj bazi.
-  // Zato ga uzimamo kroz INFORMATION_SCHEMA provjeru u jednom upitu.
   const cols: any[] = (await query(
     `SELECT COLUMN_NAME
        FROM INFORMATION_SCHEMA.COLUMNS
       WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = 'klijenti'
-        AND COLUMN_NAME IN ('updated_at', 'pdv_oslobodjen')`,
+        AND LOWER(TABLE_NAME) = 'klijenti'
+        AND LOWER(COLUMN_NAME) IN ('created_at', 'updated_at', 'pdv_oslobodjen')`,
   )) as any[];
 
-  const hasUpdatedAt = (cols ?? []).some(
-    (r) => String(r.COLUMN_NAME).toLowerCase() === "updated_at",
-  );
-  const hasPdvOslobodjen = (cols ?? []).some(
-    (r) => String(r.COLUMN_NAME).toLowerCase() === "pdv_oslobodjen",
-  );
+  const colSet = new Set((cols ?? []).map((r) => String(r.COLUMN_NAME).toLowerCase()));
+  const hasPdvOslobodjen = colSet.has("pdv_oslobodjen");
 
   const pdvCols = hasPdvOslobodjen
     ? `, COALESCE(pdv_oslobodjen, 0) AS pdv_oslobodjen, pdv_oslobodjen_napomena`
     : ", 0 AS pdv_oslobodjen, NULL AS pdv_oslobodjen_napomena";
-  const baseCols = `klijent_id, naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava,
-         rok_placanja_dana, napomena, aktivan, is_ino${pdvCols}`;
-  const sql = hasUpdatedAt
-    ? `SELECT ${baseCols}, created_at, updated_at
-       FROM klijenti
-       ORDER BY aktivan DESC, naziv_klijenta ASC
-       LIMIT 1500`
-    : `SELECT ${baseCols}, created_at, NULL as updated_at
-       FROM klijenti
-       ORDER BY aktivan DESC, naziv_klijenta ASC
-       LIMIT 500`;
 
-  const rows = await query(sql);
+  const rows = await query(
+    `SELECT klijent_id, naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava,
+            rok_placanja_dana, napomena, aktivan, is_ino${pdvCols},
+            DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+            DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+       FROM klijenti
+       ORDER BY aktivan DESC, naziv_klijenta ASC
+       LIMIT 1500`,
+  );
 
   return (
     <div className="container">

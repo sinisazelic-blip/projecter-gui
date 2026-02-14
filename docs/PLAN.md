@@ -135,7 +135,7 @@
 
 **Dizajn:** Minimalistički, kartice sa ključnim brojevima, brz pristup detaljima.
 
-**Status:** Planirano – na redu nakon testiranja trenutnih funkcionalnosti.
+**Status:** ✅ Implementirano. Na `/mobile`: sekcija „Pregled” iznad StrategicCore i Fluxa – kartice učitane iz `GET /api/mobile/dashboard`. (1) Dugovanja prekoračena – total KM + prva stavka, link na `/finance/dugovanja?only_open=1`. (2) Potraživanja prekoračena – total KM + prva stavka, link na `/naplate?only_late=1`. (3) Finansije [godina] – Fakturisano / Troškovi / Dobit (YTD), link na Svi izvještaji. (4) Projekti u izradi – suma budžeta (status 1–8) + broj projekata, link na `/projects?status_group=active`. Izvori: `projekt_dugovanja`, `vw_fiksni_troskovi_raspored`, `faktura_projekti`+fakture, `projekti`+`vw_projekti_finansije`.
 
 ---
 
@@ -186,6 +186,8 @@
 - Lakše je testirati i demo-vati kad sve ostalo radi
 - **Redoslijed:** prije uvoda korisnika i kontrola pristupa
 
+**Status:** ✅ Završeno.
+
 ---
 
 ## 7. CSV/XLSX Import u šifarnike
@@ -208,13 +210,15 @@
 - Talenti
 - Ostali šifarnici po potrebi
 
-**Status:** Planirano.
+**Detaljan plan (predlošci, kolone, API, UI, redoslijed):** `docs/PLAN_IMPORT_XLSX.md`
+
+**Status:** ✅ Implementirano. Samo XLSX (bez CSV zbog encodinga). Predlošci u `public/templates/import/` (cjenovnik, klijenti, dobavljaci, talenti). Na svakoj stranici šifarnika: link „Preuzmi predložak” + upload XLSX + dugme „Uvezi”. API: `POST /api/studio/import/{cjenovnik|klijenti|dobavljaci|talenti}`. Prikaz: uvezeno N od M, greške po redu. Uputstvo: `docs/UPUTSTVO-PREDLOZCI-IMPORT.md`.
 
 ---
 
-## 8. Upload logotipa firme
+## 8. Upload logotipa firme ✅
 
-**Cilj:** Omogućiti upload logotipa firme kroz UI u prozoru Firma, sa validacijom i automatskim smještanjem u `/public` folder.
+**Cilj:** Omogućiti upload logotipa firme kroz UI u prozoru Firma, sa validacijom i automatskim smještanjem u `/public` folder (lokalno) ili Volume na DO App Platform.
 
 **Lokacija:** Prozor Firma (Studio → Firma ili slično), polje za putanju logotipa.
 
@@ -245,7 +249,7 @@
    - Logotip se koristi pri štampanju faktura
    - Referenca u PDF generisanju faktura
 
-**Status:** Planirano.
+**Status:** ✅ Završeno. Upload kroz Studio → Firma, validacija (PNG/JPG/SVG, max 2 MB), smještanje u `public/logos/` ili na DO App Platform Volume (`UPLOAD_PATH`). Serviranje preko `/api/firma/logo`. Detalji: `docs/APP-PLATFORM-LOGO.md`.
 
 ---
 
@@ -260,7 +264,52 @@
 - UI skrivanje linkova prema nivou
 - API zaštita
 
-**Detaljan plan:** `docs/PLAN_AUTH_ROLES.md`
+**Detaljan plan:** `docs/PLAN_AUTH_ROLES.md`  
+**Šta ti treba pripremiti (uloge, prava, guest):** `docs/UPUTSTVO-PRIPREMA-USER-MANAGEMENT.md`
+
+---
+
+## 10. Fiskalizacija putem ESIR sistema
+
+**Cilj:** Implementacija fiskalizacije putem ESIR sistema sa ispisom fiskalnog računa direktno na fakturi.
+
+**Planirano ranije, ostavljeno za kasnije** dok ne budu dostupni tehnički podaci za implementaciju (API ESIR-a, format zahtjeva/odgovora, certifikati, itd.), da se ne radi na pogađanju.
+
+**Kad budu tehnički podaci:**
+- Integracija sa ESIR servisom (slanje fiskalnog zahtjeva, primanje JIK/QR ili sl.)
+- Ispis fiskalnog računa (ili potrebnih elemenata) direktno na PDF fakturi
+- Povezivanje sa postojećim modulom faktura u Fluxi
+
+**Status:** 📋 Planirano; čeka tehničku specifikaciju / pristup ESIR-u.
+
+---
+
+## 11. Otpis duga (potraživanja i dugovanja)
+
+**Cilj:** Alat kojim se može urediti otpis duga u realnim situacijama – nenaplativa potraživanja od klijenata, te dugovanja prema dobavljačima/talentima koja više nisu na teret (firma ugasila, storno, prebačeno na ranije godine, itd.).
+
+**Kontekst (objektivna realnost):**
+- **Potraživanja od klijenata:** Npr. klijent ostane dužan (14.800 KM), firma se ugasi, vlasnik nestane – potraživanje je nenaplativo. Ostaviti ga kao „otvoreno” stvara iluziju da će novac doći.
+- **Dugovanja prema dobavljačima/talentima:** Npr. dugujemo 1000 EUR firmi koja je prestala sa radom, dug je prebačen preko ranijih godina ili je pravno zastario – treba ga stornirati/otpisati.
+
+**Obuhvat:**
+- **Klijenti (potraživanja):** mogućnost otpisa potraživanja – početna stanja (klijent_pocetno_stanje) i/ili operativna potraživanja (projekt_potrazivanja) – sa razlogom (nenaplativo, firma ugašena, storno, itd.)
+- **Dobavljači (naša dugovanja):** otpis/storno – početna stanja (dobavljac_pocetno_stanje) i operativna dugovanja (projekt_dugovanja; status STORNO već postoji – po potrebi povezati s UI-om za otpis)
+- **Talenti (naša dugovanja):** isto – početna stanja (talent_pocetno_stanje) i operativna dugovanja
+
+**Funkcionalnosti (na razradu):**
+- Označavanje stavke kao otpisane/stornirane (status ili posebna evidencija)
+- Razlog otpisa (opciono tekst/napomena) radi kontrole i revizije
+- Prikaz u listama da se vidi šta je otpisano (filter „samo aktivna” / „uključi otpisana”)
+- Da otpisana potraživanja ne utječu na „iluziju” ukupnog iznosa na naplate/dugovanja ako se želi realan pregled
+
+**Status:** ✅ Implementirano.
+
+- **Baza:** Skripta `scripts-RedDellvill/otpis-duga-kolone.sql` dodaje u tabele početnih stanja kolone `otpisano`, `otpis_razlog`, `otpis_datum`. Pokrenuti jednom na bazi.
+- **Operativna potraživanja:** `projekt_potrazivanja.status = 'OTPISANO'` + razlog u napomeni. API `POST /api/finance/otpis/potrazivanje/[id]`.
+- **Operativna dugovanja:** `projekt_dugovanja.status = 'STORNO'` (već postojalo). API `POST /api/finance/otpis/dugovanje/[id]`.
+- **Početna stanja (klijent/dobavljač/talent):** API `POST /api/finance/otpis/pocetna-stanje` (body: tip, ref_id, razlog). Na stranici Evidencija početnih stanja dugme „Otpisi” po stavci (samo za redove iz tabela početnih stanja, ne za „Tekuće dugovanje”).
+- **UI:** Detalj potraživanja/dugovanja – sekcija za otpis/storno s razlogom. Liste – badge OTPISANO/STORNO; filter „Samo otvorena” isključuje otpisana/stornirana. Ukupna stanja (početna + liste) računaju samo aktivna (ne otpisana).
 
 ---
 

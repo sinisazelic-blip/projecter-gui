@@ -17,33 +17,14 @@ export type TalentRow = {
 };
 
 export default async function TalentiPage() {
-  // talenti po tvojoj strukturi nemaju updated_at, ali držimo kompatibilno
-  const cols: any[] = (await query(
-    `SELECT COLUMN_NAME
-       FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = 'talenti'
-        AND COLUMN_NAME IN ('updated_at')`,
-  )) as any[];
-
-  const hasUpdatedAt = (cols ?? []).some(
-    (r) => String(r.COLUMN_NAME).toLowerCase() === "updated_at",
+  const rows = await query(
+    `SELECT talent_id, ime_prezime, vrsta, email, telefon, napomena, aktivan,
+            DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+            DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+       FROM talenti
+       ORDER BY aktivan DESC, ime_prezime ASC
+       LIMIT 1000`,
   );
-
-  const sql = hasUpdatedAt
-    ? `SELECT
-         talent_id, ime_prezime, vrsta, email, telefon, napomena, aktivan, created_at, updated_at
-       FROM talenti
-       ORDER BY aktivan DESC, ime_prezime ASC
-       LIMIT 1000`
-    : `SELECT
-         talent_id, ime_prezime, vrsta, email, telefon, napomena, aktivan, created_at,
-         NULL AS updated_at
-       FROM talenti
-       ORDER BY aktivan DESC, ime_prezime ASC
-       LIMIT 500`;
-
-  const rows = await query(sql);
 
   return (
     <div className="container">

@@ -82,6 +82,7 @@ type ApiFirma = {
   pdv_broj: string | null;
   pib: string | null;
   jib: string | null;
+  logo_path: string | null;
   bank_accounts: Array<{
     bank_account_id: number;
     bank_naziv: string | null;
@@ -842,7 +843,15 @@ export default function FakturaPreviewPage() {
               <div className="invRow">
                 <div className="invHeaderLeft">
                   <img
-                    src="/firma/taf-logo.jpg"
+                    src={
+                      (() => {
+                        const p = data?.firma?.logo_path?.trim();
+                        if (!p) return "/api/firma/logo";
+                        if (p.startsWith("http://") || p.startsWith("https://"))
+                          return p;
+                        return "/api/firma/logo";
+                      })()
+                    }
                     alt="Company logo"
                     className="companyLogo"
                   />

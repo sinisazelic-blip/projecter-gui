@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { DobavljacRow } from "./page";
 import {
@@ -8,6 +8,7 @@ import {
   setDobavljacActive,
   updateDobavljac,
 } from "./actions";
+import ImportSection from "../ImportSection";
 
 type VrstaDobavljaca = "studio" | "freelancer" | "servis" | "ostalo";
 
@@ -75,6 +76,7 @@ function modalStyle(maxWidth = 980): React.CSSProperties {
       "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
     boxShadow: "var(--shadow)",
     overflow: "hidden",
+    fontSize: 16,
   };
 }
 
@@ -137,7 +139,10 @@ export default function DobavljaciClient({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const items = initialItems ?? [];
+  const [items, setItems] = useState<DobavljacRow[]>(initialItems ?? []);
+  useEffect(() => {
+    setItems(initialItems ?? []);
+  }, [initialItems]);
 
   const counts = useMemo(() => {
     const total = items.length;
@@ -263,6 +268,14 @@ export default function DobavljaciClient({
     setModalOpen(true);
   }
 
+  function openEditForItem(it: DobavljacRow) {
+    setError(null);
+    setSelectedId(it.dobavljac_id);
+    setModalMode("edit");
+    loadToForm(it);
+    setModalOpen(true);
+  }
+
   function openConfirmToggle() {
     if (!selectedItem) return;
     setError(null);
@@ -307,16 +320,35 @@ export default function DobavljaciClient({
       try {
         if (modalMode === "new") {
           await createDobavljac(payload);
+          setModalOpen(false);
+          setSelectedId(null);
+          router.refresh();
         } else {
           if (!form.dobavljac_id) throw new Error("Nedostaje ID za izmjenu.");
-          await updateDobavljac({
+          const result = await updateDobavljac({
             dobavljac_id: form.dobavljac_id,
             ...payload,
           });
+          if (result?.created_at != null || result?.updated_at != null) {
+            setForm((prev) => ({
+              ...prev,
+              created_at: result.created_at ?? prev.created_at,
+              updated_at: result.updated_at ?? prev.updated_at,
+            }));
+            setItems((prev) =>
+              prev.map((it) =>
+                Number(it.dobavljac_id) === Number(form.dobavljac_id)
+                  ? {
+                      ...it,
+                      created_at: result.created_at ?? it.created_at,
+                      updated_at: result.updated_at ?? it.updated_at,
+                    }
+                  : it,
+              ),
+            );
+          }
+          router.refresh();
         }
-        setModalOpen(false);
-        setSelectedId(null);
-        router.refresh();
       } catch (e: any) {
         setError(e?.message || "Greška pri snimanju.");
       }
@@ -423,6 +455,12 @@ export default function DobavljaciClient({
           </button>
         </div>
       </div>
+
+      <ImportSection
+        templateHref="/templates/import/dobavljaci.xlsx"
+        apiUrl="/api/studio/import/dobavljaci"
+        onSuccess={() => router.refresh()}
+      />
 
       <div className="card" style={{ marginTop: 14 }}>
         <div
@@ -531,9 +569,10 @@ export default function DobavljaciClient({
                   <tr
                     key={it.dobavljac_id}
                     onClick={() => setSelectedId(it.dobavljac_id)}
+                    onDoubleClick={() => openEditForItem(it)}
                     style={subtleRowStyle(isSelected)}
                     data-closed={isActive ? "0" : "1"}
-                    title="Klikni za selekciju"
+                    title="Klikni za selekciju, dvoklik za izmjenu"
                   >
                     <td className="cell-wrap">
                       <div
@@ -604,7 +643,7 @@ export default function DobavljaciClient({
           <div style={modalStyle(980)}>
             <div
               style={{
-                padding: 16,
+                padding: 20,
                 borderBottom: "1px solid var(--border)",
                 display: "flex",
                 justifyContent: "space-between",
@@ -618,24 +657,24 @@ export default function DobavljaciClient({
                   src="/fluxa/Ikona%20Siva.png"
                   alt="Fluxa"
                   style={{
-                    width: 22,
-                    height: 22,
+                    width: 26,
+                    height: 26,
                     objectFit: "contain",
                     opacity: 0.9,
                     marginTop: 2,
                   }}
                 />
                 <div>
-                  <div style={{ fontSize: 18, fontWeight: 700 }}>
+                  <div style={{ fontSize: 20, fontWeight: 700 }}>
                     {modalMode === "new"
                       ? "Novi dobavljač"
                       : "Promijeni dobavljača"}
                   </div>
                   <div
                     style={{
-                      marginTop: 4,
+                      marginTop: 6,
                       color: "var(--muted)",
-                      fontSize: 14,
+                      fontSize: 15,
                     }}
                   >
                     Šifrarnik dobavljača (bez brisanja — samo deaktivacija).
@@ -647,7 +686,7 @@ export default function DobavljaciClient({
               </button>
             </div>
 
-            <div style={{ padding: 16 }}>
+            <div style={{ padding: 20 }}>
               <div
                 className="grid"
                 style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
@@ -656,8 +695,8 @@ export default function DobavljaciClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Naziv (obavezno)
@@ -669,7 +708,8 @@ export default function DobavljaciClient({
                     }
                     placeholder="npr. Studio TAF"
                     autoFocus
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -677,8 +717,8 @@ export default function DobavljaciClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Vrsta
@@ -691,7 +731,8 @@ export default function DobavljaciClient({
                         vrsta: e.target.value as VrstaDobavljaca,
                       }))
                     }
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   >
                     <option value="studio">studio</option>
                     <option value="freelancer">freelancer</option>
@@ -744,8 +785,8 @@ export default function DobavljaciClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Država (ISO2)
@@ -759,7 +800,8 @@ export default function DobavljaciClient({
                       }))
                     }
                     placeholder="BA"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -767,8 +809,8 @@ export default function DobavljaciClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Grad
@@ -779,7 +821,8 @@ export default function DobavljaciClient({
                       setForm((s) => ({ ...s, grad: e.target.value }))
                     }
                     placeholder="Sarajevo"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -787,8 +830,8 @@ export default function DobavljaciClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Poštanski broj
@@ -799,7 +842,8 @@ export default function DobavljaciClient({
                       setForm((s) => ({ ...s, postanski_broj: e.target.value }))
                     }
                     placeholder="71000"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -807,8 +851,8 @@ export default function DobavljaciClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Email
@@ -819,7 +863,8 @@ export default function DobavljaciClient({
                       setForm((s) => ({ ...s, email: e.target.value }))
                     }
                     placeholder="email@domena.com"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -827,8 +872,8 @@ export default function DobavljaciClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Telefon
@@ -839,7 +884,8 @@ export default function DobavljaciClient({
                       setForm((s) => ({ ...s, telefon: e.target.value }))
                     }
                     placeholder="+387 ..."
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -847,8 +893,8 @@ export default function DobavljaciClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Adresa
@@ -859,7 +905,8 @@ export default function DobavljaciClient({
                       setForm((s) => ({ ...s, adresa: e.target.value }))
                     }
                     placeholder="Ulica i broj"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -867,8 +914,8 @@ export default function DobavljaciClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Napomena
@@ -879,7 +926,8 @@ export default function DobavljaciClient({
                       setForm((s) => ({ ...s, napomena: e.target.value }))
                     }
                     placeholder="Interna napomena"
-                    style={{ width: "100%", minHeight: 90, resize: "vertical" }}
+                    className="input"
+                    style={{ width: "100%", minHeight: 90, resize: "vertical", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
               </div>

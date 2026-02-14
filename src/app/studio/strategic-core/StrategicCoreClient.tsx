@@ -3,20 +3,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-const COLS = 4;
-const ROWS = 6;
+const COLS_NOVI = 4;
+const ROWS_NOVI = 3; // 8–12 polja za Novi flow
+const COLS_DEFAULT = 4;
+const ROWS_DEFAULT = 6;
 
-const BOJE = [
-  { hex: "#7dd3fc", naziv: "Svijetlo plava" },
-  { hex: "#22c55e", naziv: "Zelena" },
-  { hex: "#f97316", naziv: "Narandžasta" },
-  { hex: "#ef4444", naziv: "Crvena" },
-  { hex: "#eab308", naziv: "Žuta" },
-  { hex: "#8b5cf6", naziv: "Ljubičasta" },
-  { hex: "#ec4899", naziv: "Pink" },
-  { hex: "#14b8a6", naziv: "Teal" },
-  { hex: "#64748b", naziv: "Siva" },
-];
+/** Boja dugmeta izvedena iz cijene (niska → visoka: zelena → plava → narandžasta → crvena) */
+function priceToColor(price: number): string {
+  const p = Number(price) || 0;
+  if (p <= 50) return "#22c55e";
+  if (p <= 200) return "#7dd3fc";
+  if (p <= 500) return "#f97316";
+  if (p <= 1000) return "#8b5cf6";
+  return "#ef4444";
+}
 
 type CjenovnikItem = {
   stavka_id: number;
@@ -53,13 +53,13 @@ type Screen =
   | "chessboard"
   | "stavke_list"
   | "layout_creator"
-  | "cjenovnik_picker"
-  | "boja_picker";
+  | "layout_editor"
+  | "cjenovnik_picker";
 
 const SC_STYLES: React.CSSProperties = {
-  maxWidth: 420,
+  maxWidth: "min(560px, calc(100vw - 32px))",
   margin: "0 auto",
-  padding: "16px 12px",
+  padding: "clamp(12px, 3vw, 20px)",
   minHeight: "60vh",
 };
 
@@ -96,10 +96,13 @@ export default function StrategicCoreClient() {
 
   const [layouts, setLayouts] = useState<LayoutRow[]>([]);
   const [layoutDetail, setLayoutDetail] = useState<{ layout: any; cells: LayoutCell[] } | null>(null);
-  const [klijenti, setKlijenti] = useState<{ klijent_id: number; naziv_klijenta: string }[]>([]);
+  const [klijenti, setKlijenti] = useState<{ klijent_id: number; naziv_klijenta: string; is_ino?: number }[]>([]);
   const [cjenovnikItems, setCjenovnikItems] = useState<CjenovnikItem[]>([]);
 
   const [inicijacija_id, setInicijacija_id] = useState<number | null>(null);
+  const [valuta, setValuta] = useState<"BAM" | "EUR">("BAM");
+  const [editingLayoutId, setEditingLayoutId] = useState<number | null>(null);
+  const [editingLayoutMeta, setEditingLayoutMeta] = useState<{ cols: number; rows: number } | null>(null);
   const [noviForm, setNoviForm] = useState({
     narucilac_id: "",
     krajnji_klijent_id: "",
@@ -117,8 +120,6 @@ export default function StrategicCoreClient() {
   const [pendingEditContext, setPendingEditContext] = useState<"creator" | "override" | null>(null);
 
   const [cjenovnikSearch, setCjenovnikSearch] = useState("");
-  const [selectedStavka, setSelectedStavka] = useState<CjenovnikItem | null>(null);
-  const [pendingColorCell, setPendingColorCell] = useState<{ col: number; row: number } | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -160,11 +161,26 @@ export default function StrategicCoreClient() {
   }, [loadLayouts]);
 
   useEffect(() => {
+    const kid = Number(noviForm.narucilac_id);
+    if (kid > 0 && klijenti.length > 0) {
+      const k = klijenti.find((x) => x.klijent_id === kid);
+      if (k && Number(k.is_ino ?? 0) === 1) setValuta("EUR");
+      else if (k) setValuta("BAM");
+    }
+  }, [noviForm.narucilac_id, klijenti]);
+
+  useEffect(() => {
     const id = paramInicijacijaId ? Number(paramInicijacijaId) : 0;
     if (id > 0) {
       setInicijacija_id(id);
       loadLayouts();
       setScreen("izaberi_layout");
+      fetch(`/api/inicijacije/${id}/valuta`)
+        .then((r) => r.json())
+        .then((j) => {
+          if (j?.ok && (j.valuta === "EUR" || j.valuta === "BAM")) setValuta(j.valuta);
+        })
+        .catch(() => {});
     }
   }, [paramInicijacijaId]);
 
@@ -235,6 +251,11 @@ export default function StrategicCoreClient() {
     return layoutDetail?.cells?.find((x) => x.col_index === col && x.row_index === row) ?? null;
   };
 
+  const getCellPrice = (c: LayoutCell): number => {
+    if (valuta === "EUR" && Number(c.cijena_ino_eur ?? 0) > 0) return Number(c.cijena_ino_eur);
+    return Number(c.cijena_default ?? 0);
+  };
+
   const handleCellClick = (col: number, row: number) => {
     if (!layoutDetail) return;
     if (editMode) {
@@ -265,10 +286,7 @@ export default function StrategicCoreClient() {
     let sum = 0;
     for (const c of cells) {
       const qty = clicks[cellKey(c.col_index, c.row_index)] ?? 0;
-      if (qty > 0) {
-        const price = Number(c.cijena_default ?? 0);
-        sum += qty * price;
-      }
+      if (qty > 0) sum += qty * getCellPrice(c);
     }
     return sum;
   };
@@ -279,7 +297,7 @@ export default function StrategicCoreClient() {
     for (const c of cells) {
       const qty = clicks[cellKey(c.col_index, c.row_index)] ?? 0;
       if (qty > 0) {
-        const price = Number(c.cijena_default ?? 0);
+        const price = getCellPrice(c);
         out.push({
           naziv: c.naziv,
           kolicina: qty,
@@ -314,7 +332,7 @@ export default function StrategicCoreClient() {
           jedinica: c?.jedinica ?? "KOM",
           kolicina: it.kolicina,
           cijena_jedinicna: it.cijena,
-          valuta: c?.valuta_default ?? "BAM",
+          valuta,
         };
       });
 
@@ -337,7 +355,42 @@ export default function StrategicCoreClient() {
     setScreen("layout_creator");
     setCreatorCells({});
     setCreatorEditing(null);
+    setEditingLayoutId(null);
+    setEditingLayoutMeta(null);
     loadCjenovnik();
+  };
+
+  const handleEditLayout = async (sc_layout_id: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/sc/layouts/${sc_layout_id}`);
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error || "Greška");
+      const cells = j.layout?.cells ?? [];
+      const creatorCellsMap: Record<string, { stavka_id: number; naziv: string; cijena: number; valuta: string; boja: string }> = {};
+      for (const c of cells) {
+        const key = cellKey(c.col_index, c.row_index);
+        const price = valuta === "EUR" && Number(c.cijena_ino_eur ?? 0) > 0 ? Number(c.cijena_ino_eur) : Number(c.cijena_default ?? 0);
+        creatorCellsMap[key] = {
+          stavka_id: c.stavka_id,
+          naziv: c.naziv,
+          cijena: price,
+          valuta: valuta,
+          boja: c.boja ? String(c.boja) : priceToColor(price),
+        };
+      }
+      setCreatorCells(creatorCellsMap);
+      setEditingLayoutId(sc_layout_id);
+      setEditingLayoutMeta({ cols: j.layout?.cols ?? COLS_NOVI, rows: j.layout?.rows ?? ROWS_NOVI });
+      setCreatorEditing(null);
+      loadCjenovnik();
+      setScreen("layout_editor");
+    } catch (e: any) {
+      setError(e?.message || "Greška pri učitavanju layouta.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreatorCellClick = (col: number, row: number) => {
@@ -345,30 +398,26 @@ export default function StrategicCoreClient() {
     setPendingEditContext("creator");
     setScreen("cjenovnik_picker");
     setCjenovnikSearch("");
-    setSelectedStavka(null);
   };
 
   const handlePickStavka = (item: CjenovnikItem) => {
-    setSelectedStavka(item);
-    setPendingColorCell(creatorEditing ?? overrideEditing);
-    setScreen("boja_picker");
-  };
-
-  const handlePickBoja = (hex: string) => {
-    if (!pendingColorCell || !selectedStavka) return;
-    const key = cellKey(pendingColorCell.col, pendingColorCell.row);
+    const cijena = Number(valuta === "EUR" && item.cijena_ino_eur ? item.cijena_ino_eur : item.cijena_default ?? 0);
+    const hex = priceToColor(cijena);
+    const cell = creatorEditing ?? overrideEditing;
+    if (!cell) return;
+    const key = cellKey(cell.col, cell.row);
     if (pendingEditContext === "override") {
       setLayoutOverrides((prev) => ({
         ...prev,
         [key]: {
-          col_index: pendingColorCell.col,
-          row_index: pendingColorCell.row,
-          stavka_id: selectedStavka.stavka_id,
-          naziv: selectedStavka.naziv,
-          jedinica: selectedStavka.jedinica ?? "KOM",
-          cijena_default: Number(selectedStavka.cijena_default ?? 0),
-          valuta_default: selectedStavka.valuta_default ?? "BAM",
-          cijena_ino_eur: selectedStavka.cijena_ino_eur,
+          col_index: cell.col,
+          row_index: cell.row,
+          stavka_id: item.stavka_id,
+          naziv: item.naziv,
+          jedinica: item.jedinica ?? "KOM",
+          cijena_default: cijena,
+          valuta_default: valuta,
+          cijena_ino_eur: item.cijena_ino_eur,
           boja: hex,
         },
       }));
@@ -379,39 +428,43 @@ export default function StrategicCoreClient() {
       setCreatorCells((prev) => ({
         ...prev,
         [key]: {
-          stavka_id: selectedStavka.stavka_id,
-          naziv: selectedStavka.naziv,
-          cijena: Number(selectedStavka.cijena_default ?? 0),
-          valuta: selectedStavka.valuta_default ?? "BAM",
+          stavka_id: item.stavka_id,
+          naziv: item.naziv,
+          cijena,
+          valuta,
           boja: hex,
         },
       }));
-      setScreen("layout_creator");
+      setScreen(editingLayoutId ? "layout_editor" : "layout_creator");
       setCreatorEditing(null);
     }
-    setSelectedStavka(null);
-    setPendingColorCell(null);
   };
 
   const handleSaveLayout = async () => {
-    const naziv = window.prompt("Naziv layouta:");
+    const layout = editingLayoutId ? layouts.find((l) => l.sc_layout_id === editingLayoutId) : null;
+    const naziv = (editingLayoutId && layout?.naziv) ? layout.naziv : (window.prompt("Naziv layouta:") ?? "");
     if (!naziv?.trim()) return;
     const cells: { col_index: number; row_index: number; stavka_id: number; boja: string }[] = [];
     for (const [key, v] of Object.entries(creatorCells)) {
       const [col, row] = key.split(",").map(Number);
       cells.push({ col_index: col, row_index: row, stavka_id: v.stavka_id, boja: v.boja });
     }
+    const cols = editingLayoutId ? (editingLayoutMeta?.cols ?? COLS_NOVI) : COLS_NOVI;
+    const rows = editingLayoutId ? (editingLayoutMeta?.rows ?? ROWS_NOVI) : ROWS_NOVI;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/sc/layouts", {
-        method: "POST",
+      const url = editingLayoutId ? `/api/sc/layouts/${editingLayoutId}` : "/api/sc/layouts";
+      const res = await fetch(url, {
+        method: editingLayoutId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ naziv: naziv.trim(), cols: COLS, rows: ROWS, cells }),
+        body: JSON.stringify({ naziv: naziv.trim(), cols, rows, cells }),
       });
       const j = await res.json();
       if (!j.ok) throw new Error(j.error || "Greška");
       loadLayouts();
+      setEditingLayoutId(null);
+      setEditingLayoutMeta(null);
       setScreen("izbor");
     } catch (e: any) {
       setError(e?.message || "Greška pri snimanju layouta.");
@@ -455,21 +508,22 @@ export default function StrategicCoreClient() {
             onClick={() => onCellClick(col, row)}
             style={{
               aspectRatio: "1",
-              minHeight: 56,
+              minHeight: "clamp(56px, 12vw, 80px)",
               borderRadius: 12,
-              border: "2px solid rgba(255,255,255,0.2)",
+              border: "3px solid rgba(255,255,255,0.25)",
               background: "rgba(255,255,255,0.06)",
               color: "inherit",
               cursor: "pointer",
-              fontSize: 11,
-              fontWeight: 600,
+              fontSize: "clamp(12px, 2.8vw, 16px)",
+              fontWeight: 700,
               overflow: "hidden",
               textAlign: "center",
-              padding: 4,
+              padding: 6,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
+              gap: 2,
               ...(cellStyle?.(col, row) ?? {}),
             }}
           >
@@ -498,15 +552,15 @@ export default function StrategicCoreClient() {
 
       {screen === "izbor" && (
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 20 }}>Izbor</h2>
+          <h2 style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 800, marginBottom: 20 }}>Izbor</h2>
           <button
-            style={{ ...BTN_STYLE, borderColor: "rgba(59,130,246,0.4)", background: "rgba(59,130,246,0.1)" }}
+            style={{ ...BTN_STYLE, border: "3px solid rgba(59,130,246,0.6)", background: "rgba(59,130,246,0.18)" }}
             onClick={handleNovi}
           >
-            📋 Novi
+            📋 Novi +
           </button>
           <button
-            style={{ ...BTN_STYLE, borderColor: "rgba(34,197,94,0.4)", background: "rgba(34,197,94,0.1)" }}
+            style={{ ...BTN_STYLE, border: "3px solid rgba(34,197,94,0.6)", background: "rgba(34,197,94,0.18)" }}
             onClick={handleLayoutSC}
           >
             🎛️ Layout SC
@@ -516,7 +570,19 @@ export default function StrategicCoreClient() {
 
       {screen === "novi_form" && (
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 16 }}>Novi Deal</h2>
+          <h2 style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 800, marginBottom: 16 }}>Novi Deal</h2>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4 }}>Valuta</label>
+            <select
+              value={valuta}
+              onChange={(e) => setValuta(e.target.value as "BAM" | "EUR")}
+              className="input"
+              style={{ width: "100%", padding: 12 }}
+            >
+              <option value="BAM">KM</option>
+              <option value="EUR">EUR</option>
+            </select>
+          </div>
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4 }}>
               Naručilac (obavezno)
@@ -524,7 +590,8 @@ export default function StrategicCoreClient() {
             <select
               value={noviForm.narucilac_id}
               onChange={(e) => setNoviForm((p) => ({ ...p, narucilac_id: e.target.value }))}
-              style={{ width: "100%", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(0,0,0,0.3)", color: "inherit" }}
+              className="input"
+              style={{ width: "100%", padding: 12 }}
             >
               <option value="">— izaberi —</option>
               {klijenti.map((k) => (
@@ -539,9 +606,10 @@ export default function StrategicCoreClient() {
             <select
               value={noviForm.krajnji_klijent_id}
               onChange={(e) => setNoviForm((p) => ({ ...p, krajnji_klijent_id: e.target.value }))}
-              style={{ width: "100%", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(0,0,0,0.3)", color: "inherit" }}
+              className="input"
+              style={{ width: "100%", padding: 12 }}
             >
-              <option value="">(NULL)</option>
+              <option value="">— nije izabrano</option>
               {klijenti.map((k) => (
                 <option key={k.klijent_id} value={k.klijent_id}>{k.naziv_klijenta}</option>
               ))}
@@ -555,7 +623,8 @@ export default function StrategicCoreClient() {
               value={noviForm.radni_naziv}
               onChange={(e) => setNoviForm((p) => ({ ...p, radni_naziv: e.target.value }))}
               placeholder="Npr. Spot za X"
-              style={{ width: "100%", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(0,0,0,0.3)", color: "inherit" }}
+              className="input"
+              style={{ width: "100%", padding: 12 }}
             />
           </div>
           <div style={{ marginBottom: 16 }}>
@@ -566,7 +635,8 @@ export default function StrategicCoreClient() {
               value={noviForm.napomena}
               onChange={(e) => setNoviForm((p) => ({ ...p, napomena: e.target.value }))}
               rows={3}
-              style={{ width: "100%", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(0,0,0,0.3)", color: "inherit" }}
+              className="input"
+              style={{ width: "100%", padding: 12 }}
             />
           </div>
           <div style={{ display: "flex", gap: 10 }}>
@@ -590,23 +660,35 @@ export default function StrategicCoreClient() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {layouts.map((l) => (
-                <button
-                  key={l.sc_layout_id}
-                  type="button"
-                  onClick={() => handleSelectLayout(l.sc_layout_id)}
-                  style={{
-                    padding: 14,
-                    textAlign: "left",
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    background: "rgba(255,255,255,0.06)",
-                    color: "inherit",
-                    cursor: "pointer",
-                    fontWeight: 700,
-                  }}
-                >
-                  {l.naziv}
-                </button>
+                <div key={l.sc_layout_id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectLayout(l.sc_layout_id)}
+                    style={{
+                      flex: 1,
+                      padding: 14,
+                      textAlign: "left",
+                      borderRadius: 12,
+                      border: "2px solid rgba(255,255,255,0.2)",
+                      background: "rgba(255,255,255,0.06)",
+                      color: "inherit",
+                      cursor: "pointer",
+                      fontWeight: 700,
+                      fontSize: "clamp(14px, 2.5vw, 16px)",
+                    }}
+                  >
+                    {l.naziv}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); handleEditLayout(l.sc_layout_id); }}
+                    className="btn"
+                    style={{ padding: "10px 14px", fontSize: 13 }}
+                    title="Uredi layout"
+                  >
+                    ✏️
+                  </button>
+                </div>
               ))}
             </div>
           )}
@@ -626,26 +708,38 @@ export default function StrategicCoreClient() {
 
       {screen === "chessboard" && layoutDetail && (
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>{layoutDetail.layout?.naziv}</h2>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <input
-              type="checkbox"
-              checked={editMode}
-              onChange={(e) => setEditMode(e.target.checked)}
-            />
-            <span>Edit polje (promijeni stavku/boju)</span>
-          </label>
+          <h2 style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 800, marginBottom: 12 }}>{layoutDetail.layout?.naziv}</h2>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginBottom: 12 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "clamp(13px, 2.5vw, 15px)" }}>
+              <span style={{ opacity: 0.9 }}>Valuta:</span>
+              <select
+                value={valuta}
+                onChange={(e) => setValuta(e.target.value as "BAM" | "EUR")}
+                className="input"
+                style={{ padding: 6, fontSize: 14, fontWeight: 600 }}
+              >
+                <option value="BAM">KM</option>
+                <option value="EUR">EUR</option>
+              </select>
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "clamp(13px, 2.5vw, 15px)" }}>
+              <input type="checkbox" checked={editMode} onChange={(e) => setEditMode(e.target.checked)} />
+              <span>Edit polje</span>
+            </label>
+          </div>
           <ChessboardGrid
             cols={layoutDetail.layout?.cols ?? COLS}
             rows={layoutDetail.layout?.rows ?? ROWS}
             cellContent={(col, row) => {
               const c = getEffectiveCell(col, row);
               const qty = clicks[cellKey(col, row)] ?? 0;
-              if (!c) return <span style={{ opacity: 0.5 }}>—</span>;
+              const price = c ? getCellPrice(c) : 0;
+              if (!c) return <span style={{ opacity: 0.5, fontSize: "0.9em" }}>—</span>;
               return (
                 <>
-                  <span style={{ fontSize: 10, lineHeight: 1.2 }}>{c.naziv}</span>
-                  {qty > 0 && <span style={{ fontWeight: 800 }}>{qty}×</span>}
+                  <span style={{ fontSize: "1em", lineHeight: 1.2, fontWeight: 700 }}>{c.naziv}</span>
+                  <span style={{ fontSize: "0.75em", opacity: 0.9 }}>{price.toFixed(0)} {valuta}</span>
+                  {qty > 0 && <span style={{ fontWeight: 800, fontSize: "1.1em" }}>{qty}×</span>}
                 </>
               );
             }}
@@ -653,7 +747,11 @@ export default function StrategicCoreClient() {
             cellStyle={(col, row) => {
               const c = getEffectiveCell(col, row);
               if (!c?.boja) return {};
-              return { borderColor: `${c.boja}66`, background: `${c.boja}18` };
+              return {
+                borderColor: `${c.boja}99`,
+                borderWidth: 3,
+                background: `${c.boja}28`,
+              };
             }}
           />
           <div
@@ -674,15 +772,15 @@ export default function StrategicCoreClient() {
                 minWidth: 100,
                 padding: 14,
                 borderRadius: 12,
-                border: "2px solid rgba(125,211,252,0.4)",
-                background: "rgba(125,211,252,0.1)",
+                border: "3px solid rgba(125,211,252,0.5)",
+                background: "rgba(125,211,252,0.18)",
                 color: "inherit",
                 fontWeight: 800,
-                fontSize: 18,
+                fontSize: "clamp(16px, 3.5vw, 20px)",
                 cursor: "pointer",
               }}
             >
-              {totalSum().toFixed(2)} KM
+              {totalSum().toFixed(2)} {valuta}
             </button>
             <button className="btn btn--active" onClick={handlePrihvati} disabled={loading || stavkeList().length === 0} style={BTN_STYLE}>
               {loading ? "Radi..." : "Prihvati"}
@@ -707,7 +805,8 @@ export default function StrategicCoreClient() {
 
       {screen === "stavke_list" && (
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>Stavke</h2>
+          <h2 style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 800, marginBottom: 12 }}>Stavke</h2>
+          <p style={{ fontSize: "clamp(12px, 2.2vw, 14px)", opacity: 0.8, marginBottom: 8 }}>Dvoklik uklanja stavku</p>
           <div style={{ marginBottom: 12 }}>
             {stavkeList().map((it) => (
               <div
@@ -721,56 +820,67 @@ export default function StrategicCoreClient() {
                   setScreen("chessboard");
                 }}
                 style={{
-                  padding: 12,
+                  padding: 14,
                   marginBottom: 8,
                   background: "rgba(255,255,255,0.06)",
                   borderRadius: 12,
-                  border: "1px solid rgba(255,255,255,0.1)",
+                  border: "2px solid rgba(255,255,255,0.15)",
                   cursor: "pointer",
+                  fontSize: "clamp(14px, 2.8vw, 16px)",
                 }}
               >
-                {it.naziv} × {it.kolicina} = {it.line_total.toFixed(2)} KM
+                {it.naziv} × {it.kolicina} = {it.line_total.toFixed(2)} {valuta}
               </div>
             ))}
           </div>
-          <div style={{ fontWeight: 800, marginBottom: 12 }}>Ukupno: {totalSum().toFixed(2)} KM</div>
+          <div style={{ fontWeight: 800, marginBottom: 12, fontSize: "clamp(16px, 3vw, 18px)" }}>Ukupno: {totalSum().toFixed(2)} {valuta}</div>
           <button className="btn btn--active" onClick={() => setScreen("chessboard")} style={BTN_STYLE}>
             OK
           </button>
         </div>
       )}
 
-      {screen === "layout_creator" && (
+      {(screen === "layout_creator" || screen === "layout_editor") && (
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>Layout SC</h2>
-          <p style={{ fontSize: 12, opacity: 0.8, marginBottom: 12 }}>
-            Klikni na polje → izaberi stavku iz cjenovnika → izaberi boju. Layout može imati samo neka polja.
+          <h2 style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 800, marginBottom: 12 }}>
+            {editingLayoutId ? "Uredi layout" : "Novi layout (8–12 polja)"}
+          </h2>
+          <p style={{ fontSize: "clamp(12px, 2.2vw, 14px)", opacity: 0.8, marginBottom: 12 }}>
+            Klikni na polje → izaberi stavku. Boja se postavlja automatski prema cijeni.
           </p>
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ fontSize: 12, opacity: 0.8 }}>Valuta: </label>
+            <select value={valuta} onChange={(e) => setValuta(e.target.value as "BAM" | "EUR")} className="input" style={{ padding: 6, marginLeft: 8 }}>
+              <option value="BAM">KM</option>
+              <option value="EUR">EUR</option>
+            </select>
+          </div>
           <ChessboardGrid
-            cols={COLS}
-            rows={ROWS}
+            cols={editingLayoutId ? (editingLayoutMeta?.cols ?? COLS_NOVI) : COLS_NOVI}
+            rows={editingLayoutId ? (editingLayoutMeta?.rows ?? ROWS_NOVI) : ROWS_NOVI}
             cellContent={(col, row) => {
               const v = creatorCells[cellKey(col, row)];
-              if (!v) return <span style={{ opacity: 0.5 }}>+</span>;
+              if (!v) return <span style={{ opacity: 0.5, fontSize: "1.2em" }}>+</span>;
               return (
-                <span style={{ fontSize: 10 }}>
-                  {v.naziv}
-                </span>
+                <>
+                  <span style={{ fontSize: "clamp(11px, 2.2vw, 14px)", fontWeight: 600 }}>{v.naziv}</span>
+                  <span style={{ fontSize: "0.7em", opacity: 0.9 }}>{v.cijena.toFixed(0)} {v.valuta}</span>
+                </>
               );
             }}
             onCellClick={handleCreatorCellClick}
             cellStyle={(col, row) => {
               const v = creatorCells[cellKey(col, row)];
               if (!v?.boja) return {};
-              return { borderColor: `${v.boja}99`, background: `${v.boja}22` };
+              return { borderColor: `${v.boja}99`, borderWidth: 3, background: `${v.boja}28` };
             }}
           />
           <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn" onClick={() => setScreen("izbor")} style={BTN_STYLE}>
+            <button className="btn" onClick={() => { setScreen("izbor"); setEditingLayoutId(null); setEditingLayoutMeta(null); }} style={BTN_STYLE}>
               Odustani
             </button>
             <button className="btn btn--active" onClick={handleSaveLayout} disabled={loading} style={BTN_STYLE}>
-              {loading ? "Snima..." : "OK (snimi layout)"}
+              {loading ? "Snima..." : editingLayoutId ? "Spremi izmjene" : "Snimi layout"}
             </button>
           </div>
         </div>
@@ -814,7 +924,7 @@ export default function StrategicCoreClient() {
                     cursor: "pointer",
                   }}
                 >
-                  {it.naziv} — {Number(it.cijena_default ?? 0).toFixed(2)} {it.valuta_default}
+                  {it.naziv} — {(valuta === "EUR" && it.cijena_ino_eur ? Number(it.cijena_ino_eur) : Number(it.cijena_default ?? 0)).toFixed(2)} {valuta}
                 </button>
               ))}
             </div>
@@ -830,47 +940,6 @@ export default function StrategicCoreClient() {
         </div>
       )}
 
-      {screen === "boja_picker" && (
-        <div style={MODAL_STYLE}>
-          <div
-            style={{
-              width: "min(100%, 300px)",
-              background: "var(--bg)",
-              borderRadius: 16,
-              border: "1px solid var(--border)",
-              padding: 16,
-            }}
-          >
-            <h3 style={{ marginBottom: 12 }}>Izaberi boju</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-              {BOJE.map((b) => (
-                <button
-                  key={b.hex}
-                  type="button"
-                  onClick={() => handlePickBoja(b.hex)}
-                  style={{
-                    aspectRatio: "1",
-                    borderRadius: 12,
-                    border: "2px solid rgba(255,255,255,0.3)",
-                    background: b.hex,
-                    cursor: "pointer",
-                  }}
-                />
-              ))}
-            </div>
-            <button className="btn" onClick={() => {
-              setScreen(pendingEditContext === "override" ? "chessboard" : "layout_creator");
-              setCreatorEditing(null);
-              setOverrideEditing(null);
-              setPendingColorCell(null);
-              setSelectedStavka(null);
-              setPendingEditContext(null);
-            }} style={{ marginTop: 12 }}>
-              Odustani
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

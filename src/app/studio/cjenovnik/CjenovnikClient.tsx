@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { CjenovnikItem } from "./page";
 import {
@@ -8,6 +8,7 @@ import {
   setCjenovnikActive,
   updateCjenovnikItem,
 } from "./actions";
+import ImportSection from "../ImportSection";
 
 type Jedinica = CjenovnikItem["jedinica"];
 const JEDINICE: Jedinica[] = ["KOM", "SAT", "MIN", "PAKET", "DAN", "OSTALO"];
@@ -92,6 +93,7 @@ function modalStyle(maxWidth = 860): React.CSSProperties {
       "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
     boxShadow: "var(--shadow)",
     overflow: "hidden",
+    fontSize: 16,
   };
 }
 
@@ -155,7 +157,10 @@ export default function CjenovnikClient({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const items = initialItems ?? [];
+  const [items, setItems] = useState<CjenovnikItem[]>(initialItems ?? []);
+  useEffect(() => {
+    setItems(initialItems ?? []);
+  }, [initialItems]);
 
   const counts = useMemo(() => {
     const total = items.length;
@@ -244,6 +249,14 @@ export default function CjenovnikClient({
     setModalOpen(true);
   }
 
+  function openEditForItem(it: CjenovnikItem) {
+    setError(null);
+    setSelectedId(it.stavka_id);
+    setModalMode("edit");
+    loadToForm(it);
+    setModalOpen(true);
+  }
+
   function openConfirmToggle() {
     if (!selectedItem) return;
     setError(null);
@@ -288,13 +301,35 @@ export default function CjenovnikClient({
       try {
         if (modalMode === "new") {
           await createCjenovnikItem(payload);
+          setModalOpen(false);
+          setSelectedId(null);
+          router.refresh();
         } else {
           if (!form.stavka_id) throw new Error("Nedostaje ID za izmjenu.");
-          await updateCjenovnikItem({ stavka_id: form.stavka_id, ...payload });
+          const result = await updateCjenovnikItem({
+            stavka_id: form.stavka_id,
+            ...payload,
+          });
+          if (result?.created_at != null || result?.updated_at != null) {
+            setForm((prev) => ({
+              ...prev,
+              created_at: result.created_at ?? prev.created_at,
+              updated_at: result.updated_at ?? prev.updated_at,
+            }));
+            setItems((prev) =>
+              prev.map((it) =>
+                Number(it.stavka_id) === Number(form.stavka_id)
+                  ? {
+                      ...it,
+                      created_at: result.created_at ?? it.created_at,
+                      updated_at: result.updated_at ?? it.updated_at,
+                    }
+                  : it,
+              ),
+            );
+          }
+          router.refresh();
         }
-        setModalOpen(false);
-        setSelectedId(null);
-        router.refresh();
       } catch (e: any) {
         setError(e?.message || "Greška pri snimanju.");
       }
@@ -401,6 +436,12 @@ export default function CjenovnikClient({
         </div>
       </div>
 
+      <ImportSection
+        templateHref="/templates/import/cjenovnik.xlsx"
+        apiUrl="/api/studio/import/cjenovnik"
+        onSuccess={() => router.refresh()}
+      />
+
       <div className="card" style={{ marginTop: 14 }}>
         <div
           style={{
@@ -506,9 +547,10 @@ export default function CjenovnikClient({
                   <tr
                     key={it.stavka_id}
                     onClick={() => setSelectedId(it.stavka_id)}
+                    onDoubleClick={() => openEditForItem(it)}
                     style={subtleRowStyle(isSelected)}
                     data-closed={isActive ? "0" : "1"}
-                    title="Klikni za selekciju"
+                    title="Klikni za selekciju, dvoklik za izmjenu"
                   >
                     <td>
                       <div
@@ -577,7 +619,7 @@ export default function CjenovnikClient({
           <div style={modalStyle(920)}>
             <div
               style={{
-                padding: 16,
+                padding: 20,
                 borderBottom: "1px solid var(--border)",
                 display: "flex",
                 justifyContent: "space-between",
@@ -591,22 +633,22 @@ export default function CjenovnikClient({
                   src="/fluxa/Ikona%20Siva.png"
                   alt="Fluxa"
                   style={{
-                    width: 22,
-                    height: 22,
+                    width: 26,
+                    height: 26,
                     objectFit: "contain",
                     opacity: 0.9,
                     marginTop: 2,
                   }}
                 />
                 <div>
-                  <div style={{ fontSize: 18, fontWeight: 700 }}>
+                  <div style={{ fontSize: 20, fontWeight: 700 }}>
                     {modalMode === "new" ? "Novi artikl" : "Promijeni artikl"}
                   </div>
                   <div
                     style={{
-                      marginTop: 4,
+                      marginTop: 6,
                       color: "var(--muted)",
-                      fontSize: 14,
+                      fontSize: 15,
                     }}
                   >
                     Cjenovnik stavka. Domaća valuta se prikazuje kao <b>KM</b>{" "}
@@ -619,7 +661,7 @@ export default function CjenovnikClient({
               </button>
             </div>
 
-            <div style={{ padding: 16 }}>
+            <div style={{ padding: 20 }}>
               <div
                 className="grid"
                 style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}
@@ -628,8 +670,8 @@ export default function CjenovnikClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Naziv (obavezno)
@@ -641,7 +683,8 @@ export default function CjenovnikClient({
                     }
                     placeholder="npr. Mix pjesme"
                     autoFocus
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -649,8 +692,8 @@ export default function CjenovnikClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Jedinica
@@ -663,7 +706,8 @@ export default function CjenovnikClient({
                         jedinica: e.target.value as Jedinica,
                       }))
                     }
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   >
                     {JEDINICE.map((u) => (
                       <option key={u} value={u}>
@@ -677,8 +721,8 @@ export default function CjenovnikClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Cijena (KM)
@@ -689,7 +733,8 @@ export default function CjenovnikClient({
                       setForm((s) => ({ ...s, cijena_default: e.target.value }))
                     }
                     placeholder="0,00"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                   <div
                     style={{
@@ -706,8 +751,8 @@ export default function CjenovnikClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     INO cijena (EUR)
@@ -718,7 +763,8 @@ export default function CjenovnikClient({
                       setForm((s) => ({ ...s, cijena_ino_eur: e.target.value }))
                     }
                     placeholder="—"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                   <div
                     style={{
@@ -735,8 +781,8 @@ export default function CjenovnikClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Valuta
@@ -746,7 +792,8 @@ export default function CjenovnikClient({
                     onChange={(e) =>
                       setForm((s) => ({ ...s, valuta_ui: e.target.value }))
                     }
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   >
                     <option value="KM">KM</option>
                     <option value="EUR">EUR</option>

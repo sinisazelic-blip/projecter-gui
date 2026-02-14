@@ -98,6 +98,12 @@ export default async function FinanceHomePage() {
         />
 
         <CardLink
+          title="Početna stanja"
+          desc="Evidencija stanja na 31.12.2025 — klijenti (potraživanja), dobavljači i talenti (naša dugovanja)."
+          href="/finance/pocetna-stanja"
+        />
+
+        <CardLink
           title="Dugovanja"
           desc="Obaveze prema dobavljačima/talentima. Lista + detalj sa paid sum."
           href="/finance/dugovanja"

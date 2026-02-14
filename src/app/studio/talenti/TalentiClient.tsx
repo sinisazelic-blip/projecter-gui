@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { TalentRow } from "./page";
 import { createTalent, setTalentActive, updateTalent } from "./actions";
+import ImportSection from "../ImportSection";
 
 type VrstaTalenta =
   | "spiker"
@@ -67,6 +68,7 @@ function modalStyle(maxWidth = 920): React.CSSProperties {
       "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
     boxShadow: "var(--shadow)",
     overflow: "hidden",
+    fontSize: 16,
   };
 }
 
@@ -129,7 +131,10 @@ export default function TalentiClient({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const items = initialItems ?? [];
+  const [items, setItems] = useState<TalentRow[]>(initialItems ?? []);
+  useEffect(() => {
+    setItems(initialItems ?? []);
+  }, [initialItems]);
 
   const counts = useMemo(() => {
     const total = items.length;
@@ -252,6 +257,14 @@ export default function TalentiClient({
     setModalOpen(true);
   }
 
+  function openEditForItem(it: TalentRow) {
+    setError(null);
+    setSelectedId(it.talent_id);
+    setModalMode("edit");
+    loadToForm(it);
+    setModalOpen(true);
+  }
+
   function openConfirmToggle() {
     if (!selectedItem) return;
     setError(null);
@@ -291,13 +304,35 @@ export default function TalentiClient({
       try {
         if (modalMode === "new") {
           await createTalent(payload);
+          setModalOpen(false);
+          setSelectedId(null);
+          router.refresh();
         } else {
           if (!form.talent_id) throw new Error("Nedostaje ID za izmjenu.");
-          await updateTalent({ talent_id: form.talent_id, ...payload });
+          const result = await updateTalent({
+            talent_id: form.talent_id,
+            ...payload,
+          });
+          if (result?.created_at != null || result?.updated_at != null) {
+            setForm((prev) => ({
+              ...prev,
+              created_at: result.created_at ?? prev.created_at,
+              updated_at: result.updated_at ?? prev.updated_at,
+            }));
+            setItems((prev) =>
+              prev.map((it) =>
+                Number(it.talent_id) === Number(form.talent_id)
+                  ? {
+                      ...it,
+                      created_at: result.created_at ?? it.created_at,
+                      updated_at: result.updated_at ?? it.updated_at,
+                    }
+                  : it,
+              ),
+            );
+          }
+          router.refresh();
         }
-        setModalOpen(false);
-        setSelectedId(null);
-        router.refresh();
       } catch (e: any) {
         setError(e?.message || "Greška pri snimanju.");
       }
@@ -405,6 +440,12 @@ export default function TalentiClient({
         </div>
       </div>
 
+      <ImportSection
+        templateHref="/templates/import/talenti.xlsx"
+        apiUrl="/api/studio/import/talenti"
+        onSuccess={() => router.refresh()}
+      />
+
       <div className="card" style={{ marginTop: 14 }}>
         <div
           style={{
@@ -504,9 +545,10 @@ export default function TalentiClient({
                   <tr
                     key={it.talent_id}
                     onClick={() => setSelectedId(it.talent_id)}
+                    onDoubleClick={() => openEditForItem(it)}
                     style={subtleRowStyle(isSelected)}
                     data-closed={isActive ? "0" : "1"}
-                    title="Klikni za selekciju"
+                    title="Klikni za selekciju, dvoklik za izmjenu"
                   >
                     <td className="cell-wrap">
                       <div
@@ -580,7 +622,7 @@ export default function TalentiClient({
           <div style={modalStyle(920)}>
             <div
               style={{
-                padding: 16,
+                padding: 20,
                 borderBottom: "1px solid var(--border)",
                 display: "flex",
                 justifyContent: "space-between",
@@ -594,22 +636,22 @@ export default function TalentiClient({
                   src="/fluxa/Ikona%20Siva.png"
                   alt="Fluxa"
                   style={{
-                    width: 22,
-                    height: 22,
+                    width: 26,
+                    height: 26,
                     objectFit: "contain",
                     opacity: 0.9,
                     marginTop: 2,
                   }}
                 />
                 <div>
-                  <div style={{ fontSize: 18, fontWeight: 700 }}>
+                  <div style={{ fontSize: 20, fontWeight: 700 }}>
                     {modalMode === "new" ? "Novi talenat" : "Promijeni talenat"}
                   </div>
                   <div
                     style={{
-                      marginTop: 4,
+                      marginTop: 6,
                       color: "var(--muted)",
-                      fontSize: 14,
+                      fontSize: 15,
                     }}
                   >
                     Šifrarnik talenata (bez brisanja — samo deaktivacija).
@@ -621,7 +663,7 @@ export default function TalentiClient({
               </button>
             </div>
 
-            <div style={{ padding: 16 }}>
+            <div style={{ padding: 20 }}>
               <div
                 className="grid"
                 style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
@@ -630,8 +672,8 @@ export default function TalentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Ime i prezime (obavezno)
@@ -643,7 +685,8 @@ export default function TalentiClient({
                     }
                     placeholder="npr. Muhamed Bahonjić"
                     autoFocus
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -651,8 +694,8 @@ export default function TalentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Vrsta
@@ -665,7 +708,8 @@ export default function TalentiClient({
                         vrsta: e.target.value as VrstaTalenta,
                       }))
                     }
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   >
                     <option value="spiker">spiker</option>
                     <option value="glumac">glumac</option>
@@ -688,7 +732,7 @@ export default function TalentiClient({
                   <span
                     style={{
                       color: "var(--text)",
-                      fontSize: 14,
+                      fontSize: 16,
                       fontWeight: 700,
                     }}
                   >
@@ -702,8 +746,8 @@ export default function TalentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Email
@@ -714,7 +758,8 @@ export default function TalentiClient({
                       setForm((s) => ({ ...s, email: e.target.value }))
                     }
                     placeholder="email@domena.com"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -722,8 +767,8 @@ export default function TalentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Telefon
@@ -734,7 +779,8 @@ export default function TalentiClient({
                       setForm((s) => ({ ...s, telefon: e.target.value }))
                     }
                     placeholder="+387 ..."
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -742,8 +788,8 @@ export default function TalentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Napomena
@@ -754,7 +800,8 @@ export default function TalentiClient({
                       setForm((s) => ({ ...s, napomena: e.target.value }))
                     }
                     placeholder="Interna napomena"
-                    style={{ width: "100%", minHeight: 90, resize: "vertical" }}
+                    className="input"
+                    style={{ width: "100%", minHeight: 90, resize: "vertical", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
               </div>
@@ -872,7 +919,7 @@ export default function TalentiClient({
           <div style={modalStyle(640)}>
             <div
               style={{
-                padding: 16,
+                padding: 20,
                 borderBottom: "1px solid var(--border)",
                 display: "flex",
                 justifyContent: "space-between",
@@ -880,13 +927,13 @@ export default function TalentiClient({
               }}
             >
               <div>
-                <div style={{ fontSize: 18, fontWeight: 800 }}>
+                <div style={{ fontSize: 20, fontWeight: 800 }}>
                   {selectedIsActive
                     ? "Deaktivirati talenat?"
                     : "Aktivirati talenat?"}
                 </div>
                 <div
-                  style={{ marginTop: 4, color: "var(--muted)", fontSize: 14 }}
+                  style={{ marginTop: 6, color: "var(--muted)", fontSize: 16 }}
                 >
                   <b style={{ color: "var(--text)" }}>
                     {selectedItem.ime_prezime}
@@ -900,9 +947,9 @@ export default function TalentiClient({
 
             <div
               style={{
-                padding: 16,
+                padding: 20,
                 color: "var(--text)",
-                fontSize: 14,
+                fontSize: 16,
                 lineHeight: 1.5,
               }}
             >
@@ -913,7 +960,7 @@ export default function TalentiClient({
 
             <div
               style={{
-                padding: 16,
+                padding: 20,
                 borderTop: "1px solid var(--border)",
                 display: "flex",
                 justifyContent: "flex-end",

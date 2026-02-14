@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { query } from "@/lib/db";
+import StornirajDugovanjeForm from "./StornirajDugovanjeForm";
 
 export const dynamic = "force-dynamic";
 
@@ -178,7 +179,11 @@ export default async function DugovanjeDetailPage({ params }) {
           </div>
           <div>
             <div className="label">Status</div>
-            <div>{dug.status ?? "—"}</div>
+            <div>
+              {(dug.status || "").toUpperCase() === "STORNO"
+                ? <span className="badge badge-red">STORNO</span>
+                : (dug.status ?? "—")}
+            </div>
           </div>
         </div>
         <div style={{ marginTop: 12 }}>
@@ -191,6 +196,16 @@ export default async function DugovanjeDetailPage({ params }) {
             <div className="muted">{dug.napomena}</div>
           </div>
         ) : null}
+        {(dug.status || "").toUpperCase() !== "STORNO" && (
+          <>
+            <div className="hr" style={{ marginTop: 14 }} />
+            <div className="cardTitle" style={{ marginBottom: 4 }}>Storniraj dugovanje</div>
+            <div className="subtle" style={{ fontSize: 13 }}>
+              Ako dug više nije na teret (firma ugašena, storno ranijih godina), možeš ga stornirati.
+            </div>
+            <StornirajDugovanjeForm dugovanjeId={dug.dugovanje_id} />
+          </>
+        )}
       </div>
 
       <div className="card" style={{ marginTop: 14 }}>

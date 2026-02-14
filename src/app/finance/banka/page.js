@@ -181,7 +181,7 @@ export default async function BankaPage({ searchParams }) {
 
   return (
     <div className="container">
-      <div className="pageWrap">
+      <div className="banka-page-layout">
         <div className="topBlock">
           <div className="topInner">
             <div className="topRow">
@@ -215,91 +215,77 @@ export default async function BankaPage({ searchParams }) {
           </div>
         </div>
 
-        <div className="bodyWrap">
-      <div className="card tableCard" style={{ marginBottom: 14 }}>
-        <form
-          className="card-row"
-          method="GET"
-          style={{ gap: 12, flexWrap: "wrap" }}
-        >
-          <div style={{ minWidth: 260 }}>
-            <div className="label">Pretraga (q)</div>
-            <input
-              className="input"
-              name="q"
-              defaultValue={q}
-              placeholder="partner / opis / tx_id…"
-            />
-            {q
-              ? <div className="subtle" style={{ marginTop: 6 }}>
-                  Traži u partner/opis/tx_id
+        <div className="banka-body">
+          <div className="card" style={{ marginBottom: 14 }}>
+            <form method="GET" className="banka-filters">
+              <div className="banka-filters-row">
+                <div className="banka-field banka-field--wide">
+                  <label className="label">Pretraga</label>
+                  <input
+                    className="input"
+                    name="q"
+                    defaultValue={q}
+                    placeholder="partner / opis / tx_id…"
+                  />
                 </div>
-              : null}
-          </div>
-
-          <div style={{ width: 170 }}>
-            <div className="label">alloc</div>
-            <select className="input" name="alloc" defaultValue={alloc}>
-              <option value="">(sve)</option>
-              <option value="OK">OK</option>
-              <option value="UNLINKED">UNLINKED</option>
-              <option value="OVER_ALLOCATED">OVER_ALLOCATED</option>
-            </select>
-          </div>
-
-          <div style={{ width: 180 }}>
-            <div className="label">projekat_id</div>
-            <input
-              className="input"
-              name="projekat_id"
-              defaultValue={projekatIdRaw}
-              placeholder="npr. 77"
-            />
-            {hasProject
-              ? <div className="subtle" style={{ marginTop: 6 }}>
-                  Aktivno: <b>PROJEKAT #{projekatId}</b> ·{" "}
-                  <Link className="link" href={`/projects/${projekatId}`}>
-                    otvori projekat
-                  </Link>
+                <div className="banka-field">
+                  <label className="label">Status (alloc)</label>
+                  <select className="input" name="alloc" defaultValue={alloc}>
+                    <option value="">(sve)</option>
+                    <option value="OK">OK</option>
+                    <option value="UNLINKED">UNLINKED</option>
+                    <option value="OVER_ALLOCATED">OVER_ALLOCATED</option>
+                  </select>
                 </div>
-              : null}
+                <div className="banka-field">
+                  <label className="label">Projekat ID</label>
+                  <input
+                    className="input"
+                    name="projekat_id"
+                    defaultValue={projekatIdRaw}
+                    placeholder="npr. 77"
+                  />
+                  {hasProject && (
+                    <div className="subtle" style={{ marginTop: 4, fontSize: 12 }}>
+                      <Link className="link" href={`/projects/${projekatId}`}>Otvori projekat</Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="banka-filters-row">
+                <div className="banka-field">
+                  <label className="label">Od datuma</label>
+                  <input
+                    className="input"
+                    name="from"
+                    type="date"
+                    defaultValue={from}
+                  />
+                </div>
+                <div className="banka-field">
+                  <label className="label">Do datuma</label>
+                  <input
+                    className="input"
+                    name="to"
+                    type="date"
+                    defaultValue={to}
+                  />
+                </div>
+                <div className="banka-field banka-actions">
+                  <label className="label" style={{ opacity: 0 }}>.</label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className="btn btn--active" type="submit">Primijeni</button>
+                    <Link className="btn" href="/finance/banka">Reset</Link>
+                  </div>
+                </div>
+              </div>
+            </form>
           </div>
 
-          <div style={{ width: 170 }}>
-            <div className="label">from</div>
-            <input
-              className="input"
-              name="from"
-              defaultValue={from}
-              placeholder="YYYY-MM-DD"
-            />
-          </div>
-
-          <div style={{ width: 170 }}>
-            <div className="label">to</div>
-            <input
-              className="input"
-              name="to"
-              defaultValue={to}
-              placeholder="YYYY-MM-DD"
-            />
-          </div>
-
-          <div style={{ alignSelf: "flex-end", display: "flex", gap: 8 }}>
-            <button className="btn btn--active" type="submit">
-              Primijeni
-            </button>
-            <Link className="btn" href="/finance/banka">
-              Reset sve
-            </Link>
-          </div>
-        </form>
-      </div>
-
-      <div className="card tableCard">
-        <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <span className="muted">Prikazano: {rows.length} (limit 200)</span>
-          <ExportExcelButton
+          <div className="card tableCard">
+            <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+              <span className="muted">Prikazano: {rows.length} (limit 200)</span>
+              <ExportExcelButton
             filename="banka_izvod"
             sheetName="Banka"
             headers={["posting_id", "tx_id", "Datum", "Iznos", "Valuta", "alloc_status", "linked_total_km", "Partner", "Opis", "reversed"]}
@@ -316,9 +302,9 @@ export default async function BankaPage({ searchParams }) {
               r.reversed_at || r.reversed_by_batch_id ? "DA" : "NE",
             ])}
           />
-        </div>
-        <div className="table-wrap">
-          <table className="table">
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table className="table">
             <thead>
               <tr>
                 <th style={{ width: 110 }}>posting</th>
@@ -377,9 +363,9 @@ export default async function BankaPage({ searchParams }) {
                     </td>
                   </tr>}
             </tbody>
-          </table>
-        </div>
-      </div>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     </div>

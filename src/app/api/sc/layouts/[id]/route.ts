@@ -62,3 +62,58 @@ export async function GET(
     );
   }
 }
+
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const sc_layout_id = asInt(id);
+    if (!sc_layout_id || sc_layout_id <= 0) {
+      return NextResponse.json(
+        { ok: false, error: "Neispravan ID layouta." },
+        { status: 400 }
+      );
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const naziv = String(body?.naziv ?? "").trim();
+    const cols = Math.max(2, Math.min(8, asInt(body?.cols) ?? 4));
+    const rows = Math.max(2, Math.min(12, asInt(body?.rows) ?? 6));
+    const cells = Array.isArray(body?.cells) ? body.cells : [];
+
+    await pool.query(
+      `UPDATE sc_layouts SET naziv = ?, cols = ?, \`rows\` = ?, updated_at = NOW() WHERE sc_layout_id = ?`,
+      [naziv || "Layout", cols, rows, sc_layout_id]
+    );
+
+    await pool.query(`DELETE FROM sc_layout_cells WHERE sc_layout_id = ?`, [sc_layout_id]);
+
+    if (cells.length > 0) {
+      const vals: any[] = [];
+      for (const c of cells) {
+        const col = asInt(c.col_index) ?? 0;
+        const row = asInt(c.row_index) ?? 0;
+        const sid = asInt(c.stavka_id);
+        const boja = String(c?.boja ?? "#7dd3fc").slice(0, 20);
+        if (sid && sid > 0) {
+          vals.push([sc_layout_id, col, row, sid, boja]);
+        }
+      }
+      if (vals.length > 0) {
+        await pool.query(
+          `INSERT INTO sc_layout_cells (sc_layout_id, col_index, row_index, stavka_id, boja) VALUES ?`,
+          [vals]
+        );
+      }
+    }
+
+    return NextResponse.json({ ok: true, sc_layout_id });
+  } catch (e: any) {
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Greška" },
+      { status: 500 }
+    );
+  }
+}

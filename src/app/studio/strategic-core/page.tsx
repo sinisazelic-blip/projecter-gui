@@ -22,7 +22,10 @@ export default function StrategicCorePage() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <Link href="/studio/firma" className="btn" title="Studio">
+                  ⚙️ Studio
+                </Link>
                 <Link href="/mobile" className="btn" title="Mobile">
                   📱 Mobile
                 </Link>

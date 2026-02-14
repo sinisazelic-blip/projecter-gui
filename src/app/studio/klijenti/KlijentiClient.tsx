@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { KlijentRow } from "./page";
 import { createKlijent, setKlijentActive, updateKlijent } from "./actions";
+import ImportSection from "../ImportSection";
 
 type TipKlijenta = "direktni" | "agencija";
 
@@ -73,6 +74,7 @@ function modalStyle(maxWidth = 980): React.CSSProperties {
       "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
     boxShadow: "var(--shadow)",
     overflow: "hidden",
+    fontSize: 16,
   };
 }
 
@@ -136,7 +138,10 @@ export default function KlijentiClient({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const items = initialItems ?? [];
+  const [items, setItems] = useState<KlijentRow[]>(initialItems ?? []);
+  useEffect(() => {
+    setItems(initialItems ?? []);
+  }, [initialItems]);
 
   const counts = useMemo(() => {
     const total = items.length;
@@ -264,6 +269,14 @@ export default function KlijentiClient({
     setModalOpen(true);
   }
 
+  function openEditForItem(it: KlijentRow) {
+    setError(null);
+    setSelectedId(it.klijent_id);
+    setModalMode("edit");
+    loadToForm(it);
+    setModalOpen(true);
+  }
+
   function openConfirmToggle() {
     if (!selectedItem) return;
     setError(null);
@@ -309,13 +322,35 @@ export default function KlijentiClient({
       try {
         if (modalMode === "new") {
           await createKlijent(payload);
+          setModalOpen(false);
+          setSelectedId(null);
+          router.refresh();
         } else {
           if (!form.klijent_id) throw new Error("Nedostaje ID za izmjenu.");
-          await updateKlijent({ klijent_id: form.klijent_id, ...payload });
+          const result = await updateKlijent({
+            klijent_id: form.klijent_id,
+            ...payload,
+          });
+          if (result?.created_at != null || result?.updated_at != null) {
+            setForm((prev) => ({
+              ...prev,
+              created_at: result.created_at ?? prev.created_at,
+              updated_at: result.updated_at ?? prev.updated_at,
+            }));
+            setItems((prev) =>
+              prev.map((it) =>
+                Number(it.klijent_id) === Number(form.klijent_id)
+                  ? {
+                      ...it,
+                      created_at: result.created_at ?? it.created_at,
+                      updated_at: result.updated_at ?? it.updated_at,
+                    }
+                  : it,
+              ),
+            );
+          }
+          router.refresh();
         }
-        setModalOpen(false);
-        setSelectedId(null);
-        router.refresh();
       } catch (e: any) {
         setError(e?.message || "Greška pri snimanju.");
       }
@@ -418,6 +453,12 @@ export default function KlijentiClient({
           </button>
         </div>
       </div>
+
+      <ImportSection
+        templateHref="/templates/import/klijenti.xlsx"
+        apiUrl="/api/studio/import/klijenti"
+        onSuccess={() => router.refresh()}
+      />
 
       <div className="card" style={{ marginTop: 14 }}>
         <div
@@ -538,9 +579,10 @@ export default function KlijentiClient({
                   <tr
                     key={it.klijent_id}
                     onClick={() => setSelectedId(it.klijent_id)}
+                    onDoubleClick={() => openEditForItem(it)}
                     style={subtleRowStyle(isSelected)}
                     data-closed={isActive ? "0" : "1"}
-                    title="Klikni za selekciju"
+                    title="Klikni za selekciju, dvoklik za izmjenu"
                   >
                     <td className="cell-wrap">
                       <div
@@ -624,7 +666,7 @@ export default function KlijentiClient({
           <div style={modalStyle(980)}>
             <div
               style={{
-                padding: 16,
+                padding: 20,
                 borderBottom: "1px solid var(--border)",
                 display: "flex",
                 justifyContent: "space-between",
@@ -638,24 +680,24 @@ export default function KlijentiClient({
                   src="/fluxa/Ikona%20Siva.png"
                   alt="Fluxa"
                   style={{
-                    width: 22,
-                    height: 22,
+                    width: 26,
+                    height: 26,
                     objectFit: "contain",
                     opacity: 0.9,
                     marginTop: 2,
                   }}
                 />
                 <div>
-                  <div style={{ fontSize: 18, fontWeight: 700 }}>
+                  <div style={{ fontSize: 20, fontWeight: 700 }}>
                     {modalMode === "new"
                       ? "Novi klijent"
                       : "Promijeni klijenta"}
                   </div>
                   <div
                     style={{
-                      marginTop: 4,
+                      marginTop: 6,
                       color: "var(--muted)",
-                      fontSize: 14,
+                      fontSize: 15,
                     }}
                   >
                     Podaci za fakturisanje/organizaciju (bez brisanja — samo
@@ -668,7 +710,7 @@ export default function KlijentiClient({
               </button>
             </div>
 
-            <div style={{ padding: 16 }}>
+            <div style={{ padding: 20 }}>
               <div
                 className="grid"
                 style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
@@ -677,8 +719,8 @@ export default function KlijentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Naziv (obavezno)
@@ -690,7 +732,8 @@ export default function KlijentiClient({
                     }
                     placeholder="npr. A&V OPREMA doo SA"
                     autoFocus
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -698,8 +741,8 @@ export default function KlijentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Tip klijenta
@@ -712,7 +755,8 @@ export default function KlijentiClient({
                         tip_klijenta: e.target.value as TipKlijenta,
                       }))
                     }
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   >
                     <option value="direktni">direktni</option>
                     <option value="agencija">agencija</option>
@@ -723,8 +767,8 @@ export default function KlijentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Porezni ID
@@ -735,7 +779,8 @@ export default function KlijentiClient({
                       setForm((s) => ({ ...s, porezni_id: e.target.value }))
                     }
                     placeholder="JIB / PIB"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -743,8 +788,8 @@ export default function KlijentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Rok plaćanja (dana)
@@ -758,7 +803,8 @@ export default function KlijentiClient({
                       }))
                     }
                     placeholder="0"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -766,8 +812,8 @@ export default function KlijentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Adresa
@@ -778,7 +824,8 @@ export default function KlijentiClient({
                       setForm((s) => ({ ...s, adresa: e.target.value }))
                     }
                     placeholder="Ulica i broj"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -786,8 +833,8 @@ export default function KlijentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Grad
@@ -798,7 +845,8 @@ export default function KlijentiClient({
                       setForm((s) => ({ ...s, grad: e.target.value }))
                     }
                     placeholder="Sarajevo"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -806,8 +854,8 @@ export default function KlijentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Država
@@ -818,7 +866,8 @@ export default function KlijentiClient({
                       setForm((s) => ({ ...s, drzava: e.target.value }))
                     }
                     placeholder="BiH"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -891,7 +940,8 @@ export default function KlijentiClient({
                         }))
                       }
                       placeholder="npr. PDV nije obračunat jer je [naziv] oslobođeno po osnovu Zakona o PDV-u, član 24, a na osnovu dostavljene Potvrde o oslobađanju 1234/2024"
-                      style={{ width: "100%", minHeight: 70, resize: "vertical" }}
+                      className="input"
+                    style={{ width: "100%", minHeight: 70, resize: "vertical", padding: "12px 14px", fontSize: 15 }}
                     />
                   </div>
                 )}
@@ -920,8 +970,8 @@ export default function KlijentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Napomena
@@ -932,7 +982,8 @@ export default function KlijentiClient({
                       setForm((s) => ({ ...s, napomena: e.target.value }))
                     }
                     placeholder="Interna napomena"
-                    style={{ width: "100%", minHeight: 90, resize: "vertical" }}
+                    className="input"
+                    style={{ width: "100%", minHeight: 90, resize: "vertical", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
               </div>

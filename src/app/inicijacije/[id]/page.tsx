@@ -170,12 +170,13 @@ function toHumanInput(v: string | null | undefined): string {
 
 const inputStyle = {
   width: "100%",
-  padding: "8px 10px",
+  padding: "12px 14px",
   borderRadius: 10,
   border: "1px solid rgba(255,255,255,.18)",
   background: "rgba(255,255,255,.06)",
   color: "inherit",
   outline: "none",
+  fontSize: 15,
 } as const;
 
 function fmtMoney(n: number) {
@@ -947,9 +948,9 @@ export default function PonudaDetaljPage() {
         .dealBannerTitle { font-weight: 850; letter-spacing:.2px; }
         .dealBannerText { margin-top: 6px; font-size: 13px; opacity:.92; }
 
-        .hint12 { font-size:12px; opacity:.75; margin-top:6px; }
+        .hint12 { font-size:14px; opacity:.85; margin-top:6px; }
 
-        .popoverCard { position:absolute; right:0; top: calc(100% + 10px); width: 380px; max-width: 92vw; z-index:60; border: 1px solid rgba(255,255,255,.18); background: rgba(20,20,30,.92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 14px 40px rgba(0,0,0,.35); border-radius: 14px; padding: 12px; }
+        .popoverCard { position:absolute; right:0; top: calc(100% + 10px); width: 420px; max-width: 92vw; z-index:60; border: 1px solid rgba(255,255,255,.18); background: rgba(20,20,30,.92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 14px 40px rgba(0,0,0,.35); border-radius: 14px; padding: 18px; font-size: 15px; }
 
         .statusPill { display:inline-flex; align-items:center; gap:8px; padding: 6px 10px; border-radius:999px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); font-weight:850; letter-spacing:.2px; font-size:12px; white-space:nowrap; }
         .statusDot { width: 10px; height: 10px; border-radius: 999px; display:inline-block; box-shadow: 0 0 0 2px rgba(0,0,0,.15) inset; }
@@ -977,7 +978,7 @@ export default function PonudaDetaljPage() {
 
             <div
               className="brandWrap"
-              style={{ flex: "1 1 auto", justifyContent: "center" }}
+              style={{ flex: "1 1 auto", justifyContent: "flex-start" }}
             >
               <img
                 src="/fluxa/logo-light.png"
@@ -1690,10 +1691,11 @@ export default function PonudaDetaljPage() {
               <div
                 style={{
                   marginTop: 14,
-                  padding: 14,
+                  padding: 18,
                   border: "1px solid rgba(255,255,255,.12)",
                   borderRadius: 12,
                   background: "rgba(255,255,255,.03)",
+                  fontSize: 15,
                 }}
               >
                 <div
@@ -1705,7 +1707,7 @@ export default function PonudaDetaljPage() {
                   }}
                 >
                 <div>
-                  <div className="label" style={{ marginBottom: 4, fontSize: 11, fontWeight: 700, opacity: 0.75 }}>Stavka iz cjenovnika</div>
+                  <div className="label" style={{ marginBottom: 6, fontSize: 15, fontWeight: 700, opacity: 0.85 }}>Stavka iz cjenovnika</div>
                   <select
                     value={selected ? String(selected.stavka_id) : ""}
                     onChange={(e) => {
@@ -1744,7 +1746,7 @@ export default function PonudaDetaljPage() {
                 </div>
 
                 <div>
-                  <div className="label" style={{ marginBottom: 4, fontSize: 11, fontWeight: 700, opacity: 0.75 }}>Količina</div>
+                  <div className="label" style={{ marginBottom: 6, fontSize: 15, fontWeight: 700, opacity: 0.85 }}>Količina</div>
                   <input
                     value={kolicina}
                     onChange={(e) => setKolicina(e.target.value)}
@@ -1754,7 +1756,7 @@ export default function PonudaDetaljPage() {
                 </div>
 
                 <div>
-                  <div className="label" style={{ marginBottom: 4, fontSize: 11, fontWeight: 700, opacity: 0.75 }}>Cijena</div>
+                  <div className="label" style={{ marginBottom: 6, fontSize: 15, fontWeight: 700, opacity: 0.85 }}>Cijena</div>
                   <input
                     value={cijenaUI}
                     onChange={(e) => setCijenaUI(e.target.value)}
@@ -1770,7 +1772,7 @@ export default function PonudaDetaljPage() {
                 </div>
 
                 <div>
-                  <div className="label" style={{ marginBottom: 4, fontSize: 11, fontWeight: 700, opacity: 0.75 }}>Opis (opciono)</div>
+                  <div className="label" style={{ marginBottom: 6, fontSize: 15, fontWeight: 700, opacity: 0.85 }}>Opis (opciono)</div>
                   <input
                     value={opisStavke}
                     onChange={(e) => setOpisStavke(e.target.value)}
@@ -1817,8 +1819,9 @@ export default function PonudaDetaljPage() {
                       gridTemplateColumns: "80px 1fr 120px 140px 140px 240px",
                       gap: 8,
                       fontWeight: 700,
-                      marginBottom: 6,
+                      marginBottom: 8,
                       opacity: 0.95,
+                      fontSize: 15,
                     }}
                   >
                     <div>#</div>
@@ -1854,11 +1857,11 @@ export default function PonudaDetaljPage() {
                               {s.naziv_snapshot}
                             </div>
                             {s.opis ? (
-                              <div className="muted" style={{ fontSize: 12 }}>
+                              <div className="muted" style={{ fontSize: 14 }}>
                                 {s.opis}
                               </div>
                             ) : null}
-                            <div className="muted" style={{ fontSize: 12 }}>
+                            <div className="muted" style={{ fontSize: 14 }}>
                               jedinica: {s.jedinica_snapshot} • valuta:{" "}
                               {normCcy(s.valuta)}
                             </div>

@@ -13,15 +13,16 @@ export type CjenovnikItem = {
   valuta_default: string; // "BAM" in DB, display "KM" in UI
   sort_order: number;
   active: number; // 1/0
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
 };
 
 export default async function CjenovnikPage() {
-  // Default sort: naziv A–Z (LOCK)
   const rows = await query(
     `SELECT stavka_id, naziv, jedinica, cijena_default, cijena_ino_eur, valuta_default,
-            sort_order, active, created_at, updated_at
+            sort_order, active,
+            DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+            DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
      FROM cjenovnik_stavke
      ORDER BY naziv ASC`,
   );

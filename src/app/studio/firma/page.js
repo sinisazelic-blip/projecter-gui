@@ -1,6 +1,7 @@
 // src/app/studio/firma/page.js
 import Link from "next/link";
 import { query } from "@/lib/db";
+import LogoUpload from "./LogoUpload";
 
 export const dynamic = "force-dynamic";
 
@@ -320,12 +321,14 @@ export default async function Page({ searchParams }) {
                   />
                 </div>
                 <div>
-                  <div style={labelStyle}>Logo path</div>
+                  <div style={labelStyle}>Logo firme (na fakturi)</div>
                   <input
                     name="logo_path"
                     defaultValue={pick(f?.logo_path) || "/fluxa/logo-light.png"}
                     style={inputStyle}
+                    placeholder="/logos/logo-firma-xxx.png"
                   />
+                  <LogoUpload logoPath={pick(f?.logo_path)} />
                 </div>
               </div>
 

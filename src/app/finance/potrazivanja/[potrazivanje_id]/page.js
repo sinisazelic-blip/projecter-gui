@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { query } from "@/lib/db";
+import OtpisPotrazivanjeForm from "./OtpisPotrazivanjeForm";
 
 export const dynamic = "force-dynamic";
 
@@ -206,12 +207,15 @@ export default async function PotrazivanjeDetailPage({ params }) {
     ).catch(async () => []);
   }
 
+  const isOtpisano = (pot.status || "").toUpperCase() === "OTPISANO";
   const statusBadge =
-    remaining === null
-      ? badge("—", "neutral")
-      : remaining <= 0.0001
-        ? badge("ZATVORENO", "ok")
-        : badge("OTVORENO", "warn");
+    isOtpisano
+      ? badge("OTPISANO", "bad")
+      : remaining === null
+        ? badge("—", "neutral")
+        : remaining <= 0.0001
+          ? badge("ZATVORENO", "ok")
+          : badge("OTVORENO", "warn");
 
   return (
     <div className="container">
@@ -299,6 +303,16 @@ export default async function PotrazivanjeDetailPage({ params }) {
           <b>Read-only.</b> Ovo je meaning + linkovi. Banka je canonical. “Banka
           (filter)” je samo kontekst, ne link.
         </div>
+        {!isOtpisano && (
+          <>
+            <div className="hr" />
+            <div className="cardTitle" style={{ marginBottom: 4 }}>Otpisi potraživanje</div>
+            <div className="subtle" style={{ fontSize: 13 }}>
+              Nenaplativa potraživanja (firma ugašena, dužnik nestao) mogu se označiti kao otpisana.
+            </div>
+            <OtpisPotrazivanjeForm potrazivanjeId={pot.potrazivanje_id} />
+          </>
+        )}
       </div>
 
       {/* LINKS */}

@@ -1063,7 +1063,15 @@ export default function Page() {
               <div className="invRow">
                 <div className="invHeaderLeft">
                   <img
-                    src="/firma/taf-logo.jpg"
+                    src={
+                      (() => {
+                        const p = data?.firma?.logo_path?.trim();
+                        if (!p) return "/api/firma/logo";
+                        if (p.startsWith("http://") || p.startsWith("https://"))
+                          return p;
+                        return "/api/firma/logo";
+                      })()
+                    }
                     alt="Company logo"
                     className="companyLogo"
                   />

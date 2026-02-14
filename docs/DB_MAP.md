@@ -14,7 +14,7 @@
 Relacije:
 - klijenti (1) -> (N) projekti
 - klijenti (1) -> (N) fakture (bill_to_klijent_id)
-- klijenti (1) -> (N) klijenti_pocetno_stanje
+- klijenti (1) -> (N) klijent_pocetno_stanje
 
 ### projekti
 - PK: projekat_id
@@ -168,11 +168,15 @@ Operativne tabele koje si importovao:
 - talenti_isplate
 (veze su preko talent_id i/ili projekat_id)
 
-## Dobavljači (operativno + istorija)
+## Dobavljači (operativno + početno stanje + istorija)
 ### dobavljaci
 - PK: dobavljac_id
 - naziv, vrsta, pravno_lice, drzava_iso2, grad, adresa...
 - aktivan
+
+### dobavljac_pocetno_stanje
+- Početna stanja (npr. 31.12.2025): tvoja dugovanja prema dobavljačima.
+- FK: dobavljac_id -> dobavljaci.dobavljac_id; iznos (npr. iznos_duga_km), napomena, datum ako postoji.
 
 ### dobavljac_istorija
 - PK: istorija_id

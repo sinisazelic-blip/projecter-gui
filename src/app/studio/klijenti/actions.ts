@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { query } from "@/lib/db";
 
 type TipKlijenta = "direktni" | "agencija";
@@ -58,8 +59,8 @@ export async function createKlijent(input: {
 
   await query(
     `INSERT INTO klijenti
-      (naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava, rok_placanja_dana, napomena, aktivan, is_ino, pdv_oslobodjen, pdv_oslobodjen_napomena)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      (naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava, rok_placanja_dana, napomena, aktivan, is_ino, pdv_oslobodjen, pdv_oslobodjen_napomena, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?, NOW(), NOW())`,
     [
       naziv,
       tip,
@@ -76,6 +77,7 @@ export async function createKlijent(input: {
     ],
   );
 
+  revalidatePath("/studio/klijenti");
   return { ok: true };
 }
 
@@ -126,7 +128,8 @@ export async function updateKlijent(input: {
             aktivan=?,
             is_ino=?,
             pdv_oslobodjen=?,
-            pdv_oslobodjen_napomena=?
+            pdv_oslobodjen_napomena=?,
+            updated_at=NOW()
       WHERE klijent_id=?`,
     [
       naziv,
@@ -145,7 +148,19 @@ export async function updateKlijent(input: {
     ],
   );
 
-  return { ok: true };
+  const [row] = (await query(
+    `SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+            DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+       FROM klijenti WHERE klijent_id = ?`,
+    [id],
+  )) as { created_at: string | null; updated_at: string | null }[];
+
+  revalidatePath("/studio/klijenti");
+  return {
+    ok: true,
+    created_at: row?.created_at ?? null,
+    updated_at: row?.updated_at ?? null,
+  };
 }
 
 export async function setKlijentActive(input: {
@@ -156,9 +171,10 @@ export async function setKlijentActive(input: {
   if (!Number.isFinite(id) || id <= 0)
     throw new Error("Neispravan klijent_id.");
 
-  await query(`UPDATE klijenti SET aktivan=? WHERE klijent_id=?`, [
+  await query(`UPDATE klijenti SET aktivan=?, updated_at=NOW() WHERE klijent_id=?`, [
     input?.aktivan ? 1 : 0,
     id,
   ]);
+  revalidatePath("/studio/klijenti");
   return { ok: true };
 }
