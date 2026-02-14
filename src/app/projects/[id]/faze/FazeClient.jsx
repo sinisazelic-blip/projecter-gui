@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import FazeGantt from "./FazeGantt";
 
 function fmtDate(v) {
   if (!v) return "—";
@@ -16,6 +17,7 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
   const [adding, setAdding] = useState(false);
   const [dobavljacFilter, setDobavljacFilter] = useState("");
   const [radnikFilter, setRadnikFilter] = useState("");
+  const [viewTab, setViewTab] = useState("tabela");
 
   const [form, setForm] = useState({
     faza_id: "",
@@ -50,6 +52,16 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
   async function handleAdd(e) {
     e.preventDefault();
     setErr("");
+    if (rokGlavni) {
+      if (form.deadline && form.deadline > rokGlavni) {
+        setErr(`Deadline faze ne smije biti poslije deadline-a projekta (${fmtDate(rokGlavni)}).`);
+        return;
+      }
+      if (form.datum_kraja && form.datum_kraja > rokGlavni) {
+        setErr(`Datum kraja faze ne smije biti poslije deadline-a projekta (${fmtDate(rokGlavni)}).`);
+        return;
+      }
+    }
     setAdding(true);
     try {
       const res = await fetch(`/api/projects/${projekatId}/faze`, {
@@ -188,6 +200,8 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
               className="input"
               value={form.datum_kraja}
               onChange={(e) => setForm((s) => ({ ...s, datum_kraja: e.target.value }))}
+              max={rokGlavni || undefined}
+              title={rokGlavni ? `Maks. ${fmtDate(rokGlavni)} (deadline projekta)` : undefined}
             />
           </div>
 
@@ -198,12 +212,14 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
               className="input"
               value={form.deadline}
               onChange={(e) => setForm((s) => ({ ...s, deadline: e.target.value }))}
-              placeholder={rokGlavni ? `Prazno = ${rokGlavni}` : ""}
+              max={rokGlavni || undefined}
+              placeholder={rokGlavni ? `Prazno = ${fmtDate(rokGlavni)}` : ""}
+              title={rokGlavni ? `Maks. ${fmtDate(rokGlavni)} (deadline projekta)` : undefined}
             />
           </div>
 
           <div className="field">
-            <label className="label">% izvršenosti</label>
+            <label className="label">% završetka</label>
             <input
               type="number"
               min="0"
@@ -212,6 +228,7 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
               className="input"
               value={form.procenat_izvrsenosti}
               onChange={(e) => setForm((s) => ({ ...s, procenat_izvrsenosti: e.target.value }))}
+              placeholder="0–100"
             />
           </div>
 
@@ -296,7 +313,29 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
       </form>
 
       <div className="card" style={{ marginTop: 20 }}>
-        <div className="fazeFormTitle">Lista faza</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
+          <div className="fazeFormTitle" style={{ marginBottom: 0 }}>Lista faza</div>
+          <div style={{ display: "flex", gap: 4 }}>
+            <button
+              type="button"
+              className="btn"
+              style={{ fontSize: 13, padding: "6px 12px", opacity: viewTab === "tabela" ? 1 : 0.6 }}
+              onClick={() => setViewTab("tabela")}
+            >
+              Tabela
+            </button>
+            <button
+              type="button"
+              className="btn"
+              style={{ fontSize: 13, padding: "6px 12px", opacity: viewTab === "timeline" ? 1 : 0.6 }}
+              onClick={() => setViewTab("timeline")}
+            >
+              Timeline
+            </button>
+          </div>
+        </div>
+
+        {viewTab === "tabela" && (
         <div className="table-wrap">
           <table className="fazeTable">
             <thead>
@@ -340,7 +379,8 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
                         if (Number.isFinite(v) && v >= 0 && v <= 100)
                           handleUpdate(f.projekat_faza_id, { procenat_izvrsenosti: v });
                       }}
-                      style={{ width: 60, padding: 4 }}
+                      className="fazeProcenatInput"
+                      style={{ padding: 6 }}
                     />
                   </td>
                   <td>
@@ -365,6 +405,9 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
             </tbody>
           </table>
         </div>
+        )}
+
+        {viewTab === "timeline" && <FazeGantt faze={faze} />}
       </div>
     </div>
   );

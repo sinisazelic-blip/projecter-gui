@@ -697,30 +697,114 @@ option {
 }
 .fazeFormGrid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
   margin-bottom: 14px;
 }
 @media (max-width: 1400px) {
   .fazeFormGrid {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 @media (max-width: 1100px) {
   .fazeFormGrid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 @media (max-width: 800px) {
   .fazeFormGrid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 @media (max-width: 600px) {
   .fazeFormGrid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+.fazeFormGrid .field {
+  min-width: 0;
+}
+.fazeFormGrid .field .input,
+.fazeFormGrid .field select {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.fazeFormGrid .field:nth-child(6) .input {
+  font-weight: 600;
+}
+.fazeTable th:nth-child(5),
+.fazeTable td:nth-child(5) {
+  min-width: 0;
+  width: 1%;
+  white-space: nowrap;
+}
+.fazeProcenatInput {
+  font-weight: 600;
+  width: 100%;
+  max-width: 72px;
+  box-sizing: border-box;
+}
+
+/* Gantt timeline – čist CSS */
+.ganttTimeline {
+  min-height: 200px;
+  padding: 12px 0;
+}
+.ganttScale {
+  position: relative;
+  height: 28px;
+  margin-left: 180px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+.ganttScaleTick {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--muted);
+}
+.ganttRows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ganttRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+}
+.ganttLabel {
+  flex: 0 0 168px;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ganttBarTrack {
+  flex: 1;
+  position: relative;
+  height: 24px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px;
+  min-width: 0;
+}
+.ganttBar {
+  position: absolute;
+  top: 2px;
+  height: 20px;
+  background: rgba(100, 120, 180, 0.4);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.ganttBarProgress {
+  height: 100%;
+  background: rgba(100, 140, 220, 0.8);
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
 .fazeFormGrid .field:nth-child(7),
 .fazeFormGrid .field:nth-child(8) {
   grid-column: span 3;

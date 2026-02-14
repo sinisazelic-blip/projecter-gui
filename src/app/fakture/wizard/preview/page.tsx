@@ -62,6 +62,7 @@ type ApiBuyer = {
   grad: string | null;
   postanski_broj?: string | null;
   drzava: string | null;
+  email: string | null;
   rok_placanja_dana: number | null;
   is_ino?: number | boolean;
 };
@@ -241,6 +242,27 @@ export default function Page() {
     return map;
   }, [sp]);
 
+  // ✅ Opisne stavke po projektu (projekat_id -> string[])
+  const projectSubItems = useMemo(() => {
+    const raw = sp.get("project_sub_items");
+    if (!raw) return {};
+    const map: Record<number, string[]> = {};
+    raw.split(",").forEach((pair) => {
+      const colonIdx = pair.indexOf(":");
+      if (colonIdx <= 0) return;
+      const idStr = pair.slice(0, colonIdx);
+      const itemsStr = pair.slice(colonIdx + 1);
+      const id = Number(idStr);
+      if (!Number.isFinite(id) || !itemsStr) return;
+      const items = decodeURIComponent(itemsStr)
+        .split("|")
+        .map((s) => String(s).trim())
+        .filter(Boolean);
+      if (items.length > 0) map[id] = items;
+    });
+    return map;
+  }, [sp]);
+
   const [data, setData] = useState<PreviewData | null>(null);
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState(false);
@@ -319,6 +341,10 @@ export default function Page() {
             .filter(([_, val]) => val && String(val).trim())
             .map(([id, naziv]) => `${id}:${String(naziv).trim()}`)
             .join(","),
+          project_sub_items: Object.entries(projectSubItems)
+            .filter(([_, arr]) => arr && arr.length > 0)
+            .map(([id, arr]) => `${id}:${(arr as string[]).join("|")}`)
+            .join(","),
         }),
       });
 
@@ -359,24 +385,32 @@ export default function Page() {
     window.print();
   }
 
-  // Funkcija za PDF Save as
+  // Funkcija za PDF Save as — otvara print dialog, korisnik bira "Sačuvaj kao PDF"
   function handlePDFSaveAs() {
     if (!created) {
       alert("Prvo kreirajte račun!");
       return;
     }
-    // TODO: Implementirati PDF generisanje i download
-    alert("PDF Save as - u implementaciji");
+    window.print();
   }
 
-  // Funkcija za slanje mail-om
+  // Funkcija za slanje mail-om — otvara email klijent s predpopunjenim podacima
   function handleSendEmail() {
     if (!created) {
       alert("Prvo kreirajte račun!");
       return;
     }
-    // TODO: Implementirati slanje mail-om
-    alert("Pošalji mail-om - u implementaciji");
+    const to = String(buyer?.email ?? "").trim();
+    const subj =
+      lang === "EN"
+        ? `Invoice ${invoiceNumber} - ${buyerName}`
+        : `Račun ${invoiceNumber} - ${buyerName}`;
+    const body =
+      lang === "EN"
+        ? `Dear ${buyerName},\n\nPlease find attached invoice ${invoiceNumber}.\n\nBest regards`
+        : `Poštovani,\n\nU prilogu Vam šaljemo račun br. ${invoiceNumber}.\n\nSrdačan pozdrav`;
+    const mailto = `mailto:${encodeURIComponent(to || "")}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto;
   }
 
   // Funkcija za zatvaranje prozora
@@ -397,6 +431,7 @@ export default function Page() {
           overrideNaziv || p.radni_naziv || `Projekat #${p.projekat_id}`,
         ).trim();
         const sub = p.klijent_naziv ? `Klijent: ${p.klijent_naziv}` : "";
+        const subItems = projectSubItems[p.projekat_id] ?? [];
         const qty = 1;
         const unit = Number(p.budzet_planirani ?? 0);
         const total = qty * unit;
@@ -404,13 +439,14 @@ export default function Page() {
           id: p.projekat_id,
           title,
           sub,
+          subItems,
           qty,
           unit,
           total,
           closed_at: p.closed_at,
         };
       }),
-    [projects, projectNameOverrides],
+    [projects, projectNameOverrides, projectSubItems],
   );
 
   const baseAmount = useMemo(
@@ -832,7 +868,11 @@ export default function Page() {
                       type="button"
                       className="btn"
                       onClick={handlePDFSaveAs}
-                      title={lang === "EN" ? "PDF Save as" : "PDF Sačuvaj kao"}
+                      title={
+                        lang === "EN"
+                          ? "Save as PDF (in print dialog, choose 'Save as PDF' as destination)"
+                          : "Sačuvaj kao PDF (u print dialogu odaberi 'Sačuvaj kao PDF' kao destinaciju)"
+                      }
                     >
                       💾 {lang === "EN" ? "PDF Save as" : "PDF Sačuvaj"}
                     </button>
@@ -1053,6 +1093,21 @@ export default function Page() {
                             <div className="desc">{it.title}</div>
                             {it.sub ? (
                               <div className="mutedSmall">{it.sub}</div>
+                            ) : null}
+                            {it.subItems && it.subItems.length > 0 ? (
+                              <ul
+                                className="mutedSmall"
+                                style={{
+                                  margin: "6px 0 0 0",
+                                  paddingLeft: 18,
+                                  listStyle: "disc",
+                                  lineHeight: 1.4,
+                                }}
+                              >
+                                {it.subItems.map((s, i) => (
+                                  <li key={i}>{s}</li>
+                                ))}
+                              </ul>
                             ) : null}
                           </td>
                           <td className="num">{it.qty}</td>

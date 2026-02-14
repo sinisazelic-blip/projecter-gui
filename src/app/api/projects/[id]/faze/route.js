@@ -102,6 +102,18 @@ export async function POST(req, { params }) {
     const datumPocetka = body.datum_pocetka ? String(body.datum_pocetka).slice(0, 10) : null;
     const datumKraja = body.datum_kraja ? String(body.datum_kraja).slice(0, 10) : null;
     const deadline = body.deadline ? String(body.deadline).slice(0, 10) : null;
+
+    const [proj] = await query(
+      `SELECT DATE_FORMAT(rok_glavni, '%Y-%m-%d') AS rok_glavni FROM projekti WHERE projekat_id = ? LIMIT 1`,
+      [projekatId]
+    );
+    const rokGlavni = proj?.rok_glavni ? String(proj.rok_glavni).trim() : null;
+    if (rokGlavni) {
+      if (deadline && deadline > rokGlavni)
+        return NextResponse.json({ ok: false, error: `Deadline faze ne smije biti poslije deadline-a projekta (${rokGlavni}).` }, { status: 400 });
+      if (datumKraja && datumKraja > rokGlavni)
+        return NextResponse.json({ ok: false, error: `Datum kraja faze ne smije biti poslije deadline-a projekta (${rokGlavni}).` }, { status: 400 });
+    }
     const procenat = Math.min(100, Math.max(0, Number(body.procenat_izvrsenosti) || 0));
     const redoslijed = Number(body.redoslijed) || 0;
     const napomena = body.napomena ? String(body.napomena).trim() : null;

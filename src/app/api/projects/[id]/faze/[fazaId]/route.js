@@ -57,6 +57,20 @@ export async function PATCH(req, { params }) {
     if (sets.length === 0)
       return NextResponse.json({ ok: true, message: "Nema izmjena" });
 
+    const [proj] = await query(
+      `SELECT DATE_FORMAT(rok_glavni, '%Y-%m-%d') AS rok_glavni FROM projekti WHERE projekat_id = ? LIMIT 1`,
+      [projekatId]
+    );
+    const rokGlavni = proj?.rok_glavni ? String(proj.rok_glavni).trim() : null;
+    if (rokGlavni) {
+      const deadlineVal = body.deadline !== undefined ? (body.deadline ? String(body.deadline).slice(0, 10) : null) : null;
+      const datumKrajaVal = body.datum_kraja !== undefined ? (body.datum_kraja ? String(body.datum_kraja).slice(0, 10) : null) : null;
+      if (deadlineVal && deadlineVal > rokGlavni)
+        return NextResponse.json({ ok: false, error: `Deadline faze ne smije biti poslije deadline-a projekta (${rokGlavni}).` }, { status: 400 });
+      if (datumKrajaVal && datumKrajaVal > rokGlavni)
+        return NextResponse.json({ ok: false, error: `Datum kraja faze ne smije biti poslije deadline-a projekta (${rokGlavni}).` }, { status: 400 });
+    }
+
     vals.push(projekatFazaId, projekatId);
     await query(
       `UPDATE projekat_faze SET ${sets.join(", ")} WHERE projekat_faza_id = ? AND projekat_id = ?`,

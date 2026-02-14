@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "dev:webpack": "next dev --webpack",
     "build": "next build",
     "start": "next start",
@@ -17,6 +17,7 @@
     "next": "^16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-frappe-gantt": "^0.2.3",
     "recharts": "^3.7.0",
     "xlsx": "^0.18.5"
   },

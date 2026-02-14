@@ -27,8 +27,8 @@ export async function createUser(input: {
   const aktivan = toBit(input?.aktivan ?? true);
 
   await query(
-    `INSERT INTO users (username, password, role_id, aktivan) VALUES (?,?,?,?)`,
-    [username, password, role_id, aktivan],
+    `INSERT INTO users (username, password, password_hash, role_id, aktivan) VALUES (?,?,?,?,?)`,
+    [username, password, password, role_id, aktivan],
   );
 
   return { ok: true };
@@ -59,8 +59,8 @@ export async function updateUser(input: {
 
   if (hasPassword) {
     const password = String(input.password).trim();
-    sql = `UPDATE users SET username=?, password=?, role_id=?, aktivan=? WHERE user_id=?`;
-    params = [username, password, role_id, aktivan, id];
+    sql = `UPDATE users SET username=?, password=?, password_hash=?, role_id=?, aktivan=? WHERE user_id=?`;
+    params = [username, password, password, role_id, aktivan, id];
   } else {
     sql = `UPDATE users SET username=?, role_id=?, aktivan=? WHERE user_id=?`;
     params = [username, role_id, aktivan, id];

@@ -38,7 +38,7 @@ export function CloseProjectModal({
   open,
   onClose,
   projekatId,
-  bankImportHref = "/bank",
+  bankImportHref = "/banking/import",
 }: {
   open: boolean;
   onClose: () => void;

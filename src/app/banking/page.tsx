@@ -131,7 +131,7 @@ export default function BankPage() {
         <div className="flex gap-2">
           <a
             className="px-3 py-2 rounded border hover:bg-gray-50"
-            href="/bank/rules"
+            href="/banking/rules"
           >
             Rules
           </a>

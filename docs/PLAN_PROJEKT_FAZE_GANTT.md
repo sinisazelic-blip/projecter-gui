@@ -66,7 +66,7 @@ projekat_faza_radnici (N:N)
 3. **Dugme „Dodaj fazu”** – novi red, izbor tipa faze iz šifarnika
 4. **Inline edit** – klik na ćeliju za brzu izmjenu
 
-### 2.2 Prikaz Gantt-a
+### 2.2 Prikaz Gantt-a ✅ implementirano
 
 - **Horizontalna osa:** vrijeme (mjeseci, tjedni ili dani – zoom)
 - **Vertikalna osa:** faze (grupe po projektu) ili projekti
@@ -85,7 +85,7 @@ projekat_faza_radnici (N:N)
 | **C) dhtmlx-gantt** | Pun feature set | Težak, komercijalni za neke stvari |
 | **D) Čist CSS + div** | Full control, nema dependencija | Više ručnog rada za zoom, drag |
 
-**Preporuka za početak:** **B) frappe-gantt** – malen, besplatan, dovoljno za timeline + % + radnici u labelu.
+**Implementirano:** **D) Čist CSS + div** – bez dependencija, timeline sa barovima, % izvršenosti i radnicima u labelu. (frappe-gantt je isproban ali ima probleme sa React 19.)
 
 ---
 
@@ -96,11 +96,10 @@ projekat_faza_radnici (N:N)
 2. API: GET/POST/PATCH faze za projekat
 3. Stranica u projektu: „Faze” – tabela za unos i izmjenu
 
-### Faza B – Gantt prikaz
-**Kad korisnik ubaci nekoliko faza i testira Fazu A:**
-1. Instalacija frappe-gantt (ili alternativa)
-2. API ili transform postojećih podataka u format za Gantt
-3. View „Timeline” – Gantt dijagram (po projektu ili multi-projekat)
+### Faza B – Gantt prikaz ✅ implementirano
+1. ~~Instalacija frappe-gantt (ili alternativa)~~ – korišten čist CSS (bez dependencija)
+2. Transform postojećih podataka u format za timeline
+3. View „Timeline” – tab na stranici Faze, Gantt dijagram sa barovima i % izvršenosti
 
 ### Faza C – Usavršavanje
 1. Zoom (dan / tjedan / mjesec)
@@ -153,7 +152,7 @@ projekat_faza_radnici (N:N)
 | **Radnici** | projekat_faza_radnici (N:N) |
 | **%** | procenat_izvrsenosti (0–100) |
 | **Unos** | Tabela u Projektu → Faze |
-| **Prikaz** | Gantt (npr. frappe-gantt) |
+| **Prikaz** | Gantt timeline (čist CSS) – tab na stranici Faze |
 
 ---
 
@@ -166,4 +165,4 @@ projekat_faza_radnici (N:N)
 
 2. **Putanja:** Projekat → dugme „Faze” → `/projects/[id]/faze`
 
-3. **Faza B – Gantt:** Kad korisnik ubaci nekoliko faza i testira Fazu A, uvesti Gantt prikaz (frappe-gantt ili slično) – timeline sa barovima po fazama.
+3. **Faza B – Gantt:** ✅ Implementirano. Tab „Timeline” na stranici Faze – čist CSS timeline sa barovima, % izvršenosti i imenima radnika u labelu.

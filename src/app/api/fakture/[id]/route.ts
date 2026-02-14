@@ -81,23 +81,57 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // Učitaj projekte vezane za fakturu
     let projektiIds: number[] = [];
     
-    // Prvo pokušaj da učitaš iz faktura_projekti tabele
+    // Učitaj projekte i opisne stavke iz faktura_projekti
+    let projectSubItems: Record<number, string[]> = {};
     try {
       const projektiRows: any = await query(
-        `SELECT projekat_id FROM faktura_projekti WHERE faktura_id = ?`,
+        `SELECT projekat_id, opisne_stavke FROM faktura_projekti WHERE faktura_id = ?`,
         [fakturaId],
       );
-      projektiIds = Array.isArray(projektiRows)
-        ? projektiRows.map((r: any) => Number(r.projekat_id)).filter(Number.isFinite)
-        : [];
-      if (projektiIds.length > 0) {
+      if (Array.isArray(projektiRows) && projektiRows.length > 0) {
+        projektiIds = projektiRows
+          .map((r: any) => Number(r.projekat_id))
+          .filter(Number.isFinite);
+        // Parse opisne_stavke JSON
+        for (const r of projektiRows) {
+          const pid = Number(r.projekat_id);
+          if (!Number.isFinite(pid)) continue;
+          let items: string[] = [];
+          try {
+            if (r.opisne_stavke) {
+              const parsed = typeof r.opisne_stavke === "string"
+                ? JSON.parse(r.opisne_stavke)
+                : r.opisne_stavke;
+              items = Array.isArray(parsed)
+                ? parsed.map((s: any) => String(s ?? "").trim()).filter(Boolean)
+                : [];
+            }
+          } catch (_) {}
+          if (items.length > 0) projectSubItems[pid] = items;
+        }
         console.log(`✅ Pronađeno ${projektiIds.length} projekata iz faktura_projekti za fakturu ${fakturaId}`);
       }
     } catch (err: any) {
-      // Ako tabela faktura_projekti ne postoji, ignorišemo i pokušavamo fallback
-      console.warn(`⚠️ Greška pri učitavanju iz faktura_projekti za fakturu ${fakturaId}:`, err?.message);
+      // Ako opisne_stavke kolona ne postoji, pokušaj bez nje
+      const errMsg = String(err?.message || "").toLowerCase();
+      if (errMsg.includes("unknown column") && errMsg.includes("opisne_stavke")) {
+        try {
+          const projektiRowsFallback: any = await query(
+            `SELECT projekat_id FROM faktura_projekti WHERE faktura_id = ?`,
+            [fakturaId],
+          );
+          if (Array.isArray(projektiRowsFallback) && projektiRowsFallback.length > 0) {
+            projektiIds = projektiRowsFallback
+              .map((r: any) => Number(r.projekat_id))
+              .filter(Number.isFinite);
+          }
+        } catch (_) {}
+      }
+      if (projektiIds.length === 0) {
+        console.warn(`⚠️ Greška pri učitavanju iz faktura_projekti za fakturu ${fakturaId}:`, err?.message);
+      }
     }
-    
+
     // Fallback: ako nema veza u faktura_projekti, pokušaj da nađeš preko project_audit
     if (projektiIds.length === 0) {
       console.log(`🔍 Pokušavam fallback: učitavanje projekata iz project_audit za fakturu ${fakturaId}`);
@@ -157,6 +191,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         broj_fakture: brojFaktureFormatiran,
         datum_dospijeca: datumDospijeca,
         projekti_ids: projektiIds,
+        project_sub_items: projectSubItems,
       },
     });
   } catch (err: any) {

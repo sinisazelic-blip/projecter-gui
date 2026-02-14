@@ -23,8 +23,7 @@
 - **Deadline** kad operacija mora biti gotova
 - Promjene u otvorenom prozoru mogu se reflektovati na roditeljski prozor
 
-**Status:** Faza A implementirana (projekat_faze, projekat_faza_radnici, CRUD, stranica Faze).  
-**Faza B (Gantt):** na redu kad korisnik ubaci nekoliko faza i testira. Detalji: `docs/PLAN_PROJEKT_FAZE_GANTT.md`.
+**Status:** ✅ Implementirano. Faza A (projekat_faze, projekat_faza_radnici, CRUD, stranica Faze) + Faza B (Gantt timeline – tab na stranici Faze). Detalji: `docs/PLAN_PROJEKT_FAZE_GANTT.md`.
 
 ---
 
@@ -167,13 +166,15 @@
 
 **Ruta:** `/finance/izvjestaji` ili `/studio/izvjestaji` – na razradu pri implementaciji.
 
-**Status:** ✅ Grafički i sumarni pregled po godinama i mjesecima implementiran. Dashboard → Izvještaji → Grafički. **Skinuo sa aktivne liste** – eventualno poliranje kasnije.
+**Status:** ✅ Implementirano. Grafički i sumarni pregled po godinama i mjesecima. Dashboard → Izvještaji → Grafički.
 
 ---
 
 ## 5b. Izvještaji – talenti, dobavljači, klijenti, banka
 
 **Širi set izvještaja:** po talentima (koliko projekata, ukupno zaradili, dug), po dobavljačima, po klijentima/narrediocima, troškovi banke (provizije, održavanje, SWIFT), fakturna vrijednost/naplate po periodu, fiksni vs prihod.
+
+**Status:** ✅ Implementirano. API-ji i prikazi u modulu Svi izvještaji (talenti, dobavljači, klijenti, banka, fiksni troškovi, potraživanja, PDV, knjiga prihoda, itd.).
 
 **Detaljan plan:** `docs/PLAN_IZVJESTAJI.md`
 

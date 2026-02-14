@@ -70,6 +70,11 @@ export default function InvoiceWizard() {
   const [projectNameOverrides, setProjectNameOverrides] = useState<Record<number, string>>({});
   const [projectsData, setProjectsData] = useState<Array<{ projekat_id: number; radni_naziv: string | null }>>([]);
 
+  // ✅ Opisne stavke po projektu (projekat_id -> { enabled, items: string[] })
+  const [projectSubItems, setProjectSubItems] = useState<
+    Record<number, { enabled: boolean; items: string[] }>
+  >({});
+
   // ✅ Učitaj poziv na broj + detektuj INO klijenta
   useEffect(() => {
     let alive = true;
@@ -182,6 +187,21 @@ export default function InvoiceWizard() {
       .join(",");
     if (overrides) {
       qs.set("project_names", overrides);
+    }
+
+    // ✅ Opisne stavke (samo non-empty) — format: id:item1|item2|item3
+    const subItemsEntries = Object.entries(projectSubItems)
+      .filter(([_, v]) => v?.enabled && Array.isArray(v.items))
+      .map(([id, v]) => {
+        const nonEmpty = (v.items || []).map((s) => String(s).trim()).filter(Boolean);
+        return [id, nonEmpty.join("|")];
+      })
+      .filter(([_, s]) => (s as string).length > 0);
+    if (subItemsEntries.length > 0) {
+      qs.set(
+        "project_sub_items",
+        subItemsEntries.map(([id, s]) => `${id}:${encodeURIComponent(s as string)}`).join(","),
+      );
     }
 
     router.push(`/fakture/wizard/preview?${qs.toString()}`);
@@ -356,31 +376,80 @@ export default function InvoiceWizard() {
                 <div style={{ opacity: 0.85, fontSize: 13, marginBottom: 12 }}>
                   Možeš promijeniti naziv projekta samo za ovu fakturu (ne mijenja bazu). Korisno za dodavanje PO broja naručioca.
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {projectsData.map((proj) => (
-                    <div key={proj.projekat_id} style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: 10, alignItems: "center" }}>
-                      <div style={{ fontSize: 13, opacity: 0.8, fontWeight: 600 }}>
-                        #{proj.projekat_id}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>
-                          Original: {proj.radni_naziv || "—"}
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {projectsData.map((proj) => {
+                    const pid = proj.projekat_id;
+                    const subState = projectSubItems[pid] ?? { enabled: false, items: ["", "", "", "", ""] };
+                    const items = subState.items ?? ["", "", "", "", ""];
+                    return (
+                      <div key={pid} style={{ border: "1px solid rgba(255,255,255,.12)", borderRadius: 10, padding: 12, background: "rgba(0,0,0,.08)" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: 10, alignItems: "center" }}>
+                          <div style={{ fontSize: 13, opacity: 0.8, fontWeight: 600 }}>
+                            #{pid}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>
+                              Original: {proj.radni_naziv || "—"}
+                            </div>
+                            <input
+                              className="input"
+                              value={projectNameOverrides[pid] ?? ""}
+                              onChange={(e) => {
+                                setProjectNameOverrides((prev) => ({
+                                  ...prev,
+                                  [pid]: e.target.value,
+                                }));
+                              }}
+                              placeholder={`Naziv za fakturu (prazno = koristi "${proj.radni_naziv || "#" + pid}")`}
+                              style={{ width: "100%" }}
+                            />
+                          </div>
                         </div>
-                        <input
-                          className="input"
-                          value={projectNameOverrides[proj.projekat_id] ?? ""}
-                          onChange={(e) => {
-                            setProjectNameOverrides((prev) => ({
-                              ...prev,
-                              [proj.projekat_id]: e.target.value,
-                            }));
-                          }}
-                          placeholder={`Naziv za fakturu (prazno = koristi "${proj.radni_naziv || "#" + proj.projekat_id}")`}
-                          style={{ width: "100%" }}
-                        />
+                        <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, opacity: 0.9 }}>
+                            <input
+                              type="checkbox"
+                              checked={subState.enabled}
+                              onChange={(e) => {
+                                setProjectSubItems((prev) => ({
+                                  ...prev,
+                                  [pid]: {
+                                    enabled: e.target.checked,
+                                    items: prev[pid]?.items ?? ["", "", "", "", ""],
+                                  },
+                                }));
+                              }}
+                            />
+                            Dodaj opisne stavke (šta paket sadrži)
+                          </label>
+                        </div>
+                        {subState.enabled && (
+                          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                            <div style={{ fontSize: 11, opacity: 0.75 }}>Stavke koje će se prikazati na fakturi (samo ne-prazne):</div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                              {items.map((val, i) => (
+                                <input
+                                  key={i}
+                                  className="input"
+                                  value={val}
+                                  onChange={(e) => {
+                                    const next = [...items];
+                                    next[i] = e.target.value;
+                                    setProjectSubItems((prev) => ({
+                                      ...prev,
+                                      [pid]: { enabled: true, items: next },
+                                    }));
+                                  }}
+                                  placeholder={`Stavka ${i + 1}`}
+                                  style={{ flex: "1 1 180px", minWidth: 140 }}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

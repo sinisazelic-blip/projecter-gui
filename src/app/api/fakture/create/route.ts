@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
       pfr, // PFR broj (opciono, ako nije dat, generiše se)
       pnb, // poziv na broj (8 cifara)
       project_names, // override nazivi projekata (format: "id:naziv,id2:naziv2")
+      project_sub_items, // opisne stavke (format: "id:item1|item2,id2:item1")
     } = body;
 
     const projekatIds = parseIds(ids);
@@ -278,14 +279,48 @@ export async function POST(req: NextRequest) {
       throw insertErr;
     }
 
+    // Parse project_sub_items: "id:item1|item2,id2:item1" -> { id: ["item1","item2"] }
+    const subItemsMap: Record<number, string[]> = {};
+    if (project_sub_items && typeof project_sub_items === "string") {
+      project_sub_items.split(",").forEach((pair: string) => {
+        const colonIdx = pair.indexOf(":");
+        if (colonIdx <= 0) return;
+        const id = Number(pair.slice(0, colonIdx));
+        const itemsStr = pair.slice(colonIdx + 1);
+        if (!Number.isFinite(id) || !itemsStr) return;
+        const items = itemsStr
+          .split("|")
+          .map((s) => String(s).trim())
+          .filter(Boolean);
+        if (items.length > 0) subItemsMap[id] = items;
+      });
+    }
+
     // 7) Veži projekte na fakturu (ako tabela faktura_projekti postoji)
     let fakturaProjektiSaved = false;
     try {
       for (const projekatId of projekatIds) {
-        await conn.query(
-          `INSERT INTO faktura_projekti (faktura_id, projekat_id) VALUES (?, ?)`,
-          [fakturaId, projekatId],
-        );
+        const opisneStavke = subItemsMap[projekatId];
+        const opisneStavkeJson = opisneStavke && opisneStavke.length > 0
+          ? JSON.stringify(opisneStavke)
+          : null;
+
+        try {
+          await conn.query(
+            `INSERT INTO faktura_projekti (faktura_id, projekat_id, opisne_stavke) VALUES (?, ?, ?)`,
+            [fakturaId, projekatId, opisneStavkeJson],
+          );
+        } catch (colErr: any) {
+          // Ako opisne_stavke kolona ne postoji, pokušaj bez nje
+          if (String(colErr?.message || "").toLowerCase().includes("unknown column")) {
+            await conn.query(
+              `INSERT INTO faktura_projekti (faktura_id, projekat_id) VALUES (?, ?)`,
+              [fakturaId, projekatId],
+            );
+          } else {
+            throw colErr;
+          }
+        }
       }
       fakturaProjektiSaved = true;
       console.log(`✅ Veze faktura-projekti sačuvane za fakturu ${fakturaId}, projekti: ${projekatIds.join(", ")}`);

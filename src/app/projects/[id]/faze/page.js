@@ -11,7 +11,7 @@ export default async function ProjekatFazePage({ params }) {
   if (!Number.isFinite(projekatId)) redirect("/projects");
 
   const [proj] = await query(
-    `SELECT projekat_id, radni_naziv, rok_glavni FROM projekti WHERE projekat_id = ? LIMIT 1`,
+    `SELECT projekat_id, radni_naziv, DATE_FORMAT(rok_glavni, '%Y-%m-%d') AS rok_glavni FROM projekti WHERE projekat_id = ? LIMIT 1`,
     [projekatId]
   );
   if (!proj) redirect("/projects");
@@ -59,7 +59,7 @@ export default async function ProjekatFazePage({ params }) {
         <div className="bodyWrap">
           <FazeClient
             projekatId={projekatId}
-            rokGlavni={proj.rok_glavni ? String(proj.rok_glavni).slice(0, 10) : null}
+            rokGlavni={proj?.rok_glavni ? String(proj.rok_glavni).trim() : null}
             radneFaze={radneFaze || []}
             radnici={radnici || []}
             dobavljaci={dobavljaci || []}

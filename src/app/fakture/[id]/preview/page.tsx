@@ -211,6 +211,11 @@ export default function FakturaPreviewPage() {
   const fisk = faktura?.broj_fiskalni ? String(faktura.broj_fiskalni) : "";
   const invoiceNumber = faktura?.broj_fakture || "—";
 
+  const projectSubItems = useMemo(
+    () => faktura?.project_sub_items ?? {},
+    [faktura?.project_sub_items],
+  );
+
   const items = useMemo(
     () =>
       projects.map((p) => {
@@ -218,6 +223,7 @@ export default function FakturaPreviewPage() {
           p.radni_naziv ?? `Projekat #${p.projekat_id}`,
         ).trim();
         const sub = p.klijent_naziv ? `Klijent: ${p.klijent_naziv}` : "";
+        const subItems = projectSubItems[p.projekat_id] ?? [];
         const qty = 1;
         const unit = Number(p.budzet_planirani ?? 0);
         const total = qty * unit;
@@ -225,13 +231,14 @@ export default function FakturaPreviewPage() {
           id: p.projekat_id,
           title,
           sub,
+          subItems,
           qty,
           unit,
           total,
           closed_at: p.closed_at,
         };
       }),
-    [projects],
+    [projects, projectSubItems],
   );
 
   const baseAmount = useMemo(
@@ -837,6 +844,21 @@ export default function FakturaPreviewPage() {
                           <div className="desc">{it.title}</div>
                           {it.sub && (
                             <div className="mutedSmall">{it.sub}</div>
+                          )}
+                          {it.subItems && it.subItems.length > 0 && (
+                            <ul
+                              className="mutedSmall"
+                              style={{
+                                margin: "6px 0 0 0",
+                                paddingLeft: 18,
+                                listStyle: "disc",
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {it.subItems.map((s, i) => (
+                                <li key={i}>{s}</li>
+                              ))}
+                            </ul>
                           )}
                         </td>
                         <td className="num">{it.qty}</td>

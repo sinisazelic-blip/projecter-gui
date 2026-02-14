@@ -147,15 +147,14 @@ export default async function Page({ searchParams }) {
     items,
   });
 
-  const sendPayload = {
-    klijent_id,
-    dobavljac_id,
-    project_ids: projectIds,
-    subject: email.subject,
-    body: email.body,
-  };
-
   const qsBack = buildQuery({ klijent_id: String(klijent_id) });
+
+  // mailto: link — otvara email klijent s preddefiniranim Subject i Body
+  const to = String(supplier?.email ?? "").trim();
+  const mailto =
+    to
+      ? `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`
+      : null;
 
   return (
     <div className="container">
@@ -235,7 +234,7 @@ export default async function Page({ searchParams }) {
                 />
                 <div>
                   <div className="brandTitle">Narudžbenica — Preview</div>
-                  <div className="brandSub">Send / Odustani (email-only)</div>
+                  <div className="brandSub">Pošalji mail / Odustani</div>
                 </div>
               </div>
 
@@ -277,12 +276,12 @@ export default async function Page({ searchParams }) {
               </span>
             </div>
 
-            {!supplier?.email
-              ? <div className="warn">
-                  ⚠️ Dobavljač nema email u <b>dobavljaci.email</b>. Slanje neće
-                  raditi dok ne upišeš email.
-                </div>
-              : null}
+            {!supplier?.email ? (
+              <div className="warn">
+                ⚠️ Dobavljač nema email u <b>dobavljaci.email</b>. Dugme
+                &quot;Pošalji mail&quot; neće raditi dok ne upišeš email.
+              </div>
+            ) : null}
 
             <div style={{ marginTop: 12 }}>
               <div className="boxLabel">Subject</div>
@@ -304,20 +303,24 @@ export default async function Page({ searchParams }) {
                 flexWrap: "wrap",
               }}
             >
-              <form action="/api/narudzbenice/send" method="POST">
-                <input
-                  type="hidden"
-                  name="payload"
-                  value={JSON.stringify(sendPayload)}
-                />
-                <button
-                  type="submit"
+              {mailto ? (
+                <a
+                  href={mailto}
                   className="btn"
-                  disabled={!supplier?.email}
+                  style={{
+                    textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                  }}
+                  title="Otvara email klijent s predpopunjenim Subject i Body"
                 >
-                  Send
+                  📧 Pošalji mail
+                </a>
+              ) : (
+                <button type="button" className="btn" disabled title="Dobavljač nema email">
+                  📧 Pošalji mail
                 </button>
-              </form>
+              )}
 
               <Link href={`/narudzbenice${qsBack}`} className="btn">
                 Odustani
@@ -325,8 +328,8 @@ export default async function Page({ searchParams }) {
             </div>
 
             <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12 }}>
-              Napomena: email se šalje odmah nakon klika <b>Send</b>. Nema
-              PDF-a.
+              Klik <b>Pošalji mail</b> otvara tvoj email klijent s preddefiniranim
+              Subject i Body. Samo pošalji poruku.
             </div>
           </div>
         </div>
