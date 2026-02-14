@@ -1,7 +1,7 @@
 // src/app/fakture/[id]/preview/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -34,8 +34,12 @@ function isBiH(drzava: any): boolean {
   const s = String(drzava ?? "")
     .trim()
     .toLowerCase();
+  if (!s) return true; // prazno = domaći (BiH)
   return (
-    s === "bih" || s === "bosna i hercegovina" || s === "bosnia and herzegovina"
+    s === "bih" ||
+    s === "ba" ||
+    s === "bosna i hercegovina" ||
+    s === "bosnia and herzegovina"
   );
 }
 
@@ -192,17 +196,31 @@ export default function FakturaPreviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [faktura, setFaktura] = useState<any>(null);
   const [data, setData] = useState<PreviewData | null>(null);
+  const [stornoLoading, setStornoLoading] = useState(false);
 
   // Svi hookovi moraju biti pre bilo kakvih early return-ova
   const buyer = data?.buyer ?? null;
   const firma = data?.firma ?? null;
   const projects = Array.isArray(data?.projects) ? data!.projects : [];
 
-  const bh = useMemo(() => (buyer ? isBiH(buyer.drzava) : true), [buyer]);
+  // BH = bosanski, EN = engleski (samo za INO klijente)
+  const bh = useMemo(() => {
+    if (!buyer) return true;
+    if (buyer.is_ino === true || buyer.is_ino === 1) return false;
+    return isBiH(buyer.drzava);
+  }, [buyer]);
   const lang: Lang = useMemo(() => (bh ? "BH" : "EN"), [bh]);
+  const isStornoFaktura = faktura?.status === "STORNIRAN" || Number(faktura?.iznos_sa_pdv ?? 0) < 0;
   const docTitle = useMemo(
-    () => (lang === "EN" ? "INVOICE" : "RAČUN"),
-    [lang],
+    () =>
+      isStornoFaktura
+        ? lang === "EN"
+          ? "STORNO INVOICE"
+          : "STORNO RAČUN"
+        : lang === "EN"
+          ? "INVOICE"
+          : "RAČUN",
+    [lang, isStornoFaktura],
   );
 
   const invoiceDateISO = faktura?.datum_izdavanja || "";
@@ -215,17 +233,24 @@ export default function FakturaPreviewPage() {
     () => faktura?.project_sub_items ?? {},
     [faktura?.project_sub_items],
   );
+  const projectNames = useMemo(
+    () => faktura?.project_names ?? {},
+    [faktura?.project_names],
+  );
+
+  const stornoSign = isStornoFaktura ? -1 : 1;
 
   const items = useMemo(
     () =>
       projects.map((p) => {
+        const overrideNaziv = projectNames[p.projekat_id];
         const title = String(
-          p.radni_naziv ?? `Projekat #${p.projekat_id}`,
+          (overrideNaziv || p.radni_naziv) ?? `Projekat #${p.projekat_id}`,
         ).trim();
         const sub = p.klijent_naziv ? `Klijent: ${p.klijent_naziv}` : "";
         const subItems = projectSubItems[p.projekat_id] ?? [];
         const qty = 1;
-        const unit = Number(p.budzet_planirani ?? 0);
+        const unit = Number(p.budzet_planirani ?? 0) * stornoSign;
         const total = qty * unit;
         return {
           id: p.projekat_id,
@@ -238,23 +263,34 @@ export default function FakturaPreviewPage() {
           closed_at: p.closed_at,
         };
       }),
-    [projects, projectSubItems],
+    [projects, projectSubItems, projectNames, stornoSign],
   );
 
-  const baseAmount = useMemo(
-    () =>
-      items.reduce(
-        (s, it) => s + (Number.isFinite(it.total) ? it.total : 0),
-        0,
-      ),
-    [items],
-  );
+  // Za storno: koristi iznose iz fakture (projekti mogu vratiti 0 iz view-a)
+  const fakturaOsnovica = Number(faktura?.iznos_bez_pdv ?? faktura?.osnovica_km ?? 0);
+  const fakturaPdv = Number(faktura?.pdv_iznos ?? faktura?.pdv_iznos_km ?? 0);
+  const fakturaUkupno = Number(faktura?.iznos_sa_pdv ?? faktura?.iznos_ukupno_km ?? 0);
+
+  const baseAmount = useMemo(() => {
+    const fromItems = items.reduce(
+      (s, it) => s + (Number.isFinite(it.total) ? it.total : 0),
+      0,
+    );
+    // Ako su stavke prazne ili 0, a imamo iznose u fakturi (npr. storno), koristi fakturu
+    if ((fromItems === 0 || !Number.isFinite(fromItems)) && (fakturaOsnovica !== 0 || fakturaUkupno !== 0)) {
+      return fakturaOsnovica;
+    }
+    return fromItems;
+  }, [items, fakturaOsnovica, fakturaUkupno]);
   const vatRate = useMemo(() => (bh ? 0.17 : 0), [bh]);
-  const vatAmount = useMemo(() => baseAmount * vatRate, [baseAmount, vatRate]);
-  const totalAmount = useMemo(
-    () => baseAmount + vatAmount,
-    [baseAmount, vatAmount],
-  );
+  const vatAmount = useMemo(() => {
+    if (baseAmount === fakturaOsnovica && fakturaPdv !== 0) return fakturaPdv;
+    return Math.round(baseAmount * vatRate * 100) / 100;
+  }, [baseAmount, vatRate, fakturaOsnovica, fakturaPdv]);
+  const totalAmount = useMemo(() => {
+    if (baseAmount === fakturaOsnovica && fakturaUkupno !== 0) return fakturaUkupno;
+    return baseAmount + vatAmount;
+  }, [baseAmount, vatAmount, fakturaOsnovica, fakturaUkupno]);
 
   const sellerName = String(
     firma?.naziv || firma?.pravni_naziv || "Studio TAF",
@@ -285,6 +321,73 @@ export default function FakturaPreviewPage() {
   const buyerCityLine = safeLineJoin([buyer?.postanski_broj, buyer?.grad], " ");
   const buyerCountry = String(buyer?.drzava ?? "—").trim();
   const buyerTax = String(buyer?.porezni_id ?? "—").trim();
+
+  // PDF filename: broj-2026 Naručioc (npr. 012-2026 Udruženje poslodavaca RS)
+  const pdfFilename = useMemo(() => {
+    const broj = String(invoiceNumber || "").replace(/\//g, "-").trim() || "faktura";
+    const narucilac = String(buyerName || "")
+      .replace(/[/\\:*?"<>|]/g, "_")
+      .trim() || "nepoznat";
+    return `${broj} ${narucilac}`;
+  }, [invoiceNumber, buyerName]);
+
+  const paperRef = useRef<HTMLDivElement>(null);
+
+  function handlePrint() {
+    const prevTitle = document.title;
+    const onBeforePrint = () => { document.title = pdfFilename; };
+    const onAfterPrint = () => {
+      document.title = prevTitle;
+      window.removeEventListener("beforeprint", onBeforePrint);
+      window.removeEventListener("afterprint", onAfterPrint);
+    };
+    window.addEventListener("beforeprint", onBeforePrint);
+    window.addEventListener("afterprint", onAfterPrint);
+    document.title = pdfFilename;
+    window.print();
+  }
+
+  async function handleSaveAsPdf() {
+    const el = paperRef.current;
+    if (!el) return;
+    try {
+      const html2pdf = (await import("html2pdf.js")).default;
+      await html2pdf()
+        .set({
+          margin: 10,
+          filename: `${pdfFilename}.pdf`,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        })
+        .from(el)
+        .save();
+    } catch (err: any) {
+      console.error("PDF greška:", err);
+      alert(err?.message || "Greška pri generisanju PDF-a. Pokušaj Štampaj → Save as PDF.");
+    }
+  }
+
+  async function handleStorno() {
+    if (stornoLoading || isStornoFaktura) return;
+    if (!window.confirm("Da li ste sigurni da želite stornirati ovu fakturu? Kreiraće se storno račun (negativni iznosi), a projekti će se vratiti u status Zatvoren."))
+      return;
+    setStornoLoading(true);
+    try {
+      const res = await fetch(`/api/fakture/${fakturaId}/storno`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!data?.ok) throw new Error(data?.error || "Greška");
+      window.location.href = `/fakture/${data.storno_faktura_id}`;
+    } catch (e: any) {
+      alert(e?.message ?? "Greška pri storniranju");
+    } finally {
+      setStornoLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!Number.isFinite(fakturaId) || fakturaId <= 0) {
@@ -685,7 +788,7 @@ export default function FakturaPreviewPage() {
                 
                 <button
                   className="btn"
-                  onClick={() => window.print()}
+                  onClick={handlePrint}
                   style={{
                     background: "linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.1))",
                     borderColor: "rgba(34, 197, 94, 0.4)",
@@ -698,18 +801,34 @@ export default function FakturaPreviewPage() {
                 
                 <button
                   className="btn"
-                  onClick={() => {
-                    window.print();
-                  }}
+                  onClick={handleSaveAsPdf}
                   style={{
                     background: "linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(147, 51, 234, 0.1))",
                     borderColor: "rgba(168, 85, 247, 0.4)",
                     fontWeight: 600,
                   }}
-                  title="Sačuvaj kao PDF (koristi Save as PDF u print dialogu)"
+                  title={`Preuzmi PDF: ${pdfFilename}.pdf`}
                 >
                   💾 Save as PDF
                 </button>
+
+                {!isStornoFaktura && (
+                  <button
+                    className="btn"
+                    onClick={handleStorno}
+                    disabled={stornoLoading}
+                    style={{
+                      background: "#9ca3af",
+                      color: "#111827",
+                      border: "1px solid #6b7280",
+                      fontWeight: 700,
+                      opacity: stornoLoading ? 0.6 : 1,
+                    }}
+                    title="Storniraj fakturu"
+                  >
+                    {stornoLoading ? "…" : "STORNO"}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -719,7 +838,7 @@ export default function FakturaPreviewPage() {
 
         <div className="body">
           <div className="paperStage">
-            <div className="paper">
+            <div className="paper" ref={paperRef}>
               <div className="invRow">
                 <div className="invHeaderLeft">
                   <img

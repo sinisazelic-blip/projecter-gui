@@ -300,6 +300,16 @@ export default function CostTypeAndEntityPicker({ value, onChange }) {
                 ? "Dodaj novog talenta"
                 : "Dodaj novog dobavljača"
             }
+            style={{
+              background: "linear-gradient(135deg, rgba(55, 214, 122, 0.18), rgba(34, 197, 94, 0.12))",
+              border: "1px solid rgba(55, 214, 122, 0.4)",
+              color: "inherit",
+              padding: "8px 12px",
+              borderRadius: 10,
+              fontWeight: 700,
+              cursor: loadingEntities ? "not-allowed" : "pointer",
+              opacity: loadingEntities ? 0.6 : 1,
+            }}
           >
             + Dodaj
           </button>

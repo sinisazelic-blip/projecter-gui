@@ -15,7 +15,9 @@ export type KlijentRow = {
   rok_placanja_dana: number;
   napomena: string | null;
   aktivan: number; // 1/0
-  is_ino: number; // NEW: 1/0
+  is_ino: number; // 1/0
+  pdv_oslobodjen?: number; // 1/0 — oslobođen po članu 24
+  pdv_oslobodjen_napomena?: string | null; // napomena za fakturu
   created_at: string | null;
   updated_at: string | null;
 };
@@ -28,24 +30,27 @@ export default async function KlijentiPage() {
        FROM INFORMATION_SCHEMA.COLUMNS
       WHERE TABLE_SCHEMA = DATABASE()
         AND TABLE_NAME = 'klijenti'
-        AND COLUMN_NAME IN ('updated_at')`,
+        AND COLUMN_NAME IN ('updated_at', 'pdv_oslobodjen')`,
   )) as any[];
 
   const hasUpdatedAt = (cols ?? []).some(
     (r) => String(r.COLUMN_NAME).toLowerCase() === "updated_at",
   );
+  const hasPdvOslobodjen = (cols ?? []).some(
+    (r) => String(r.COLUMN_NAME).toLowerCase() === "pdv_oslobodjen",
+  );
 
+  const pdvCols = hasPdvOslobodjen
+    ? `, COALESCE(pdv_oslobodjen, 0) AS pdv_oslobodjen, pdv_oslobodjen_napomena`
+    : ", 0 AS pdv_oslobodjen, NULL AS pdv_oslobodjen_napomena";
+  const baseCols = `klijent_id, naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava,
+         rok_placanja_dana, napomena, aktivan, is_ino${pdvCols}`;
   const sql = hasUpdatedAt
-    ? `SELECT
-         klijent_id, naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava,
-         rok_placanja_dana, napomena, aktivan, is_ino, created_at, updated_at
+    ? `SELECT ${baseCols}, created_at, updated_at
        FROM klijenti
        ORDER BY aktivan DESC, naziv_klijenta ASC
        LIMIT 1500`
-    : `SELECT
-         klijent_id, naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava,
-         rok_placanja_dana, napomena, aktivan, is_ino, created_at,
-         NULL as updated_at
+    : `SELECT ${baseCols}, created_at, NULL as updated_at
        FROM klijenti
        ORDER BY aktivan DESC, naziv_klijenta ASC
        LIMIT 500`;

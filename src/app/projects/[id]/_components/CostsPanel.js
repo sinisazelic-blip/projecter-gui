@@ -311,56 +311,97 @@ export default function CostsPanel({
 
   return (
     <>
-      <h2 style={{ fontSize: 18, marginTop: 18, marginBottom: 10 }}>
+      <h2 style={{ fontSize: 18, marginTop: 18, marginBottom: 10, fontWeight: 800 }}>
         Dodaj trošak
       </h2>
 
       <form
         ref={formRef}
         action={actions.addCost}
-        className="card"
-        style={{ padding: 14 }}
+        className="costAddForm"
         onSubmit={onAddSubmit}
       >
+        <style>{`
+          .costAddForm {
+            border: 1px solid rgba(255,255,255,.18);
+            background: rgba(255,255,255,.05);
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0,0,0,.14);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 16px;
+          }
+          .costAddForm .fieldLabel {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            opacity: 0.75;
+            margin-bottom: 4px;
+            display: block;
+          }
+          .costAddForm .fieldWrap {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+          }
+          .costAddForm .addCostBtn {
+            background: linear-gradient(135deg, rgba(55, 214, 122, 0.2), rgba(34, 197, 94, 0.15));
+            border: 1px solid rgba(55, 214, 122, 0.45);
+            color: rgba(255,255,255,.95);
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-weight: 750;
+            cursor: pointer;
+            transition: all 0.15s;
+          }
+          .costAddForm .addCostBtn:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(55, 214, 122, 0.3), rgba(34, 197, 94, 0.25));
+            border-color: rgba(55, 214, 122, 0.6);
+          }
+          .costAddForm .addCostBtn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+          @media (max-width: 1000px) {
+            .costAddForm .costAddGrid {
+              grid-template-columns: 1fr 1fr 1fr;
+            }
+            .costAddForm .costAddGrid .spanFull { grid-column: 1 / -1; }
+          }
+          @media (max-width: 600px) {
+            .costAddForm .costAddGrid { grid-template-columns: 1fr; }
+            .costAddForm .costAddGrid .spanFull { grid-column: 1; }
+          }
+        `}</style>
+
         <input type="hidden" name="projekat_id" value={project.projekat_id} />
-
-        {/* ✅ vrati me na isti URL (npr. ?stornirano=1) */}
         <input type="hidden" name="return_to" value={safeReturnTo} />
-
-        {/* ✅ tip_id mora ići na server */}
         <input type="hidden" name="tip_id" value={tipId} />
-
-        <input
-          type="hidden"
-          name="entity_type"
-          value={entity.entity_type ?? ""}
-        />
+        <input type="hidden" name="entity_type" value={entity.entity_type ?? ""} />
         <input type="hidden" name="entity_id" value={entity.entity_id ?? ""} />
-
-        {/* ✅ datum šaljemo serveru kao ISO (YYYY-MM-DD) */}
         <input type="hidden" name="datum_troska" value={datumISO ?? ""} />
 
         <div
+          className="costAddGrid"
           style={{
             display: "grid",
-            gridTemplateColumns: "1.1fr 1fr 1.6fr 0.8fr 0.9fr 1fr",
-            gap: 8,
-            alignItems: "start",
+            gridTemplateColumns: "minmax(140px, 1.2fr) minmax(100px, 0.9fr) minmax(140px, 1.5fr) minmax(70px, 0.7fr) minmax(90px, 0.9fr) minmax(70px, 0.7fr)",
+            gap: 12,
+            alignItems: "end",
           }}
         >
-          <div style={{ gridColumn: "1 / span 1", minWidth: 260 }}>
+          <div className="fieldWrap spanFull" style={{ gridColumn: "1 / span 1", minWidth: 200 }}>
+            <label className="fieldLabel">Tip + entitet</label>
             <CostTypeAndEntityPicker
               value={{
                 tip_id: Number(tipId) || null,
                 entity_type: entity.entity_type,
                 entity_id: entity.entity_id,
               }}
-              // ✅ samo kozmetika labela tipova
               tipLabel={(t) => prettyTipName(t?.tip_id, t?.naziv)}
               onChange={(v) => {
                 const nextTip = v?.tip_id ? String(v.tip_id) : "";
                 if (nextTip && nextTip !== tipId) setTipId(nextTip);
-
                 setEntity({
                   tip_id: v?.tip_id ?? (Number(tipId) || null),
                   entity_type: v?.entity_type ?? null,
@@ -370,163 +411,170 @@ export default function CostsPanel({
             />
           </div>
 
-          {/* ✅ dd.mm.yyyy input + "sigurni" native picker preko ikonice */}
-          <div style={{ position: "relative" }}>
-            <input
-              type="text"
-              inputMode="numeric"
-              name="datum_ui"
-              value={datumUI}
-              onChange={(e) => setDatumUI(e.target.value)}
-              placeholder="dd.mm.yyyy"
-              required
-              style={{ ...inputStyle, paddingRight: 44 }}
-              title="Datum (dd.mm.yyyy)"
-            />
-
-            {/* ikonica (samo vizuelno) */}
-            <div
-              title="Izaberi datum"
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                right: 6,
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: 34,
-                height: 34,
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,.16)",
-                background: "rgba(255,255,255,.06)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                pointerEvents: "none", // klik ide na input ispod
-              }}
-            >
-              📅
+          <div className="fieldWrap" style={{ position: "relative" }}>
+            <label className="fieldLabel">Datum</label>
+            <div style={{ position: "relative", display: "inline-block", width: "100%" }}>
+              <input
+                type="text"
+                inputMode="numeric"
+                name="datum_ui"
+                value={datumUI}
+                onChange={(e) => setDatumUI(e.target.value)}
+                placeholder="dd.mm.yyyy"
+                required
+                style={{ ...inputStyle, paddingRight: 44, width: "100%" }}
+                title="Datum (dd.mm.yyyy)"
+              />
+              <div
+                title="Izaberi datum"
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  right: 6,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 34,
+                  height: 34,
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,255,255,.16)",
+                  background: "rgba(255,255,255,.06)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  pointerEvents: "none",
+                }}
+              >
+                📅
+              </div>
+              <input
+                type="date"
+                value={datumISO ?? ""}
+                onChange={(e) => {
+                  const iso = e.target.value;
+                  const human = isoToDDMMYYYY(iso);
+                  if (human) setDatumUI(human);
+                }}
+                aria-label="Izaberi datum"
+                style={{
+                  position: "absolute",
+                  right: 6,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 34,
+                  height: 34,
+                  opacity: 0,
+                  cursor: "pointer",
+                  border: "none",
+                  background: "transparent",
+                }}
+              />
             </div>
+          </div>
 
-            {/* ✅ stvarni klikabilni date input - nevidljiv, ali NA IKONICI */}
+          <div className="fieldWrap">
+            <label className="fieldLabel">Opis</label>
             <input
-              type="date"
-              value={datumISO ?? ""}
-              onChange={(e) => {
-                const iso = e.target.value; // YYYY-MM-DD
-                const human = isoToDDMMYYYY(iso);
-                if (human) setDatumUI(human);
-              }}
-              aria-label="Izaberi datum"
-              style={{
-                position: "absolute",
-                right: 6,
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: 34,
-                height: 34,
-                opacity: 0, // ne vidi se
-                cursor: "pointer",
-                border: "none",
-                background: "transparent",
-              }}
+              ref={opisRef}
+              type="text"
+              name="opis"
+              placeholder="Opis troška"
+              required
+              style={inputStyle}
             />
           </div>
 
-          <input
-            ref={opisRef}
-            type="text"
-            name="opis"
-            placeholder="Opis troška"
-            required
-            style={inputStyle}
-          />
+          <div className="fieldWrap">
+            <label className="fieldLabel">Valuta</label>
+            <select
+              name="valuta"
+              value={valuta}
+              onChange={(e) => setValuta(e.target.value)}
+              style={inputStyle}
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
 
-          <select
-            name="valuta"
-            value={valuta}
-            onChange={(e) => setValuta(e.target.value)}
-            style={inputStyle}
-          >
-            {CURRENCIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          <div className="fieldWrap">
+            <label className="fieldLabel">Iznos</label>
+            <input
+              type="number"
+              step="0.01"
+              name="iznos_km"
+              placeholder={valuta}
+              value={iznos}
+              onChange={(e) => setIznos(e.target.value)}
+              onKeyDown={onIznosKeyDown}
+              required
+              style={inputStyle}
+            />
+          </div>
 
-          <input
-            type="number"
-            step="0.01"
-            name="iznos_km"
-            placeholder={`Iznos (${valuta})`}
-            value={iznos}
-            onChange={(e) => setIznos(e.target.value)}
-            onKeyDown={onIznosKeyDown}
-            required
-            style={inputStyle}
-          />
+          <div className="fieldWrap">
+            <label className="fieldLabel">Kurs</label>
+            <input
+              type="number"
+              step="0.000001"
+              name="kurs"
+              value={valuta === "BAM" ? 1 : kurs}
+              onChange={(e) => setKurs(e.target.value)}
+              readOnly={valuta === "BAM"}
+              placeholder="1"
+              style={{ ...inputStyle, opacity: valuta === "BAM" ? 0.75 : 1 }}
+            />
+          </div>
 
-          <input
-            type="number"
-            step="0.000001"
-            name="kurs"
-            value={valuta === "BAM" ? 1 : kurs}
-            onChange={(e) => setKurs(e.target.value)}
-            readOnly={valuta === "BAM"}
-            placeholder="Kurs (BAM)"
-            style={{ ...inputStyle, opacity: valuta === "BAM" ? 0.75 : 1 }}
-          />
-
-          <select
-            name="status"
-            value={statusAdd}
-            onChange={(e) => setStatusAdd(e.target.value)}
-            style={inputStyle}
-            title="Status"
-          >
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+          <div className="fieldWrap">
+            <label className="fieldLabel">Status</label>
+            <select
+              name="status"
+              value={statusAdd}
+              onChange={(e) => setStatusAdd(e.target.value)}
+              style={inputStyle}
+            >
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {/* ✅ poruka ako datum nije validan */}
         {!datumISO && (
-          <div style={{ marginTop: 8, fontSize: 12, color: "crimson" }}>
-            Neispravan datum. Format mora biti <strong>dd.mm.yyyy</strong>.
+          <div style={{ marginTop: 8, fontSize: 12, color: "rgba(255,80,80,.95)" }}>
+            Neispravan datum. Format: <strong>dd.mm.yyyy</strong>
           </div>
         )}
 
         <div
           style={{
-            marginTop: 8,
+            marginTop: 14,
             display: "flex",
-            gap: 12,
+            justifyContent: "space-between",
             alignItems: "center",
             flexWrap: "wrap",
-            fontSize: 14,
-            opacity: 0.85,
+            gap: 12,
           }}
         >
-          <span>
-            ≈{" "}
-            <strong>
-              {Number.isFinite(previewKM) ? fmtKM(previewKM) : "—"}
-            </strong>
-          </span>
-          {loadingRate && valuta !== "BAM" && (
-            <span className="muted">Učitavam kurs…</span>
-          )}
-          {kursSource === "manual" && valuta !== "BAM" && (
-            <span className="muted">Kurs ručni</span>
-          )}
-        </div>
-
-        <div style={{ marginTop: 10 }}>
-          <button type="submit" disabled={!datumISO}>
-            Dodaj trošak
+          <div style={{ fontSize: 13, opacity: 0.88 }}>
+            <span>
+              ≈ <strong>{Number.isFinite(previewKM) ? fmtKM(previewKM) : "—"}</strong>
+            </span>
+            {loadingRate && valuta !== "BAM" && (
+              <span className="muted" style={{ marginLeft: 8 }}>Učitavam kurs…</span>
+            )}
+            {kursSource === "manual" && valuta !== "BAM" && (
+              <span className="muted" style={{ marginLeft: 8 }}>Kurs ručni</span>
+            )}
+          </div>
+          <button
+            type="submit"
+            className="addCostBtn"
+            disabled={!datumISO}
+            title={!datumISO ? "Unesi validan datum (dd.mm.yyyy)" : "Dodaj trošak"}
+          >
+            + Dodaj trošak
           </button>
         </div>
       </form>

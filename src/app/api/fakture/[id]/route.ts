@@ -34,6 +34,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           f.iznos_ukupno_km AS iznos_sa_pdv,
           f.valuta,
           f.fiskalni_status AS status,
+          f.tip,
           f.created_at
         FROM fakture f
         LEFT JOIN klijenti k ON k.klijent_id = f.bill_to_klijent_id
@@ -81,18 +82,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // Učitaj projekte vezane za fakturu
     let projektiIds: number[] = [];
     
-    // Učitaj projekte i opisne stavke iz faktura_projekti
+    // Učitaj projekte, opisne stavke i naziv_na_fakturi iz faktura_projekti
     let projectSubItems: Record<number, string[]> = {};
+    let projectNames: Record<number, string> = {};
     try {
       const projektiRows: any = await query(
-        `SELECT projekat_id, opisne_stavke FROM faktura_projekti WHERE faktura_id = ?`,
+        `SELECT projekat_id, opisne_stavke, naziv_na_fakturi FROM faktura_projekti WHERE faktura_id = ?`,
         [fakturaId],
       );
       if (Array.isArray(projektiRows) && projektiRows.length > 0) {
         projektiIds = projektiRows
           .map((r: any) => Number(r.projekat_id))
           .filter(Number.isFinite);
-        // Parse opisne_stavke JSON
         for (const r of projektiRows) {
           const pid = Number(r.projekat_id);
           if (!Number.isFinite(pid)) continue;
@@ -108,22 +109,34 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             }
           } catch (_) {}
           if (items.length > 0) projectSubItems[pid] = items;
+          if (r.naziv_na_fakturi && String(r.naziv_na_fakturi).trim()) {
+            projectNames[pid] = String(r.naziv_na_fakturi).trim();
+          }
         }
         console.log(`✅ Pronađeno ${projektiIds.length} projekata iz faktura_projekti za fakturu ${fakturaId}`);
       }
     } catch (err: any) {
-      // Ako opisne_stavke kolona ne postoji, pokušaj bez nje
+      // Ako opisne_stavke ili naziv_na_fakturi kolona ne postoji, pokušaj bez njih
       const errMsg = String(err?.message || "").toLowerCase();
-      if (errMsg.includes("unknown column") && errMsg.includes("opisne_stavke")) {
+      if (errMsg.includes("unknown column")) {
         try {
           const projektiRowsFallback: any = await query(
-            `SELECT projekat_id FROM faktura_projekti WHERE faktura_id = ?`,
+            `SELECT projekat_id, opisne_stavke FROM faktura_projekti WHERE faktura_id = ?`,
             [fakturaId],
           );
           if (Array.isArray(projektiRowsFallback) && projektiRowsFallback.length > 0) {
             projektiIds = projektiRowsFallback
               .map((r: any) => Number(r.projekat_id))
               .filter(Number.isFinite);
+            for (const r of projektiRowsFallback) {
+              const pid = Number(r.projekat_id);
+              if (!Number.isFinite(pid) || !r.opisne_stavke) continue;
+              try {
+                const parsed = typeof r.opisne_stavke === "string" ? JSON.parse(r.opisne_stavke) : r.opisne_stavke;
+                const items = Array.isArray(parsed) ? parsed.map((s: any) => String(s ?? "").trim()).filter(Boolean) : [];
+                if (items.length > 0) projectSubItems[pid] = items;
+              } catch (_) {}
+            }
           }
         } catch (_) {}
       }
@@ -192,6 +205,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         datum_dospijeca: datumDospijeca,
         projekti_ids: projektiIds,
         project_sub_items: projectSubItems,
+        project_names: projectNames,
       },
     });
   } catch (err: any) {

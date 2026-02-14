@@ -524,6 +524,41 @@ export default function PonudaDetaljPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  async function handleStorno() {
+    if (!row) return;
+    if (dealReadOnly) return;
+    if (row.status_id === 4) return; // već odbijeno
+    if (!window.confirm("Da li ste sigurni da želite stornirati ovaj Deal?")) return;
+
+    setSaving(true);
+    setError(null);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/inicijacije/jedna?id=${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          narucilac_id: row.narucilac_id,
+          radni_naziv: row.radni_naziv,
+          status_id: 4, // Odbijeno = storno
+          krajnji_klijent_id: row.krajnji_klijent_id ?? null,
+          kontakt_ime: row.kontakt_ime ?? null,
+          kontakt_tel: row.kontakt_tel ?? null,
+          kontakt_email: row.kontakt_email ?? null,
+          napomena: row.napomena ?? null,
+        }),
+      });
+      const data = await res.json();
+      if (!data?.ok) throw new Error(data?.error || "Greška");
+      setMsg("Deal je storniran.");
+      await load();
+    } catch (e: any) {
+      setError(e?.message ?? "Greška");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function saveDeal() {
     if (!row) return;
     if (dealReadOnly) return;
@@ -918,6 +953,8 @@ export default function PonudaDetaljPage() {
 
         .statusPill { display:inline-flex; align-items:center; gap:8px; padding: 6px 10px; border-radius:999px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); font-weight:850; letter-spacing:.2px; font-size:12px; white-space:nowrap; }
         .statusDot { width: 10px; height: 10px; border-radius: 999px; display:inline-block; box-shadow: 0 0 0 2px rgba(0,0,0,.15) inset; }
+        .stornoBtn { background:#9ca3af; color:#111827; border:1px solid #6b7280; border-radius:8px; padding:4px 8px; font-size:11px; font-weight:700; letter-spacing:.5px; cursor:pointer; opacity:.95; }
+        .stornoBtn:hover { background:#d1d5db; }
       `}</style>
 
       <div className="topBlock">
@@ -1346,6 +1383,18 @@ export default function PonudaDetaljPage() {
                       · 🔒 Deal je read-only (status projekta zaključava)
                     </span>
                   ) : null}
+
+                  {!loading && row && row.status_id !== 4 && !dealReadOnly ? (
+                    <button
+                      type="button"
+                      className="stornoBtn"
+                      onClick={handleStorno}
+                      disabled={saving}
+                      title="Storniraj Deal (klijent odustao)"
+                    >
+                      STORNO
+                    </button>
+                  ) : null}
                 </div>
               </div>
             )}
@@ -1443,36 +1492,8 @@ export default function PonudaDetaljPage() {
           {/* TIMELINE */}
           {!loading && (
             <div className="cardLike">
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 10,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div style={{ fontWeight: 750, fontSize: 16 }}>
-                  Timeline (Deal)
-                </div>
-
-                <button
-                  onClick={saveTimeline}
-                  disabled={savingTimeline || dealReadOnly}
-                  className="glassbtn actionBtn"
-                  type="button"
-                  style={{
-                    opacity: savingTimeline ? 0.7 : dealReadOnly ? 0.55 : 1,
-                    pointerEvents: dealReadOnly ? "none" : "auto",
-                  }}
-                  title={
-                    dealReadOnly
-                      ? "Deal je read-only (status projekta zaključava)."
-                      : "Snima novi timeline zapis (stari se ne briše)."
-                  }
-                >
-                  {savingTimeline ? "Snima..." : "Sačuvaj timeline"}
-                </button>
+              <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 10 }}>
+                Timeline (Deal)
               </div>
 
               <div
@@ -1538,6 +1559,34 @@ export default function PonudaDetaljPage() {
                   style={inputStyle}
                 />
               </div>
+
+              <div
+                style={{
+                  marginTop: 14,
+                  display: "flex",
+                  justifyContent: "flex-end",
+                }}
+              >
+                <button
+                  onClick={saveTimeline}
+                  disabled={savingTimeline || dealReadOnly}
+                  className="glassbtn actionBtn"
+                  type="button"
+                  style={{
+                    opacity: savingTimeline ? 0.7 : dealReadOnly ? 0.55 : 1,
+                    pointerEvents: dealReadOnly ? "none" : "auto",
+                    background: "linear-gradient(135deg, rgba(55, 214, 122, 0.2), rgba(34, 197, 94, 0.15))",
+                    border: "1px solid rgba(55, 214, 122, 0.45)",
+                  }}
+                  title={
+                    dealReadOnly
+                      ? "Deal je read-only (status projekta zaključava)."
+                      : "Snima novi timeline zapis (stari se ne briše)."
+                  }
+                >
+                  {savingTimeline ? "Snima..." : "Sačuvaj timeline"}
+                </button>
+              </div>
             </div>
           )}
 
@@ -1566,16 +1615,20 @@ export default function PonudaDetaljPage() {
                 {!dealReadOnly && (
                   <Link
                     href={`/studio/strategic-core?inicijacija_id=${id}`}
-                    className="btn"
+                    className="btn-faze-important"
                     style={{
-                      padding: "8px 14px",
-                      fontSize: 13,
-                      fontWeight: 700,
+                      padding: "10px 18px",
+                      fontSize: 14,
+                      fontWeight: 800,
                       whiteSpace: "nowrap",
+                      textDecoration: "none",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
                     }}
-                    title="Brzo određivanje budžeta putem StrategicCore"
+                    title="Brzo određivanje budžeta putem Strategic Core"
                   >
-                    🎛️ SC
+                    🎛️ SC Strategic Core
                   </Link>
                 )}
 
@@ -1636,14 +1689,23 @@ export default function PonudaDetaljPage() {
 
               <div
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 140px 160px 1fr 140px",
-                  gap: 8,
-                  alignItems: "center",
-                  marginTop: 10,
+                  marginTop: 14,
+                  padding: 14,
+                  border: "1px solid rgba(255,255,255,.12)",
+                  borderRadius: 12,
+                  background: "rgba(255,255,255,.03)",
                 }}
               >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 100px 120px 1fr auto",
+                    gap: 10,
+                    alignItems: "end",
+                  }}
+                >
                 <div>
+                  <div className="label" style={{ marginBottom: 4, fontSize: 11, fontWeight: 700, opacity: 0.75 }}>Stavka iz cjenovnika</div>
                   <select
                     value={selected ? String(selected.stavka_id) : ""}
                     onChange={(e) => {
@@ -1681,44 +1743,62 @@ export default function PonudaDetaljPage() {
                   ) : null}
                 </div>
 
-                <input
-                  value={kolicina}
-                  onChange={(e) => setKolicina(e.target.value)}
-                  placeholder="količina"
-                  style={inputStyle}
-                />
+                <div>
+                  <div className="label" style={{ marginBottom: 4, fontSize: 11, fontWeight: 700, opacity: 0.75 }}>Količina</div>
+                  <input
+                    value={kolicina}
+                    onChange={(e) => setKolicina(e.target.value)}
+                    placeholder="količina"
+                    style={inputStyle}
+                  />
+                </div>
 
-                <input
-                  value={cijenaUI}
-                  onChange={(e) => setCijenaUI(e.target.value)}
-                  placeholder={
-                    selected
-                      ? `cijena (${normCcy(selected.valuta_default)})`
-                      : "cijena"
-                  }
-                  style={inputStyle}
-                  inputMode="decimal"
-                  disabled={!selected}
-                />
+                <div>
+                  <div className="label" style={{ marginBottom: 4, fontSize: 11, fontWeight: 700, opacity: 0.75 }}>Cijena</div>
+                  <input
+                    value={cijenaUI}
+                    onChange={(e) => setCijenaUI(e.target.value)}
+                    placeholder={
+                      selected
+                        ? normCcy(selected.valuta_default)
+                        : "cijena"
+                    }
+                    style={inputStyle}
+                    inputMode="decimal"
+                    disabled={!selected}
+                  />
+                </div>
 
-                <input
-                  value={opisStavke}
-                  onChange={(e) => setOpisStavke(e.target.value)}
-                  placeholder="opis (opciono)"
-                  style={inputStyle}
-                />
+                <div>
+                  <div className="label" style={{ marginBottom: 4, fontSize: 11, fontWeight: 700, opacity: 0.75 }}>Opis (opciono)</div>
+                  <input
+                    value={opisStavke}
+                    onChange={(e) => setOpisStavke(e.target.value)}
+                    placeholder="opis…"
+                    style={inputStyle}
+                  />
+                </div>
 
-                <button
-                  onClick={addItem}
-                  disabled={!selected || addingItem}
-                  className="glassbtn actionBtn"
-                  type="button"
-                  style={{
-                    opacity: !selected || addingItem ? 0.6 : 1,
-                  }}
-                >
-                  {addingItem ? "Dodajem..." : "Dodaj"}
-                </button>
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={addItem}
+                    disabled={!selected || addingItem}
+                    type="button"
+                    style={{
+                      opacity: !selected || addingItem ? 0.6 : 1,
+                      background: "linear-gradient(135deg, rgba(55, 214, 122, 0.2), rgba(34, 197, 94, 0.15))",
+                      border: "1px solid rgba(55, 214, 122, 0.45)",
+                      color: "inherit",
+                      padding: "10px 16px",
+                      borderRadius: 12,
+                      fontWeight: 750,
+                      cursor: !selected || addingItem ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {addingItem ? "Dodajem..." : "+ Dodaj"}
+                  </button>
+                </div>
+              </div>
               </div>
 
               <div

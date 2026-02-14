@@ -49,9 +49,9 @@ function statusNameFallbackById(status_id: any) {
   const map: Record<number, string> = {
     1: "Otvoren",
     2: "U razradi",
-    3: "Čeka potvrdu klijenta",
+    3: "Service",
     4: "U produkciji",
-    5: "U mjerenju (Omega)",
+    5: "Produkcija",
     6: "Postprodukcija",
     7: "Završen",
     8: "Isporučen",

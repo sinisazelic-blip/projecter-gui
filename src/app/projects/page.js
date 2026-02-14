@@ -21,7 +21,7 @@ function statusToneById(statusId) {
   if (id === 12) return "status-badge--cancelled"; // Otkazan
   if (id === 8) return "status-badge--closed"; // Zatvoren
   if (id === 7) return "status-badge--done"; // Završen
-  if (id >= 4 && id <= 6) return "status-badge--active"; // U produkciji / Omega / Postprodukcija
+  if (id >= 4 && id <= 6) return "status-badge--active"; // U produkciji / Produkcija / Postprodukcija
   if (id >= 1 && id <= 3) return "status-badge--planned"; // Otvoren / U razradi / Čeka potvrdu
   return "status-badge--unknown";
 }

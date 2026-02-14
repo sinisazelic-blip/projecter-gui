@@ -19,8 +19,10 @@ export async function GET(req: Request) {
     const where: string[] = [];
     const params: any[] = [];
 
-    // samo status 8
+    // samo status 8 (Zatvoren)
     where.push("p.status_id = 8");
+    // ProBono projekti se nikad ne fakturišu
+    where.push("(COALESCE(p.pro_bono, 0) = 0)");
 
     if (narucilac_id && Number(narucilac_id) > 0) {
       where.push("p.narucilac_id = ?");

@@ -60,6 +60,14 @@ export default function InvoiceWizard() {
 
   // Fiskalni/PFR (editable, ostavljam)
   const [pfrBroj, setPfrBroj] = useState<string>("");
+  // Koristi automatski sistem za fiskalizaciju (PU dropbox) — default NE
+  const [useFiskalizacijaDropbox, setUseFiskalizacijaDropbox] = useState<boolean>(false);
+
+  // Popust prije PDV-a (KM) — prikaz samo kad postoji
+  const [popustKm, setPopustKm] = useState<string>("");
+
+  // Oslobođen od PDV-a (član 24) — auto 0%
+  const [pdvOslobodjenDetected, setPdvOslobodjenDetected] = useState<boolean>(false);
 
   // ✅ Poziv na broj: AUTO, read-only
   const [pozivNaBroj, setPozivNaBroj] = useState<string>("");
@@ -84,6 +92,7 @@ export default function InvoiceWizard() {
       if (ids.length === 0) {
         setPozivNaBroj("");
         setIsInoDetected(false);
+        setPdvOslobodjenDetected(false);
         return;
       }
 
@@ -122,19 +131,24 @@ export default function InvoiceWizard() {
             }
           }
 
-          // Detektuj INO
+          // Detektuj INO ili oslobođen od PDV-a
           if (previewData?.buyer) {
             const buyer = previewData.buyer;
             const drz = String(buyer.drzava ?? "").trim();
             const isIno = drz !== "" && drz.toLowerCase() !== "bih";
-            // Takođe provjeri is_ino flag ako postoji
             const isInoFlag = buyer.is_ino === 1 || buyer.is_ino === true || buyer.is_ino === "1";
+            const pdvOslobodjen = Number(buyer.pdv_oslobodjen ?? 0) === 1;
 
             if (alive && (isIno || isInoFlag)) {
               setIsInoDetected(true);
               setCurrency("EUR");
               setVatMode("INO_0");
+            } else if (alive && pdvOslobodjen) {
+              setIsInoDetected(false);
+              setPdvOslobodjenDetected(true);
+              setVatMode("INO_0"); // 0% PDV — isto kao INO za stopu
             } else if (alive) {
+              setPdvOslobodjenDetected(false);
               setIsInoDetected(false);
             }
           }
@@ -176,6 +190,7 @@ export default function InvoiceWizard() {
     qs.set("vat", vatMode);
 
     if (pfrBroj.trim()) qs.set("pfr", pfrBroj.trim());
+    qs.set("fiskalizacija", useFiskalizacijaDropbox ? "1" : "0");
 
     // ✅ AUTO poziv na broj ide uvijek
     qs.set("pnb", pozivNaBroj);
@@ -202,6 +217,12 @@ export default function InvoiceWizard() {
         "project_sub_items",
         subItemsEntries.map(([id, s]) => `${id}:${encodeURIComponent(s as string)}`).join(","),
       );
+    }
+
+    // Popust prije PDV-a (KM)
+    const popustNum = parseFloat(String(popustKm || "0").trim());
+    if (Number.isFinite(popustNum) && popustNum > 0) {
+      qs.set("popust", String(popustNum));
     }
 
     router.push(`/fakture/wizard/preview?${qs.toString()}`);
@@ -331,6 +352,11 @@ export default function InvoiceWizard() {
                       (auto: INO klijent)
                     </span>
                   )}
+                  {pdvOslobodjenDetected && !isInoDetected && (
+                    <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.8, fontWeight: 600, color: "rgba(59, 130, 246, 0.9)" }}>
+                      (auto: oslobođen od PDV-a)
+                    </span>
+                  )}
                 </div>
                 <select
                   className="input"
@@ -338,16 +364,33 @@ export default function InvoiceWizard() {
                   onChange={(e) => setVatMode(e.target.value as any)}
                 >
                   <option value="BH_17">BiH (PDV 17%)</option>
-                  <option value="INO_0">INO (0% VAT)</option>
+                  <option value="INO_0">INO / Oslobođen (0%)</option>
                 </select>
 
-                <div className="label">PFR broj (opciono)</div>
-                <input
-                  className="input"
-                  value={pfrBroj}
-                  onChange={(e) => setPfrBroj(e.target.value)}
-                  placeholder="—"
-                />
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", gridColumn: "1 / -1" }}>
+                  <div style={{ flex: "1 1 200px", minWidth: 140 }}>
+                    <div className="label">PFR broj (opciono)</div>
+                    <input
+                      className="input"
+                      value={pfrBroj}
+                      onChange={(e) => setPfrBroj(e.target.value)}
+                      placeholder="—"
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                  <div style={{ flex: "1 1 200px", minWidth: 200 }}>
+                    <div className="label">Koristi automatski sistem za fiskalizaciju (PU dropbox)</div>
+                    <select
+                      className="input"
+                      value={useFiskalizacijaDropbox ? "1" : "0"}
+                      onChange={(e) => setUseFiskalizacijaDropbox(e.target.value === "1")}
+                      style={{ width: "100%" }}
+                    >
+                      <option value="0">NE</option>
+                      <option value="1">DA</option>
+                    </select>
+                  </div>
+                </div>
 
                 <div className="label">Poziv na broj (AUTO, 8 cifara)</div>
                 <input
@@ -356,6 +399,18 @@ export default function InvoiceWizard() {
                   readOnly
                   disabled
                   style={{ opacity: 0.9 }}
+                />
+
+                <div className="label">Popust prije PDV-a (KM)</div>
+                <input
+                  type="number"
+                  className="input"
+                  value={popustKm}
+                  onChange={(e) => setPopustKm(e.target.value)}
+                  placeholder="0"
+                  min="0"
+                  step="0.01"
+                  title="Opciono — umanjenje osnovice prije obračuna PDV-a"
                 />
               </div>
 

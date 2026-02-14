@@ -18,7 +18,9 @@ type FormState = {
   rok_placanja_dana: string;
   napomena: string;
   aktivan: boolean;
-  is_ino: boolean; // NEW
+  is_ino: boolean;
+  pdv_oslobodjen: boolean;
+  pdv_oslobodjen_napomena: string;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -33,7 +35,9 @@ const emptyForm = (): FormState => ({
   rok_placanja_dana: "0",
   napomena: "",
   aktivan: true,
-  is_ino: false, // NEW
+  is_ino: false,
+  pdv_oslobodjen: false,
+  pdv_oslobodjen_napomena: "",
 });
 
 const fmtDateTime = (dt: string | null | undefined) => {
@@ -212,6 +216,8 @@ export default function KlijentiClient({
       napomena: it.napomena ?? "",
       aktivan: Number(it.aktivan) === 1,
       is_ino: Number(it.is_ino) === 1,
+      pdv_oslobodjen: Number(it.pdv_oslobodjen ?? 0) === 1,
+      pdv_oslobodjen_napomena: it.pdv_oslobodjen_napomena ?? "",
       created_at: it.created_at,
       updated_at: it.updated_at,
     });
@@ -295,6 +301,8 @@ export default function KlijentiClient({
       napomena: form.napomena || null,
       aktivan: !!form.aktivan,
       is_ino: !!form.is_ino,
+      pdv_oslobodjen: !!form.pdv_oslobodjen,
+      pdv_oslobodjen_napomena: form.pdv_oslobodjen_napomena || null,
     };
 
     startTransition(async () => {
@@ -836,6 +844,57 @@ export default function KlijentiClient({
                     — koristi INO cijene (EUR) u Deal-u
                   </span>
                 </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <input
+                    type="checkbox"
+                    checked={form.pdv_oslobodjen}
+                    onChange={(e) =>
+                      setForm((s) => ({
+                        ...s,
+                        pdv_oslobodjen: e.target.checked,
+                      }))
+                    }
+                    style={{ width: 16, height: 16 }}
+                  />
+                  <span
+                    style={{
+                      color: "var(--text)",
+                      fontSize: 14,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Oslobođen od plaćanja PDV-a
+                  </span>
+                  <span style={{ color: "var(--muted)", fontSize: 13 }}>
+                    — član 24, potvrda o oslobađanju
+                  </span>
+                </div>
+
+                {form.pdv_oslobodjen && (
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <div
+                      style={{
+                        color: "var(--muted)",
+                        fontSize: 13,
+                        marginBottom: 6,
+                      }}
+                    >
+                      Napomena za fakturu (prikazuje se na računu)
+                    </div>
+                    <textarea
+                      value={form.pdv_oslobodjen_napomena}
+                      onChange={(e) =>
+                        setForm((s) => ({
+                          ...s,
+                          pdv_oslobodjen_napomena: e.target.value,
+                        }))
+                      }
+                      placeholder="npr. PDV nije obračunat jer je [naziv] oslobođeno po osnovu Zakona o PDV-u, član 24, a na osnovu dostavljene Potvrde o oslobađanju 1234/2024"
+                      style={{ width: "100%", minHeight: 70, resize: "vertical" }}
+                    />
+                  </div>
+                )}
 
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <input

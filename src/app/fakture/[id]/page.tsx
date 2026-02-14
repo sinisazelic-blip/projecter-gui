@@ -44,6 +44,7 @@ export default function FakturaDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [faktura, setFaktura] = useState<FakturaData | null>(null);
+  const [stornoLoading, setStornoLoading] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [buyer, setBuyer] = useState<any>(null);
   const [firma, setFirma] = useState<any>(null);
@@ -132,6 +133,29 @@ export default function FakturaDetailPage() {
     );
   }
 
+  const isStorno = faktura?.status === "STORNIRAN" || Number(faktura?.iznos_sa_pdv ?? 0) < 0;
+
+  async function handleStorno() {
+    if (stornoLoading || isStorno) return;
+    if (!window.confirm("Da li ste sigurni da želite stornirati ovu fakturu? Kreiraće se storno račun (negativni iznosi), a projekti će se vratiti u status Zatvoren."))
+      return;
+    setStornoLoading(true);
+    try {
+      const res = await fetch(`/api/fakture/${fakturaId}/storno`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!data?.ok) throw new Error(data?.error || "Greška");
+      window.location.href = `/fakture/${data.storno_faktura_id}`;
+    } catch (e: any) {
+      alert(e?.message ?? "Greška pri storniranju");
+    } finally {
+      setStornoLoading(false);
+    }
+  }
+
   // Redirect na preview sa podacima iz fakture
   const goToPreview = () => {
     if (!faktura.projekti_ids || faktura.projekti_ids.length === 0) {
@@ -200,6 +224,24 @@ export default function FakturaDetailPage() {
                 >
                   👁️ Pregled
                 </button>
+                {!isStorno && (
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={handleStorno}
+                    disabled={stornoLoading}
+                    style={{
+                      background: "#9ca3af",
+                      color: "#111827",
+                      border: "1px solid #6b7280",
+                      fontWeight: 700,
+                      opacity: stornoLoading ? 0.6 : 1,
+                    }}
+                    title="Storniraj fakturu — kreira storno račun, projekti u status Zatvoren"
+                  >
+                    {stornoLoading ? "…" : "STORNO"}
+                  </button>
+                )}
               </div>
             </div>
           </div>

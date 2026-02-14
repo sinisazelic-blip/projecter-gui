@@ -16,6 +16,8 @@ import ProjectSummaryCard from "./_components/ProjectSummaryCard";
 import CostsPanel from "./_components/CostsPanel";
 
 import FinalOkButtonClient from "./_components/FinalOkButtonClient";
+import ProjectStornoButton from "./_components/ProjectStornoButton";
+import ProBonoButton from "./_components/ProBonoButton";
 import { ReadOnlyGuard } from "@/components/ReadOnlyGuard";
 
 // ✅ NEW: Timeline indikator (read-only)
@@ -475,6 +477,9 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
       -- ✅ NOVO: operativni signal (owner -> tim)
       p.operativni_signal,
 
+      -- ✅ ProBono: nikad se ne fakturiše
+      COALESCE(p.pro_bono, 0) AS pro_bono,
+
       -- ✅ NOVO: procenat budžeta vidljiv radnicima (default 50.00)
       COALESCE(p.budzet_procenat_za_tim, 50.00) AS budzet_procenat_za_tim,
 
@@ -672,6 +677,17 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
         .glassbtn:active {
           transform: scale(.985);
         }
+        .actionBtn {
+          padding: 10px 12px;
+          border-radius: 14px;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          font-weight: 650;
+          white-space: nowrap;
+          text-decoration: none;
+          color: inherit;
+        }
         .backCluster {
           display: flex;
           align-items: center;
@@ -797,9 +813,28 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
       {/* ✅ Topbar uvijek vidljiv; scroll je isključivo u donjem sadržaju */}
       <div style={{ flex: "0 0 auto", position: "sticky", top: 0, zIndex: 20 }}>
         <div className="container">
-          {/* Row 1: Topblock - lijevo logo+naziv, desno Povratak na PP | Dashboard */}
+          {/* Row 1: Topblock - kao Deal: lijevo backCluster, centar logo, desno actions */}
           <div className="topbar">
-            <div className="brandWrap" title="FLUXA — Project & Finance Engine">
+            <div className="backCluster">
+              <Link
+                href="/projects"
+                aria-label="Povratak na PP"
+                title="Povratak na Pregled Projekata"
+                className="glassbtn backIcon"
+              >
+                <span style={{ fontSize: 20, lineHeight: 1 }}>📋</span>
+              </Link>
+              <div className="backText">
+                <div className="mutedLine">Povratak</div>
+                <div className="strongLine">na PP</div>
+              </div>
+            </div>
+
+            <div
+              className="brandWrap"
+              style={{ flex: "1 1 auto", justifyContent: "flex-start" }}
+              title="FLUXA — Project & Finance Engine"
+            >
               <img src="/fluxa/logo-light.png" alt="FLUXA" className="projekatBrandLogo" />
               <div>
                 <div className="projekatBrandTitle">Projekti</div>
@@ -807,11 +842,8 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
               </div>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Link href="/projects" className="btn" title="Povratak na Pregled Projekata">
-                Povratak na PP
-              </Link>
-              <Link href="/dashboard" className="btn" title="Dashboard">
+            <div className="actions" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <Link href="/dashboard" className="glassbtn actionBtn" title="Dashboard">
                 🏠 Dashboard
               </Link>
             </div>
@@ -903,6 +935,12 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
               </button>
             </form>
 
+            {/* ProBono: samo owner — dugme, upozorenje, zatim arhiva */}
+            <ProBonoButton
+              projekatId={project.projekat_id}
+              disabled={isReadOnly || statusIdNum === 10 || statusIdNum === 11 || statusIdNum === 12 || Number(project?.pro_bono ?? 0) === 1}
+            />
+
             {/* Profit signal - desno: ostatak + zarada_razlike = zbir (bez teksta) */}
             <div
               style={{
@@ -942,7 +980,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
             </div>
           </div>
 
-          {/* Row 3: Faze, Final OK - desno */}
+          {/* Row 3: Faze, Final OK, Storno - desno */}
           <div
             style={{
               display: "flex",
@@ -972,11 +1010,24 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
             />
           </div>
 
-          {/* Naziv projekta - uvijek vidljiv, scroll počinje ispod (~15mm) */}
-          <div style={{ marginTop: 16, marginBottom: 20, paddingBottom: 8 }}>
+          {/* Naziv projekta + Storno */}
+          <div
+            style={{
+              marginTop: 16,
+              marginBottom: 20,
+              paddingBottom: 8,
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
             <h1 style={{ fontSize: 22, margin: 0, fontWeight: 800 }}>
               #{project.projekat_id} — {project.radni_naziv}
             </h1>
+            {!isReadOnly && statusIdNum !== 10 && statusIdNum !== 11 && statusIdNum !== 12 ? (
+              <ProjectStornoButton projekatId={project.projekat_id} disabled={false} />
+            ) : null}
           </div>
         </div>
       </div>

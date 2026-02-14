@@ -12,22 +12,19 @@ export async function GET(req: NextRequest) {
       ? Number(url.searchParams.get("narucilac_id"))
       : null;
 
-    const where: string[] = [];
     const params: any[] = [];
-
+    const whereClauses: string[] = [];
     if (brojFakture) {
-      // broj_fakture_puni je GENERATED kolona, možemo pretraživati po njoj
-      where.push("f.broj_fakture_puni LIKE ?");
+      whereClauses.push("f.broj_fakture_puni LIKE ?");
       params.push(`%${brojFakture}%`);
     }
-
     if (narucilacId && Number.isFinite(narucilacId)) {
-      where.push("f.bill_to_klijent_id = ?");
+      whereClauses.push("f.bill_to_klijent_id = ?");
       params.push(narucilacId);
     }
+    const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
-    const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
-
+    // Direktno iz tabele — podaci su u osnovica_km, pdv_iznos_km, iznos_ukupno_km
     const fakture = await query(
       `
       SELECT
@@ -79,22 +76,35 @@ export async function GET(req: NextRequest) {
         ...f,
         broj_fakture: brojFaktureFormatiran,
         datum_dospijeca: datumDospijeca,
-        // Mapiraj fiskalni_status na status za prikaz
         status: f.status === "DODIJELJEN" ? "Fakturisan" : f.status,
+        // MySQL DECIMAL dolazi kao string — osiguraj brojeve za prikaz
+        iznos_bez_pdv: Number(f.iznos_bez_pdv) || 0,
+        pdv_iznos: Number(f.pdv_iznos) || 0,
+        iznos_sa_pdv: Number(f.iznos_sa_pdv) || 0,
       };
     });
 
     // Učitaj naručioca za filter dropdown
-    const narucioci = await query(
-      `
-      SELECT DISTINCT
-        k.klijent_id,
-        k.naziv_klijenta
-      FROM fakture f
-      JOIN klijenti k ON k.klijent_id = f.bill_to_klijent_id
-      ORDER BY k.naziv_klijenta ASC
-      `,
-    );
+    let narucioci: any[] = [];
+    try {
+      narucioci = await query(
+        `SELECT DISTINCT k.klijent_id, k.naziv_klijenta
+         FROM fakture f
+         JOIN klijenti k ON k.klijent_id = f.bill_to_klijent_id
+         ORDER BY k.naziv_klijenta ASC`,
+      );
+    } catch {
+      try {
+        narucioci = await query(
+          `SELECT DISTINCT k.klijent_id, k.naziv_klijenta
+           FROM fakture f
+           JOIN klijenti k ON k.klijent_id = f.narucilac_id
+           ORDER BY k.naziv_klijenta ASC`,
+        );
+      } catch {
+        narucioci = [];
+      }
+    }
 
     return NextResponse.json({
       ok: true,

@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 
 function fmtDDMMYYYYFromISO(isoLike: string | null): string {
@@ -34,8 +34,12 @@ function isBiH(drzava: any): boolean {
   const s = String(drzava ?? "")
     .trim()
     .toLowerCase();
+  if (!s) return true; // prazno = domaći (BiH)
   return (
-    s === "bih" || s === "bosna i hercegovina" || s === "bosnia and herzegovina"
+    s === "bih" ||
+    s === "ba" ||
+    s === "bosna i hercegovina" ||
+    s === "bosnia and herzegovina"
   );
 }
 
@@ -225,7 +229,16 @@ export default function Page() {
   const ccy = (sp.get("ccy") ?? "KM").toUpperCase();
   const fisk = sp.get("pfr") ?? sp.get("fisk") ?? ""; // Podržavamo oba parametra za kompatibilnost
   const pnb = sp.get("pnb") ?? "";
+  const useFiskalizacijaDropbox = sp.get("fiskalizacija") === "1";
   const invoiceNumberFromUrl = sp.get("invoice_number") ?? ""; // Broj fakture iz URL-a (kada se učitava postojeća)
+
+  // Popust prije PDV-a (KM)
+  const popustKm = useMemo(() => {
+    const v = sp.get("popust");
+    if (!v) return 0;
+    const n = parseFloat(String(v).trim());
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  }, [sp]);
   
   // ✅ Override nazivi projekata (projekat_id -> naziv_override)
   const projectNameOverrides = useMemo(() => {
@@ -264,6 +277,8 @@ export default function Page() {
   }, [sp]);
 
   const [data, setData] = useState<PreviewData | null>(null);
+  const [fiskalizujLoading, setFiskalizujLoading] = useState(false);
+  const [fiskalizacijaDone, setFiskalizacijaDone] = useState(false);
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -312,12 +327,38 @@ export default function Page() {
   const firma = data?.firma ?? null;
   const projects = Array.isArray(data?.projects) ? data!.projects : [];
 
-  const bh = useMemo(() => (buyer ? isBiH(buyer.drzava) : true), [buyer]);
+  // BH = bosanski, EN = engleski (samo za INO klijente)
+  const bh = useMemo(() => {
+    if (!buyer) return true;
+    if (buyer.is_ino === true || buyer.is_ino === 1) return false;
+    return isBiH(buyer.drzava);
+  }, [buyer]);
   const lang: Lang = useMemo(() => (bh ? "BH" : "EN"), [bh]);
   const docTitle = useMemo(
     () => (lang === "EN" ? "INVOICE" : "RAČUN"),
     [lang],
   );
+
+  // Fiskalizuj — poziva PU dropbox sistem, dobija QR kod i ostale elemente
+  async function handleFiskalizuj() {
+    if (fiskalizujLoading || fiskalizacijaDone) return;
+    setFiskalizujLoading(true);
+    try {
+      // TODO: Integracija sa PU fiskalizacijom (dropbox sistem)
+      // 1. Pozovi PU API / dropbox
+      // 2. Dobij QR kod i ostale elemente za štampu
+      // 3. Osvježi preview sa tim podacima
+      // 4. Korisnik zatim klikne "Kreiraj račun"
+      alert(
+        "Fiskalizacija putem PU dropbox sistema će biti implementirana. " +
+        "Flow: 1) Fiskalizuj dobija od PU QR kod i elemente → 2) Preview se osvježi → 3) Kreiraj račun. " +
+        "Razdvojeno je jer PU može biti spor — Chrome ne bi trebao timeout-ovati."
+      );
+      setFiskalizacijaDone(true);
+    } finally {
+      setFiskalizujLoading(false);
+    }
+  }
 
   // Funkcija za kreiranje fakture
   async function handleCreateInvoice() {
@@ -334,9 +375,10 @@ export default function Page() {
           ids: ids.join(","),
           date: invoiceDateISO,
           ccy: ccy,
-          vat: bh ? "BH_17" : "INO_0",
+          vat: bh && !Number(buyer?.pdv_oslobodjen ?? 0) ? "BH_17" : "INO_0",
           pfr: fisk ? Number(fisk) : null,
           pnb: pnb,
+          popust: popustKm > 0 ? popustKm : 0,
           project_names: Object.entries(projectNameOverrides)
             .filter(([_, val]) => val && String(val).trim())
             .map(([id, naziv]) => `${id}:${String(naziv).trim()}`)
@@ -382,16 +424,16 @@ export default function Page() {
       alert("Prvo kreirajte račun!");
       return;
     }
-    window.print();
+    handlePrint();
   }
 
-  // Funkcija za PDF Save as — otvara print dialog, korisnik bira "Sačuvaj kao PDF"
+  // Funkcija za PDF Save as — preuzima PDF sa predloženim imenom
   function handlePDFSaveAs() {
     if (!created) {
       alert("Prvo kreirajte račun!");
       return;
     }
-    window.print();
+    handleSaveAsPdf();
   }
 
   // Funkcija za slanje mail-om — otvara email klijent s predpopunjenim podacima
@@ -457,11 +499,17 @@ export default function Page() {
       ),
     [items],
   );
-  const vatRate = useMemo(() => (bh ? 0.17 : 0), [bh]);
-  const vatAmount = useMemo(() => baseAmount * vatRate, [baseAmount, vatRate]);
+  const popustAmount = popustKm;
+  const baseAfterPopust = Math.max(0, baseAmount - popustAmount);
+  const pdvOslobodjen = Number(buyer?.pdv_oslobodjen ?? 0) === 1;
+  const vatRate = useMemo(
+    () => (bh && !pdvOslobodjen ? 0.17 : 0),
+    [bh, pdvOslobodjen],
+  );
+  const vatAmount = useMemo(() => Math.round(baseAfterPopust * vatRate * 100) / 100, [baseAfterPopust, vatRate]);
   const totalAmount = useMemo(
-    () => baseAmount + vatAmount,
-    [baseAmount, vatAmount],
+    () => baseAfterPopust + vatAmount,
+    [baseAfterPopust, vatAmount],
   );
 
   const lastClosed = useMemo(
@@ -503,6 +551,53 @@ export default function Page() {
   const buyerCityLine = safeLineJoin([buyer?.postanski_broj, buyer?.grad], " ");
   const buyerCountry = String(buyer?.drzava ?? "—").trim();
   const buyerTax = String(buyer?.porezni_id ?? "—").trim();
+
+  // PDF filename: broj-2026 Naručioc (npr. 012-2026 Udruženje poslodavaca RS)
+  const pdfFilename = useMemo(() => {
+    const broj = String(
+      invoiceNumber || createdInvoice?.broj_fakture || invoiceNumberFromUrl || "",
+    )
+      .replace(/\//g, "-")
+      .trim() || "faktura";
+    const narucilac = String(buyerName || "")
+      .replace(/[/\\:*?"<>|]/g, "_")
+      .trim() || "nepoznat";
+    return `${broj} ${narucilac}`;
+  }, [invoiceNumber, createdInvoice?.broj_fakture, invoiceNumberFromUrl, buyerName]);
+
+  const paperRef = useRef<HTMLDivElement>(null);
+
+  function handlePrint() {
+    const prevTitle = document.title;
+    document.title = pdfFilename;
+    window.print();
+    const restore = () => {
+      document.title = prevTitle;
+      window.removeEventListener("afterprint", restore);
+    };
+    window.addEventListener("afterprint", restore);
+  }
+
+  async function handleSaveAsPdf() {
+    const el = paperRef.current;
+    if (!el) return;
+    try {
+      const html2pdf = (await import("html2pdf.js")).default;
+      await html2pdf()
+        .set({
+          margin: 10,
+          filename: `${pdfFilename}.pdf`,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        })
+        .from(el)
+        .save();
+    } catch (err: any) {
+      console.error("PDF greška:", err);
+      alert(err?.message || "Greška pri generisanju PDF-a.");
+    }
+  }
 
   return (
     <div className="container">
@@ -636,12 +731,11 @@ export default function Page() {
         .desc{ color:#111; font-weight: 650; }
         .mutedSmall{ font-size: 11px; color:#666; margin-top: 2px; }
 
-        /* ✅ manji razmak prije obračuna */
         .totalsRow{
           display:flex;
           justify-content:flex-end;
           gap: 18px;
-          margin-top: 8px; /* was 14px */
+          margin-top: 8px;
         }
 
         .totalsBox{
@@ -656,7 +750,7 @@ export default function Page() {
           justify-content:space-between;
           gap: 12px;
           font-size: 12px;
-          padding: 6px 0;
+          padding: 2px 0;
           border-top: 1px solid rgba(0,0,0,.06);
         }
         .totLine:first-child{ border-top: none; }
@@ -835,6 +929,30 @@ export default function Page() {
                       ← {lang === "EN" ? "Back (2/3)" : "Nazad (2/3)"}
                     </Link>
 
+                    {useFiskalizacijaDropbox && (
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={handleFiskalizuj}
+                        disabled={fiskalizujLoading || fiskalizacijaDone}
+                        style={{
+                          background: fiskalizacijaDone
+                            ? "rgba(34, 197, 94, 0.2)"
+                            : "linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.1))",
+                          borderColor: "rgba(34, 197, 94, 0.4)",
+                          fontWeight: 600,
+                        }}
+                        title={
+                          lang === "EN"
+                            ? "Get fiscal elements from PU (QR code etc.) — do this before Create Invoice"
+                            : "Dobij fiskalne elemente od PU (QR kod itd.) — uradi prije Kreiraj račun"
+                        }
+                      >
+                        {fiskalizujLoading ? "⏳" : fiskalizacijaDone ? "✓" : "📋"}{" "}
+                        {lang === "EN" ? "Fiscalize" : "Fiskalizuj"}
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       className="btn"
@@ -941,7 +1059,7 @@ export default function Page() {
 
         <div className="body">
           <div className="paperStage">
-            <div className="paper">
+            <div className="paper" ref={paperRef}>
               <div className="invRow">
                 <div className="invHeaderLeft">
                   <img
@@ -990,7 +1108,7 @@ export default function Page() {
                       <div className="k">
                         {lang === "EN" ? "PFR No." : "PFR broj"}
                       </div>
-                      <div className="v">{fisk ? fisk : "—"}</div>
+                      <div className="v">{createdInvoice?.broj_fiskalni ?? (fisk ? fisk : "—")}</div>
                     </div>
                     <div className="line">
                       <div className="k">
@@ -1129,6 +1247,25 @@ export default function Page() {
                     <div className="v">{fmtMoney(baseAmount, ccy)}</div>
                   </div>
 
+                  {popustAmount > 0 && (
+                    <>
+                      <div className="totLine">
+                        <div className="k">
+                          {lang === "EN" ? "Discount" : "Popust"}
+                        </div>
+                        <div className="v">
+                          − {fmtMoney(popustAmount, ccy)}
+                        </div>
+                      </div>
+                      <div className="totLine">
+                        <div className="k">
+                          {lang === "EN" ? "Base after discount" : "Osnovica nakon popusta"}
+                        </div>
+                        <div className="v">{fmtMoney(baseAfterPopust, ccy)}</div>
+                      </div>
+                    </>
+                  )}
+
                   <div className="totLine">
                     <div className="k">{lang === "EN" ? "VAT" : "PDV"}</div>
                     <div className="v">
@@ -1160,6 +1297,17 @@ export default function Page() {
                       }}
                     >
                       VAT exemption: In accordance with the VAT Law, this service is exempt from VAT pursuant to Article 27, paragraph 1.
+                    </div>
+                  ) : pdvOslobodjen && buyer?.pdv_oslobodjen_napomena ? (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 10,
+                        color: "#555",
+                        lineHeight: 1.25,
+                      }}
+                    >
+                      {buyer.pdv_oslobodjen_napomena}
                     </div>
                   ) : null}
 

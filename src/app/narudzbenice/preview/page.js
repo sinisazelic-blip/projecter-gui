@@ -31,7 +31,7 @@ function buildQuery(paramsObj) {
 function buildEmail({
   mode,
   projectSingle,
-  clientName,
+  klijent_id,
   supplierName,
   dateStr,
   items,
@@ -40,7 +40,7 @@ function buildEmail({
   if (mode === "single") {
     subject = `Narudžbenica — PO-${projectSingle.projekat_id} — ${projectSingle.radni_naziv}`;
   } else {
-    subject = `Narudžbenica — ${clientName} — ${supplierName} — ${dateStr}`;
+    subject = `Narudžbenica — Klijent #${klijent_id} — ${supplierName} — ${dateStr}`;
   }
 
   const lines = [];
@@ -96,12 +96,6 @@ export default async function Page({ searchParams }) {
   );
   const supplier = suppliers?.[0] || null;
 
-  const clients = await query(
-    `SELECT klijent_id, naziv_klijenta FROM klijenti WHERE klijent_id = ? LIMIT 1`,
-    [klijent_id],
-  );
-  const client = clients?.[0] || null;
-
   const items = await query(
     `
     SELECT
@@ -136,12 +130,11 @@ export default async function Page({ searchParams }) {
       : null;
 
   const supplierName = supplier?.naziv || `Dobavljač #${dobavljac_id}`;
-  const clientName = client?.naziv_klijenta || `Klijent #${klijent_id}`;
 
   const email = buildEmail({
     mode,
     projectSingle,
-    clientName,
+    klijent_id,
     supplierName,
     dateStr,
     items,
@@ -263,7 +256,7 @@ export default async function Page({ searchParams }) {
           <div className="card">
             <div className="metaRow">
               <span className="pill">
-                Klijent: <b>{clientName}</b>
+                Klijent: <b>#{klijent_id}</b>
               </span>
               <span className="pill">
                 Dobavljač: <b>{supplierName}</b>

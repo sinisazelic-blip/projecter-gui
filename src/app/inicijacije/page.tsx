@@ -116,7 +116,7 @@ const VIEW_OPTIONS: { v: ViewMode; label: string; hint?: string }[] = [
   {
     v: "active",
     label: "Aktivno",
-    hint: "Sakrij arhivirane/otkazane projekte + odbijene deale",
+    hint: "Sakrij arhivirane/otkazane/fakturisane projekte + odbijene deale",
   },
   {
     v: "to_invoice",
@@ -194,9 +194,9 @@ export default async function DealsPage({ searchParams }: any) {
       "((i.projekat_id IS NOT NULL AND p.status_id IN (10,12)) OR (i.projekat_id IS NULL AND i.status_id = 4))",
     );
   } else if (view === "active") {
-    // default: sakrij arhivu (projekat 10/12) + sakrij odbijene deale
+    // default: sakrij arhivu (10/12) + fakturisane (9) + odbijene deale
     where.push(
-      "((i.projekat_id IS NOT NULL AND p.status_id NOT IN (10,12)) OR (i.projekat_id IS NULL AND i.status_id <> 4))",
+      "((i.projekat_id IS NOT NULL AND p.status_id NOT IN (9,10,12)) OR (i.projekat_id IS NULL AND i.status_id <> 4))",
     );
   } // "all" = ništa
 

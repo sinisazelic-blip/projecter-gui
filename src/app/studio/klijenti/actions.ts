@@ -37,7 +37,9 @@ export async function createKlijent(input: {
   rok_placanja_dana?: number | string;
   napomena?: string | null;
   aktivan?: boolean;
-  is_ino?: boolean; // NEW
+  is_ino?: boolean;
+  pdv_oslobodjen?: boolean;
+  pdv_oslobodjen_napomena?: string | null;
 }) {
   const naziv = String(input?.naziv_klijenta ?? "").trim();
   if (!naziv) throw new Error("Naziv klijenta je obavezan.");
@@ -50,13 +52,14 @@ export async function createKlijent(input: {
   const rok = cleanInt(input?.rok_placanja_dana);
   const napomena = cleanStr(input?.napomena);
   const aktivan = input?.aktivan === false ? 0 : 1;
-
-  const is_ino = toBit(input?.is_ino); // NEW
+  const is_ino = toBit(input?.is_ino);
+  const pdv_oslobodjen = toBit(input?.pdv_oslobodjen);
+  const pdv_oslobodjen_napomena = cleanStr(input?.pdv_oslobodjen_napomena);
 
   await query(
     `INSERT INTO klijenti
-      (naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava, rok_placanja_dana, napomena, aktivan, is_ino)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      (naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava, rok_placanja_dana, napomena, aktivan, is_ino, pdv_oslobodjen, pdv_oslobodjen_napomena)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       naziv,
       tip,
@@ -68,6 +71,8 @@ export async function createKlijent(input: {
       napomena,
       aktivan,
       is_ino,
+      pdv_oslobodjen,
+      pdv_oslobodjen_napomena,
     ],
   );
 
@@ -85,7 +90,9 @@ export async function updateKlijent(input: {
   rok_placanja_dana?: number | string;
   napomena?: string | null;
   aktivan?: boolean;
-  is_ino?: boolean; // NEW
+  is_ino?: boolean;
+  pdv_oslobodjen?: boolean;
+  pdv_oslobodjen_napomena?: string | null;
 }) {
   const id = Number(input?.klijent_id);
   if (!Number.isFinite(id) || id <= 0)
@@ -102,8 +109,9 @@ export async function updateKlijent(input: {
   const rok = cleanInt(input?.rok_placanja_dana);
   const napomena = cleanStr(input?.napomena);
   const aktivan = input?.aktivan === false ? 0 : 1;
-
-  const is_ino = toBit(input?.is_ino); // NEW
+  const is_ino = toBit(input?.is_ino);
+  const pdv_oslobodjen = toBit(input?.pdv_oslobodjen);
+  const pdv_oslobodjen_napomena = cleanStr(input?.pdv_oslobodjen_napomena);
 
   await query(
     `UPDATE klijenti
@@ -116,7 +124,9 @@ export async function updateKlijent(input: {
             rok_placanja_dana=?,
             napomena=?,
             aktivan=?,
-            is_ino=?
+            is_ino=?,
+            pdv_oslobodjen=?,
+            pdv_oslobodjen_napomena=?
       WHERE klijent_id=?`,
     [
       naziv,
@@ -129,6 +139,8 @@ export async function updateKlijent(input: {
       napomena,
       aktivan,
       is_ino,
+      pdv_oslobodjen,
+      pdv_oslobodjen_napomena,
       id,
     ],
   );

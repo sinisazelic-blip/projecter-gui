@@ -63,6 +63,7 @@ export default function FakturePage() {
         if (narucilacIdFilter)
           qs.set("narucilac_id", narucilacIdFilter);
 
+        qs.set("_", String(Date.now())); // cache bust — svaki load dobija novi URL
         const res = await fetch(`/api/fakture/list?${qs.toString()}`, {
           cache: "no-store",
         });

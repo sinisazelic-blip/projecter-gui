@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
       vat, // BH_17 ili INO_0
       pfr, // PFR broj (opciono, ako nije dat, generiše se)
       pnb, // poziv na broj (8 cifara)
+      popust, // popust prije PDV-a (KM)
       project_names, // override nazivi projekata (format: "id:naziv,id2:naziv2")
       project_sub_items, // opisne stavke (format: "id:item1|item2,id2:item1")
     } = body;
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
         p.projekat_id,
         p.narucilac_id,
         p.status_id,
+        COALESCE(p.pro_bono, 0) AS pro_bono,
         k.rok_placanja_dana,
         vf.budzet_planirani
       FROM projekti p
@@ -101,6 +103,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ProBono projekti se nikad ne fakturišu
+    const proBonoProjekti = projektiRows.filter((p: any) => Number(p.pro_bono || 0) === 1);
+    if (proBonoProjekti.length > 0) {
+      await conn.rollback();
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `ProBono projekti se ne fakturišu. Uklonite iz liste: ${proBonoProjekti.map((p: any) => p.projekat_id).join(", ")}`,
+          projekti: proBonoProjekti.map((p: any) => p.projekat_id),
+        },
+        { status: 400 },
+      );
+    }
+
     // Proveri da su svi isti naručioc
     const narucioci = Array.from(
       new Set(projektiRows.map((p: any) => p.narucilac_id).filter(Boolean)),
@@ -125,56 +141,29 @@ export async function POST(req: NextRequest) {
     // 3) Generiši broj fakture (format: 001/2026)
     const godina = new Date(datumFakture).getFullYear();
 
-    // Učitaj ili kreiraj brojač za godinu
-    // Prvo proveri da li tabela brojac_faktura postoji i ima podatke
-    let sledeciBroj = 1;
-    let useBrojacTable = false;
-    
+    // Izvor istine: MAX iz fakture (brojac_faktura može biti van sync-a)
+    let maxIzFakture = 0;
     try {
-      // Proveri da li tabela postoji (ako ne postoji, catch će uhvatiti grešku)
-      const [brojacRows]: any = await conn.query(
-        `SELECT zadnji_broj_u_godini FROM brojac_faktura WHERE godina = ? FOR UPDATE`,
+      const [lastRows]: any = await conn.query(
+        `SELECT COALESCE(MAX(broj_u_godini), 0) AS m FROM fakture WHERE godina = ?`,
         [godina],
       );
+      maxIzFakture = Number(lastRows?.[0]?.m ?? 0) || 0;
+    } catch {
+      maxIzFakture = 0;
+    }
 
-      useBrojacTable = true;
+    const sledeciBroj = maxIzFakture + 1;
 
-      if (brojacRows && brojacRows.length > 0) {
-        // Ako postoji zapis, uzmi poslednji broj i dodaj 1
-        const poslednjiBroj = Number(brojacRows[0].zadnji_broj_u_godini) || 0;
-        sledeciBroj = poslednjiBroj + 1;
-        await conn.query(
-          `UPDATE brojac_faktura SET zadnji_broj_u_godini = ? WHERE godina = ?`,
-          [sledeciBroj, godina],
-        );
-      } else {
-        // Ako nema zapisa za godinu, počni od 1 (000 + 1 = 001)
-        sledeciBroj = 1;
-        await conn.query(
-          `INSERT INTO brojac_faktura (godina, zadnji_broj_u_godini) VALUES (?, ?)`,
-          [godina, sledeciBroj],
-        );
-      }
-    } catch (err: any) {
-      // Ako tabela brojac_faktura ne postoji ili ima problem, koristi fallback:
-      // nađi poslednji broj fakture direktno iz tabele fakture
-      try {
-        const [lastInvoiceRows]: any = await conn.query(
-          `SELECT broj_u_godini FROM fakture WHERE godina = ? ORDER BY broj_u_godini DESC LIMIT 1`,
-          [godina],
-        );
-        
-        if (lastInvoiceRows && lastInvoiceRows.length > 0) {
-          const poslednjiBroj = Number(lastInvoiceRows[0].broj_u_godini) || 0;
-          sledeciBroj = poslednjiBroj + 1;
-        } else {
-          // Ako nema faktura za godinu, počni od 1 (000 + 1 = 001)
-          sledeciBroj = 1;
-        }
-      } catch (fallbackErr: any) {
-        // Ako ni tabela fakture ne postoji, počni od 1
-        sledeciBroj = 1;
-      }
+    // Ažuriraj brojac_faktura (best-effort, za buduće pozive)
+    try {
+      await conn.query(
+        `INSERT INTO brojac_faktura (godina, zadnji_broj_u_godini) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE zadnji_broj_u_godini = GREATEST(zadnji_broj_u_godini, ?)`,
+        [godina, sledeciBroj, sledeciBroj],
+      );
+    } catch {
+      // brojac_faktura ne postoji — ignoriši
     }
 
     // broj_fakture_puni je GENERATED kolona, ne treba ga unositi
@@ -196,10 +185,12 @@ export async function POST(req: NextRequest) {
     }
 
     // 5) Izračunaj iznose (sa ili bez PDV-a)
-    const osnovicaKm = projektiRows.reduce(
+    const sumaBudzeta = projektiRows.reduce(
       (sum: number, p: any) => sum + (Number(p.budzet_planirani) || 0),
       0,
     );
+    const popustKm = Math.max(0, Number(popust) || 0);
+    const osnovicaKm = Math.max(0, sumaBudzeta - popustKm);
 
     const vatMode = String(vat || "BH_17").toUpperCase();
     const pdvStopa = vatMode === "BH_17" ? 17.0 : 0.0;
@@ -296,6 +287,18 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Parse project_names: "id:naziv,id2:naziv2" -> { id: "naziv" }
+    const projectNamesMap: Record<number, string> = {};
+    if (project_names && typeof project_names === "string") {
+      project_names.split(",").forEach((pair: string) => {
+        const colonIdx = pair.indexOf(":");
+        if (colonIdx <= 0) return;
+        const id = Number(pair.slice(0, colonIdx));
+        const naziv = decodeURIComponent(pair.slice(colonIdx + 1)).trim();
+        if (Number.isFinite(id) && naziv) projectNamesMap[id] = naziv;
+      });
+    }
+
     // 7) Veži projekte na fakturu (ako tabela faktura_projekti postoji)
     let fakturaProjektiSaved = false;
     try {
@@ -304,19 +307,31 @@ export async function POST(req: NextRequest) {
         const opisneStavkeJson = opisneStavke && opisneStavke.length > 0
           ? JSON.stringify(opisneStavke)
           : null;
+        const nazivNaFakturi = projectNamesMap[projekatId] || null;
 
         try {
           await conn.query(
-            `INSERT INTO faktura_projekti (faktura_id, projekat_id, opisne_stavke) VALUES (?, ?, ?)`,
-            [fakturaId, projekatId, opisneStavkeJson],
+            `INSERT INTO faktura_projekti (faktura_id, projekat_id, opisne_stavke, naziv_na_fakturi) VALUES (?, ?, ?, ?)`,
+            [fakturaId, projekatId, opisneStavkeJson, nazivNaFakturi],
           );
         } catch (colErr: any) {
-          // Ako opisne_stavke kolona ne postoji, pokušaj bez nje
-          if (String(colErr?.message || "").toLowerCase().includes("unknown column")) {
-            await conn.query(
-              `INSERT INTO faktura_projekti (faktura_id, projekat_id) VALUES (?, ?)`,
-              [fakturaId, projekatId],
-            );
+          const errMsg = String(colErr?.message || "").toLowerCase();
+          if (errMsg.includes("unknown column")) {
+            try {
+              await conn.query(
+                `INSERT INTO faktura_projekti (faktura_id, projekat_id, opisne_stavke) VALUES (?, ?, ?)`,
+                [fakturaId, projekatId, opisneStavkeJson],
+              );
+            } catch (innerErr: any) {
+              if (String(innerErr?.message || "").toLowerCase().includes("unknown column")) {
+                await conn.query(
+                  `INSERT INTO faktura_projekti (faktura_id, projekat_id) VALUES (?, ?)`,
+                  [fakturaId, projekatId],
+                );
+              } else {
+                throw innerErr;
+              }
+            }
           } else {
             throw colErr;
           }

@@ -78,10 +78,12 @@ export async function GET(req: Request) {
       buyer =
         Array.isArray(buyerRows) && buyerRows.length ? buyerRows[0] : null;
 
-      // pomoćno: INO = sve osim BiH
+      // pomoćno: INO = sve osim BiH (bih, ba, bosna i hercegovina)
       if (buyer) {
-        const drz = String(buyer.drzava ?? "").trim();
-        buyer.is_ino = drz !== "" && drz.toLowerCase() !== "bih";
+        const drz = String(buyer.drzava ?? "").trim().toLowerCase();
+        const isBiH = !drz || drz === "bih" || drz === "ba" ||
+          drz === "bosna i hercegovina" || drz === "bosnia and herzegovina";
+        buyer.is_ino = !isBiH;
       }
     }
 

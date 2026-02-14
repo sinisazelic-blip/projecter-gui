@@ -22,7 +22,7 @@ function fmtKM(v) {
   if (v == null || v === "") return "—";
   const n = Number(v);
   if (!Number.isFinite(n)) return String(v);
-  return n.toLocaleString("bs-BA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " KM";
+  return Math.round(n).toLocaleString("bs-BA", { maximumFractionDigits: 0, minimumFractionDigits: 0 });
 }
 
 function getUkuno(r, field) {
@@ -152,7 +152,7 @@ export default function GrafickiClient() {
               <BarChart data={chartYearly} margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                 <XAxis dataKey="godina" stroke="rgba(255,255,255,0.6)" fontSize={12} />
-                <YAxis stroke="rgba(255,255,255,0.6)" fontSize={12} tickFormatter={(v) => v >= 1000 ? (v / 1000) + "k" : v} />
+                <YAxis stroke="rgba(255,255,255,0.6)" fontSize={12} tickFormatter={(v) => v >= 1000 ? Math.round(v / 1000) + "k" : Math.round(v)} />
                 <Tooltip
                   formatter={(v) => fmtKM(v)}
                   contentStyle={{ background: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10 }}
@@ -168,7 +168,7 @@ export default function GrafickiClient() {
               <BarChart data={chartYearly} margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                 <XAxis dataKey="godina" stroke="rgba(255,255,255,0.6)" fontSize={12} />
-                <YAxis stroke="rgba(255,255,255,0.6)" fontSize={12} tickFormatter={(v) => v >= 1000 ? (v / 1000) + "k" : v} />
+                <YAxis stroke="rgba(255,255,255,0.6)" fontSize={12} tickFormatter={(v) => v >= 1000 ? Math.round(v / 1000) + "k" : Math.round(v)} />
                 <Tooltip
                   formatter={(v) => fmtKM(v)}
                   contentStyle={{ background: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10 }}
