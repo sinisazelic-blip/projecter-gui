@@ -3,15 +3,48 @@ import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+const LIVE_FROM = "2026-01-01";
+
 /**
- * Agregacija stg_master_finansije po godini i mjesecu.
- * Arhiva: datum_zavrsetka <= 2025-12-31
- * Kolone: iznos_km (promet), iznos_troska_km (troškovi), zarada = iznos_km - iznos_troska_km
+ * Agregacija po godini i mjesecu:
+ * - Do 31.12.2025: stg_master_finansije (arhiva, datum_zavrsetka)
+ * - Od 1.1.2026: redovno poslovanje — fakture (promet po datum_izdavanja) + projektni_troskovi (troškovi po datum_troska)
  */
+function addToByYear(byYear, r) {
+  const g = r.godina;
+  if (!byYear[g]) {
+    byYear[g] = {
+      godina: g,
+      mjeseci: {},
+      ukuno: 0,
+      troskovi_ukuno: 0,
+      zarada_ukuno: 0,
+    };
+  }
+  const m = r.mjesec;
+  const promet = Number(r.promet ?? 0);
+  const troskovi = Number(r.troskovi ?? 0);
+  const existing = byYear[g].mjeseci[m];
+  const prevPromet = existing ? existing.promet : 0;
+  const prevTroskovi = existing ? existing.troskovi : 0;
+  const newPromet = prevPromet + promet;
+  const newTroskovi = prevTroskovi + troskovi;
+  byYear[g].mjeseci[m] = {
+    promet: newPromet,
+    troskovi: newTroskovi,
+    zarada: newPromet - newTroskovi,
+  };
+  byYear[g].ukuno += promet;
+  byYear[g].troskovi_ukuno += troskovi;
+  byYear[g].zarada_ukuno = byYear[g].ukuno - byYear[g].troskovi_ukuno;
+}
+
 export async function GET() {
   try {
     const cutoff = "2025-12-31";
+    const byYear = {};
 
+    // 1) Arhiva: stg_master_finansije do 31.12.2025
     const rows = await query(
       `
       SELECT
@@ -28,34 +61,51 @@ export async function GET() {
       `,
       [cutoff]
     );
+    for (const r of rows || []) addToByYear(byYear, r);
 
-    const byYear = {};
+    // 2) Od 1.1.2026: redovno poslovanje — promet iz faktura, troškovi iz projektni_troskovi
+    try {
+      const prometRows = await query(
+        `
+        SELECT
+          YEAR(datum_izdavanja) AS godina,
+          MONTH(datum_izdavanja) AS mjesec,
+          ROUND(SUM(COALESCE(iznos_ukupno_km, 0)), 2) AS promet,
+          0 AS troskovi,
+          0 AS zarada
+        FROM fakture
+        WHERE (fiskalni_status IS NULL OR fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))
+          AND datum_izdavanja >= ?
+        GROUP BY YEAR(datum_izdavanja), MONTH(datum_izdavanja)
+        ORDER BY godina ASC, mjesec ASC
+        `,
+        [LIVE_FROM]
+      );
+      const troskoviRows = await query(
+        `
+        SELECT
+          YEAR(datum_troska) AS godina,
+          MONTH(datum_troska) AS mjesec,
+          0 AS promet,
+          ROUND(SUM(COALESCE(iznos_km, 0)), 2) AS troskovi,
+          0 AS zarada
+        FROM projektni_troskovi
+        WHERE (status IS NULL OR status <> 'STORNIRANO')
+          AND datum_troska >= ?
+        GROUP BY YEAR(datum_troska), MONTH(datum_troska)
+        ORDER BY godina ASC, mjesec ASC
+        `,
+        [LIVE_FROM]
+      );
+      for (const r of prometRows || []) addToByYear(byYear, r);
+      for (const r of troskoviRows || []) addToByYear(byYear, r);
+    } catch (liveErr) {
+      console.warn("Grafički izvještaj: live podaci (od 2026) nisu učitani:", liveErr?.message);
+    }
     const mjeseci = [
       "jan", "feb", "mar", "apr", "maj", "jun",
       "jul", "aug", "sep", "okt", "nov", "dec"
     ];
-
-    for (const r of rows || []) {
-      const g = r.godina;
-      if (!byYear[g]) {
-        byYear[g] = {
-          godina: g,
-          mjeseci: {},
-          ukuno: 0,
-          troskovi_ukuno: 0,
-          zarada_ukuno: 0,
-        };
-      }
-      const m = r.mjesec;
-      byYear[g].mjeseci[m] = {
-        promet: Number(r.promet),
-        troskovi: Number(r.troskovi),
-        zarada: Number(r.zarada),
-      };
-      byYear[g].ukuno += Number(r.promet);
-      byYear[g].troskovi_ukuno += Number(r.troskovi);
-      byYear[g].zarada_ukuno += Number(r.zarada);
-    }
 
     const tableData = Object.values(byYear).sort((a, b) => a.godina - b.godina);
 

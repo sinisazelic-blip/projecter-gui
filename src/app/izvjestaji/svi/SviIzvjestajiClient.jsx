@@ -114,7 +114,7 @@ export default function SviIzvjestajiClient() {
       }
       downloadExcel({ filename: fn, sheetName: "Potraživanja", headers, rows, footerRows: footer });
     } else if (tip === "lista_faktura") {
-      const headers = ["Broj", "Datum", "Naručilac", "Osnovica", "PDV", "Ukupno"];
+      const headers = ["Broj", "Datum", "Naručilac", "Osnovica", "PDV", "Ukupno", "Izvor"];
       const rows = (data.items || []).map((r) => [
         r.broj_fakture ?? "",
         r.datum_izdavanja ?? "",
@@ -122,11 +122,12 @@ export default function SviIzvjestajiClient() {
         r.iznos_bez_pdv ?? "",
         r.pdv_iznos ?? "",
         r.iznos_sa_pdv ?? "",
+        r.iz_arhive ? "Arhiva" : "Live",
       ]);
       const footer = [];
       if (data.summary) {
         footer.push([]);
-        footer.push(["", "", "UKUPNO", data.summary.ukupno_bez_pdv ?? "", data.summary.ukupno_pdv ?? "", data.summary.ukupno_sa_pdv ?? ""]);
+        footer.push(["", "", "UKUPNO", data.summary.ukupno_bez_pdv ?? "", data.summary.ukupno_pdv ?? "", data.summary.ukupno_sa_pdv ?? "", ""]);
       }
       downloadExcel({ filename: fn, sheetName: "Lista faktura", headers, rows, footerRows: footer });
     } else if (tip === "knjiga_prihoda") {
@@ -509,10 +510,15 @@ export default function SviIzvjestajiClient() {
               {" | "} Ukupno bez PDV: <strong>{formatNum(data.summary.ukupno_bez_pdv)}</strong> BAM
               {" | "} PDV: <strong>{formatNum(data.summary.ukupno_pdv)}</strong> BAM
               {" | "} Ukupno: <strong>{formatNum(data.summary.ukupno_sa_pdv)}</strong> BAM
+              {(data.items || []).some((r) => r.iz_arhive) && (
+                <span style={{ marginLeft: 12, color: "var(--muted)", fontSize: 12 }}>
+                  (uključujući arhivu do 31.12.2025)
+                </span>
+              )}
             </div>
           )}
           <div style={{ overflowX: "auto" }}>
-            <table className="table" style={{ width: "100%", minWidth: 640 }}>
+            <table className="table" style={{ width: "100%", minWidth: 720 }}>
               <thead>
                 <tr>
                   <th>Broj</th>
@@ -521,17 +527,21 @@ export default function SviIzvjestajiClient() {
                   <th>Osnovica</th>
                   <th>PDV</th>
                   <th>Ukupno</th>
+                  <th style={{ width: 72 }}>Izvor</th>
                 </tr>
               </thead>
               <tbody>
                 {(data.items || []).map((row, i) => (
-                  <tr key={row.faktura_id ?? i}>
+                  <tr key={row.faktura_id ?? `arhiva-${row.broj_fakture}-${row.datum_izdavanja}-${i}`}>
                     <td>{row.broj_fakture ?? "—"}</td>
                     <td>{row.datum_izdavanja ?? "—"}</td>
                     <td>{row.narucilac_naziv ?? "—"}</td>
                     <td style={{ textAlign: "right" }}>{formatNum(row.iznos_bez_pdv)}</td>
                     <td style={{ textAlign: "right" }}>{formatNum(row.pdv_iznos)}</td>
                     <td style={{ textAlign: "right" }}>{formatNum(row.iznos_sa_pdv)}</td>
+                    <td style={{ fontSize: 11, color: "var(--muted)" }}>
+                      {row.iz_arhive ? "Arhiva" : "Live"}
+                    </td>
                   </tr>
                 ))}
               </tbody>

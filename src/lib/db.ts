@@ -30,19 +30,34 @@ function createPool(): mysql.Pool {
   });
 }
 
-export const pool: mysql.Pool = global.__projecter_pool__ ?? createPool();
-
+// Ref da možemo zamijeniti pool kad je zatvoren (Pool is closed)
+const poolRef: { current: mysql.Pool } = {
+  current: global.__projecter_pool__ ?? createPool(),
+};
 if (process.env.NODE_ENV !== "production") {
-  global.__projecter_pool__ = pool;
+  global.__projecter_pool__ = poolRef.current;
 }
+
+function getPool(): mysql.Pool {
+  return poolRef.current;
+}
+
+/** Export za kompatibilnost; pristup uvijek ide preko trenutnog poola. */
+export const pool = new Proxy({} as mysql.Pool, {
+  get(_, prop) {
+    return (getPool() as Record<string, unknown>)[prop as string];
+  },
+});
 
 function isTransientDbError(err: any) {
   const code = String(err?.code || "");
+  const msg = String(err?.message || "");
   return (
     code === "ECONNRESET" ||
     code === "PROTOCOL_CONNECTION_LOST" ||
     code === "EPIPE" ||
-    code === "ETIMEDOUT"
+    code === "ETIMEDOUT" ||
+    msg.includes("Pool is closed")
   );
 }
 
@@ -54,26 +69,19 @@ export async function query<T = any>(
   sql: string,
   params: any[] = [],
 ): Promise<T[]> {
+  const run = (p: mysql.Pool) => p.query(sql, params);
   try {
-    const [rows] = await pool.query(sql, params);
+    const [rows] = await run(getPool());
     return rows as T[];
   } catch (err: any) {
-    // ✅ Jedan retry za tipične dev resetove konekcije
     if (isTransientDbError(err)) {
-      try {
-        // pokušaj zatvoriti stari pool (ignore errors)
-        await pool.end().catch(() => null);
-      } catch {}
-
-      const fresh = createPool();
-      if (process.env.NODE_ENV !== "production") {
-        global.__projecter_pool__ = fresh;
+      if (String(err?.message || "").includes("Pool is closed")) {
+        poolRef.current = createPool();
+        global.__projecter_pool__ = poolRef.current;
       }
-
-      const [rows] = await fresh.query(sql, params);
+      const [rows] = await run(getPool());
       return rows as T[];
     }
-
     throw err;
   }
 }

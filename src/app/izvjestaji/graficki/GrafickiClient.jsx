@@ -183,7 +183,7 @@ export default function GrafickiClient() {
       </div>
 
       <div className="reportNote">
-        Izvor: stg_master_finansije (arhiva 2006 – 31.12.2025). datum_zavrsetka.
+        Izvor: do 31.12.2025 — stg_master_finansije (arhiva, datum_zavrsetka). Od 1.1.2026 — redovno poslovanje: fakture (promet) i projektni_troskovi (troškovi).
       </div>
     </div>
   );

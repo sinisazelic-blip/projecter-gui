@@ -121,7 +121,23 @@ Svaki izvještaj ima:
 
 ---
 
-## 9. Šta imaš u bazi (pregled)
+## 9. Arhiva / staging u izvještaju Talenti
+
+Izvještaj **Talenti** (`/api/izvjestaji/talenti`) od početka uključuje i podatke iz staging/arhive, pa se u listi vide i historijski talenti (npr. Vesna Maksić 35.000 KM).
+
+**Korištene tabele (ako postoje i imaju očekivane kolone):**
+
+| Tabela | Očekivane kolone | Napomena |
+|--------|-------------------|----------|
+| `stg_troskovi_talenti_old` | `talent_id`, `iznos_km` ili `iznos` | Agregacija po talent_id |
+| `stg_troskovi_talenti_old` | `naziv` ili `ime_prezime`, `iznos_km` ili `iznos` | Spajanje po imenu; talenti samo iz arhive dodaju se kao posebni redovi |
+| `talent_istorija` | `talent_id`, `iznos_km` ili `iznos` | Agregacija po talent_id |
+
+Ako neka tabela nema te kolone, API ih preskače (try/catch). Za provjeru strukture: `DESCRIBE stg_troskovi_talenti_old;` i `DESCRIBE talent_istorija;`.
+
+---
+
+## 10. Šta imaš u bazi (pregled)
 
 | Entitet | Tabela | Ključna polja |
 |---------|--------|---------------|
@@ -136,7 +152,7 @@ Svaki izvještaj ima:
 
 ---
 
-## 10. Sljedeći korak
+## 11. Sljedeći korak
 
 Kad budeš spreman: prvo jedan jednostavan izvještaj (npr. „Talenti – ukupno i po projektu”) kao prototip, pa ostalo po prioritetu.
 
@@ -144,6 +160,6 @@ Kad budeš spreman: prvo jedan jednostavan izvještaj (npr. „Talenti – ukupn
 
 ---
 
-## 11. Formalni (knjigovodstveni) izvještaji
+## 12. Formalni (knjigovodstveni) izvještaji
 
 Uobičajeni knjigovodstveni izvještaji koje Fluxa može nuditi (knjiga prihoda, rashoda, PDV, potraživanja, dugovanja, banka vs knjige itd.) – **predlog varijanti i redoslijed:** `docs/PLAN_IZVJESTAJI_FORMALNI.md`.

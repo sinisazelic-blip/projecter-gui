@@ -3,6 +3,41 @@ import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+const ARHIVA_CUTOFF = "2025-12-31";
+
+type LegacyClientRow = { klijent_id: number; stg_broj_projekata: number; stg_ukupno_fakturisano: number };
+
+/**
+ * Arhiva iz stg_master_finansije do 31.12.2025 — agregacija po klijentu (COALESCE(narucilac_id, krajnji_klijent_id)).
+ */
+async function loadLegacyByClient(): Promise<Map<number, { broj_projekata: number; ukupno_fakturisano: number }>> {
+  const map = new Map<number, { broj_projekata: number; ukupno_fakturisano: number }>();
+  try {
+    const rows = (await query(
+      `SELECT
+        COALESCE(narucilac_id, krajnji_klijent_id) AS klijent_id,
+        COUNT(DISTINCT id_po) AS stg_broj_projekata,
+        ROUND(SUM(COALESCE(iznos_km, 0)), 2) AS stg_ukupno_fakturisano
+       FROM stg_master_finansije
+       WHERE datum_zavrsetka IS NOT NULL AND datum_zavrsetka <= ?
+         AND (narucilac_id IS NOT NULL OR krajnji_klijent_id IS NOT NULL)
+       GROUP BY COALESCE(narucilac_id, krajnji_klijent_id)`,
+      [ARHIVA_CUTOFF]
+    )) as LegacyClientRow[];
+    for (const r of rows ?? []) {
+      const id = Number(r.klijent_id);
+      if (!Number.isFinite(id)) continue;
+      map.set(id, {
+        broj_projekata: Number(r.stg_broj_projekata) || 0,
+        ukupno_fakturisano: Number(r.stg_ukupno_fakturisano) || 0,
+      });
+    }
+  } catch {
+    // Tabela ili kolone ne postoje
+  }
+  return map;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
@@ -13,7 +48,6 @@ export async function GET(req: NextRequest) {
     const dateFilterFakture: string[] = [];
     const params: any[] = [];
 
-    // Filter po datumu projekta
     if (dateFrom) {
       dateFilterProjekti.push("p.rok_glavni >= ?");
       params.push(dateFrom);
@@ -22,8 +56,6 @@ export async function GET(req: NextRequest) {
       dateFilterProjekti.push("p.rok_glavni <= ?");
       params.push(dateTo + " 23:59:59");
     }
-
-    // Filter po datumu fakture
     if (dateFrom) {
       dateFilterFakture.push("f.datum_izdavanja >= ?");
       params.push(dateFrom);
@@ -35,13 +67,10 @@ export async function GET(req: NextRequest) {
 
     const projektiWhere = dateFilterProjekti.length ? "WHERE " + dateFilterProjekti.join(" AND ") : "";
     const faktureWhere = dateFilterFakture.length ? "WHERE " + dateFilterFakture.join(" AND ") : "";
-    
-    // Ako nema filtera, koristimo prazan string, ali pazimo da WHERE ne bude na kraju
     const projektiWhereClause = projektiWhere || "";
     const faktureWhereClause = faktureWhere || "";
 
-    // Query za klijente sa projektima i fakturama koristeći subquery-je
-    const sql = 
+    const sql =
       "SELECT " +
       "k.klijent_id, " +
       "k.naziv_klijenta, " +
@@ -59,7 +88,8 @@ export async function GET(req: NextRequest) {
       "    COALESCE(SUM(COALESCE(vf.budzet_planirani, p.budzet_planirani, 0)), 0) AS ukupno_budzet " +
       "  FROM projekti p " +
       "  LEFT JOIN vw_projekti_finansije vf ON vf.projekat_id = p.projekat_id " +
-      projektiWhereClause + " " +
+      projektiWhereClause +
+      " " +
       "  GROUP BY p.narucilac_id " +
       ") proj_stats ON proj_stats.narucilac_id = k.klijent_id " +
       "LEFT JOIN ( " +
@@ -70,7 +100,8 @@ export async function GET(req: NextRequest) {
       "    COALESCE(SUM(CASE WHEN f.fiskalni_status IN ('PLACENA', 'DJELIMICNO') THEN f.iznos_ukupno_km ELSE 0 END), 0) AS ukupno_naplaceno, " +
       "    COALESCE(SUM(CASE WHEN f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('PLACENA', 'DJELIMICNO', 'STORNIRAN', 'ZAMIJENJEN') THEN f.iznos_ukupno_km ELSE 0 END), 0) AS potrazivanja " +
       "  FROM fakture f " +
-      faktureWhereClause + " " +
+      faktureWhereClause +
+      " " +
       "  GROUP BY f.bill_to_klijent_id " +
       ") fakt_stats ON fakt_stats.bill_to_klijent_id = k.klijent_id " +
       "WHERE proj_stats.broj_projekata > 0 OR fakt_stats.broj_faktura > 0 " +
@@ -86,7 +117,6 @@ export async function GET(req: NextRequest) {
       const ukupnoFakturisano = Number(r.ukupno_fakturisano) || 0;
       const ukupnoNaplaceno = Number(r.ukupno_naplaceno) || 0;
       const potrazivanja = Number(r.potrazivanja) || 0;
-
       return {
         klijent_id: r.klijent_id,
         naziv_klijenta: r.naziv_klijenta || "—",
@@ -97,6 +127,46 @@ export async function GET(req: NextRequest) {
         ukupno_naplaceno: ukupnoNaplaceno,
         potrazivanja: potrazivanja,
       };
+    });
+
+    const legacyByClient = await loadLegacyByClient();
+    const liveIds = new Set(items.map((i) => i.klijent_id));
+
+    for (const it of items) {
+      const leg = legacyByClient.get(it.klijent_id);
+      if (leg) {
+        it.broj_projekata += leg.broj_projekata;
+        it.ukupno_fakturisano += leg.ukupno_fakturisano;
+      }
+    }
+
+    const legacyOnlyIds = [...legacyByClient.keys()].filter((id) => !liveIds.has(id));
+    if (legacyOnlyIds.length > 0) {
+      const placeholders = legacyOnlyIds.map(() => "?").join(",");
+      const nameRows = (await query(
+        `SELECT klijent_id, naziv_klijenta FROM klijenti WHERE klijent_id IN (${placeholders})`,
+        legacyOnlyIds
+      )) as { klijent_id: number; naziv_klijenta: string }[];
+      const nazivById = new Map((nameRows ?? []).map((r) => [Number(r.klijent_id), r.naziv_klijenta ?? "—"]));
+      for (const klijentId of legacyOnlyIds) {
+        const leg = legacyByClient.get(klijentId)!;
+        items.push({
+          klijent_id: klijentId,
+          naziv_klijenta: nazivById.get(klijentId) ?? "—",
+          broj_projekata: leg.broj_projekata,
+          ukupno_budzet_projekata: 0,
+          broj_faktura: 0,
+          ukupno_fakturisano: leg.ukupno_fakturisano,
+          ukupno_naplaceno: 0,
+          potrazivanja: 0,
+        });
+      }
+    }
+
+    items.sort((a, b) => {
+      const diff = (b.ukupno_fakturisano ?? 0) - (a.ukupno_fakturisano ?? 0);
+      if (diff !== 0) return diff;
+      return String(a.naziv_klijenta ?? "").localeCompare(String(b.naziv_klijenta ?? ""), "hr");
     });
 
     const totalBrojProjekata = items.reduce((s, i) => s + i.broj_projekata, 0);
