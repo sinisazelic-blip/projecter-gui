@@ -861,79 +861,103 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
               padding: "10px 0",
             }}
           >
-            {/* Semafor + komentar + Snimi */}
-            <form
-              action={setOperativniSignal}
+            {/* Grupa 1: Semafor + komentar + Snimi */}
+            <div
               style={{
-                display: "inline-flex",
+                display: "flex",
                 alignItems: "center",
                 gap: 8,
-                flexWrap: "wrap",
-                opacity: isReadOnly ? 0.55 : 1,
-                pointerEvents: isReadOnly ? "none" : "auto",
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: "1px solid rgba(255,255,255,.15)",
+                background: "rgba(255,255,255,.05)",
               }}
-              title={isReadOnly ? "Projekat je fakturisan (read-only)." : "Owner: operativni signal"}
             >
-              <input type="hidden" name="projekat_id" value={project.projekat_id} />
-              <input type="hidden" name="return_to" value={returnTo} />
-              <select
-                name="operativni_signal"
-                defaultValue={String(project?.operativni_signal ?? "NORMALNO")}
-                className="sigSelect"
-              >
-                <option value="NORMALNO">NORMALNO</option>
-                <option value="PAZNJA">PAŽNJA</option>
-                <option value="STOP">STOP</option>
-              </select>
-              <input
-                name="note"
-                placeholder="bilješka (opciono)…"
-                className="sigNote"
-                maxLength={500}
-                title="Bilješka (ide u log)"
-              />
-              <button type="submit" className="glassbtn payBtn" title="Snimi signal">
-                <span style={{ fontSize: 16, lineHeight: 1 }}>✅</span> Snimi
-              </button>
-            </form>
-
-            {/* Budžet % za tim + Snimi */}
-            <form
-              action={setBudzetProcenatZaTim}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                flexWrap: "wrap",
-                opacity: isReadOnly ? 0.55 : 1,
-                pointerEvents: isReadOnly ? "none" : "auto",
-              }}
-              title={isReadOnly ? "Projekat je fakturisan (read-only)." : "Owner: procenat budžeta vidljiv radnicima"}
-            >
-              <input type="hidden" name="projekat_id" value={project.projekat_id} />
-              <input type="hidden" name="return_to" value={returnTo} />
-              <label style={{ fontSize: 12, opacity: 0.85, whiteSpace: "nowrap" }}>Budžet za tim (%):</label>
-              <input
-                type="number"
-                name="budzet_procenat_za_tim"
-                defaultValue={String(project?.budzet_procenat_za_tim ?? 50.00)}
-                min="0"
-                max="100"
-                step="0.01"
+              <form
+                action={setOperativniSignal}
                 style={{
-                  width: 70,
-                  padding: "6px 8px",
-                  borderRadius: 6,
-                  border: "1px solid rgba(255,255,255,.2)",
-                  background: "rgba(255,255,255,.05)",
-                  color: "inherit",
-                  fontSize: 13,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  opacity: isReadOnly ? 0.55 : 1,
+                  pointerEvents: isReadOnly ? "none" : "auto",
                 }}
-              />
-              <button type="submit" className="glassbtn payBtn" title="Snimi procenat">
-                <span style={{ fontSize: 16, lineHeight: 1 }}>💾</span> Snimi %
-              </button>
-            </form>
+                title={isReadOnly ? "Projekat je fakturisan (read-only)." : "Owner: operativni signal"}
+              >
+                <input type="hidden" name="projekat_id" value={project.projekat_id} />
+                <input type="hidden" name="return_to" value={returnTo} />
+                <select
+                  name="operativni_signal"
+                  defaultValue={String(project?.operativni_signal ?? "NORMALNO")}
+                  className="sigSelect"
+                >
+                  <option value="NORMALNO">NORMALNO</option>
+                  <option value="PAZNJA">PAŽNJA</option>
+                  <option value="STOP">STOP</option>
+                </select>
+                <input
+                  name="note"
+                  placeholder="bilješka (opciono)…"
+                  className="sigNote"
+                  maxLength={500}
+                  title="Bilješka (ide u log)"
+                />
+                <button type="submit" className="glassbtn payBtn" title="Snimi signal">
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>✅</span> Snimi
+                </button>
+              </form>
+            </div>
+
+            {/* Grupa 2: Budžet % za tim + Snimi */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: "1px solid rgba(255,255,255,.15)",
+                background: "rgba(255,255,255,.05)",
+              }}
+            >
+              <form
+                action={setBudzetProcenatZaTim}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  opacity: isReadOnly ? 0.55 : 1,
+                  pointerEvents: isReadOnly ? "none" : "auto",
+                }}
+                title={isReadOnly ? "Projekat je fakturisan (read-only)." : "Owner: procenat budžeta vidljiv radnicima"}
+              >
+                <input type="hidden" name="projekat_id" value={project.projekat_id} />
+                <input type="hidden" name="return_to" value={returnTo} />
+                <label style={{ fontSize: 12, opacity: 0.85, whiteSpace: "nowrap" }}>Budžet za tim (%):</label>
+                <input
+                  type="number"
+                  name="budzet_procenat_za_tim"
+                  defaultValue={String(project?.budzet_procenat_za_tim ?? 50.00)}
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  style={{
+                    width: 70,
+                    padding: "6px 8px",
+                    borderRadius: 6,
+                    border: "1px solid rgba(255,255,255,.2)",
+                    background: "rgba(255,255,255,.05)",
+                    color: "inherit",
+                    fontSize: 13,
+                  }}
+                />
+                <button type="submit" className="glassbtn payBtn" title="Snimi procenat">
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>💾</span> Snimi %
+                </button>
+              </form>
+            </div>
 
             {/* ProBono: samo owner — dugme, upozorenje, zatim arhiva */}
             <ProBonoButton
