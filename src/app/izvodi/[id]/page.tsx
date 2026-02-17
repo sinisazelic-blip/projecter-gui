@@ -421,11 +421,14 @@ export default function IzvodDetailPage() {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
+                <div className="brandLogoBlock">
+                  <img
+                    src="/fluxa/logo-light.png"
+                    alt="FLUXA"
+                    className="brandLogo"
+                  />
+                  <span className="brandSlogan">Project & Finance Engine</span>
+                </div>
                 <div>
                   <div className="brandTitle">🏦 Izvod #{izvod.statement_no || izvod.batch_id}</div>
                   <div className="brandSub">Pregled bankovnog izvoda</div>
@@ -504,8 +507,8 @@ export default function IzvodDetailPage() {
               </div>
 
               {/* Tabela transakcija */}
-              <div className="tblWrap">
-                <table>
+              <div className="tblWrap table-wrap">
+                <table className="table">
                   <thead>
                     <tr>
                       <th style={{ width: "100px" }}>Referenca</th>

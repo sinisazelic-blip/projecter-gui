@@ -499,11 +499,14 @@ export default function BankImportPage() {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
+                <div className="brandLogoBlock">
+                  <img
+                    src="/fluxa/logo-light.png"
+                    alt="FLUXA"
+                    className="brandLogo"
+                  />
+                  <span className="brandSlogan">Project & Finance Engine</span>
+                </div>
                 <div>
                   <div className="brandTitle">Import izvoda</div>
                   <div className="brandSub">Bank Import (BAM XML v2) + Matching</div>
@@ -811,8 +814,8 @@ export default function BankImportPage() {
                   Greška: {unmatchedRes.error}
                 </div>
               ) : (
-                <div className="tableCard">
-                  <table>
+                <div className="tableCard table-wrap">
+                  <table className="table">
                     <thead>
                       <tr>
                         <th>Datum</th>
@@ -883,8 +886,8 @@ export default function BankImportPage() {
                   Greška: {matchedRes.error}
                 </div>
               ) : (
-                <div className="tableCard">
-                  <table>
+                <div className="tableCard table-wrap">
+                  <table className="table">
                     <thead>
                       <tr>
                         <th>Datum</th>
@@ -950,8 +953,8 @@ export default function BankImportPage() {
             {txs.length})
           </div>
 
-          <div className="tableCard">
-            <table>
+          <div className="tableCard table-wrap">
+            <table className="table">
               <thead>
                 <tr>
                   <th>Datum</th>

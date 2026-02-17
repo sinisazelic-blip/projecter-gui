@@ -4,6 +4,37 @@ import { formatDateDMY } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
+type StgByPo = { id_po: number; stg_budzet: number; stg_troskovi: number };
+
+/**
+ * Iz stg_master_finansije po id_po: iznos_km -> budžet, iznos_troska_km -> troškovi (istorija).
+ */
+async function loadStagingByProjekat(): Promise<Map<number, { budzet: number; troskovi: number }>> {
+  const map = new Map<number, { budzet: number; troskovi: number }>();
+  try {
+    const rows = (await query(
+      `SELECT id_po,
+              ROUND(SUM(COALESCE(iznos_km, 0)), 2) AS stg_budzet,
+              ROUND(SUM(COALESCE(iznos_troska_km, 0)), 2) AS stg_troskovi
+       FROM stg_master_finansije
+       WHERE id_po IS NOT NULL
+       GROUP BY id_po`,
+      []
+    )) as StgByPo[];
+    for (const r of rows ?? []) {
+      const id = Number(r.id_po);
+      if (!Number.isFinite(id)) continue;
+      map.set(id, {
+        budzet: Number(r.stg_budzet) || 0,
+        troskovi: Number(r.stg_troskovi) || 0,
+      });
+    }
+  } catch {
+    // Tabela ili kolone ne postoje
+  }
+  return map;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
@@ -55,7 +86,7 @@ export async function GET(req: NextRequest) {
       LEFT JOIN klijenti k ON k.klijent_id = p.narucilac_id
       ${whereSql}
       ORDER BY p.status_id ASC, p.projekat_id ASC
-      LIMIT 1000
+      LIMIT 5000
       `,
       params,
     );
@@ -73,6 +104,18 @@ export async function GET(req: NextRequest) {
       troskovi_ukupno: Number(r.troskovi_ukupno) || 0,
       planirana_zarada: Number(r.planirana_zarada) || 0,
     }));
+
+    const stgByPo = await loadStagingByProjekat();
+    for (const it of items) {
+      const idPo = it.id_po != null && it.id_po !== "" ? Number(it.id_po) : NaN;
+      if (!Number.isFinite(idPo)) continue;
+      const stg = stgByPo.get(idPo);
+      if (stg) {
+        it.budzet_planirani += stg.budzet;
+        it.troskovi_ukupno += stg.troskovi;
+        it.planirana_zarada = it.budzet_planirani - it.troskovi_ukupno;
+      }
+    }
 
     const ukupno_budzet = items.reduce((s, i) => s + i.budzet_planirani, 0);
     const ukupno_troskovi = items.reduce((s, i) => s + i.troskovi_ukupno, 0);

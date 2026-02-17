@@ -138,7 +138,7 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
     }));
   }
 
-  if (loading) return <div className="card" style={{ padding: 24 }}>Učitavanje…</div>;
+  if (loading) return <div className="card">Učitavanje…</div>;
 
   return (
     <div className="fazePage">

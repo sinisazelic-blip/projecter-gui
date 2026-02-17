@@ -19,7 +19,7 @@ function fmtDDMMYYYYFromISO(isoLike: string | null): string {
 function fmtMoney(n: number, ccy: string) {
   const v = Number.isFinite(n) ? n : 0;
   const s = v.toFixed(2);
-  const label = ccy === "KM" ? "KM" : ccy;
+  const label = (ccy === "BAM" || ccy === "KM") ? "KM" : ccy;
   return `${s} ${label}`;
 }
 
@@ -355,11 +355,11 @@ export default function FakturaPreviewPage() {
       const html2pdf = (await import("html2pdf.js")).default;
       await html2pdf()
         .set({
-          margin: 10,
+          margin: 0,
           filename: `${pdfFilename}.pdf`,
           image: { type: "jpeg", quality: 0.98 },
           html2canvas: { scale: 2 },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait", hotfixes: ["px_scaling"] },
         })
         .from(el)
         .save();
@@ -521,13 +521,14 @@ export default function FakturaPreviewPage() {
         .paperStage{ display:flex; justify-content:center; padding: 0 10px; }
         .paper{
           width: 210mm;
-          min-height: 297mm;
           background: #ffffff;
           color: #111111;
           border-radius: 12px;
           box-shadow: 0 18px 60px rgba(0,0,0,.35);
           border: 1px solid rgba(0,0,0,.08);
           padding: 18mm 16mm;
+          box-sizing: border-box;
+          overflow-x: hidden;
         }
         @media (max-width: 980px){
           .paper{ width: min(100%, 210mm); padding: 16px; }
@@ -726,8 +727,9 @@ export default function FakturaPreviewPage() {
           
           .paper {
             width: 210mm !important;
-            min-height: 297mm !important;
             max-width: 210mm !important;
+            box-sizing: border-box !important;
+            overflow-x: hidden !important;
             border: none !important;
             box-shadow: none !important;
             border-radius: 0 !important;
@@ -736,8 +738,7 @@ export default function FakturaPreviewPage() {
             background: #ffffff !important;
             background-color: #ffffff !important;
             color: #111111 !important;
-            page-break-after: always;
-            page-break-inside: avoid;
+            page-break-inside: auto;
           }
           
           .cols2 {
@@ -754,6 +755,11 @@ export default function FakturaPreviewPage() {
             page-break-inside: avoid;
             page-break-after: auto;
           }
+          
+          /* Safe zone: ne cijepati logičke cjeline na pola stranice */
+          .invRow, .cols2, .totalsRow, .totalsBox, .footer {
+            page-break-inside: avoid;
+          }
         }
       `}</style>
 
@@ -762,11 +768,14 @@ export default function FakturaPreviewPage() {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
+                <div className="brandLogoBlock">
+                  <img
+                    src="/fluxa/logo-light.png"
+                    alt="FLUXA"
+                    className="brandLogo"
+                  />
+                  <span className="brandSlogan">Project & Finance Engine</span>
+                </div>
                 <div>
                   <div className="brandTitle">📄 Faktura #{invoiceNumber}</div>
                   <div className="brandSub">Pregled fakture</div>
@@ -888,7 +897,7 @@ export default function FakturaPreviewPage() {
                       <div className="k">
                         {lang === "EN" ? "Currency" : "Valuta"}
                       </div>
-                      <div className="v">{ccy}</div>
+                      <div className="v">{(ccy === "BAM" || ccy === "KM") ? "KM" : ccy}</div>
                     </div>
                     <div className="line">
                       <div className="k">
@@ -947,8 +956,8 @@ export default function FakturaPreviewPage() {
                 </div>
               </div>
 
-              <div className="tblWrap">
-                <table>
+              <div className="tblWrap table-wrap">
+                <table className="table">
                   <thead>
                     <tr>
                       <th>
@@ -1038,7 +1047,7 @@ export default function FakturaPreviewPage() {
                     : "Hvala na saradnji!"}
                 </div>
                 <div className="fluxaSig">
-                  <img src="/fluxa/logo-icon.png" alt="FLUXA" />
+                  <img src="/fluxa/Icon.png" alt="FLUXA" />
                   <span>FLUXA</span>
                 </div>
               </div>

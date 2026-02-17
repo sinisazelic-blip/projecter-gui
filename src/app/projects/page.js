@@ -287,7 +287,7 @@ function parseStatusPick(status_pick_raw) {
 
   if (s.startsWith("group:")) {
     const g = s.slice("group:".length).toLowerCase();
-    if (g === "active" || g === "archive" || g === "all")
+    if (g === "active" || g === "archive" || g === "all" || g === "storno")
       return { status_group: g, status_id: null };
     return { status_group: "active", status_id: null };
   }
@@ -549,11 +549,14 @@ export default async function Page({ searchParams }) {
         <div className="topInner">
           <div className="topRow" style={{ justifyContent: "space-between", alignItems: "center" }}>
             <div className="brandWrap">
-              <img
-                src="/fluxa/logo-light.png"
-                alt="FLUXA"
-                className="brandLogo"
-              />
+              <div className="brandLogoBlock">
+                <img
+                  src="/fluxa/logo-light.png"
+                  alt="FLUXA"
+                  className="brandLogo"
+                />
+                <span className="brandSlogan">Project & Finance Engine</span>
+              </div>
               <div>
                 <div className="brandTitle">📊 PP</div>
                 <div className="brandSub" style={{ fontSize: '10px', opacity: 0.7 }}>Pregled Projekata</div>
@@ -610,58 +613,68 @@ export default async function Page({ searchParams }) {
               <input type="hidden" name="page" value="1" />
               <input type="hidden" name="limit" value={String(limit)} />
 
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", fontSize: 13 }}>
-                <span className="label" style={{ fontSize: 12 }}>Status:</span>
-                <select
-                  name="status_pick"
-                  defaultValue={statusSelectValue}
-                  className="input"
-                  style={{ minWidth: 170, fontSize: 12, padding: "6px 10px" }}
-                >
-                  <option value="group:active">Aktivni (grupa 1–8)</option>
-                  <option value="group:archive">Arhiva (10 + 11)</option>
-                  <option value="group:all">Svi statusi (grupa)</option>
-                  <option disabled value="__sep__">────────</option>
-                  {statuses.map((s) => (
-                    <option key={s.status_id} value={String(s.status_id)}>
-                      {s.status_id} — {s.naziv_statusa}
-                    </option>
-                  ))}
-                </select>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 13 }}>
+                {/* Status filter */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span className="label" style={{ fontSize: 12, minWidth: 100 }}>Status:</span>
+                  <select
+                    name="status_pick"
+                    defaultValue={statusSelectValue}
+                    className="input"
+                    style={{ minWidth: 200, fontSize: 12, padding: "6px 10px" }}
+                  >
+                    <option value="group:active">Aktivni (grupa 1–8)</option>
+                    <option value="group:archive">Arhiva (10 + 11)</option>
+                    <option value="group:storno">Storno (12)</option>
+                    <option value="group:all">Svi statusi (grupa)</option>
+                    <option disabled value="__sep__">────────</option>
+                    {statuses.map((s) => (
+                      <option key={s.status_id} value={String(s.status_id)}>
+                        {s.status_id} — {s.naziv_statusa}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-                <span className="label" style={{ fontSize: 12 }}>Fin:</span>
-                <select
-                  name="fin_status"
-                  defaultValue={String(finRaw)}
-                  className="input"
-                  style={{ minWidth: 120, fontSize: 12, padding: "6px 10px" }}
-                >
-                  <option value="">Svi</option>
-                  <option value="bez_budzeta">Bez budžeta</option>
-                  <option value="u_plusu">U plusu</option>
-                  <option value="u_minusu">U minusu</option>
-                </select>
+                {/* Finansijski filter */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span className="label" style={{ fontSize: 12, minWidth: 100 }}>Finansijski:</span>
+                  <select
+                    name="fin_status"
+                    defaultValue={String(finRaw)}
+                    className="input"
+                    style={{ minWidth: 200, fontSize: 12, padding: "6px 10px" }}
+                  >
+                    <option value="">Svi</option>
+                    <option value="bez_budzeta">Bez budžeta</option>
+                    <option value="u_plusu">U plusu</option>
+                    <option value="u_minusu">U minusu</option>
+                  </select>
+                </div>
 
-                <span className="label" style={{ fontSize: 12 }}>Traži:</span>
-                <input
-                  name="q"
-                  defaultValue={String(qRaw)}
-                  placeholder="ID ili naziv..."
-                  className="input"
-                  style={{ width: 180, fontSize: 12, padding: "6px 10px" }}
-                />
+                {/* Traži filter */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <span className="label" style={{ fontSize: 12, minWidth: 100 }}>Traži:</span>
+                  <input
+                    name="q"
+                    defaultValue={String(qRaw)}
+                    placeholder="ID ili naziv..."
+                    className="input"
+                    style={{ minWidth: 200, fontSize: 12, padding: "6px 10px" }}
+                  />
 
-                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, opacity: 0.9, fontSize: 12 }}>
-                  <input type="checkbox" name="show_done" value="1" defaultChecked={showDone} />
-                  Prikaži završene
-                </label>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, opacity: 0.9, fontSize: 12 }}>
+                    <input type="checkbox" name="show_done" value="1" defaultChecked={showDone} />
+                    Prikaži završene
+                  </label>
 
-                <button type="submit" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}>
-                  🔎 Filtriraj
-                </button>
-                <Link href="/projects" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}>
-                  🔄 Reset
-                </Link>
+                  <button type="submit" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}>
+                    🔎 Filtriraj
+                  </button>
+                  <Link href="/projects" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}>
+                    🔄 Reset
+                  </Link>
+                </div>
               </div>
             </form>
           </div>

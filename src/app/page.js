@@ -26,14 +26,13 @@ export default function HomePage() {
           src="/fluxa/logo-light.png"
           alt="Fluxa"
           style={{
-            width: 200,
+            width: 260,
             maxWidth: "90%",
             height: "auto",
             objectFit: "contain",
             opacity: 0.95,
           }}
         />
-
         <p
           style={{
             margin: 0,
@@ -41,10 +40,9 @@ export default function HomePage() {
             fontWeight: 500,
             letterSpacing: "0.06em",
             color: "var(--muted)",
-            textTransform: "uppercase",
           }}
         >
-          Projects & Finance Engine
+          Project & Finance Engine
         </p>
 
         <Link

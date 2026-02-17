@@ -19,7 +19,7 @@ function fmtDDMMYYYYFromISO(isoLike: string | null): string {
 function fmtMoney(n: number, ccy: string) {
   const v = Number.isFinite(n) ? n : 0;
   const s = v.toFixed(2);
-  const label = ccy === "KM" ? "KM" : ccy;
+  const label = (ccy === "BAM" || ccy === "KM") ? "KM" : ccy;
   return `${s} ${label}`;
 }
 
@@ -276,6 +276,39 @@ export default function Page() {
     return map;
   }, [sp]);
 
+  // ✅ Grupisanje projekata (group_id -> { name: string, projectIds: number[] })
+  const projectGroups = useMemo(() => {
+    const raw = sp.get("project_groups");
+    if (!raw) return {};
+    const map: Record<string, { name: string; projectIds: number[] }> = {};
+    raw.split(";").forEach((groupStr) => {
+      const parts = groupStr.split(":");
+      if (parts.length < 3) return;
+      const groupId = parts[0];
+      const name = decodeURIComponent(parts[1]);
+      const projectIdsStr = parts.slice(2).join(":"); // Može biti više : u nazivu
+      const projectIds = projectIdsStr
+        .split(",")
+        .map((id) => Number(id.trim()))
+        .filter((id) => Number.isFinite(id) && id > 0);
+      if (name && projectIds.length > 0) {
+        map[groupId] = { name, projectIds };
+      }
+    });
+    return map;
+  }, [sp]);
+
+  // ✅ Mapiranje projekat_id -> group_id (za brzu provjeru)
+  const projectToGroup = useMemo(() => {
+    const map = new Map<number, string>();
+    Object.entries(projectGroups).forEach(([groupId, group]) => {
+      group.projectIds.forEach((pid) => {
+        map.set(pid, groupId);
+      });
+    });
+    return map;
+  }, [projectGroups]);
+
   const [data, setData] = useState<PreviewData | null>(null);
   const [fiskalizujLoading, setFiskalizujLoading] = useState(false);
   const [fiskalizacijaDone, setFiskalizacijaDone] = useState(false);
@@ -464,32 +497,88 @@ export default function Page() {
     }
   }
 
-  const items = useMemo(
-    () =>
-      projects.map((p) => {
-        // ✅ Koristi override naziv ako postoji, inače radni_naziv
-        const overrideNaziv = projectNameOverrides[p.projekat_id];
-        const title = String(
-          overrideNaziv || p.radni_naziv || `Projekat #${p.projekat_id}`,
-        ).trim();
-        const sub = p.klijent_naziv ? `Klijent: ${p.klijent_naziv}` : "";
-        const subItems = projectSubItems[p.projekat_id] ?? [];
-        const qty = 1;
-        const unit = Number(p.budzet_planirani ?? 0);
-        const total = qty * unit;
-        return {
-          id: p.projekat_id,
-          title,
-          sub,
-          subItems,
-          qty,
-          unit,
-          total,
-          closed_at: p.closed_at,
-        };
-      }),
-    [projects, projectNameOverrides, projectSubItems],
-  );
+  const items = useMemo(() => {
+    // Prvo kreiraj sve stavke po projektu
+    const rawItems = projects.map((p) => {
+      // ✅ Provjeri da li je projekat u grupi
+      const groupId = projectToGroup.get(p.projekat_id);
+      const group = groupId ? projectGroups[groupId] : null;
+      
+      // ✅ Ako je u grupi, koristi grupni naziv; inače override naziv ili radni_naziv
+      const overrideNaziv = projectNameOverrides[p.projekat_id];
+      const title = group
+        ? group.name
+        : String(overrideNaziv || p.radni_naziv || `Projekat #${p.projekat_id}`).trim();
+      
+      const sub = p.klijent_naziv ? `Klijent: ${p.klijent_naziv}` : "";
+      const subItems = projectSubItems[p.projekat_id] ?? [];
+      const qty = 1;
+      const unit = Number(p.budzet_planirani ?? 0);
+      const total = qty * unit;
+      return {
+        id: p.projekat_id,
+        title,
+        sub,
+        subItems,
+        qty,
+        unit,
+        total,
+        closed_at: p.closed_at,
+        groupId: groupId || null, // za grupisanje
+      };
+    });
+
+    // ✅ Grupiši stavke po groupId ili po nazivu ako nisu u grupi
+    const grouped = new Map<string, typeof rawItems[0] & { ids: number[]; allSubItems: string[][] }>();
+    
+    for (const item of rawItems) {
+      // Ako je u grupi, koristi groupId kao ključ; inače koristi title
+      const key = item.groupId || `single_${item.id}`;
+      const existing = grouped.get(key);
+      
+      if (existing && item.groupId) {
+        // Kombinuj projekte iz iste grupe: zbroji iznose, kombinuj subItems
+        // Količina ostaje 1 (jedna stavka na fakturi), samo iznosi se zbrajaju
+        existing.total += item.total;
+        existing.unit += item.unit;
+        existing.qty = 1; // Količina je uvijek 1 za kombinovane projekte
+        existing.ids.push(item.id);
+        if (item.subItems.length > 0) {
+          existing.allSubItems.push(item.subItems);
+        }
+        // Zadrži najnoviji datum zatvaranja
+        if (item.closed_at && (!existing.closed_at || item.closed_at > existing.closed_at)) {
+          existing.closed_at = item.closed_at;
+        }
+      } else {
+        // Prva stavka sa ovim ključem
+        grouped.set(key, {
+          ...item,
+          ids: [item.id],
+          allSubItems: item.subItems.length > 0 ? [item.subItems] : [],
+        });
+      }
+    }
+
+    // Konvertuj nazad u array i kombinuj subItems u jedan niz
+    return Array.from(grouped.values()).map((g) => {
+      // Kombinuj sve subItems u jedan niz (ukloni duplikate)
+      const combinedSubItems = Array.from(
+        new Set(g.allSubItems.flat().filter(Boolean))
+      );
+      
+      return {
+        id: g.ids.length === 1 ? g.ids[0] : g.ids[0], // prvi ID za kompatibilnost
+        title: g.title,
+        sub: g.sub,
+        subItems: combinedSubItems,
+        qty: g.qty,
+        unit: g.unit, // ukupan iznos (svi projekti zbrojeni)
+        total: g.total, // isto kao unit u ovom slučaju
+        closed_at: g.closed_at,
+      };
+    });
+  }, [projects, projectNameOverrides, projectSubItems, projectGroups, projectToGroup]);
 
   const baseAmount = useMemo(
     () =>
@@ -585,11 +674,11 @@ export default function Page() {
       const html2pdf = (await import("html2pdf.js")).default;
       await html2pdf()
         .set({
-          margin: 10,
+          margin: 0,
           filename: `${pdfFilename}.pdf`,
           image: { type: "jpeg", quality: 0.98 },
           html2canvas: { scale: 2 },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait", hotfixes: ["px_scaling"] },
         })
         .from(el)
         .save();
@@ -616,6 +705,7 @@ export default function Page() {
         }
         .topInner { padding: 0 14px; }
         .topRow { display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; }
+        .topRowSecondary { margin-top: 14px; }
         .brandWrap { display:flex; align-items:center; gap:12px; }
         .brandLogo { height: 30px; width:auto; opacity:.92; }
         .brandTitle { font-size: 18px; font-weight: 800; line-height: 1.1; margin: 0; }
@@ -652,13 +742,14 @@ export default function Page() {
         .paperStage{ display:flex; justify-content:center; padding: 0 10px; }
         .paper{
           width: 210mm;
-          min-height: 297mm;
           background: #ffffff;
           color: #111111;
           border-radius: 12px;
           box-shadow: 0 18px 60px rgba(0,0,0,.35);
           border: 1px solid rgba(0,0,0,.08);
           padding: 18mm 16mm;
+          box-sizing: border-box;
+          overflow-x: hidden;
         }
         @media (max-width: 980px){
           .paper{ width: min(100%, 210mm); padding: 16px; }
@@ -859,8 +950,9 @@ export default function Page() {
           
           .paper {
             width: 210mm !important;
-            min-height: 297mm !important;
             max-width: 210mm !important;
+            box-sizing: border-box !important;
+            overflow-x: hidden !important;
             border: none !important;
             box-shadow: none !important;
             border-radius: 0 !important;
@@ -869,8 +961,7 @@ export default function Page() {
             background: #ffffff !important;
             background-color: #ffffff !important;
             color: #111111 !important;
-            page-break-after: always;
-            page-break-inside: avoid;
+            page-break-inside: auto;
           }
           
           .cols2 {
@@ -887,6 +978,11 @@ export default function Page() {
             page-break-inside: avoid;
             page-break-after: auto;
           }
+          
+          /* Safe zone: ne cijepati logičke cjeline na pola stranice */
+          .invRow, .cols2, .totalsRow, .totalsBox, .footer {
+            page-break-inside: avoid;
+          }
         }
       `}</style>
 
@@ -895,11 +991,14 @@ export default function Page() {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
+                <div className="brandLogoBlock">
+                  <img
+                    src="/fluxa/logo-light.png"
+                    alt="FLUXA"
+                    className="brandLogo"
+                  />
+                  <span className="brandSlogan">Project & Finance Engine</span>
+                </div>
                 <div>
                   <div className="brandTitle">
                     {lang === "EN"
@@ -913,14 +1012,16 @@ export default function Page() {
                   </div>
                 </div>
               </div>
+              <Link className="btn" href="/dashboard" title="Dashboard">
+                🏠 Dashboard
+              </Link>
+            </div>
+            <div className="topRow topRowSecondary">
+              <div style={{ flex: 1, minWidth: 0 }} />
 
               <div className="actions">
                 {!created ? (
                   <>
-                    <Link className="btn" href="/dashboard" title="Dashboard">
-                      ← Dashboard
-                    </Link>
-
                     <Link
                       className="btn"
                       href={`/fakture/wizard?ids=${encodeURIComponent(ids.join(","))}`}
@@ -1110,7 +1211,7 @@ export default function Page() {
                       <div className="k">
                         {lang === "EN" ? "Currency" : "Valuta"}
                       </div>
-                      <div className="v">{ccy}</div>
+                      <div className="v">{(ccy === "BAM" || ccy === "KM") ? "KM" : ccy}</div>
                     </div>
                     <div className="line">
                       <div className="k">
@@ -1165,7 +1266,7 @@ export default function Page() {
                 <div>
                   <div className="blockTitle">
                     {lang === "EN"
-                      ? "Buyer / Ordering party"
+                      ? "Client"
                       : "KLIJENT/NARUČILAC"}
                   </div>
                   <div className="addr">
@@ -1180,8 +1281,8 @@ export default function Page() {
                 </div>
               </div>
 
-              <div className="tblWrap">
-                <table>
+              <div className="tblWrap table-wrap">
+                <table className="table">
                   <thead>
                     <tr>
                       <th style={{ width: 44 }}>#</th>
@@ -1338,11 +1439,6 @@ export default function Page() {
                 <div className="fluxaSig">
                   <img src="/fluxa/Icon.png" alt="FLUXA" />
                   <span>Made by FLUXA Project &amp; Finance Engine</span>
-                </div>
-
-                <div style={{ color: "#777" }}>
-                  {lang === "EN" ? "Preview only" : "Samo preview"} ·{" "}
-                  {lang === "EN" ? "not yet finalized" : "nije finalizovano"}
                 </div>
               </div>
 

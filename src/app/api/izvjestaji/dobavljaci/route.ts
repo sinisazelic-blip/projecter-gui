@@ -66,6 +66,25 @@ async function loadStagingTotals(): Promise<{
     // Nema te kolone ili tabela drugačija
   }
 
+  // stg_master_finansije — iznos_troska_km po dobavljac_id (20g istorija)
+  try {
+    const rows = (await query(
+      `SELECT dobavljac_id, ROUND(SUM(COALESCE(iznos_troska_km, 0)), 2) AS stg_ukupno
+       FROM stg_master_finansije
+       WHERE dobavljac_id IS NOT NULL
+       GROUP BY dobavljac_id`,
+      []
+    )) as StagingRowById[];
+    for (const r of rows ?? []) {
+      const id = Number(r.dobavljac_id);
+      if (!Number.isFinite(id)) continue;
+      const val = Number(r.stg_ukupno) || 0;
+      byDobavljacId.set(id, (byDobavljacId.get(id) ?? 0) + val);
+    }
+  } catch {
+    // Tabela ili kolone ne postoje
+  }
+
   return { byDobavljacId, byName };
 }
 
@@ -116,7 +135,7 @@ export async function GET(req: NextRequest) {
       "HAVING COALESCE(SUM(CASE WHEN t.status <> 'STORNIRANO' THEN t.iznos_km ELSE 0 END), 0) > 0 " +
       "   OR COALESCE(SUM(CASE WHEN ps.stavka_id IS NOT NULL AND t.status <> 'STORNIRANO' THEN ps.iznos_km ELSE 0 END), 0) > 0 " +
       "ORDER BY COALESCE(SUM(CASE WHEN t.status <> 'STORNIRANO' THEN t.iznos_km ELSE 0 END), 0) DESC, dob.naziv ASC " +
-      "LIMIT 500";
+      "LIMIT 3000";
 
     const rows = await query(sql, params);
 
@@ -151,11 +170,13 @@ export async function GET(req: NextRequest) {
       const stg = (stgById ?? 0) + stgByName;
       if (stg > 0) {
         it.ukupno_troskova += stg;
+        it.ukupno_placeno += stg;
         it.stanje = it.ukupno_troskova - it.ukupno_placeno;
         if (byNameEntry != null) usedStagingNames.add(normName(it.dobavljac_naziv));
       }
     }
 
+    // Redovi samo iz arhive — historijski "zatvoreno" (troškovi = plaćeno; dug storniran)
     for (const [key, entry] of byName) {
       if (usedStagingNames.has(key)) continue;
       const matchLive = items.some((i) => normName(i.dobavljac_naziv) === key);
@@ -169,8 +190,8 @@ export async function GET(req: NextRequest) {
         grad: null,
         drzava_iso2: null,
         ukupno_troskova: entry.sum,
-        ukupno_placeno: 0,
-        stanje: entry.sum,
+        ukupno_placeno: entry.sum,
+        stanje: 0,
         broj_projekata: 0,
         broj_troskova: 0,
       });

@@ -70,11 +70,14 @@ export default async function PlacanjaListPage({ searchParams }) {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
+                <div className="brandLogoBlock">
+                  <img
+                    src="/fluxa/logo-light.png"
+                    alt="FLUXA"
+                    className="brandLogo"
+                  />
+                  <span className="brandSlogan">Project & Finance Engine</span>
+                </div>
                 <div>
                   <div className="brandTitle">Plaćanja</div>
                   <div className="brandSub">Finansije · Banka filter po redu</div>

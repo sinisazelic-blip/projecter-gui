@@ -16,7 +16,7 @@ function fmtDDMMYYYYFromISO(iso: string | null): string {
 function fmtMoney(n: number, ccy: string) {
   const v = Number.isFinite(n) ? n : 0;
   const s = v.toFixed(2);
-  const label = ccy === "KM" ? "KM" : ccy;
+  const label = (ccy === "BAM" || ccy === "KM") ? "KM" : ccy;
   return `${s} ${label}`;
 }
 
@@ -191,11 +191,14 @@ export default function FakturaDetailPage() {
           <div className="topInner">
             <div className="topRow" style={{ justifyContent: "space-between" }}>
               <div className="brandWrap">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
+                <div className="brandLogoBlock">
+                  <img
+                    src="/fluxa/logo-light.png"
+                    alt="FLUXA"
+                    className="brandLogo"
+                  />
+                  <span className="brandSlogan">Project & Finance Engine</span>
+                </div>
                 <div>
                   <div className="brandTitle">📄 Faktura #{faktura.broj_fakture}</div>
                   <div className="brandSub">Pregled fakture</div>
@@ -244,6 +247,7 @@ export default function FakturaDetailPage() {
                 )}
               </div>
             </div>
+            <div className="divider" />
           </div>
         </div>
 
@@ -308,7 +312,7 @@ export default function FakturaDetailPage() {
               </div>
               <div>
                 <div className="muted" style={{ marginBottom: 6 }}>Valuta</div>
-                <div style={{ fontSize: 18, fontWeight: 600 }}>{faktura.valuta}</div>
+                <div style={{ fontSize: 18, fontWeight: 600 }}>{(faktura.valuta === "BAM" || faktura.valuta === "KM") ? "KM" : faktura.valuta}</div>
               </div>
             </div>
           </div>

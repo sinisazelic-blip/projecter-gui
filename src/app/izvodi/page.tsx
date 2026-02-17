@@ -105,8 +105,7 @@ export default function IzvodiPage() {
         .tableCard {
           overflow-x: auto;
           width: 100%;
-          max-width: 900px;
-          margin: 0 auto;
+          margin: 0;
         }
         .table {
           width: 100%;
@@ -141,11 +140,14 @@ export default function IzvodiPage() {
           <div className="topInner">
             <div className="topRow" style={{ justifyContent: "space-between" }}>
               <div className="brandWrap">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
+                <div className="brandLogoBlock">
+                  <img
+                    src="/fluxa/logo-light.png"
+                    alt="FLUXA"
+                    className="brandLogo"
+                  />
+                  <span className="brandSlogan">Project & Finance Engine</span>
+                </div>
                 <div>
                   <div className="brandTitle">🏦 Izvodi</div>
                   <div className="brandSub">Lista bankovnih izvoda</div>
@@ -201,32 +203,32 @@ export default function IzvodiPage() {
                   flexWrap: "wrap",
                 }}
               >
-                <label style={{ fontSize: 13 }}>Broj računa:</label>
+                <label className="label">Broj računa:</label>
                 <input
                   id="account"
                   type="text"
                   defaultValue={accountFilter}
                   placeholder="Broj računa..."
-                  className="input"
-                  style={{ width: 150, fontSize: 13 }}
+                  className="input small"
+                  style={{ width: 150 }}
                 />
 
-                <label style={{ fontSize: 13 }}>Datum od:</label>
+                <label className="label">Datum od:</label>
                 <input
                   id="date_from"
                   type="date"
                   defaultValue={dateFromFilter}
-                  className="input"
-                  style={{ width: 150, fontSize: 13 }}
+                  className="input small"
+                  style={{ width: 150 }}
                 />
 
-                <label style={{ fontSize: 13 }}>Datum do:</label>
+                <label className="label">Datum do:</label>
                 <input
                   id="date_to"
                   type="date"
                   defaultValue={dateToFilter}
-                  className="input"
-                  style={{ width: 150, fontSize: 13 }}
+                  className="input small"
+                  style={{ width: 150 }}
                 />
 
                 <button

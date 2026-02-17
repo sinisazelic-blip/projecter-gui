@@ -119,11 +119,14 @@ export default async function Page({ searchParams }) {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
+                <div className="brandLogoBlock">
+                  <img
+                    src="/fluxa/logo-light.png"
+                    alt="FLUXA"
+                    className="brandLogo"
+                  />
+                  <span className="brandSlogan">Project & Finance Engine</span>
+                </div>
                 <div>
                   <div className="brandTitle">Naplate</div>
                   <div className="brandSub">
@@ -145,9 +148,6 @@ export default async function Page({ searchParams }) {
                 )}
                 <Link href="/finance" className="btn" title="Finansije">
                   Finansije
-                </Link>
-                <Link href="/projects" className="btn" title="Projekti">
-                  Projekti
                 </Link>
                 <Link href="/dashboard" className="btn" title="Dashboard">
                   🏠 Dashboard
@@ -392,8 +392,8 @@ export default async function Page({ searchParams }) {
         </thead>
 
         <tbody>
-          {rows.map((r) => (
-            <tr key={r.potrazivanje_id ?? r.projekat_id}>
+          {rows.map((r, i) => (
+            <tr key={r.faktura_id != null ? `${r.projekat_id}-${r.faktura_id}` : `row-${i}`}>
               <td className="cell-wrap">
                 <span style={{ opacity: 0.7, marginRight: 6 }}>
                   #{r.projekat_id}

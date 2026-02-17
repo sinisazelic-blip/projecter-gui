@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
       whereClause + " " +
       "AND t.status <> 'STORNIRANO' " +
       "ORDER BY t.datum_troska DESC, t.trosak_id DESC " +
-      "LIMIT 500";
+      "LIMIT 2000";
 
     const rows = await query(sql, params);
 

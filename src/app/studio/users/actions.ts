@@ -16,6 +16,7 @@ export async function createUser(input: {
   password: string;
   role_id?: number | null;
   aktivan?: boolean;
+  radnik_id?: number | null;
 }) {
   const username = String(input?.username ?? "").trim();
   if (!username) throw new Error("Korisničko ime je obavezno.");
@@ -25,10 +26,14 @@ export async function createUser(input: {
 
   const role_id = input?.role_id ? Number(input.role_id) : null;
   const aktivan = toBit(input?.aktivan ?? true);
+  const radnik_id =
+    input?.radnik_id != null && Number(input.radnik_id) > 0
+      ? Number(input.radnik_id)
+      : null;
 
   await query(
-    `INSERT INTO users (username, password, password_hash, role_id, aktivan) VALUES (?,?,?,?,?)`,
-    [username, password, password, role_id, aktivan],
+    `INSERT INTO users (username, password, password_hash, role_id, aktivan, radnik_id) VALUES (?,?,?,?,?,?)`,
+    [username, password, password, role_id, aktivan, radnik_id],
   );
 
   return { ok: true };
@@ -40,6 +45,7 @@ export async function updateUser(input: {
   password?: string | null;
   role_id?: number | null;
   aktivan?: boolean;
+  radnik_id?: number | null;
 }) {
   const id = Number(input?.user_id);
   if (!Number.isFinite(id) || id <= 0)
@@ -50,6 +56,10 @@ export async function updateUser(input: {
 
   const role_id = input?.role_id ? Number(input.role_id) : null;
   const aktivan = toBit(input?.aktivan ?? true);
+  const radnik_id =
+    input?.radnik_id != null && Number(input.radnik_id) > 0
+      ? Number(input.radnik_id)
+      : null;
 
   const hasPassword =
     input?.password !== undefined &&
@@ -59,11 +69,11 @@ export async function updateUser(input: {
 
   if (hasPassword) {
     const password = String(input.password).trim();
-    sql = `UPDATE users SET username=?, password=?, password_hash=?, role_id=?, aktivan=? WHERE user_id=?`;
-    params = [username, password, password, role_id, aktivan, id];
+    sql = `UPDATE users SET username=?, password=?, password_hash=?, role_id=?, aktivan=?, radnik_id=? WHERE user_id=?`;
+    params = [username, password, password, role_id, aktivan, radnik_id, id];
   } else {
-    sql = `UPDATE users SET username=?, role_id=?, aktivan=? WHERE user_id=?`;
-    params = [username, role_id, aktivan, id];
+    sql = `UPDATE users SET username=?, role_id=?, aktivan=?, radnik_id=? WHERE user_id=?`;
+    params = [username, role_id, aktivan, radnik_id, id];
   }
 
   await query(sql, params);

@@ -90,6 +90,25 @@ async function loadStagingTotals(): Promise<{
     // Tabela ili kolone drugačije
   }
 
+  // 4) stg_master_finansije — iznos_troska_km po talent_id (20g istorija)
+  try {
+    const rows = (await query(
+      `SELECT talent_id, ROUND(SUM(COALESCE(iznos_troska_km, 0)), 2) AS stg_ukupno
+       FROM stg_master_finansije
+       WHERE talent_id IS NOT NULL
+       GROUP BY talent_id`,
+      []
+    )) as StagingRowByTalentId[];
+    for (const r of rows ?? []) {
+      const id = Number(r.talent_id);
+      if (!Number.isFinite(id)) continue;
+      const val = Number(r.stg_ukupno) || 0;
+      byTalentId.set(id, (byTalentId.get(id) ?? 0) + val);
+    }
+  } catch {
+    // Tabela ili kolone ne postoje
+  }
+
   return { byTalentId, byName };
 }
 
@@ -138,7 +157,7 @@ export async function GET(req: NextRequest) {
       "HAVING COALESCE(SUM(CASE WHEN t.status <> 'STORNIRANO' THEN t.iznos_km ELSE 0 END), 0) > 0 " +
       "   OR COALESCE(SUM(CASE WHEN ps.stavka_id IS NOT NULL AND t.status <> 'STORNIRANO' THEN ps.iznos_km ELSE 0 END), 0) > 0 " +
       "ORDER BY COALESCE(SUM(CASE WHEN t.status <> 'STORNIRANO' THEN t.iznos_km ELSE 0 END), 0) DESC, tal.ime_prezime ASC " +
-      "LIMIT 500";
+      "LIMIT 3000";
 
     const rows = await query(sql, params);
 
@@ -171,12 +190,13 @@ export async function GET(req: NextRequest) {
       const stg = (stgById ?? 0) + stgByName;
       if (stg > 0) {
         it.ukupno_troskova += stg;
+        it.ukupno_placeno += stg;
         it.stanje = it.ukupno_troskova - it.ukupno_placeno;
         if (byNameEntry != null) usedStagingNames.add(normName(it.talent_naziv));
       }
     }
 
-    // Dodaj redove samo iz arhive (nema ih u live listi)
+    // Dodaj redove samo iz arhive (nema ih u live listi) — historijski "zatvoreno" (troškovi = plaćeno)
     for (const [key, entry] of byName) {
       if (usedStagingNames.has(key)) continue;
       const matchLive = items.some((i) => normName(i.talent_naziv) === key);
@@ -188,11 +208,37 @@ export async function GET(req: NextRequest) {
         email: null,
         telefon: null,
         ukupno_troskova: entry.sum,
-        ukupno_placeno: 0,
-        stanje: entry.sum,
+        ukupno_placeno: entry.sum,
+        stanje: 0,
         broj_projekata: 0,
         broj_troskova: 0,
       });
+    }
+
+    // Početna stanja (importovana) — jedina dugovanja koja ostaju kao neplaćena
+    try {
+      const pocetnaRows = (await query(
+        `SELECT talent_id, COALESCE(iznos_duga, 0) AS iznos_duga
+         FROM talent_pocetno_stanje
+         WHERE COALESCE(otpisano, 0) = 0 AND talent_id IS NOT NULL`,
+        []
+      )) as { talent_id: number; iznos_duga: number }[];
+      const pocetnaByTalent = new Map<number, number>();
+      for (const r of pocetnaRows ?? []) {
+        const id = Number(r.talent_id);
+        if (!Number.isFinite(id)) continue;
+        pocetnaByTalent.set(id, (pocetnaByTalent.get(id) ?? 0) + Number(r.iznos_duga || 0));
+      }
+      for (const it of items) {
+        if (it.talent_id == null) continue;
+        const dug = pocetnaByTalent.get(Number(it.talent_id)) ?? 0;
+        if (dug > 0) {
+          it.ukupno_troskova += dug;
+          it.stanje = it.ukupno_troskova - it.ukupno_placeno;
+        }
+      }
+    } catch {
+      // Tabela ili kolone ne postoje
     }
 
     // Ponovo sortiraj po ukupno_troskova DESC

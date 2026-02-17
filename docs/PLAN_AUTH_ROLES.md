@@ -113,6 +113,37 @@ ALTER TABLE users ADD COLUMN radnik_id INT NULL REFERENCES radnici(radnik_id);
 
 ---
 
-## 5. Sljedeći korak
+## 5. Guest / Demo profil (kasnije)
+
+**Cilj:** Guest = demo prikaz Fluxe (marketing), ne pristup pravim podacima. Prikazati funkcionalnost, ne podatke.
+
+**Opcije (jedna od):**
+- **A)** Demo account s lažnim podacima – prikaz samo sample podataka.
+- **B)** Demo „sandbox” baza – posebna baza sa sample podacima.
+- **C)** Demo mod – link „Pogledaj demo” bez lozinke, session vidi samo sample podatke.
+
+**Prijedlog (nije obavezno 10 dana rada):**
+- Guest nema pristup podacima Studija (šifarnici, pravi projekti).
+- Rezervisati nekoliko ID-eva (npr. projekat_id, deal_id) samo za demo/test.
+- Kad se neko uloguje kao Guest (ili demo), upiše svoje test podatke; pri odjavi ili zatvaranju prozora **sve se briše** (samo podaci vezani za taj demo session / te rezervisane ID-eve).
+- Implementacija kasnije, nakon osnovnog login + nivoa.
+
+---
+
+## 6. Radnik: „svoj prostor” u Fluxi, honorarac, projekti (kasnije + dio sada)
+
+**Cilj:** Svaki radnik (zaposlen ili angažovan po projektu) ima svoj prostor u Fluxi – vidi projekte na kojima radi, rokove, da ne mora „nisi mi rekao da je rok blizu”.
+
+**Planirano:**
+- **Honorarac** – u šifarniku radnici checkbox „honorarac” (nije zaposlenik u studiju, angažovan po projektu).
+- **Dodjela projekata** – radniku se dodjeljuju projekti koje vidi i u kojima radi (kasnije: eksplicitna tablica tipa radnik_projekti ili korištenje projekat_faza_radnici).
+- **User ↔ Radnik** – opciono: user (login) povezan s radnikom; kad se uloguje, vidi „svoje” projekte i rokove.
+- **Osnovni model:** radnik = ima pristup Fluxi (preko user accounta) i vidi samo svoje projekte; sve ostalo po matrici prava.
+
+**U kartonu radnika (Studio / Radnici):** prikaz projekata na kojima je radnik angažovan – **implementirano** (lista projekata iz projekat_faza_radnici). Kasnije: dodati checkbox „honorarac” i (po želji) eksplicitnu dodjelu projekata.
+
+---
+
+## 7. Sljedeći korak
 
 Rekni s kojom fazom želiš da krenemo – npr. hash lozinke, login stranica, ili definicija nivoa – pa ćemo to implementirati korak po korak.

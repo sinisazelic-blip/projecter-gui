@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { RadnikRow } from "./page";
 import { setRadnikActive } from "./actions";
+
+type ProjekatLink = { projekat_id: number; radni_naziv: string };
 
 type FormState = {
   radnik_id?: number;
@@ -106,6 +109,7 @@ function modalStyle(maxWidth = 920): React.CSSProperties {
       "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
     boxShadow: "var(--shadow)",
     overflow: "hidden",
+    fontSize: 16,
   };
 }
 
@@ -201,6 +205,25 @@ export default function RadniciClient({
     );
   }, [items, selectedId]);
 
+  const [radnikProjekti, setRadnikProjekti] = useState<ProjekatLink[]>([]);
+  useEffect(() => {
+    if (!modalOpen || !form.radnik_id) {
+      setRadnikProjekti([]);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/studio/radnici/${form.radnik_id}/projekti`)
+      .then((r) => r.json())
+      .then((data: { ok?: boolean; projekti?: ProjekatLink[] }) => {
+        if (cancelled || !data?.ok || !Array.isArray(data.projekti)) return;
+        setRadnikProjekti(data.projekti);
+      })
+      .catch(() => setRadnikProjekti([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [modalOpen, form.radnik_id]);
+
   const selectedIsActive = selectedItem
     ? Number(selectedItem.aktivan) === 1
     : false;
@@ -271,6 +294,14 @@ export default function RadniciClient({
     setError(null);
     setModalMode("edit");
     loadToForm(selectedItem);
+    setModalOpen(true);
+  }
+
+  function openEditForItem(it: RadnikRow) {
+    setError(null);
+    setSelectedId(it.radnik_id);
+    setModalMode("edit");
+    loadToForm(it);
     setModalOpen(true);
   }
 
@@ -563,9 +594,10 @@ export default function RadniciClient({
                   <tr
                     key={it.radnik_id}
                     onClick={() => setSelectedId(it.radnik_id)}
+                    onDoubleClick={() => openEditForItem(it)}
                     style={subtleRowStyle(isSelected)}
                     data-closed={isActive ? "0" : "1"}
-                    title="Klikni za selekciju"
+                    title="Klik za selekciju, dupli klik za promjenu"
                   >
                     <td className="cell-wrap">
                       <div
@@ -645,7 +677,7 @@ export default function RadniciClient({
           <div style={modalStyle(920)}>
             <div
               style={{
-                padding: 16,
+                padding: 20,
                 borderBottom: "1px solid var(--border)",
                 display: "flex",
                 justifyContent: "space-between",
@@ -659,24 +691,24 @@ export default function RadniciClient({
                   src="/fluxa/Ikona%20Siva.png"
                   alt="Fluxa"
                   style={{
-                    width: 22,
-                    height: 22,
+                    width: 26,
+                    height: 26,
                     objectFit: "contain",
                     opacity: 0.9,
                     marginTop: 2,
                   }}
                 />
                 <div>
-                  <div style={{ fontSize: 18, fontWeight: 700 }}>
+                  <div style={{ fontSize: 20, fontWeight: 700 }}>
                     {modalMode === "new"
                       ? "Novi radnik"
                       : "Promijeni radnika"}
                   </div>
                   <div
                     style={{
-                      marginTop: 4,
+                      marginTop: 6,
                       color: "var(--muted)",
-                      fontSize: 14,
+                      fontSize: 15,
                     }}
                   >
                     Šifrarnik radnika (bez brisanja — samo deaktivacija).
@@ -693,17 +725,20 @@ export default function RadniciClient({
               onSubmit={(e) => onSave(e)}
               style={{ display: "contents" }}
             >
-            <div style={{ padding: 16 }}>
+            <div style={{ padding: 20 }}>
               <div
                 className="grid"
-                style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
+                style={{
+                  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                  gap: 16,
+                }}
               >
                 <div>
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Ime (obavezno)
@@ -716,7 +751,8 @@ export default function RadniciClient({
                     }
                     placeholder="npr. Muhamed"
                     autoFocus
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -724,8 +760,8 @@ export default function RadniciClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Prezime (obavezno)
@@ -737,7 +773,8 @@ export default function RadniciClient({
                       setForm((s) => ({ ...s, prezime: e.target.value }))
                     }
                     placeholder="npr. Bahonjić"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -745,8 +782,8 @@ export default function RadniciClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Datum rođenja
@@ -761,7 +798,8 @@ export default function RadniciClient({
                       setForm((s) => ({ ...s, datum_rodjenja: v }));
                     }}
                     title="Datum rođenja"
-                    className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -769,8 +807,8 @@ export default function RadniciClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Adresa
@@ -782,7 +820,8 @@ export default function RadniciClient({
                       setForm((s) => ({ ...s, adresa: e.target.value }))
                     }
                     placeholder="Ulica i broj"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -790,8 +829,8 @@ export default function RadniciClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Broj telefona
@@ -803,7 +842,8 @@ export default function RadniciClient({
                       setForm((s) => ({ ...s, broj_telefona: e.target.value }))
                     }
                     placeholder="+387 ..."
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -811,8 +851,8 @@ export default function RadniciClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Email
@@ -825,7 +865,8 @@ export default function RadniciClient({
                       setForm((s) => ({ ...s, email: e.target.value }))
                     }
                     placeholder="email@domena.com"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -833,8 +874,8 @@ export default function RadniciClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     JIB
@@ -846,7 +887,8 @@ export default function RadniciClient({
                       setForm((s) => ({ ...s, jib: e.target.value }))
                     }
                     placeholder="Jedinstveni identifikacioni broj"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -858,12 +900,12 @@ export default function RadniciClient({
                     onChange={(e) =>
                       setForm((s) => ({ ...s, aktivan: e.target.checked }))
                     }
-                    style={{ width: 16, height: 16 }}
+                    style={{ width: 18, height: 18 }}
                   />
                   <span
                     style={{
                       color: "var(--text)",
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: 700,
                     }}
                   >
@@ -875,8 +917,8 @@ export default function RadniciClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Opis
@@ -888,65 +930,129 @@ export default function RadniciClient({
                       setForm((s) => ({ ...s, opis: e.target.value }))
                     }
                     placeholder="Interna napomena"
-                    style={{ width: "100%", minHeight: 90, resize: "vertical" }}
+                    className="input"
+                    style={{
+                      width: "100%",
+                      minHeight: 88,
+                      resize: "vertical",
+                      padding: "12px 14px",
+                      fontSize: 15,
+                    }}
                   />
                 </div>
               </div>
 
-              <div className="card" style={{ marginTop: 14 }}>
+              <div className="card" style={{ marginTop: 20 }}>
                 <div
                   style={{
                     color: "var(--muted)",
-                    fontSize: 12,
+                    fontSize: 13,
                     letterSpacing: ".06em",
                     textTransform: "uppercase",
+                    marginBottom: 10,
                   }}
                 >
                   Sistem
                 </div>
                 <div
                   style={{
-                    marginTop: 10,
                     display: "grid",
                     gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                    gap: 12,
+                    gap: 14,
                   }}
                 >
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                    <div style={{ color: "var(--muted)", fontSize: 14 }}>
                       ID
                     </div>
-                    <div style={{ fontWeight: 700 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.radnik_id ?? "—"}
                     </div>
                   </div>
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                    <div style={{ color: "var(--muted)", fontSize: 14 }}>
                       Kreirano
                     </div>
-                    <div style={{ fontWeight: 700 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.created_at ? fmtDateTime(form.created_at) : "—"}
                     </div>
                   </div>
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                      Updated
+                    <div style={{ color: "var(--muted)", fontSize: 14 }}>
+                      Ažurirano
                     </div>
-                    <div style={{ fontWeight: 700 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.updated_at ? fmtDateTime(form.updated_at) : "—"}
                     </div>
                   </div>
                 </div>
               </div>
+
+              {form.radnik_id ? (
+                <div className="card" style={{ marginTop: 20 }}>
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 12,
+                      letterSpacing: ".06em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Projekti na kojima je angažovan
+                  </div>
+                  <div style={{ marginTop: 10 }}>
+                    {radnikProjekti.length === 0 ? (
+                      <span style={{ color: "var(--muted)", fontSize: 14 }}>
+                        Nema dodijeljenih faza na projektima (faze → radnici).
+                      </span>
+                    ) : (
+                      <ul
+                        style={{
+                          margin: 0,
+                          paddingLeft: 18,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 6,
+                        }}
+                      >
+                        {radnikProjekti.map((pr) => (
+                          <li key={pr.projekat_id}>
+                            <Link
+                              href={`/projects/${pr.projekat_id}`}
+                              style={{
+                                color: "var(--accent)",
+                                fontWeight: 600,
+                                textDecoration: "none",
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {pr.radni_naziv}
+                            </Link>
+                            <span
+                              style={{
+                                color: "var(--muted)",
+                                fontSize: 12,
+                                marginLeft: 6,
+                              }}
+                            >
+                              #{pr.projekat_id}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <div
               style={{
-                padding: 16,
+                padding: 20,
                 borderTop: "1px solid var(--border)",
                 display: "flex",
                 justifyContent: "flex-end",
-                gap: 10,
+                gap: 12,
               }}
             >
               {modalMode === "edit" ? (

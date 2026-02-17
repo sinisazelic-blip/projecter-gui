@@ -58,7 +58,7 @@ export default function FazeGantt({ faze }) {
 
   if (phases.length === 0) {
     return (
-      <div className="card" style={{ padding: 24, textAlign: "center", color: "var(--muted)" }}>
+      <div className="card" style={{ textAlign: "center", color: "var(--muted)" }}>
         Nema faza sa datumima za timeline. Unesi datum početka i kraja u fazama.
       </div>
     );

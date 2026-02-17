@@ -98,18 +98,28 @@ export async function GET(req) {
     // ✅ STATUS FILTERING (KANON):
     // - ako je status_id (exact) dat → tačno taj status
     // - inače koristimo status_group:
-    //   active  => 1–8
-    //   archive => 10 i 11 (Arhiviran + importovani za analizu)
-    //   all     => bez filtera
+    //   active  => 1–8 (bez storniranih = 12)
+    //   archive => 10 i 11 (Arhiviran + importovani za analizu, bez storniranih = 12)
+    //   storno  => samo 12 (Otkazan)
+    //   all     => bez filtera (ali po defaultu sakrijemo storno)
+    const showStorno = url.searchParams.get("show_storno") === "1";
+    
     if (status_id !== null) {
       where.push("p.status_id = ?");
       params.push(status_id);
+    } else if (status_group === "storno") {
+      where.push("p.status_id = 12");
     } else if (status_group === "active") {
       where.push("p.status_id BETWEEN 1 AND 8");
     } else if (status_group === "archive") {
       where.push("p.status_id IN (10, 11)");
     } else {
       // all => no filter
+    }
+    
+    // ✅ Po defaultu sakrij stornirane projekte (status_id = 12), osim ako eksplicitno tražiš storno
+    if (!showStorno && status_group !== "storno" && status_id !== 12) {
+      where.push("p.status_id <> 12");
     }
 
     if (q) {

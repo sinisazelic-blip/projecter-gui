@@ -53,27 +53,27 @@ export default function Page() {
           flex: 1;
           min-height: 0;
           overflow: auto;
-          padding: clamp(6px, 0.8vh, 14px) 0 clamp(8px, 1vh, 18px);
+          padding: clamp(10px, 1.2vh, 18px) 0 clamp(12px, 1.5vh, 22px);
         }
 
         .dashboardWrap {
           display: flex;
           flex-direction: column;
-          gap: clamp(8px, 1.5vh, 20px);
-          padding: clamp(8px, 1.2vh, 20px) 0;
+          gap: clamp(16px, 2.5vh, 28px);
+          padding: clamp(12px, 1.5vh, 24px) 0;
         }
 
         .finansijeContainer {
           display: grid;
           grid-template-columns: 1.2fr 1fr;
-          gap: clamp(10px, 1.2vh, 20px);
+          gap: clamp(14px, 2vh, 24px);
           align-items: stretch;
         }
 
         .finansijeSidebar {
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: clamp(18px, 2vh, 26px);
           min-width: 280px;
         }
 
@@ -82,20 +82,25 @@ export default function Page() {
           flex-direction: column;
         }
 
+        /* Svi dugmići na Dashboardu – blago veći font naziva */
+        .dashboardPage .btn {
+          font-size: clamp(14px, 1.5vh, 16px);
+        }
+
         .dashboardGroup {
           width: 100%;
           border: 1px solid rgba(255, 255, 255, 0.1);
           background: rgba(255, 255, 255, 0.03);
           border-radius: 18px;
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
-          padding: clamp(10px, 1.2vh, 18px) clamp(12px, 1.5vw, 20px);
+          padding: clamp(14px, 1.8vh, 22px) clamp(14px, 1.8vw, 24px);
         }
 
         .groupHeader {
           display: flex;
           align-items: center;
           gap: 10px;
-          margin-bottom: clamp(6px, 0.8vh, 12px);
+          margin-bottom: clamp(8px, 1vh, 14px);
           flex-wrap: wrap;
         }
 
@@ -104,6 +109,10 @@ export default function Page() {
           font-weight: 800;
           letter-spacing: 0.3px;
           margin: 0;
+        }
+
+        .deskGroup .groupTitle {
+          font-size: clamp(17px, 2vh, 21px);
         }
 
         .groupPill {
@@ -136,8 +145,8 @@ export default function Page() {
         .groupSubtitle {
           font-size: 12px;
           opacity: 0.75;
-          margin-bottom: clamp(8px, 1vh, 16px);
-          margin-top: -4px;
+          margin-bottom: clamp(10px, 1.2vh, 18px);
+          margin-top: -2px;
         }
 
         /* Desk grupa - posebni stilovi */
@@ -147,10 +156,10 @@ export default function Page() {
 
         .deskMainButtons {
           display: flex;
-          gap: clamp(10px, 1.2vw, 16px);
+          gap: clamp(14px, 1.5vw, 22px);
           align-items: center;
           justify-content: center;
-          margin-bottom: clamp(6px, 0.8vh, 12px);
+          margin-bottom: clamp(10px, 1.2vh, 16px);
           flex-wrap: wrap;
         }
 
@@ -202,8 +211,16 @@ export default function Page() {
           bottom: 18px;
           right: 20px;
           padding: 8px 14px;
-          font-size: 13px;
-          opacity: 0.7;
+          font-size: clamp(14px, 1.5vh, 16px);
+          border-color: rgba(251, 191, 36, 0.35);
+          background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(245, 158, 11, 0.06));
+          color: rgba(253, 230, 138, 0.95);
+        }
+
+        .deskSCBtn:hover {
+          border-color: rgba(251, 191, 36, 0.5);
+          background: linear-gradient(135deg, rgba(251, 191, 36, 0.18), rgba(245, 158, 11, 0.1));
+          color: rgba(254, 243, 199, 1);
         }
 
         /* Finansije grupa */
@@ -214,14 +231,47 @@ export default function Page() {
 
         .finansijeRow {
           display: flex;
-          gap: 10px;
-          margin-bottom: clamp(6px, 0.8vh, 12px);
+          gap: clamp(12px, 1.2vw, 18px);
+          margin-bottom: clamp(14px, 1.8vh, 22px);
           flex-wrap: wrap;
         }
 
+        .finansijeRow:last-child {
+          margin-bottom: 0;
+        }
+
+        /* Finansije / Izvještaji / Finansije analiza – širina od ruba do ruba kao Šifarnici */
+        .finansijeRow--4 {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: clamp(12px, 1.2vw, 18px);
+        }
+
+        .finansijeRow--6 {
+          display: grid;
+          grid-template-columns: repeat(6, 1fr);
+          gap: clamp(12px, 1.2vw, 18px);
+        }
+
+        .finansijeRow--2 {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: clamp(12px, 1.2vw, 18px);
+        }
+
+        .finansijeRow--4 .btn,
+        .finansijeRow--6 .btn,
+        .finansijeRow--2 .btn {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 0;
+        }
+
         .finansijeSubsection {
-          margin-top: clamp(10px, 1.2vh, 20px);
-          padding-top: clamp(10px, 1.2vh, 16px);
+          margin-top: clamp(14px, 1.8vh, 24px);
+          padding-top: clamp(14px, 1.8vh, 20px);
           border-top: 1px solid rgba(255, 255, 255, 0.08);
         }
 
@@ -229,7 +279,7 @@ export default function Page() {
           display: flex;
           align-items: center;
           gap: 10px;
-          margin-bottom: 12px;
+          margin-bottom: 14px;
           font-size: 14px;
           font-weight: 750;
         }
@@ -237,21 +287,30 @@ export default function Page() {
         /* Šifarnici grupa */
         .sifarniciRow {
           display: flex;
-          gap: 10px;
-          margin-bottom: clamp(6px, 0.8vh, 12px);
+          gap: clamp(12px, 1.2vw, 18px);
+          margin-bottom: clamp(14px, 1.8vh, 22px);
           flex-wrap: wrap;
+        }
+
+        .sifarniciRow:last-child {
+          margin-bottom: 0;
         }
 
         .sifarniciRow--equal-width {
           display: grid;
           grid-template-columns: repeat(5, 1fr);
-          gap: 10px;
+          gap: clamp(12px, 1.2vw, 18px);
+          margin-bottom: clamp(14px, 1.8vh, 22px);
+        }
+
+        .sifarniciRow--equal-width:last-child {
+          margin-bottom: 0;
         }
 
         .sifarniciRow--equal {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 10px;
+          gap: clamp(12px, 1.2vw, 18px);
         }
 
         .btn--glossy {
@@ -282,6 +341,12 @@ export default function Page() {
           .sifarniciRow--equal-width {
             grid-template-columns: repeat(3, 1fr);
           }
+          .finansijeRow--4 {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .finansijeRow--6 {
+            grid-template-columns: repeat(3, 1fr);
+          }
           .finansijeContainer {
             grid-template-columns: 1fr;
           }
@@ -295,6 +360,11 @@ export default function Page() {
             grid-template-columns: 1fr;
           }
           .sifarniciRow--equal-width {
+            grid-template-columns: 1fr;
+          }
+          .finansijeRow--4,
+          .finansijeRow--6,
+          .finansijeRow--2 {
             grid-template-columns: 1fr;
           }
           .deskMainButtons {
@@ -311,11 +381,14 @@ export default function Page() {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
+                <div className="brandLogoBlock">
+                  <img
+                    src="/fluxa/logo-light.png"
+                    alt="FLUXA"
+                    className="brandLogo"
+                  />
+                  <span className="brandSlogan">Project & Finance Engine</span>
+                </div>
                 <div>
                   <div className="brandTitle">Dashboard</div>
                   <div className="brandSub">
@@ -353,7 +426,6 @@ export default function Page() {
             <div className="dashboardGroup deskGroup">
               <div className="groupHeader">
                 <div className="groupTitle">Desk</div>
-                <span className="groupPill groupPill--operativa">operativa</span>
               </div>
 
               <div className="deskMainButtons">
@@ -396,14 +468,14 @@ export default function Page() {
                 </div>
                 <div className="groupSubtitle">Operativni finansijski tokovi</div>
 
-                <div className="finansijeRow">
+                <div className="finansijeRow finansijeRow--4">
                   <ActionBtn label="Narudžbenice" href="/narudzbenice" />
                   <ActionBtn label="Fakturisanje" href="/fakture/za-fakturisanje" title="Za fakturisanje → wizard" />
                   <ActionBtn label="Naplate" href="/naplate" />
                   <ActionBtn label="Dugovanja" href="/finance/dugovanja" />
                 </div>
 
-                <div className="finansijeRow">
+                <div className="finansijeRow finansijeRow--6">
                   <ActionBtn label="Import izvoda" href="/banking/import" />
                   <ActionBtn label="Izvodi" href="/izvodi" title="Lista bankovnih izvoda" className="btn--orange-accent" />
                   <ActionBtn label="Fakture" href="/fakture" title="Lista izdatih faktura" className="btn--orange-accent" />
@@ -419,7 +491,7 @@ export default function Page() {
                     <div className="groupTitle">Finansije analiza</div>
                     <span className="groupPill groupPill--legacy">legacy</span>
                   </div>
-                  <div className="finansijeRow">
+                  <div className="finansijeRow finansijeRow--2">
                     <ActionBtn label="Finance" href="/finance" />
                     <ActionBtn label="Finance Tools" href="/studio/finance-tools" />
                   </div>
@@ -430,10 +502,9 @@ export default function Page() {
                     <div className="groupTitle">Izvještaji</div>
                     <span className="groupPill groupPill--reports">reports</span>
                   </div>
-                  <div className="finansijeRow">
+                  <div className="finansijeRow finansijeRow--2">
                     <ActionBtn label="Svi" href="/izvjestaji/svi" title="Svi izvještaji – filter i period" />
                     <ActionBtn label="Grafički" href="/izvjestaji/graficki" title="Promet, troškovi i zarada po godinama i mjesecima" />
-                    <ActionBtn label="Periodični" href={null} className="btn--disabled" title="Još nije implementirano" />
                   </div>
                 </div>
               </div>

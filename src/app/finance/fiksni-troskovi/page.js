@@ -56,11 +56,14 @@ export default async function FiksniTroskoviPage({ searchParams }) {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
+                <div className="brandLogoBlock">
+                  <img
+                    src="/fluxa/logo-light.png"
+                    alt="FLUXA"
+                    className="brandLogo"
+                  />
+                  <span className="brandSlogan">Project & Finance Engine</span>
+                </div>
                 <div>
                   <div className="brandTitle">Fiksni troškovi</div>
                   <div className="brandSub">Finansije / Pretplate, zakupi, porezi</div>
@@ -133,8 +136,8 @@ export default async function FiksniTroskoviPage({ searchParams }) {
             />
           </span>
         </div>
-        <div>
-          <table>
+        <div className="table-wrap">
+          <table className="table">
             <thead>
               <tr>
                 <th style={{ width: 70 }}>ID</th>
@@ -185,7 +188,7 @@ export default async function FiksniTroskoviPage({ searchParams }) {
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: 14, padding: 18, border: "1px solid var(--border)", borderRadius: 16 }}>
+      <div className="card" style={{ marginTop: 14 }}>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>Napomena</div>
         <div className="subtle" style={{ lineHeight: 1.6, fontSize: 13 }}>
           Read-only prikaz. Raspored dospijeća je na{" "}

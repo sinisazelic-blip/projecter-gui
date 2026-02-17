@@ -177,11 +177,14 @@ export default function InvoicePickClient({
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
+                <div className="brandLogoBlock">
+                  <img
+                    src="/fluxa/logo-light.png"
+                    alt="FLUXA"
+                    className="brandLogo"
+                  />
+                  <span className="brandSlogan">Project & Finance Engine</span>
+                </div>
                 <div>
                   <div className="brandTitle">Za fakturisanje</div>
                   <div className="brandSub">
@@ -189,12 +192,13 @@ export default function InvoicePickClient({
                   </div>
                 </div>
               </div>
-
+              <Link href="/dashboard" className="btn" title="Povratak na Dashboard">
+                🏠 Dashboard
+              </Link>
+            </div>
+            <div className="topRow" style={{ marginTop: 14 }}>
+              <div style={{ flex: 1, minWidth: 0 }} />
               <div className="actions">
-                <Link href="/dashboard" className="btn" title="Povratak na Dashboard">
-                  🏠 Dashboard
-                </Link>
-
                 <button
                   type="button"
                   className="btn"
@@ -391,8 +395,8 @@ export default function InvoicePickClient({
         </div>
 
         <div className="listWrap">
-          <div className="tableCard">
-            <table>
+          <div className="tableCard table-wrap">
+            <table className="table">
               <thead>
                 <tr>
                   <th style={{ width: 54 }}>

@@ -83,6 +83,13 @@ export default function InvoiceWizard() {
     Record<number, { enabled: boolean; items: string[] }>
   >({});
 
+  // ✅ Grupisanje projekata u jednu stavku (group_id -> { name: string, projectIds: number[] })
+  const [projectGroups, setProjectGroups] = useState<
+    Record<string, { name: string; projectIds: number[] }>
+  >({});
+  const [selectedForGrouping, setSelectedForGrouping] = useState<Set<number>>(new Set());
+  const [groupName, setGroupName] = useState<string>("");
+
   // ✅ Učitaj poziv na broj + detektuj INO klijenta
   useEffect(() => {
     let alive = true;
@@ -219,6 +226,14 @@ export default function InvoiceWizard() {
       );
     }
 
+    // ✅ Grupisanje projekata — format: group_id:name:projectId1,projectId2,...
+    const groupEntries = Object.entries(projectGroups)
+      .filter(([_, g]) => g.name.trim() && g.projectIds.length > 0)
+      .map(([groupId, g]) => `${groupId}:${encodeURIComponent(g.name.trim())}:${g.projectIds.join(",")}`);
+    if (groupEntries.length > 0) {
+      qs.set("project_groups", groupEntries.join(";"));
+    }
+
     // Popust prije PDV-a (KM)
     const popustNum = parseFloat(String(popustKm || "0").trim());
     if (Number.isFinite(popustNum) && popustNum > 0) {
@@ -253,11 +268,14 @@ export default function InvoiceWizard() {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
+                <div className="brandLogoBlock">
+                  <img
+                    src="/fluxa/logo-light.png"
+                    alt="FLUXA"
+                    className="brandLogo"
+                  />
+                  <span className="brandSlogan">Project & Finance Engine</span>
+                </div>
                 <div>
                   <div className="brandTitle">Faktura — Wizard (2/3)</div>
                   <div className="brandSub">
@@ -265,7 +283,12 @@ export default function InvoiceWizard() {
                   </div>
                 </div>
               </div>
-
+              <Link href="/dashboard" className="btn" title="Dashboard">
+                🏠 Dashboard
+              </Link>
+            </div>
+            <div className="topRow" style={{ marginTop: 14 }}>
+              <div style={{ flex: 1, minWidth: 0 }} />
               <div className="actions">
                 <Link
                   href={`/fakture/za-fakturisanje`}
@@ -311,6 +334,7 @@ export default function InvoiceWizard() {
               {ids.slice(0, 12).join(", ")}
               {ids.length > 12 ? "…" : ""})
             </div>
+            <div className="divider" />
           </div>
         </div>
 
@@ -422,6 +446,140 @@ export default function InvoiceWizard() {
               </div>
             </div>
 
+            {/* ✅ Grupisanje projekata u jednu stavku */}
+            {projectsData.length > 1 && (
+              <div className="cardLike" style={{ marginTop: 16 }}>
+                <div style={{ fontWeight: 850, fontSize: 16, marginBottom: 10 }}>
+                  Kombinuj projekte u jednu stavku
+                </div>
+                <div style={{ opacity: 0.85, fontSize: 13, marginBottom: 12 }}>
+                  Označi projekte koje želiš kombinovati u jednu stavku na fakturi (iznosi će se zbrojiti). Korisno kada ne želiš prikazati detalje o svakom projektu posebno.
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
+                  {projectsData.map((proj) => (
+                    <label
+                      key={proj.projekat_id}
+                      style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedForGrouping.has(proj.projekat_id)}
+                        onChange={(e) => {
+                          const newSelected = new Set(selectedForGrouping);
+                          if (e.target.checked) {
+                            newSelected.add(proj.projekat_id);
+                          } else {
+                            newSelected.delete(proj.projekat_id);
+                          }
+                          setSelectedForGrouping(newSelected);
+                        }}
+                      />
+                      <span style={{ opacity: 0.9 }}>
+                        #{proj.projekat_id}: {proj.radni_naziv || "—"}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {selectedForGrouping.size > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <div className="label" style={{ marginBottom: 6 }}>
+                      Zajednički naziv za kombinovane projekte:
+                    </div>
+                    <input
+                      className="input"
+                      value={groupName}
+                      onChange={(e) => setGroupName(e.target.value)}
+                      placeholder="Npr. Usluge dizajna i razvoja"
+                      style={{ width: "100%" }}
+                    />
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => {
+                        if (groupName.trim() && selectedForGrouping.size > 0) {
+                          const groupId = `group_${Date.now()}`;
+                          setProjectGroups((prev) => ({
+                            ...prev,
+                            [groupId]: {
+                              name: groupName.trim(),
+                              projectIds: Array.from(selectedForGrouping),
+                            },
+                          }));
+                          // Takođe postavi override nazive za sve projekte u grupi
+                          const overrides = { ...projectNameOverrides };
+                          selectedForGrouping.forEach((pid) => {
+                            overrides[pid] = groupName.trim();
+                          });
+                          setProjectNameOverrides(overrides);
+                          // Resetuj selektovane i naziv
+                          setSelectedForGrouping(new Set());
+                          setGroupName("");
+                        }
+                      }}
+                      disabled={!groupName.trim() || selectedForGrouping.size === 0}
+                      style={{
+                        marginTop: 8,
+                        opacity: !groupName.trim() || selectedForGrouping.size === 0 ? 0.5 : 1,
+                      }}
+                    >
+                      Kreiraj grupu
+                    </button>
+                  </div>
+                )}
+                {Object.keys(projectGroups).length > 0 && (
+                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,.1)" }}>
+                    <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8 }}>Kreirane grupe:</div>
+                    {Object.entries(projectGroups).map(([groupId, group]) => (
+                      <div
+                        key={groupId}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: 8,
+                          background: "rgba(0,0,0,.1)",
+                          borderRadius: 6,
+                          marginBottom: 6,
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>{group.name}</div>
+                          <div style={{ fontSize: 11, opacity: 0.7 }}>
+                            Projekti: {group.projectIds.map((id) => `#${id}`).join(", ")}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newGroups = { ...projectGroups };
+                            delete newGroups[groupId];
+                            setProjectGroups(newGroups);
+                            // Ukloni override nazive za projekte iz ove grupe
+                            const newOverrides = { ...projectNameOverrides };
+                            group.projectIds.forEach((pid) => {
+                              delete newOverrides[pid];
+                            });
+                            setProjectNameOverrides(newOverrides);
+                          }}
+                          style={{
+                            background: "rgba(255,80,80,.15)",
+                            border: "1px solid rgba(255,80,80,.3)",
+                            color: "rgba(255,200,200,.9)",
+                            padding: "4px 10px",
+                            borderRadius: 6,
+                            fontSize: 11,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Ukloni
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ✅ Override nazivi projekata */}
             {projectsData.length > 0 && (
               <div className="cardLike" style={{ marginTop: 16 }}>
@@ -429,7 +587,7 @@ export default function InvoiceWizard() {
                   Nazivi projekata na fakturi
                 </div>
                 <div style={{ opacity: 0.85, fontSize: 13, marginBottom: 12 }}>
-                  Možeš promijeniti naziv projekta samo za ovu fakturu (ne mijenja bazu). Korisno za dodavanje PO broja naručioca.
+                  Možeš promijeniti naziv projekta samo za ovu fakturu (ne mijenja bazu). Korisno za dodavanje PO broja naručioca. Projekti koji su u grupi već imaju zajednički naziv.
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {projectsData.map((proj) => {
@@ -461,7 +619,7 @@ export default function InvoiceWizard() {
                           </div>
                         </div>
                         <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, opacity: 0.9 }}>
+                          <label className="label" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
                             <input
                               type="checkbox"
                               checked={subState.enabled}

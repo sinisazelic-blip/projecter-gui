@@ -134,6 +134,7 @@ const VIEW_OPTIONS: { v: ViewMode; label: string; hint?: string }[] = [
     hint: "Projekti: ARHIVIRAN/OTKAZAN + deal ODBIJEN",
   },
   { v: "no_project", label: "Samo pregovori", hint: "Deal bez projekta" },
+  { v: "storno", label: "Storno", hint: "Stornirani projekti (12) i odbijeni deale (4)" },
   { v: "all", label: "Svi", hint: "Bez filtera" },
 ];
 
@@ -149,6 +150,7 @@ export default async function DealsPage({ searchParams }: any) {
     viewRaw === "invoiced" ||
     viewRaw === "archived" ||
     viewRaw === "no_project" ||
+    viewRaw === "storno" ||
     viewRaw === "all"
       ? (viewRaw as ViewMode)
       : "active";
@@ -159,11 +161,13 @@ export default async function DealsPage({ searchParams }: any) {
   if (q) {
     const qNum = Number(q);
     if (Number.isFinite(qNum)) {
-      where.push("(i.inicijacija_id = ? OR i.radni_naziv LIKE ?)");
-      params.push(Math.trunc(qNum), `%${q}%`);
+      // Pretraga po ID Deal-a, broju projekta (id_po) ili nazivu
+      where.push("(i.inicijacija_id = ? OR p.id_po = ? OR i.radni_naziv LIKE ?)");
+      params.push(Math.trunc(qNum), Math.trunc(qNum), `%${q}%`);
     } else {
-      where.push("(i.radni_naziv LIKE ?)");
-      params.push(`%${q}%`);
+      // Tekstualna pretraga po nazivu ili broju projekta (ako je tekstualni format)
+      where.push("(i.radni_naziv LIKE ? OR CAST(p.id_po AS CHAR) LIKE ?)");
+      params.push(`%${q}%`, `%${q}%`);
     }
   }
 
@@ -176,29 +180,42 @@ export default async function DealsPage({ searchParams }: any) {
    * 8 = ZATVOREN (soft-lock)  -> "spremno za fakturisanje"
    * 9 = FAKTURISAN            -> "za naplatu"
    * 10 = ARHIVIRAN            -> arhiva
-   * 12 = OTKAZAN              -> arhiva
+   * 12 = OTKAZAN              -> storno
    *
    * Deal statusi (inicijacije.status_id):
-   * 4 = ODBIJENO (po tvom UI nizu)
+   * 4 = ODBIJENO (storno deal)
    */
   if (view === "no_project") {
     where.push("i.projekat_id IS NULL");
+    // Sakrij stornirane deale (status 4) - stornirani deals se ne prikazuju u "no_project"
+    where.push("i.status_id <> 4");
   } else if (view === "to_invoice") {
     where.push("i.projekat_id IS NOT NULL");
     where.push("p.status_id = 8");
   } else if (view === "invoiced") {
     where.push("i.projekat_id IS NOT NULL");
     where.push("p.status_id = 9");
-  } else if (view === "archived") {
+  } else if (view === "storno") {
+    // Samo stornirani: projekti sa status_id = 12 ili deals sa status_id = 4
     where.push(
-      "((i.projekat_id IS NOT NULL AND p.status_id IN (10,12)) OR (i.projekat_id IS NULL AND i.status_id = 4))",
+      "((i.projekat_id IS NOT NULL AND p.status_id = 12) OR (i.projekat_id IS NULL AND i.status_id = 4))",
+    );
+  } else if (view === "archived") {
+    // Arhiva: samo arhivirani (10), bez storniranih (12) i odbijenih deals (4)
+    where.push(
+      "((i.projekat_id IS NOT NULL AND p.status_id = 10) OR (i.projekat_id IS NULL AND i.status_id = 4))",
     );
   } else if (view === "active") {
-    // default: sakrij arhivu (10/12) + fakturisane (9) + odbijene deale
+    // default: sakrij arhivu (10/12) + fakturisane (9) + odbijene deale (4)
     where.push(
       "((i.projekat_id IS NOT NULL AND p.status_id NOT IN (9,10,12)) OR (i.projekat_id IS NULL AND i.status_id <> 4))",
     );
-  } // "all" = ništa
+  } else if (view === "all") {
+    // "all" = prikaži sve osim storniranih (po defaultu sakrij storno)
+    where.push(
+      "((i.projekat_id IS NOT NULL AND p.status_id <> 12) OR (i.projekat_id IS NULL AND i.status_id <> 4))",
+    );
+  }
 
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
@@ -282,6 +299,8 @@ export default async function DealsPage({ searchParams }: any) {
 
         .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
         .actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+        .filtersRowWrap { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; }
+        .filtersRowWrap .filtersRow { flex:1; min-width:0; margin:0; }
 
         .glassbtn {
           border: 1px solid rgba(255,255,255,.18);
@@ -303,6 +322,8 @@ export default async function DealsPage({ searchParams }: any) {
         }
         .glassbtn:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.26); }
         .glassbtn:active { transform: scale(.985); }
+        .glassbtn.btnNovi { border-color: rgba(55, 214, 122, .4); background: rgba(55, 214, 122, .08); }
+        .glassbtn.btnNovi:hover { background: rgba(55, 214, 122, .14); border-color: rgba(55, 214, 122, .55); }
 
         .brandWrap { display:flex; align-items:center; gap:12px; }
         .brandLogo { height: 30px; width: auto; opacity: .92; }
@@ -398,11 +419,14 @@ export default async function DealsPage({ searchParams }: any) {
             <div className="topbar">
               {/* ✅ LOGO + naslov (diskretno) */}
               <div className="brandWrap">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
+                <div className="brandLogoBlock">
+                  <img
+                    src="/fluxa/logo-light.png"
+                    alt="FLUXA"
+                    className="brandLogo"
+                  />
+                  <span className="brandSlogan">Project & Finance Engine</span>
+                </div>
                 <div>
                   <div className="brandTitle">📋 Deals</div>
                   <div className="brandSub">Project & Finance Engine</div>
@@ -417,15 +441,56 @@ export default async function DealsPage({ searchParams }: any) {
                 >
                   🏠 Dashboard
                 </Link>
+              </div>
+            </div>
 
+            {/* ✅ Red ispod: filteri lijevo, +NOVI i Osvježi desno */}
+            <div className="filtersRowWrap">
+              <form method="GET" className="filtersRow">
+                <div className="field">
+                  <div className="labelSmall">Traži</div>
+                  <input
+                    name="q"
+                    defaultValue={q}
+                    placeholder="ID Deal / Broj projekta / Naziv…"
+                    className="input"
+                    style={{ width: 320 }}
+                  />
+                </div>
+
+                <div className="field">
+                  <div className="labelSmall">Pregled</div>
+                  <select
+                    name="view"
+                    defaultValue={view}
+                    className="input"
+                    style={{ width: 260 }}
+                  >
+                    {VIEW_OPTIONS.map((o) => (
+                      <option key={o.v} value={o.v}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  type="submit"
+                  className="glassbtn"
+                  title="Primijeni filtere"
+                >
+                  🔎 Primijeni
+                </button>
+              </form>
+
+              <div className="actions">
                 <Link
                   href="/inicijacije/novo"
-                  className="glassbtn"
+                  className="glassbtn btnNovi"
                   title="Novi Deal"
                 >
                   ➕ NOVI
                 </Link>
-
                 <Link
                   href="/inicijacije"
                   className="glassbtn"
@@ -435,44 +500,6 @@ export default async function DealsPage({ searchParams }: any) {
                 </Link>
               </div>
             </div>
-
-            {/* ✅ FILTERS (GET, bez onChange) */}
-            <form method="GET" className="filtersRow">
-              <div className="field">
-                <div className="labelSmall">Traži</div>
-                <input
-                  name="q"
-                  defaultValue={q}
-                  placeholder="ID ili naziv…"
-                  className="input"
-                  style={{ width: 320 }}
-                />
-              </div>
-
-              <div className="field">
-                <div className="labelSmall">Pregled</div>
-                <select
-                  name="view"
-                  defaultValue={view}
-                  className="input"
-                  style={{ width: 260 }}
-                >
-                  {VIEW_OPTIONS.map((o) => (
-                    <option key={o.v} value={o.v}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                className="glassbtn"
-                title="Primijeni filtere"
-              >
-                🔎 Primijeni
-              </button>
-            </form>
 
             <div className="divider" />
           </div>
@@ -513,10 +540,14 @@ export default async function DealsPage({ searchParams }: any) {
                       ? String(r.status_naziv)
                       : null;
 
+                    const dealStatusDisplay =
+                      dealStatusName === "Nova inicijacija"
+                        ? "Novi Deal"
+                        : dealStatusName;
                     const statusLabel = opened
                       ? (projectStatusName ??
                         `Projekt #${Number(r.projekat_status_id ?? 0)}`)
-                      : (dealStatusName ?? "—");
+                      : (dealStatusDisplay ?? "—");
 
                     const rokIso = toISODateOnly(r.rok_glavni);
                     const sem = semaforFor(rokIso);

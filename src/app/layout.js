@@ -2,10 +2,10 @@ import "./globals.css";
 import "@/lib/ui/common-styles.css";
 
 export const metadata = {
-  title: "Studio TAF · Fluxa",
+  title: "Fluxa · P&FE",
   description: "Fluxa — upravljanje projektima i finansijama (GUI).",
   icons: {
-    icon: "/fluxa/Icon.png",
+    icon: "/fluxa/Icon.ico",
   },
 };
 

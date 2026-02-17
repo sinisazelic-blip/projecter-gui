@@ -12,3 +12,7 @@ ALTER TABLE users MODIFY COLUMN password VARCHAR(255) NOT NULL DEFAULT '';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS role_id INT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS aktivan TINYINT NOT NULL DEFAULT 1;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP NULL;
+
+-- radnik_id – povezivanje korisnika (login) sa šifarnikom radnici (opciono)
+-- Ako već imaš kolonu, preskoči ovaj red (ili dobiješ Duplicate column).
+ALTER TABLE users ADD COLUMN radnik_id INT NULL;

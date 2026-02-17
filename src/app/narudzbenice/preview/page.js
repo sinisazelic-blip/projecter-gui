@@ -220,11 +220,14 @@ export default async function Page({ searchParams }) {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
+                <div className="brandLogoBlock">
+                  <img
+                    src="/fluxa/logo-light.png"
+                    alt="FLUXA"
+                    className="brandLogo"
+                  />
+                  <span className="brandSlogan">Project & Finance Engine</span>
+                </div>
                 <div>
                   <div className="brandTitle">Narudžbenica — Preview</div>
                   <div className="brandSub">Pošalji mail / Odustani</div>
@@ -242,8 +245,8 @@ export default async function Page({ searchParams }) {
                 <Link href={`/narudzbenice${qsBack}`} className="btn">
                   ← Nazad
                 </Link>
-                <Link href="/dashboard" className="btn">
-                  Dashboard
+                <Link href="/dashboard" className="btn" title="Dashboard">
+                  🏠 Dashboard
                 </Link>
               </div>
             </div>

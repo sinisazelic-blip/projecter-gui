@@ -12,10 +12,22 @@ const fmtKM = (v) => {
 
 const fmtDate = (d) => {
   if (!d) return "—";
-  const s = String(d).slice(0, 10);
-  const [y, m, day] = s.split("-");
-  if (!y || !m || !day) return String(d);
-  return `${day}.${m}.${y}`;
+  if (d instanceof Date) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${day}.${m}.${y}`;
+  }
+  const s = String(d).trim().slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, m, day] = s.split("-");
+    return `${day}.${m}.${y}`;
+  }
+  const parsed = new Date(d);
+  if (!Number.isNaN(parsed.getTime())) {
+    return `${String(parsed.getDate()).padStart(2, "0")}.${String(parsed.getMonth() + 1).padStart(2, "0")}.${parsed.getFullYear()}`;
+  }
+  return "—";
 };
 
 function badge(text, kind = "neutral") {
@@ -186,7 +198,10 @@ export default async function BankaPage({ searchParams }) {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+                <div className="brandLogoBlock">
+                  <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+                  <span className="brandSlogan">Project & Finance Engine</span>
+                </div>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                     <span className="brandTitle">Banka</span>
@@ -282,39 +297,47 @@ export default async function BankaPage({ searchParams }) {
             </form>
           </div>
 
-          <div className="card tableCard">
+          <div className="card tableCard banka-table-card">
             <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
               <span className="muted">Prikazano: {rows.length} (limit 200)</span>
               <ExportExcelButton
-            filename="banka_izvod"
-            sheetName="Banka"
-            headers={["posting_id", "tx_id", "Datum", "Iznos", "Valuta", "alloc_status", "linked_total_km", "Partner", "Opis", "reversed"]}
-            rows={rows.map((r) => [
-              r.posting_id,
-              r.tx_id ?? "",
-              fmtDate(r.value_date),
-              r.amount ?? "",
-              r.currency ?? "",
-              r.alloc_status ?? "",
-              r.linked_total_km ?? "",
-              r.counterparty ?? "",
-              r.description ?? "",
-              r.reversed_at || r.reversed_by_batch_id ? "DA" : "NE",
-            ])}
-          />
+                filename="banka_izvod"
+                sheetName="Banka"
+                headers={["posting_id", "tx_id", "Datum", "Iznos", "Valuta", "alloc_status", "linked_total_km", "Partner", "Opis", "reversed"]}
+                rows={rows.map((r) => [
+                  r.posting_id,
+                  r.tx_id ?? "",
+                  fmtDate(r.value_date),
+                  r.amount ?? "",
+                  r.currency ?? "",
+                  r.alloc_status ?? "",
+                  r.linked_total_km ?? "",
+                  r.counterparty ?? "",
+                  r.description ?? "",
+                  r.reversed_at || r.reversed_by_batch_id ? "DA" : "NE",
+                ])}
+              />
             </div>
-            <div style={{ overflowX: "auto" }}>
-              <table className="table">
-            <thead>
-              <tr>
-                <th style={{ width: 110 }}>posting</th>
-                <th style={{ width: 140 }}>datum</th>
-                <th style={{ width: 160, textAlign: "right" }}>iznos</th>
-                <th style={{ width: 160 }}>alloc</th>
-                <th style={{ width: 110 }}>rev</th>
-                <th>partner / opis</th>
-              </tr>
-            </thead>
+            <div className="banka-table-wrap" style={{ overflowX: "auto" }}>
+              <table className="table banka-table">
+                <colgroup>
+                  <col style={{ width: "100px" }} />
+                  <col style={{ width: "92px" }} />
+                  <col style={{ width: "120px" }} />
+                  <col style={{ width: "130px" }} />
+                  <col style={{ width: "72px" }} />
+                  <col />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>posting</th>
+                    <th>Datum</th>
+                    <th style={{ textAlign: "right" }}>iznos</th>
+                    <th>alloc</th>
+                    <th>rev</th>
+                    <th>partner / opis</th>
+                  </tr>
+                </thead>
             <tbody>
               {rows.length
                 ? rows.map((r) => {
@@ -362,7 +385,7 @@ export default async function BankaPage({ searchParams }) {
                       Nema rezultata.
                     </td>
                   </tr>}
-            </tbody>
+                </tbody>
               </table>
             </div>
           </div>

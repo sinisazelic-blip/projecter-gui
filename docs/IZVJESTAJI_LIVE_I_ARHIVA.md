@@ -57,7 +57,7 @@ Ako neka tabela nema ove kolone, upit se preskače; izvještaj radi samo na live
 - **stg_troskovi_talenti_old:** `talent_id` ili `naziv`/`ime_prezime`, `iznos_km`/`iznos`
 - **stg_troskovi_dobavljaci_old:** `dobavljac_id` ili `naziv`, `iznos_km`/`iznos`
 - **talent_istorija:** `talent_id`, `iznos_km`/`iznos`
-- **stg_master_finansije:** `datum_zavrsetka`, `iznos_km`, `iznos_troska_km` (već korišteno)
+- **stg_master_finansije:** `datum_zavrsetka`, `iznos_km`, `iznos_troska_km` (već korišteno). Za **Knjigu prihoda** i **Listu izdatih faktura** (arhiva): osnovica = `iznos_km`; ako postoje kolone `iznos_ukupno_km` ili `iznos_sa_pdv_km`, PDV = ukupno − iznos_km, inače PDV = 0.
 
 - **Klijenti:** Arhiva iz `stg_master_finansije` — agregacija po `COALESCE(narucilac_id, krajnji_klijent_id)` (jedan klijent po redu), suma `iznos_km`, broj projekata po `id_po`, za `datum_zavrsetka <= 31.12.2025`. U istoriji nema posebnog koncepta naručioca — u stagingu koristimo te kolone da povežemo red sa klijentom.
 - **Fiksni troškovi:** Nisu se ranije vodili; izvještaj samo live.

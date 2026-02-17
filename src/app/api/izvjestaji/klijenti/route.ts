@@ -5,19 +5,33 @@ export const dynamic = "force-dynamic";
 
 const ARHIVA_CUTOFF = "2025-12-31";
 
-type LegacyClientRow = { klijent_id: number; stg_broj_projekata: number; stg_ukupno_fakturisano: number };
+type LegacyClientRow = {
+  klijent_id: number;
+  stg_broj_projekata: number;
+  stg_ukupno_fakturisano: number;
+  stg_budzet: number;
+  stg_naplaceno: number;
+};
 
 /**
- * Arhiva iz stg_master_finansije do 31.12.2025 — agregacija po klijentu (COALESCE(narucilac_id, krajnji_klijent_id)).
+ * Arhiva iz stg_master_finansije do 31.12.2025 — po klijentu: broj projekata, fakturisano, budžet i naplaćeno (iznos_km).
+ * Naplaćeno iz istorije: nema tabela naplate, ali ~99,5% je naplaćeno — za historijski pregled iznos_km ide i u "naplaćeno".
  */
-async function loadLegacyByClient(): Promise<Map<number, { broj_projekata: number; ukupno_fakturisano: number }>> {
-  const map = new Map<number, { broj_projekata: number; ukupno_fakturisano: number }>();
+async function loadLegacyByClient(): Promise<
+  Map<number, { broj_projekata: number; ukupno_fakturisano: number; budzet: number; naplaceno: number }>
+> {
+  const map = new Map<
+    number,
+    { broj_projekata: number; ukupno_fakturisano: number; budzet: number; naplaceno: number }
+  >();
   try {
     const rows = (await query(
       `SELECT
         COALESCE(narucilac_id, krajnji_klijent_id) AS klijent_id,
         COUNT(DISTINCT id_po) AS stg_broj_projekata,
-        ROUND(SUM(COALESCE(iznos_km, 0)), 2) AS stg_ukupno_fakturisano
+        ROUND(SUM(COALESCE(iznos_km, 0)), 2) AS stg_ukupno_fakturisano,
+        ROUND(SUM(COALESCE(iznos_km, 0)), 2) AS stg_budzet,
+        ROUND(SUM(COALESCE(iznos_km, 0)), 2) AS stg_naplaceno
        FROM stg_master_finansije
        WHERE datum_zavrsetka IS NOT NULL AND datum_zavrsetka <= ?
          AND (narucilac_id IS NOT NULL OR krajnji_klijent_id IS NOT NULL)
@@ -30,6 +44,8 @@ async function loadLegacyByClient(): Promise<Map<number, { broj_projekata: numbe
       map.set(id, {
         broj_projekata: Number(r.stg_broj_projekata) || 0,
         ukupno_fakturisano: Number(r.stg_ukupno_fakturisano) || 0,
+        budzet: Number(r.stg_budzet) || 0,
+        naplaceno: Number(r.stg_naplaceno) || 0,
       });
     }
   } catch {
@@ -106,7 +122,7 @@ export async function GET(req: NextRequest) {
       ") fakt_stats ON fakt_stats.bill_to_klijent_id = k.klijent_id " +
       "WHERE proj_stats.broj_projekata > 0 OR fakt_stats.broj_faktura > 0 " +
       "ORDER BY ukupno_fakturisano DESC, k.naziv_klijenta ASC " +
-      "LIMIT 500";
+      "LIMIT 3000";
 
     const rows = await query(sql, params);
 
@@ -137,6 +153,8 @@ export async function GET(req: NextRequest) {
       if (leg) {
         it.broj_projekata += leg.broj_projekata;
         it.ukupno_fakturisano += leg.ukupno_fakturisano;
+        it.ukupno_budzet_projekata += leg.budzet;
+        it.ukupno_naplaceno += leg.naplaceno;
       }
     }
 
@@ -154,10 +172,10 @@ export async function GET(req: NextRequest) {
           klijent_id: klijentId,
           naziv_klijenta: nazivById.get(klijentId) ?? "—",
           broj_projekata: leg.broj_projekata,
-          ukupno_budzet_projekata: 0,
+          ukupno_budzet_projekata: leg.budzet,
           broj_faktura: 0,
           ukupno_fakturisano: leg.ukupno_fakturisano,
-          ukupno_naplaceno: 0,
+          ukupno_naplaceno: leg.naplaceno,
           potrazivanja: 0,
         });
       }

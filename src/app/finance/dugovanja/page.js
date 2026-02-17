@@ -115,11 +115,14 @@ export default async function DugovanjaListPage({ searchParams }) {
           <div className="topInner">
             <div className="topRow">
               <div className="brandWrap">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
+                <div className="brandLogoBlock">
+                  <img
+                    src="/fluxa/logo-light.png"
+                    alt="FLUXA"
+                    className="brandLogo"
+                  />
+                  <span className="brandSlogan">Project & Finance Engine</span>
+                </div>
                 <div>
                   <div className="brandTitle">Dugovanja</div>
                   <div className="brandSub">Finansije / Obaveze prema dobavljačima</div>
@@ -281,8 +284,8 @@ export default async function DugovanjaListPage({ searchParams }) {
             />
           </span>
         </div>
-        <div>
-          <table>
+        <div className="table-wrap">
+          <table className="table">
             <thead>
               <tr>
                 <th style={{ width: 90 }}>ID</th>

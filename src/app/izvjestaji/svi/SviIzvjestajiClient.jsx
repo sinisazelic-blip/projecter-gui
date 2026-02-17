@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { downloadExcel, reportFilename } from "@/lib/exportExcel";
 import { ColumnPicker } from "@/components/ColumnPicker";
 
@@ -140,12 +139,12 @@ export default function SviIzvjestajiClient() {
       }
       downloadExcel({ filename: fn, sheetName: "Knjiga prihoda", headers, rows, footerRows: footer });
     } else if (tip === "pdv") {
-      const headers = ["Datum", "Osnovica", "PDV izlazni"];
-      const rows = (data.items || []).map((r) => [r.datum ?? "", r.osnovica ?? "", r.pdv_izlazni ?? ""]);
+      const headers = ["Datum", "Osnovica", "PDV izlazni", "Izvor"];
+      const rows = (data.items || []).map((r) => [r.datum ?? "", r.osnovica ?? "", r.pdv_izlazni ?? "", r.iz_arhive ? "Arhiva" : "Live"]);
       const footer = [];
       if (data.summary) {
         footer.push([]);
-        footer.push(["UKUPNO", data.summary.osnovica_ukupno ?? "", data.summary.pdv_izlazni_ukupno ?? ""]);
+        footer.push(["UKUPNO", data.summary.osnovica_ukupno ?? "", data.summary.pdv_izlazni_ukupno ?? "", ""]);
       }
       downloadExcel({ filename: fn, sheetName: "PDV", headers, rows, footerRows: footer });
     } else if (tip === "projekti") {
@@ -326,7 +325,7 @@ export default function SviIzvjestajiClient() {
   };
 
   return (
-    <div className="card" style={{ maxWidth: 1200, padding: 24 }}>
+    <div className="card">
       <style>{`
         .report-table {
           width: 100%;
@@ -360,15 +359,13 @@ export default function SviIzvjestajiClient() {
       </div>
 
       <form onSubmit={handleGenerisi}>
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: "block", marginBottom: 8, fontWeight: 700, fontSize: 14 }}>
-            Šta te interesuje?
-          </label>
+        <div className="field" style={{ marginBottom: 20 }}>
+          <label className="label">Šta te interesuje?</label>
           <select
             value={tip}
             onChange={(e) => { setTip(e.target.value); setData(null); setError(""); }}
             className="input"
-            style={{ width: "100%", maxWidth: 500, padding: "10px 12px", fontSize: 14 }}
+            style={{ maxWidth: 500 }}
             required
           >
             <option value="">— Izaberi tip izvještaja —</option>
@@ -386,28 +383,22 @@ export default function SviIzvjestajiClient() {
         </div>
 
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 24 }}>
-          <div>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13 }}>
-              Datum od (opciono)
-            </label>
+          <div className="field">
+            <label className="label">Datum od (opciono)</label>
             <input
               type="date"
               value={datumOd}
               onChange={(e) => setDatumOd(e.target.value)}
               className="input"
-              style={{ padding: "8px 12px", fontSize: 14 }}
             />
           </div>
-          <div>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13 }}>
-              Datum do (opciono)
-            </label>
+          <div className="field">
+            <label className="label">Datum do (opciono)</label>
             <input
               type="date"
               value={datumDo}
               onChange={(e) => setDatumDo(e.target.value)}
               className="input"
-              style={{ padding: "8px 12px", fontSize: 14 }}
             />
           </div>
         </div>
@@ -419,9 +410,6 @@ export default function SviIzvjestajiClient() {
           <button type="submit" className="btn" style={{ fontWeight: 700 }} disabled={loading}>
             {loading ? "Učitavam…" : "Generiši izvještaj"}
           </button>
-          <Link href="/dashboard" className="btn" style={{ opacity: 0.9 }}>
-            Nazad na Dashboard
-          </Link>
         </div>
       </form>
 
@@ -597,6 +585,9 @@ export default function SviIzvjestajiClient() {
             <div style={{ marginBottom: 16, fontSize: 13 }}>
               PDV izlazni ukupno: <strong>{formatNum(data.summary.pdv_izlazni_ukupno)}</strong> BAM
               {" | "} Osnovica ukupno: <strong>{formatNum(data.summary.osnovica_ukupno)}</strong> BAM
+              {(data.items || []).some((r) => r.iz_arhive) && (
+                <span style={{ marginLeft: 12, color: "var(--muted)", fontSize: 12 }}>Uključena arhiva (do 31.12.2025).</span>
+              )}
               {data.summary.napomena && (
                 <p style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>{data.summary.napomena}</p>
               )}
@@ -609,6 +600,7 @@ export default function SviIzvjestajiClient() {
                   <th>Datum</th>
                   <th>Osnovica</th>
                   <th>PDV izlazni</th>
+                  <th style={{ width: 72 }}>Izvor</th>
                 </tr>
               </thead>
               <tbody>
@@ -617,6 +609,9 @@ export default function SviIzvjestajiClient() {
                     <td>{row.datum ?? "—"}</td>
                     <td style={{ textAlign: "right" }}>{formatNum(row.osnovica)}</td>
                     <td style={{ textAlign: "right" }}>{formatNum(row.pdv_izlazni)}</td>
+                    <td style={{ fontSize: 11, color: "var(--muted)" }}>
+                      {row.iz_arhive ? "Arhiva" : "Live"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1032,7 +1027,7 @@ export default function SviIzvjestajiClient() {
               </thead>
               <tbody>
                 {(data.items || []).map((row, i) => (
-                  <tr key={row.faktura_id ?? i}>
+                  <tr key={row.faktura_id != null ? `f-${row.faktura_id}` : `arhiva-${row.broj_fakture}-${row.datum_izdavanja}-${i}`}>
                     <td>{row.broj_fakture ?? "—"}</td>
                     <td>{row.datum_izdavanja ?? "—"}</td>
                     <td>{row.datum_dospijeca ?? "—"}</td>

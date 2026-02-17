@@ -376,6 +376,118 @@ option {
   margin-top: 0;
 }
 
+/* Banka: tabela prilagođena širem kontejneru, datum u dd.mm.yyyy */
+.banka-table-card {
+  max-width: none;
+}
+.banka-table-wrap {
+  width: 100%;
+}
+.banka-table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 680px;
+}
+.banka-table td:nth-child(2) {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.banka-table td:nth-child(6) {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 0;
+}
+
+/* Brand: logo + slogan ispod (širina logotipa) */
+.brandLogoBlock {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.brandLogoBlock .brandLogo {
+  display: block;
+}
+.brandSlogan {
+  font-size: 12px;
+  line-height: 1.25;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Fiksni troškovi — raspored: filter i tabela */
+.fiksni-raspored-filters {
+  overflow: hidden;
+}
+.fiksni-raspored-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px 20px;
+}
+.fiksni-filter-group {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.fiksni-filter-group .label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.fiksni-filter-group .input {
+  width: 100%;
+  min-width: 140px;
+  max-width: 200px;
+  box-sizing: border-box;
+}
+.fiksni-filter-group:first-child .input {
+  min-width: 180px;
+  max-width: 280px;
+}
+.fiksni-filter-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  flex: 0 0 auto;
+  margin-bottom: 2px;
+}
+.fiksni-filter-checkbox input {
+  margin: 0;
+}
+.fiksni-filter-actions {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+.fiksni-raspored-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+.fiksni-raspored-table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 826px;
+}
+.fiksni-raspored-table td:nth-child(5),
+.fiksni-raspored-table td:nth-child(7) {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.fiksni-raspored-table td:nth-child(2) {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
 /* =========================
    Small screens
    ========================= */

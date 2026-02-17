@@ -915,6 +915,7 @@ export default function PonudaDetaljPage() {
         .actionBtn { padding:10px 12px; border-radius:14px; display:inline-flex; align-items:center; gap:8px; font-weight:650; white-space:nowrap; }
 
         .pageHead { margin-top: 8px; }
+        .pageTitleRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
         .pageTitle { font-size:22px; font-weight:700; margin:0; }
         .pageSub { margin-top:6px; opacity:.82; font-size:13px; line-height:1.25; }
 
@@ -980,11 +981,14 @@ export default function PonudaDetaljPage() {
               className="brandWrap"
               style={{ flex: "1 1 auto", justifyContent: "flex-start" }}
             >
-              <img
-                src="/fluxa/logo-light.png"
-                alt="FLUXA"
-                className="brandLogo"
-              />
+              <div className="brandLogoBlock">
+                <img
+                  src="/fluxa/logo-light.png"
+                  alt="FLUXA"
+                  className="brandLogo"
+                />
+                <span className="brandSlogan">Project & Finance Engine</span>
+              </div>
               <div>
                 <div className="brandTitle">Deal</div>
                 <div className="brandSub">Project & Finance Engine</div>
@@ -999,17 +1003,64 @@ export default function PonudaDetaljPage() {
               >
                 🏠 Dashboard
               </Link>
+            </div>
+          </div>
 
+          {/* Drugi red: naslov + Otvori projekat / Zatvori projekat */}
+          <div className="pageTitleRow">
+            <h1 className="pageTitle">
+              {dealTitle}
+              <span className="muted" style={{ fontWeight: 600 }}>
+                {" "}
+                · Deal #{id}
+              </span>
               {row?.projekat_id ? (
+                <span className="muted"> · Projekt #{row.projekat_id}</span>
+              ) : null}
+            </h1>
+
+            <div className="actions" style={{ flexWrap: "wrap" }}>
+              {!row?.projekat_id ? (
                 <>
                   <button
-                    onClick={() => router.push(`/projects/${row.projekat_id}`)}
+                    onClick={saveDeal}
+                    disabled={saving || loading || !row}
                     className="glassbtn actionBtn"
                     type="button"
+                    style={{ opacity: saving ? 0.7 : 1 }}
                   >
-                    📁 Otvori projekat #{row.projekat_id}
+                    {saving ? "Snima..." : "Sačuvaj"}
                   </button>
-
+                  <button
+                    onClick={openProject}
+                    disabled={
+                      openingProject || loading || !acceptedOk
+                    }
+                    className="glassbtn actionBtn"
+                    type="button"
+                    style={{
+                      opacity: openingProject ? 0.7 : !acceptedOk ? 0.55 : 1,
+                    }}
+                    title={
+                      !acceptedOk
+                        ? "Ne može bez Deadline-a (dd.mm.yyyy HH:mm)."
+                        : "Otvori projekat iz Deal-a."
+                    }
+                  >
+                    {openingProject ? "Otvaram..." : "Otvori projekat"}
+                  </button>
+                  <button
+                    className="glassbtn actionBtn"
+                    type="button"
+                    disabled
+                    style={{ opacity: 0.4, cursor: "not-allowed" }}
+                    title="Dostupno kada je projekat otvoren"
+                  >
+                    🔒 Zatvori projekat
+                  </button>
+                </>
+              ) : (
+                <>
                   <div style={{ position: "relative" }}>
                     <button
                       onClick={() => setCloseOpen((v) => !v)}
@@ -1262,55 +1313,11 @@ export default function PonudaDetaljPage() {
                     )}
                   </div>
                 </>
-              ) : (
-                <>
-                  <button
-                    onClick={saveDeal}
-                    disabled={saving || loading || !row}
-                    className="glassbtn actionBtn"
-                    type="button"
-                    style={{ opacity: saving ? 0.7 : 1 }}
-                  >
-                    {saving ? "Snima..." : "Sačuvaj"}
-                  </button>
-
-                  <button
-                    onClick={openProject}
-                    disabled={
-                      openingProject ||
-                      loading ||
-                      !!row?.projekat_id ||
-                      !acceptedOk
-                    }
-                    className="glassbtn actionBtn"
-                    type="button"
-                    style={{
-                      opacity: openingProject ? 0.7 : !acceptedOk ? 0.55 : 1,
-                    }}
-                    title={
-                      !acceptedOk
-                        ? "Ne može bez Deadline-a (dd.mm.yyyy HH:mm)."
-                        : "Otvori projekat iz Deal-a."
-                    }
-                  >
-                    {openingProject ? "Otvaram..." : "Otvori projekat"}
-                  </button>
-                </>
               )}
             </div>
           </div>
 
           <div className="pageHead">
-            <h1 className="pageTitle">
-              {dealTitle}
-              <span className="muted" style={{ fontWeight: 600 }}>
-                {" "}
-                · Deal #{id}
-              </span>
-              {row?.projekat_id ? (
-                <span className="muted"> · Projekt #{row.projekat_id}</span>
-              ) : null}
-            </h1>
 
             {/* ✅ Deal → Project “kanonska” traka (vizuelna navigacija) */}
             <StatusTimelineBar
@@ -1484,6 +1491,7 @@ export default function PonudaDetaljPage() {
             <div className="cardLike msgErr">Greška: {error}</div>
           )}
           {!!msg && !loading && <div className="cardLike msgOk">{msg}</div>}
+          <div className="divider" />
         </div>
       </div>
 
@@ -1702,104 +1710,108 @@ export default function PonudaDetaljPage() {
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 100px 120px 1fr auto",
-                    gap: 10,
-                    alignItems: "end",
+                    gridTemplateRows: "auto auto auto",
+                    gap: "6px 10px",
+                    alignItems: "center",
                   }}
                 >
-                <div>
-                  <div className="label" style={{ marginBottom: 6, fontSize: 15, fontWeight: 700, opacity: 0.85 }}>Stavka iz cjenovnika</div>
-                  <select
-                    value={selected ? String(selected.stavka_id) : ""}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (!v) {
-                        setSelected(null);
-                        setCijenaUI("");
-                        return;
-                      }
-                      const it = findPickerById(Number(v));
-                      setSelected(it);
-                      setCijenaUI(it ? String(it.cijena_default ?? "0") : "");
-                    }}
-                    style={inputStyle}
-                    disabled={pickerLoading}
-                  >
-                    <option value="">
-                      {pickerLoading
-                        ? "Učitavam cjenovnik..."
-                        : "— Izaberi stavku iz cjenovnika —"}
-                    </option>
-                    {pickerItems.map((it) => (
-                      <option key={it.stavka_id} value={String(it.stavka_id)}>
-                        {it.naziv} (#{it.stavka_id})
+                  {/* Red 1: svi labeli */}
+                  <div className="label" style={{ fontSize: 15, fontWeight: 700, opacity: 0.85 }}>Stavka iz cjenovnika</div>
+                  <div className="label" style={{ fontSize: 15, fontWeight: 700, opacity: 0.85 }}>Količina</div>
+                  <div className="label" style={{ fontSize: 15, fontWeight: 700, opacity: 0.85 }}>Cijena</div>
+                  <div className="label" style={{ fontSize: 15, fontWeight: 700, opacity: 0.85 }}>Opis (opciono)</div>
+                  <div />
+
+                  {/* Red 2: select + polja + dugme */}
+                  <div>
+                    <select
+                      value={selected ? String(selected.stavka_id) : ""}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (!v) {
+                          setSelected(null);
+                          setCijenaUI("");
+                          return;
+                        }
+                        const it = findPickerById(Number(v));
+                        setSelected(it);
+                        setCijenaUI(it ? String(it.cijena_default ?? "0") : "");
+                      }}
+                      style={inputStyle}
+                      disabled={pickerLoading}
+                    >
+                      <option value="">
+                        {pickerLoading
+                          ? "Učitavam cjenovnik..."
+                          : "— Izaberi stavku iz cjenovnika —"}
                       </option>
-                    ))}
-                  </select>
+                      {pickerItems.map((it) => (
+                        <option key={it.stavka_id} value={String(it.stavka_id)}>
+                          {it.naziv} (#{it.stavka_id})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <input
+                      value={kolicina}
+                      onChange={(e) => setKolicina(e.target.value)}
+                      placeholder="količina"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <input
+                      value={cijenaUI}
+                      onChange={(e) => setCijenaUI(e.target.value)}
+                      placeholder={
+                        selected
+                          ? normCcy(selected.valuta_default)
+                          : "cijena"
+                      }
+                      style={inputStyle}
+                      inputMode="decimal"
+                      disabled={!selected}
+                    />
+                  </div>
+                  <div>
+                    <input
+                      value={opisStavke}
+                      onChange={(e) => setOpisStavke(e.target.value)}
+                      placeholder="opis…"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <button
+                      onClick={addItem}
+                      disabled={!selected || addingItem}
+                      type="button"
+                      style={{
+                        opacity: !selected || addingItem ? 0.6 : 1,
+                        background: "linear-gradient(135deg, rgba(55, 214, 122, 0.2), rgba(34, 197, 94, 0.15))",
+                        border: "1px solid rgba(55, 214, 122, 0.45)",
+                        color: "inherit",
+                        padding: "10px 16px",
+                        borderRadius: 12,
+                        fontWeight: 750,
+                        cursor: !selected || addingItem ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {addingItem ? "Dodajem..." : "+ Dodaj"}
+                    </button>
+                  </div>
 
-                  {selected ? (
-                    <div className="hint12">
-                      #{selected.stavka_id} • {selected.jedinica} •{" "}
-                      {Number(selected.cijena_default ?? 0).toFixed(2)}{" "}
-                      {normCcy(selected.valuta_default)}
-                    </div>
-                  ) : null}
-                </div>
-
-                <div>
-                  <div className="label" style={{ marginBottom: 6, fontSize: 15, fontWeight: 700, opacity: 0.85 }}>Količina</div>
-                  <input
-                    value={kolicina}
-                    onChange={(e) => setKolicina(e.target.value)}
-                    placeholder="količina"
-                    style={inputStyle}
-                  />
-                </div>
-
-                <div>
-                  <div className="label" style={{ marginBottom: 6, fontSize: 15, fontWeight: 700, opacity: 0.85 }}>Cijena</div>
-                  <input
-                    value={cijenaUI}
-                    onChange={(e) => setCijenaUI(e.target.value)}
-                    placeholder={
-                      selected
-                        ? normCcy(selected.valuta_default)
-                        : "cijena"
-                    }
-                    style={inputStyle}
-                    inputMode="decimal"
-                    disabled={!selected}
-                  />
-                </div>
-
-                <div>
-                  <div className="label" style={{ marginBottom: 6, fontSize: 15, fontWeight: 700, opacity: 0.85 }}>Opis (opciono)</div>
-                  <input
-                    value={opisStavke}
-                    onChange={(e) => setOpisStavke(e.target.value)}
-                    placeholder="opis…"
-                    style={inputStyle}
-                  />
-                </div>
-
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button
-                    onClick={addItem}
-                    disabled={!selected || addingItem}
-                    type="button"
-                    style={{
-                      opacity: !selected || addingItem ? 0.6 : 1,
-                      background: "linear-gradient(135deg, rgba(55, 214, 122, 0.2), rgba(34, 197, 94, 0.15))",
-                      border: "1px solid rgba(55, 214, 122, 0.45)",
-                      color: "inherit",
-                      padding: "10px 16px",
-                      borderRadius: 12,
-                      fontWeight: 750,
-                      cursor: !selected || addingItem ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    {addingItem ? "Dodajem..." : "+ Dodaj"}
-                  </button>
-                </div>
+                  {/* Red 3: samo hint ispod stavke iz cjenovnika (prva kolona) */}
+                  <div style={{ gridColumn: 1 }}>
+                    {selected ? (
+                      <div className="hint12" style={{ marginTop: 4 }}>
+                        #{selected.stavka_id} • {selected.jedinica} •{" "}
+                        {Number(selected.cijena_default ?? 0).toFixed(2)}{" "}
+                        {normCcy(selected.valuta_default)}
+                      </div>
+                    ) : null}
+                  </div>
               </div>
               </div>
 
@@ -2069,7 +2081,7 @@ export default function PonudaDetaljPage() {
                 >
                   {STATUSI.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.naziv}
+                      {s.naziv === "Nova inicijacija" ? "Novi Deal" : s.naziv}
                     </option>
                   ))}
                 </select>

@@ -835,7 +835,10 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
               style={{ flex: "1 1 auto", justifyContent: "flex-start" }}
               title="FLUXA — Project & Finance Engine"
             >
-              <img src="/fluxa/logo-light.png" alt="FLUXA" className="projekatBrandLogo" />
+              <div className="brandLogoBlock">
+                <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+                <span className="brandSlogan">Project & Finance Engine</span>
+              </div>
               <div>
                 <div className="projekatBrandTitle">Projekti</div>
                 <div className="projekatBrandSub">Project & Finance Engine</div>
@@ -935,7 +938,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
               >
                 <input type="hidden" name="projekat_id" value={project.projekat_id} />
                 <input type="hidden" name="return_to" value={returnTo} />
-                <label style={{ fontSize: 12, opacity: 0.85, whiteSpace: "nowrap" }}>Budžet za tim (%):</label>
+                <label className="label" style={{ whiteSpace: "nowrap" }}>Budžet za tim (%):</label>
                 <input
                   type="number"
                   name="budzet_procenat_za_tim"

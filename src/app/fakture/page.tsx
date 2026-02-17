@@ -16,7 +16,8 @@ function fmtDDMMYYYY(iso: string | null): string {
 
 function fmtMoney(n: number, ccy: string): string {
   const v = Number.isFinite(n) ? n : 0;
-  return `${v.toFixed(2)} ${ccy}`;
+  const label = (ccy === "BAM" || ccy === "KM") ? "KM" : ccy;
+  return `${v.toFixed(2)} ${label}`;
 }
 
 type Faktura = {
@@ -128,11 +129,14 @@ export default function FakturePage() {
           <div className="topInner">
             <div className="topRow" style={{ justifyContent: "space-between" }}>
               <div className="brandWrap">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
+                <div className="brandLogoBlock">
+                  <img
+                    src="/fluxa/logo-light.png"
+                    alt="FLUXA"
+                    className="brandLogo"
+                  />
+                  <span className="brandSlogan">Project & Finance Engine</span>
+                </div>
                 <div>
                   <div className="brandTitle">📄 Fakture</div>
                   <div className="brandSub">Lista izdatih faktura</div>
@@ -149,65 +153,42 @@ export default function FakturePage() {
               </Link>
             </div>
 
-            <div style={{ marginTop: 14 }}>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                }}
+            <div style={{ marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "nowrap", overflowX: "auto" }}>
+              <label className="label" style={{ whiteSpace: "nowrap" }}>Broj fakture:</label>
+              <input
+                id="broj_fakture"
+                type="text"
+                defaultValue={brojFaktureFilter}
+                placeholder="001/2026..."
+                className="input small"
+                style={{ width: 150 }}
+              />
+              <label className="label" style={{ whiteSpace: "nowrap" }}>Naručioc:</label>
+              <select
+                id="narucilac_id"
+                defaultValue={narucilacIdFilter}
+                className="input"
+                style={{ minWidth: 200 }}
               >
-                <label style={{ fontSize: 13 }}>Broj fakture:</label>
-                <input
-                  id="broj_fakture"
-                  type="text"
-                  defaultValue={brojFaktureFilter}
-                  placeholder="001/2026..."
-                  className="input"
-                  style={{ width: 150, fontSize: 13 }}
-                />
-
-                <label style={{ fontSize: 13 }}>Naručioc:</label>
-                <select
-                  id="narucilac_id"
-                  defaultValue={narucilacIdFilter}
-                  className="input"
-                  style={{ minWidth: 200, fontSize: 13 }}
-                >
-                  <option value="">Svi</option>
-                  {narucioci.map((n) => (
-                    <option key={n.klijent_id} value={String(n.klijent_id)}>
-                      {n.naziv_klijenta}
-                    </option>
-                  ))}
-                </select>
-
+                <option value="">Svi</option>
+                {narucioci.map((n) => (
+                  <option key={n.klijent_id} value={String(n.klijent_id)}>
+                    {n.naziv_klijenta}
+                  </option>
+                ))}
+              </select>
+              <button type="button" className="btn" onClick={handleFilter}>
+                🔎 Filtriraj
+              </button>
+              <button type="button" className="btn" onClick={handleReset}>
+                🔄 Reset
+              </button>
+              {fakture.length > 0 && (
                 <button
                   type="button"
                   className="btn"
-                  onClick={handleFilter}
-                  style={{ fontSize: 13 }}
-                >
-                  🔎 Filtriraj
-                </button>
-
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={handleReset}
-                  style={{ fontSize: 13 }}
-                >
-                  🔄 Reset
-                </button>
-
-                {fakture.length > 0 && (
-                  <button
-                    type="button"
-                    className="btn"
-                    style={{ fontSize: 13, marginLeft: 8 }}
-                    onClick={() => {
-                      const headers = ["Broj fakture", "PFR", "Datum izdavanja", "Datum dospijeća", "Naručioc", "Iznos", "Valuta", "PDV", "Status"];
+                  onClick={() => {
+const headers = ["Broj fakture", "PFR", "Datum izdavanja", "Datum dospijeća", "Naručioc", "Iznos", "Valuta", "PDV", "Status"];
                       const rows = fakture.map((f) => [
                         f.broj_fakture ?? "",
                         f.broj_fiskalni ?? "",
@@ -215,23 +196,22 @@ export default function FakturePage() {
                         fmtDDMMYYYY(f.datum_dospijeca),
                         f.narucilac_naziv ?? "",
                         f.iznos_sa_pdv ?? "",
-                        f.valuta ?? "",
-                        f.pdv_iznos ?? "",
-                        f.status ?? "",
-                      ]);
-                      downloadExcel({
-                        filename: "fakture_lista",
-                        sheetName: "Fakture",
-                        headers,
-                        rows,
-                      });
-                    }}
-                    title="Preuzmi listu u Excel"
-                  >
-                    Export u Excel
-                  </button>
-                )}
-              </div>
+                        (f.valuta === "BAM" || f.valuta === "KM") ? "KM" : (f.valuta ?? ""),
+                      f.pdv_iznos ?? "",
+                      f.status ?? "",
+                    ]);
+                    downloadExcel({
+                      filename: "fakture_lista",
+                      sheetName: "Fakture",
+                      headers,
+                      rows,
+                    });
+                  }}
+                  title="Preuzmi listu u Excel"
+                >
+                  Export u Excel
+                </button>
+              )}
             </div>
 
             <div className="divider" />
@@ -324,7 +304,7 @@ export default function FakturePage() {
                         <td className="num" style={{ width: "120px" }}>
                           {fmtMoney(f.iznos_sa_pdv, f.valuta)}
                         </td>
-                        <td style={{ width: "80px" }}>{f.valuta}</td>
+                        <td style={{ width: "80px" }}>{(f.valuta === "BAM" || f.valuta === "KM") ? "KM" : f.valuta}</td>
                         <td className="num" style={{ width: "100px" }}>
                           {f.pdv_iznos
                             ? fmtMoney(f.pdv_iznos, f.valuta)

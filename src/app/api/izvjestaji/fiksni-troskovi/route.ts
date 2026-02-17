@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
       FROM fiksni_troskovi f
       ${whereClause}
       ORDER BY f.aktivan DESC, f.trosak_id DESC
-      LIMIT 500
+      LIMIT 2000
       `,
       params,
     );

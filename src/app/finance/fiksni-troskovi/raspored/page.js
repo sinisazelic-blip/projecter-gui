@@ -11,10 +11,22 @@ const fmtKM = (v) => {
 
 const fmtDate = (d) => {
   if (!d) return "—";
-  const s = String(d).slice(0, 10);
-  const [y, m, day] = s.split("-");
-  if (!y || !m || !day) return String(d);
-  return `${day}.${m}.${y}`;
+  if (d instanceof Date) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${day}.${m}.${y}`;
+  }
+  const s = String(d).trim().slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, m, day] = s.split("-");
+    return `${day}.${m}.${y}`;
+  }
+  const parsed = new Date(d);
+  if (!Number.isNaN(parsed.getTime())) {
+    return `${String(parsed.getDate()).padStart(2, "0")}.${String(parsed.getMonth() + 1).padStart(2, "0")}.${parsed.getFullYear()}`;
+  }
+  return "—";
 };
 
 function badge(text, kind = "neutral") {
@@ -30,15 +42,20 @@ function badge(text, kind = "neutral") {
 }
 
 function classifyDue(dueDate) {
-  // dueDate: YYYY-MM-DD
   if (!dueDate) return { text: "—", kind: "neutral" };
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const due = new Date(String(dueDate).slice(0, 10) + "T00:00:00");
+  let due;
+  if (dueDate instanceof Date) {
+    due = dueDate;
+  } else {
+    const s = String(dueDate).trim().slice(0, 10);
+    due = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s + "T00:00:00") : new Date(dueDate);
+  }
   if (Number.isNaN(due.getTime()))
-    return { text: String(dueDate), kind: "neutral" };
+    return { text: fmtDate(dueDate), kind: "neutral" };
 
   const diffDays = Math.round(
     (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
@@ -143,31 +160,41 @@ export default async function FiksniRasporedPage({ searchParams }) {
     <div className="container">
       <div className="topbar glass">
         <div className="topbar-left">
-          <h1 className="h1">Fiksni troškovi — raspored</h1>
-          <div className="subtle">
-            Read-only pregled iz <code>vw_fiksni_troskovi_raspored</code> +{" "}
-            <code>vw_fiksni_troskovi_status</code>
+          <div className="brandWrap">
+            <div className="brandLogoBlock">
+              <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+              <span className="brandSlogan">Project & Finance Engine</span>
+            </div>
+            <div>
+              <h1 className="h1" style={{ margin: 0 }}>Fiksni troškovi — raspored</h1>
+              <div className="subtle">
+                Read-only pregled iz <code>vw_fiksni_troskovi_raspored</code> +{" "}
+                <code>vw_fiksni_troskovi_status</code>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="topbar-right" style={{ display: "flex", gap: 8 }}>
-          <Link className="btn" href="/finance/fiksni-troskovi">
-            Lista
+        <div className="topbar-right">
+          <Link className="btn" href="/finance" title="Nazad na Finansije">
+            ← Nazad
           </Link>
-          <Link className="btn" href="/finance">
-            Nazad
+          <Link className="btn" href="/finance/fiksni-troskovi" title="Lista fiksnih troškova">
+            ☰ Lista
+          </Link>
+          <Link className="btn" href="/dashboard" title="Dashboard">
+            🏠 Dashboard
           </Link>
         </div>
       </div>
 
-      <div className="card">
+      <div className="card fiksni-raspored-filters">
         <form
-          className="card-row"
+          className="fiksni-raspored-form"
           method="GET"
-          style={{ gap: 12, flexWrap: "wrap" }}
         >
-          <div style={{ minWidth: 260 }}>
-            <div className="label">Pretraga</div>
+          <div className="fiksni-filter-group">
+            <label className="label">Pretraga</label>
             <input
               className="input"
               name="q"
@@ -175,36 +202,25 @@ export default async function FiksniRasporedPage({ searchParams }) {
               placeholder="naziv troška…"
             />
           </div>
-
-          <div style={{ width: 160 }}>
-            <div className="label">Due od</div>
+          <div className="fiksni-filter-group">
+            <label className="label">Due od</label>
             <input
               className="input"
               name="due_from"
+              type="date"
               defaultValue={dueFrom}
-              placeholder="YYYY-MM-DD"
             />
           </div>
-
-          <div style={{ width: 160 }}>
-            <div className="label">Due do</div>
+          <div className="fiksni-filter-group">
+            <label className="label">Due do</label>
             <input
               className="input"
               name="due_to"
+              type="date"
               defaultValue={dueTo}
-              placeholder="YYYY-MM-DD"
             />
           </div>
-
-          <label
-            className="subtle"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              marginTop: 22,
-            }}
-          >
+          <label className="fiksni-filter-checkbox">
             <input
               type="checkbox"
               name="only_due"
@@ -213,8 +229,7 @@ export default async function FiksniRasporedPage({ searchParams }) {
             />
             Samo dospjelo / uskoro (≤ 7 dana)
           </label>
-
-          <div style={{ alignSelf: "flex-end", display: "flex", gap: 8 }}>
+          <div className="fiksni-filter-actions">
             <button className="btn btn--active" type="submit">
               Primijeni
             </button>
@@ -233,18 +248,28 @@ export default async function FiksniRasporedPage({ searchParams }) {
           <div className="subtle">Boje su signal (kasni / uskoro / ok).</div>
         </div>
 
-        <div className="table-wrap">
-          <table className="table">
+        <div className="table-wrap fiksni-raspored-table-wrap">
+          <table className="table fiksni-raspored-table">
+            <colgroup>
+              <col style={{ width: "52px" }} />
+              <col style={{ width: "240px" }} />
+              <col style={{ width: "88px" }} />
+              <col style={{ width: "52px" }} />
+              <col style={{ width: "92px" }} />
+              <col style={{ width: "100px" }} />
+              <col style={{ width: "92px" }} />
+              <col style={{ width: "110px" }} />
+            </colgroup>
             <thead>
               <tr>
-                <th style={{ width: 110 }}>ID</th>
+                <th>ID</th>
                 <th>Naziv</th>
-                <th style={{ width: 140 }}>Frekv.</th>
-                <th style={{ width: 120 }}>Dan</th>
-                <th style={{ width: 160 }}>Dospijeće</th>
-                <th style={{ width: 160, textAlign: "right" }}>Iznos</th>
-                <th style={{ width: 160 }}>Zadnje plaćeno</th>
-                <th style={{ width: 130 }}>Signal</th>
+                <th>Frekv.</th>
+                <th>Dan</th>
+                <th>Dospijeće</th>
+                <th style={{ textAlign: "right" }}>Iznos</th>
+                <th>Zadnje plaćeno</th>
+                <th>Signal</th>
               </tr>
             </thead>
             <tbody>

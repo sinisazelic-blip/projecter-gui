@@ -55,6 +55,7 @@ function modalStyle(maxWidth = 920): React.CSSProperties {
       "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
     boxShadow: "var(--shadow)",
     overflow: "hidden",
+    fontSize: 16,
   };
 }
 
@@ -190,6 +191,14 @@ export default function RadneFazeClient({
     setError(null);
     setModalMode("edit");
     loadToForm(selectedItem);
+    setModalOpen(true);
+  }
+
+  function openEditForItem(it: RadnaFazaRow) {
+    setError(null);
+    setSelectedId(it.faza_id);
+    setModalMode("edit");
+    loadToForm(it);
     setModalOpen(true);
   }
 
@@ -356,8 +365,9 @@ export default function RadneFazeClient({
                   <tr
                     key={it.faza_id}
                     onClick={() => setSelectedId(it.faza_id)}
+                    onDoubleClick={() => openEditForItem(it)}
                     style={subtleRowStyle(isSelected)}
-                    title="Klikni za selekciju"
+                    title="Klik za selekciju, dupli klik za promjenu"
                   >
                     <td className="cell-wrap">
                       <div
@@ -434,7 +444,7 @@ export default function RadneFazeClient({
           <div style={modalStyle(920)}>
             <div
               style={{
-                padding: 16,
+                padding: 20,
                 borderBottom: "1px solid var(--border)",
                 display: "flex",
                 justifyContent: "space-between",
@@ -448,24 +458,24 @@ export default function RadneFazeClient({
                   src="/fluxa/Ikona%20Siva.png"
                   alt="Fluxa"
                   style={{
-                    width: 22,
-                    height: 22,
+                    width: 26,
+                    height: 26,
                     objectFit: "contain",
                     opacity: 0.9,
                     marginTop: 2,
                   }}
                 />
                 <div>
-                  <div style={{ fontSize: 18, fontWeight: 700 }}>
+                  <div style={{ fontSize: 20, fontWeight: 700 }}>
                     {modalMode === "new"
                       ? "Nova radna faza"
                       : "Promijeni radnu fazu"}
                   </div>
                   <div
                     style={{
-                      marginTop: 4,
+                      marginTop: 6,
                       color: "var(--muted)",
-                      fontSize: 14,
+                      fontSize: 15,
                     }}
                   >
                     Šifrarnik radnih faza.
@@ -477,17 +487,20 @@ export default function RadneFazeClient({
               </button>
             </div>
 
-            <div style={{ padding: 16 }}>
+            <div style={{ padding: 20 }}>
               <div
                 className="grid"
-                style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}
+                style={{
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gap: 16,
+                }}
               >
                 <div style={{ gridColumn: "1 / -1" }}>
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Naziv (obavezno)
@@ -499,7 +512,8 @@ export default function RadneFazeClient({
                     }
                     placeholder="npr. Produkcija"
                     autoFocus
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -507,8 +521,8 @@ export default function RadneFazeClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Opis poslova
@@ -519,7 +533,14 @@ export default function RadneFazeClient({
                       setForm((s) => ({ ...s, opis_poslova: e.target.value }))
                     }
                     placeholder="Detaljan opis poslova u fazi"
-                    style={{ width: "100%", minHeight: 80, resize: "vertical" }}
+                    className="input"
+                    style={{
+                      width: "100%",
+                      minHeight: 88,
+                      resize: "vertical",
+                      padding: "12px 14px",
+                      fontSize: 15,
+                    }}
                   />
                 </div>
 
@@ -527,8 +548,8 @@ export default function RadneFazeClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Složenost posla
@@ -542,7 +563,8 @@ export default function RadneFazeClient({
                       }))
                     }
                     placeholder="npr. Jednostavno, Srednje, Složeno"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -550,8 +572,8 @@ export default function RadneFazeClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Vrsta posla
@@ -562,51 +584,52 @@ export default function RadneFazeClient({
                       setForm((s) => ({ ...s, vrsta_posla: e.target.value }))
                     }
                     placeholder="npr. Tehnički, Kreativni"
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
               </div>
 
-              <div className="card" style={{ marginTop: 14 }}>
+              <div className="card" style={{ marginTop: 20 }}>
                 <div
                   style={{
                     color: "var(--muted)",
-                    fontSize: 12,
+                    fontSize: 13,
                     letterSpacing: ".06em",
                     textTransform: "uppercase",
+                    marginBottom: 10,
                   }}
                 >
                   Sistem
                 </div>
                 <div
                   style={{
-                    marginTop: 10,
                     display: "grid",
                     gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                    gap: 12,
+                    gap: 14,
                   }}
                 >
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                    <div style={{ color: "var(--muted)", fontSize: 14 }}>
                       ID
                     </div>
-                    <div style={{ fontWeight: 700 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.faza_id ?? "—"}
                     </div>
                   </div>
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                    <div style={{ color: "var(--muted)", fontSize: 14 }}>
                       Kreirano
                     </div>
-                    <div style={{ fontWeight: 700 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.created_at ? fmtDateTime(form.created_at) : "—"}
                     </div>
                   </div>
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                      Updated
+                    <div style={{ color: "var(--muted)", fontSize: 14 }}>
+                      Ažurirano
                     </div>
-                    <div style={{ fontWeight: 700 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.updated_at ? fmtDateTime(form.updated_at) : "—"}
                     </div>
                   </div>
@@ -616,11 +639,11 @@ export default function RadneFazeClient({
 
             <div
               style={{
-                padding: 16,
+                padding: 20,
                 borderTop: "1px solid var(--border)",
                 display: "flex",
                 justifyContent: "flex-end",
-                gap: 10,
+                gap: 12,
               }}
             >
               {modalMode === "edit" ? (

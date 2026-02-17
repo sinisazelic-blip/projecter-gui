@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { UserRow, RoleOption } from "./page";
+import type { UserRow, RoleOption, RadnikOption } from "./page";
 import { createUser, setUserActive, updateUser } from "./actions";
 
 type FormState = {
@@ -10,6 +10,7 @@ type FormState = {
   username: string;
   password: string;
   role_id: string;
+  radnik_id: string;
   aktivan: boolean;
   created_at?: string | null;
   updated_at?: string | null;
@@ -19,6 +20,7 @@ const emptyForm = (): FormState => ({
   username: "",
   password: "",
   role_id: "",
+  radnik_id: "",
   aktivan: true,
 });
 
@@ -55,6 +57,7 @@ function modalStyle(maxWidth = 640): React.CSSProperties {
       "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
     boxShadow: "var(--shadow)",
     overflow: "hidden",
+    fontSize: 16,
   };
 }
 
@@ -95,9 +98,11 @@ const logoStyle: React.CSSProperties = {
 export default function UsersClient({
   initialItems,
   roles = [],
+  radnici = [],
 }: {
   initialItems: UserRow[];
   roles: RoleOption[];
+  radnici: RadnikOption[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -128,7 +133,11 @@ export default function UsersClient({
       if (!showInactive && Number(it.aktivan) !== 1) return false;
       if (!qq) return true;
 
-      const hay = [it.username, it.role_naziv ?? ""].join(" ").toLowerCase();
+      const hay = [
+        it.username,
+        it.role_naziv ?? "",
+        it.radnik_ime_prezime ?? "",
+      ].join(" ").toLowerCase();
       return hay.includes(qq);
     });
   }, [items, q, showInactive]);
@@ -158,6 +167,7 @@ export default function UsersClient({
       username: it.username ?? "",
       password: "",
       role_id: it.role_id ? String(it.role_id) : "",
+      radnik_id: it.radnik_id != null ? String(it.radnik_id) : "",
       aktivan: Number(it.aktivan) === 1,
       created_at: it.created_at,
       updated_at: it.updated_at,
@@ -205,6 +215,14 @@ export default function UsersClient({
     setModalOpen(true);
   }
 
+  function openEditForItem(it: UserRow) {
+    setError(null);
+    setSelectedId(it.user_id);
+    setModalMode("edit");
+    loadToForm(it);
+    setModalOpen(true);
+  }
+
   function openConfirmToggle() {
     if (!selectedItem) return;
     setError(null);
@@ -240,6 +258,7 @@ export default function UsersClient({
             username: form.username,
             password: form.password,
             role_id: form.role_id ? Number(form.role_id) : null,
+            radnik_id: form.radnik_id ? Number(form.radnik_id) : null,
             aktivan: form.aktivan,
           });
         } else {
@@ -249,6 +268,7 @@ export default function UsersClient({
             username: form.username,
             password: form.password.trim() ? form.password : undefined,
             role_id: form.role_id ? Number(form.role_id) : null,
+            radnik_id: form.radnik_id ? Number(form.radnik_id) : null,
             aktivan: form.aktivan,
           });
         }
@@ -440,6 +460,7 @@ export default function UsersClient({
             <tr>
               <th>Korisnik</th>
               <th>Uloga</th>
+              <th>Radnik (osoba)</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -447,7 +468,7 @@ export default function UsersClient({
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={3} style={{ color: "var(--muted)", padding: 16 }}>
+                <td colSpan={4} style={{ color: "var(--muted)", padding: 16 }}>
                   Nema korisnika za prikaz.
                 </td>
               </tr>
@@ -460,9 +481,10 @@ export default function UsersClient({
                   <tr
                     key={it.user_id}
                     onClick={() => setSelectedId(it.user_id)}
+                    onDoubleClick={() => openEditForItem(it)}
                     style={subtleRowStyle(isSelected)}
                     data-closed={isActive ? "0" : "1"}
-                    title="Klikni za selekciju"
+                    title="Klik za selekciju, dupli klik za promjenu"
                   >
                     <td className="cell-wrap">
                       <div
@@ -497,6 +519,16 @@ export default function UsersClient({
                       {it.role_naziv || "—"}
                     </td>
 
+                    <td
+                      style={{
+                        color: it.radnik_ime_prezime
+                          ? "var(--text)"
+                          : "var(--muted)",
+                      }}
+                    >
+                      {it.radnik_ime_prezime || "—"}
+                    </td>
+
                     <td>{badgeStatus(isActive)}</td>
                   </tr>
                 );
@@ -512,7 +544,7 @@ export default function UsersClient({
           <div style={modalStyle(640)}>
             <div
               style={{
-                padding: 16,
+                padding: 20,
                 borderBottom: "1px solid var(--border)",
                 display: "flex",
                 justifyContent: "space-between",
@@ -526,24 +558,24 @@ export default function UsersClient({
                   src="/fluxa/Ikona%20Siva.png"
                   alt="Fluxa"
                   style={{
-                    width: 22,
-                    height: 22,
+                    width: 26,
+                    height: 26,
                     objectFit: "contain",
                     opacity: 0.9,
                     marginTop: 2,
                   }}
                 />
                 <div>
-                  <div style={{ fontSize: 18, fontWeight: 700 }}>
+                  <div style={{ fontSize: 20, fontWeight: 700 }}>
                     {modalMode === "new"
                       ? "Novi korisnik"
                       : "Promijeni korisnika"}
                   </div>
                   <div
                     style={{
-                      marginTop: 4,
+                      marginTop: 6,
                       color: "var(--muted)",
-                      fontSize: 14,
+                      fontSize: 15,
                     }}
                   >
                     {modalMode === "edit"
@@ -557,7 +589,7 @@ export default function UsersClient({
               </button>
             </div>
 
-            <div style={{ padding: 16 }}>
+            <div style={{ padding: 20 }}>
               <div
                 style={{
                   display: "flex",
@@ -569,8 +601,8 @@ export default function UsersClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Korisničko ime (obavezno)
@@ -582,7 +614,8 @@ export default function UsersClient({
                     }
                     placeholder="npr. admin"
                     autoFocus
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -590,8 +623,8 @@ export default function UsersClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Lozinka
@@ -613,7 +646,8 @@ export default function UsersClient({
                       setForm((s) => ({ ...s, password: e.target.value }))
                     }
                     placeholder={modalMode === "edit" ? "••••••••" : "Unesi lozinku"}
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
 
@@ -621,8 +655,8 @@ export default function UsersClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 13,
-                      marginBottom: 6,
+                      fontSize: 16,
+                      marginBottom: 8,
                     }}
                   >
                     Uloga
@@ -632,12 +666,41 @@ export default function UsersClient({
                     onChange={(e) =>
                       setForm((s) => ({ ...s, role_id: e.target.value }))
                     }
-                    style={{ width: "100%" }}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   >
                     <option value="">— nema uloge —</option>
                     {roles.map((r) => (
                       <option key={r.role_id} value={r.role_id}>
                         {r.naziv}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 16,
+                      marginBottom: 8,
+                    }}
+                  >
+                    Radnik (osoba)
+                  </div>
+                  <select
+                    value={form.radnik_id}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, radnik_id: e.target.value }))
+                    }
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                    title="Poveži ovaj login sa osobom iz šifarnika Radnici"
+                  >
+                    <option value="">— nijedan (samo login) —</option>
+                    {radnici.map((rad) => (
+                      <option key={rad.radnik_id} value={rad.radnik_id}>
+                        {rad.prezime} {rad.ime}
                       </option>
                     ))}
                   </select>
@@ -650,12 +713,12 @@ export default function UsersClient({
                     onChange={(e) =>
                       setForm((s) => ({ ...s, aktivan: e.target.checked }))
                     }
-                    style={{ width: 16, height: 16 }}
+                    style={{ width: 18, height: 18 }}
                   />
                   <span
                     style={{
                       color: "var(--text)",
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: 700,
                     }}
                   >
@@ -664,46 +727,46 @@ export default function UsersClient({
                 </div>
               </div>
 
-              <div className="card" style={{ marginTop: 14 }}>
+              <div className="card" style={{ marginTop: 20 }}>
                 <div
                   style={{
                     color: "var(--muted)",
-                    fontSize: 12,
+                    fontSize: 13,
                     letterSpacing: ".06em",
                     textTransform: "uppercase",
+                    marginBottom: 10,
                   }}
                 >
                   Sistem
                 </div>
                 <div
                   style={{
-                    marginTop: 10,
                     display: "grid",
                     gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                    gap: 12,
+                    gap: 14,
                   }}
                 >
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                    <div style={{ color: "var(--muted)", fontSize: 14 }}>
                       ID
                     </div>
-                    <div style={{ fontWeight: 700 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.user_id ?? "—"}
                     </div>
                   </div>
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                    <div style={{ color: "var(--muted)", fontSize: 14 }}>
                       Kreirano
                     </div>
-                    <div style={{ fontWeight: 700 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.created_at ? fmtDateTime(form.created_at) : "—"}
                     </div>
                   </div>
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                      Updated
+                    <div style={{ color: "var(--muted)", fontSize: 14 }}>
+                      Ažurirano
                     </div>
-                    <div style={{ fontWeight: 700 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.updated_at ? fmtDateTime(form.updated_at) : "—"}
                     </div>
                   </div>
@@ -713,11 +776,11 @@ export default function UsersClient({
 
             <div
               style={{
-                padding: 16,
+                padding: 20,
                 borderTop: "1px solid var(--border)",
                 display: "flex",
                 justifyContent: "flex-end",
-                gap: 10,
+                gap: 12,
               }}
             >
               {modalMode === "edit" ? (
