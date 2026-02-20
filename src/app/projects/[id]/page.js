@@ -688,43 +688,52 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
           text-decoration: none;
           color: inherit;
         }
-        .backCluster {
+        .topbarLeft {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+          flex: 1;
+          min-width: 0;
+        }
+        .brandLogoBlock {
           display: flex;
           align-items: center;
           gap: 10px;
+          flex-shrink: 0;
         }
-        .backIcon {
-          width: 42px;
-          height: 42px;
-          border-radius: 14px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
+        .brandLogo {
+          height: 30px;
+          width: auto;
+          display: block;
+          opacity: .92;
         }
-        .backText {
-          line-height: 1.15;
-        }
-        .backText .mutedLine {
+        .brandSlogan {
           font-size: 12px;
-          opacity: .82;
+          opacity: .75;
+          white-space: nowrap;
         }
-        .backText .strongLine {
+        .pageBrand {
+          flex-shrink: 0;
+        }
+        .pageBrand .projekatBrandTitle {
+          font-size: 20px;
+          font-weight: 800;
+          line-height: 1.05;
+          margin: 0;
+        }
+        .pageBrand .projekatBrandSub {
           font-size: 13px;
-          font-weight: 650;
+          opacity: .82;
+          margin-top: 4px;
+          line-height: 1.1;
         }
-
-        /* ✅ FLUXA BRAND (sa mjerom) */
-        .brandWrap {
+        .navBtns {
           display: flex;
           align-items: center;
           gap: 10px;
-          padding: 6px 10px;
-          border-radius: 14px;
-          border: 1px solid rgba(255,255,255,.12);
-          background: rgba(255,255,255,.03);
-          box-shadow: 0 10px 30px rgba(0,0,0,.12);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
+          flex-shrink: 0;
+          margin-left: auto;
         }
         .projekatBrandLogo {
           height: 32px;
@@ -813,39 +822,28 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
       {/* ✅ Topbar uvijek vidljiv; scroll je isključivo u donjem sadržaju */}
       <div style={{ flex: "0 0 auto", position: "sticky", top: 0, zIndex: 20 }}>
         <div className="container">
-          {/* Row 1: Topblock - kao Deal: lijevo backCluster, centar logo, desno actions */}
+          {/* Row 1: Fluxa Design — lijevo logo + slogan, zatim naziv stranice; desno Povratak na PP, Dashboard */}
           <div className="topbar">
-            <div className="backCluster">
-              <Link
-                href="/projects"
-                aria-label="Povratak na PP"
-                title="Povratak na Pregled Projekata"
-                className="glassbtn backIcon"
-              >
-                <span style={{ fontSize: 20, lineHeight: 1 }}>📋</span>
-              </Link>
-              <div className="backText">
-                <div className="mutedLine">Povratak</div>
-                <div className="strongLine">na PP</div>
-              </div>
-            </div>
-
-            <div
-              className="brandWrap"
-              style={{ flex: "1 1 auto", justifyContent: "flex-start" }}
-              title="FLUXA — Project & Finance Engine"
-            >
+            <div className="topbarLeft">
               <div className="brandLogoBlock">
                 <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
                 <span className="brandSlogan">Project & Finance Engine</span>
               </div>
-              <div>
-                <div className="projekatBrandTitle">Projekti</div>
-                <div className="projekatBrandSub">Project & Finance Engine</div>
+              <div className="pageBrand">
+                <div className="projekatBrandTitle">Projekat</div>
+                <div className="projekatBrandSub">Detalji projekta</div>
               </div>
             </div>
 
-            <div className="actions" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div className="navBtns">
+              <Link
+                href="/projects"
+                aria-label="Povratak na PP"
+                title="Povratak na Pregled Projekata"
+                className="glassbtn actionBtn"
+              >
+                📋 Povratak na PP
+              </Link>
               <Link href="/dashboard" className="glassbtn actionBtn" title="Dashboard">
                 🏠 Dashboard
               </Link>
