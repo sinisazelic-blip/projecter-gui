@@ -35,6 +35,7 @@ export async function createKlijent(input: {
   adresa?: string | null;
   grad?: string | null;
   drzava?: string | null;
+  email?: string | null;
   rok_placanja_dana?: number | string;
   napomena?: string | null;
   aktivan?: boolean;
@@ -50,6 +51,7 @@ export async function createKlijent(input: {
   const adresa = cleanStr(input?.adresa);
   const grad = cleanStr(input?.grad);
   const drzava = cleanStr(input?.drzava);
+  const email = cleanStr(input?.email);
   const rok = cleanInt(input?.rok_placanja_dana);
   const napomena = cleanStr(input?.napomena);
   const aktivan = input?.aktivan === false ? 0 : 1;
@@ -59,8 +61,8 @@ export async function createKlijent(input: {
 
   await query(
     `INSERT INTO klijenti
-      (naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava, rok_placanja_dana, napomena, aktivan, is_ino, pdv_oslobodjen, pdv_oslobodjen_napomena, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?, NOW(), NOW())`,
+      (naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava, email, rok_placanja_dana, napomena, aktivan, is_ino, pdv_oslobodjen, pdv_oslobodjen_napomena, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, NOW(), NOW())`,
     [
       naziv,
       tip,
@@ -68,6 +70,7 @@ export async function createKlijent(input: {
       adresa,
       grad,
       drzava,
+      email,
       rok,
       napomena,
       aktivan,
@@ -89,6 +92,7 @@ export async function updateKlijent(input: {
   adresa?: string | null;
   grad?: string | null;
   drzava?: string | null;
+  email?: string | null;
   rok_placanja_dana?: number | string;
   napomena?: string | null;
   aktivan?: boolean;
@@ -108,6 +112,7 @@ export async function updateKlijent(input: {
   const adresa = cleanStr(input?.adresa);
   const grad = cleanStr(input?.grad);
   const drzava = cleanStr(input?.drzava);
+  const email = cleanStr(input?.email);
   const rok = cleanInt(input?.rok_placanja_dana);
   const napomena = cleanStr(input?.napomena);
   const aktivan = input?.aktivan === false ? 0 : 1;
@@ -123,6 +128,7 @@ export async function updateKlijent(input: {
             adresa=?,
             grad=?,
             drzava=?,
+            email=?,
             rok_placanja_dana=?,
             napomena=?,
             aktivan=?,
@@ -138,6 +144,7 @@ export async function updateKlijent(input: {
       adresa,
       grad,
       drzava,
+      email,
       rok,
       napomena,
       aktivan,

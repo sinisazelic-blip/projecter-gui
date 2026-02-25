@@ -1,9 +1,9 @@
 export async function generateMetadata({
   params,
 }: {
-  params: { id?: string };
+  params: Promise<{ id?: string }>;
 }) {
-  const id = params?.id;
+  const { id } = await params;
   return {
     title: id ? `Deal #${id}` : "Deal",
   };

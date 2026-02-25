@@ -742,11 +742,12 @@ export default function Page() {
         .paperStage{ display:flex; justify-content:center; padding: 0 10px; }
         .paper{
           width: 210mm;
+          min-height: 297mm;
           background: #ffffff;
-          color: #111111;
-          border-radius: 12px;
+          color: #000000;
+          border-radius: 0;
           box-shadow: 0 18px 60px rgba(0,0,0,.35);
-          border: 1px solid rgba(0,0,0,.08);
+          border: none;
           padding: 18mm 16mm;
           box-sizing: border-box;
           overflow-x: hidden;
@@ -759,15 +760,15 @@ export default function Page() {
         .invHeaderLeft{ display:flex; align-items:flex-start; gap:12px; }
         .companyLogo{ max-height: 105px; max-width: 276px; object-fit: contain; }
 
-        .docTitle{ font-size: 22px; font-weight: 800; letter-spacing: .6px; text-align:right; margin: 0; }
+        .docTitle{ font-size: 22px; font-weight: 800; letter-spacing: .6px; text-align:right; margin: 0; color: #000 !important; }
 
-        .meta{ margin-top: 8px; font-size: 12px; line-height: 1.35; text-align:right; color: #222; }
+        .meta{ margin-top: 8px; font-size: 12px; line-height: 1.35; text-align:right; color: #000 !important; }
         .meta .line{ display:flex; justify-content:flex-end; gap:10px; }
-        .meta .k{ min-width: 140px; color:#555; text-align:right; }
-        .meta .kStrong{ font-weight: 850; color:#111; }
-        .meta .v{ font-weight: 650; color:#111; }
+        .meta .k{ min-width: 140px; color:#000 !important; text-align:right; }
+        .meta .kStrong{ font-weight: 850; color:#000 !important; }
+        .meta .v{ font-weight: 650; color:#000 !important; }
 
-        .hr{ height: 1px; background: rgba(0,0,0,.10); margin: 14px 0; }
+        .hr{ height: 1px; background: #000 !important; margin: 14px 0; }
 
         .cols2{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         @media (max-width: 760px){ .cols2{ grid-template-columns: 1fr; } }
@@ -785,42 +786,42 @@ export default function Page() {
           font-weight: 800;
           letter-spacing: .3px;
           margin-bottom: 6px;
-          color:#111;
+          color:#000 !important;
           text-transform: uppercase;
         }
-        .addr{ font-size: 12px; line-height: 1.4; color:#222; }
-        .addr .name{ font-weight: 750; color:#111; }
-        .addr .muted{ color:#555; }
+        .addr{ font-size: 12px; line-height: 1.4; color:#000 !important; }
+        .addr .name{ font-weight: 750; color:#000 !important; }
+        .addr .muted{ color:#000 !important; }
         .addr .bankList{ margin-top: 8px; }
-        .addr .bankLine{ color:#333; margin-top: 3px; }
+        .addr .bankLine{ color:#000 !important; margin-top: 3px; }
 
         .tblWrap{
-          border: 1px solid rgba(0,0,0,.10);
-          border-radius: 10px;
           overflow:hidden;
           margin-top: 14px;
         }
         table{ width:100%; border-collapse:collapse; }
-        thead tr{ background: rgba(0,0,0,.03); }
+        thead tr{ background: #F7F7F7 !important; }
         th{
-          padding: 10px 10px;
-          font-size: 11px;
-          text-transform: uppercase;
-          letter-spacing: .35px;
-          color:#555;
-          text-align:left;
-          border-bottom: 1px solid rgba(0,0,0,.10);
-          white-space: nowrap;
+          padding: 10px 10px !important;
+          font-size: 11px !important;
+          text-transform: uppercase !important;
+          letter-spacing: .35px !important;
+          color:#000 !important;
+          font-weight: 700 !important;
+          text-align:left !important;
+          border-bottom: 1px solid #000 !important;
+          white-space: nowrap !important;
+          background: #F7F7F7 !important;
         }
         td{
-          padding: 10px 10px;
-          font-size: 12px;
-          border-top: 1px solid rgba(0,0,0,.08);
-          vertical-align: top;
+          padding: 10px 10px !important;
+          font-size: 12px !important;
+          vertical-align: top !important;
+          color:#000 !important;
         }
-        .num{ text-align:right; white-space:nowrap; }
-        .desc{ color:#111; font-weight: 650; }
-        .mutedSmall{ font-size: 11px; color:#666; margin-top: 2px; }
+        .num{ text-align:right !important; white-space:nowrap !important; color:#000 !important; }
+        .desc{ color:#000 !important; font-weight: 650 !important; }
+        .mutedSmall{ font-size: 11px !important; color:#000 !important; margin-top: 2px !important; }
 
         .totalsRow{
           display:flex;
@@ -832,30 +833,30 @@ export default function Page() {
         .totalsBox{
           width: 50%;
           max-width: 320px;
-          border: 1px solid rgba(0,0,0,.10);
-          border-radius: 10px;
-          padding: 10px 12px;
+          border: 1px solid #000 !important;
+          background: #F7F7F7 !important;
+          padding: 10px 12px !important;
         }
         .totLine{
-          display:flex;
-          justify-content:space-between;
-          gap: 12px;
-          font-size: 12px;
-          padding: 2px 0;
-          border-top: 1px solid rgba(0,0,0,.06);
+          display:flex !important;
+          justify-content:space-between !important;
+          gap: 12px !important;
+          font-size: 12px !important;
+          padding: 2px 0 !important;
+          border-top: 1px solid rgba(0,0,0,.06) !important;
         }
-        .totLine:first-child{ border-top: none; }
-        .totLine .k{ color:#555; }
-        .totLine .v{ font-weight: 650; }
-        .totLine.total .k{ color:#111; font-weight: 800; }
-        .totLine.total .v{ font-weight: 900; }
+        .totLine:first-child{ border-top: none !important; }
+        .totLine .k{ color:#000 !important; }
+        .totLine .v{ font-weight: 650 !important; color:#000 !important; }
+        .totLine.total .k{ color:#000 !important; font-weight: 800 !important; }
+        .totLine.total .v{ font-weight: 900 !important; color:#000 !important; }
 
         /* ✅ Info line unutar obračuna (umjesto između tabele i obračuna) */
         .completedLine{
-          margin-top: 6px;
-          font-size: 10px;
-          color:#555;
-          line-height: 1.25;
+          margin-top: 6px !important;
+          font-size: 10px !important;
+          color:#000 !important;
+          line-height: 1.25 !important;
         }
 
         .footer{
@@ -950,6 +951,7 @@ export default function Page() {
           
           .paper {
             width: 210mm !important;
+            min-height: 297mm !important;
             max-width: 210mm !important;
             box-sizing: border-box !important;
             overflow-x: hidden !important;
@@ -960,8 +962,24 @@ export default function Page() {
             margin: 0 auto !important;
             background: #ffffff !important;
             background-color: #ffffff !important;
-            color: #111111 !important;
+            color: #000000 !important;
             page-break-inside: auto;
+          }
+          
+          .meta, .meta .k, .meta .v, .meta .kStrong {
+            color: #000 !important;
+          }
+          
+          .blockTitle, .addr, .addr .name, .addr .muted, .addr .bankLine {
+            color: #000 !important;
+          }
+          
+          .docTitle {
+            color: #000 !important;
+          }
+          
+          .hr {
+            background: #000 !important;
           }
           
           .cols2 {
@@ -972,6 +990,42 @@ export default function Page() {
           
           table {
             page-break-inside: auto;
+          }
+          
+          thead tr {
+            background: #F7F7F7 !important;
+          }
+          
+          th {
+            color: #000 !important;
+            font-weight: 700 !important;
+            background: #F7F7F7 !important;
+            border-bottom: 1px solid #000 !important;
+          }
+          
+          td {
+            color: #000 !important;
+          }
+          
+          .num, .desc, .mutedSmall {
+            color: #000 !important;
+          }
+          
+          .totalsBox {
+            border: 1px solid #000 !important;
+            background: #F7F7F7 !important;
+          }
+          
+          .totLine .k, .totLine .v {
+            color: #000 !important;
+          }
+          
+          .totLine.total .k, .totLine.total .v {
+            color: #000 !important;
+          }
+          
+          .completedLine {
+            color: #000 !important;
           }
           
           tr {

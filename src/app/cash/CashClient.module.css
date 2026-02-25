@@ -1,7 +1,5 @@
 .page {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 16px;
+  width: 100%;
   color: inherit;
 }
 
@@ -125,7 +123,7 @@
 .formGrid {
   display: grid;
   gap: 8px;
-  grid-template-columns: 150px 180px 120px 1fr;
+  grid-template-columns: 150px 180px 120px 80px 1fr;
 }
 
 .full {
@@ -140,9 +138,10 @@
 .tableWrap {
   overflow-x: auto;
   overflow-y: auto;
-  max-height: 420px; /* slobodno povećaj na 520px ako hoćeš */
+  max-height: 400px; /* Maksimalna visina za scroll */
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
+  display: block; /* Važno za scroll */
 }
 
 /* tabela */
@@ -150,6 +149,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  display: table; /* Osiguraj da tabela koristi table layout */
 }
 
 /* ✅ sticky header */
@@ -191,6 +191,6 @@
     grid-template-columns: 1fr;
   }
   .tableWrap {
-    max-height: 520px; /* na mobu može više jer je tabela viša */
+    max-height: 50vh; /* Na mobu malo manje */
   }
 }

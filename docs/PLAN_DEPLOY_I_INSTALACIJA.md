@@ -101,9 +101,29 @@ Na istom DO serveru možeš imati **jedan MySQL** sa **više baza** (npr. fluxa_
 
 ---
 
-## 5. Redoslijed kad je „sve gotovo”
+## 5. Demo baza (fluxa_demo) – urađeno
 
-1. Završiti demo bazu i guest login (prema PLAN_AUTH_ROLES).
+**Cilj:** Posebna baza za demo (Guest) bez pristupa pravim TAF podacima. Ista struktura = podloga za buduće klijentske baze.
+
+**Šta je urađeno:**
+1. **Export strukture** iz Studio TAF baze (na DO Managed Database) – samo struktura, bez podataka.
+   - Alat: MySQL Workbench → Server → Data Export → odabrana TAF baza → Dump Structure Only → export u **fluxa_new.sql**.
+   - Fajl: `fluxa_new.sql` (npr. u `mysql tools\Stukture_NEW\`). Čuvati kao glavni šablon za sve nove baze.
+2. **Nova baza** na DO: kreirana prazna baza **fluxa_demo**.
+3. **Import strukture** u fluxa_demo: u MySQL Workbenchu otvoren fluxa_new.sql, postavljena baza fluxa_demo, pokrenut import. fluxa_demo sada ima identičnu strukturu kao TAF (tabele, view-ovi), bez podataka.
+
+**Za buduće klijente (fluxa_client01, 02, …):** Kreirati novu praznu bazu na DO, zatim importovati isti **fluxa_new.sql** u nju – isti postupak kao za fluxa_demo.
+
+**Opciono kasnije:** Seed skripta sa lažnim podacima da demo izgleda „živo“ (par klijenata, projekata, jedna faktura).  
+→ **Urađeno:** `scripts/seed-demo.js` + `scripts/import-demo-db.ps1` (struktura), v. `docs/DEMO_BAZA_I_PRIKAZ.md`.
+
+**Upload studio baze na server:** Kad budemo radili deploy/upload studio baze, uključujemo i **postavu studio_db_demo**: ista struktura (import skriptom), pa seed. **Gosti** koji žele da vide kako Fluxa funkcioniše vide samo tu demo bazu – demo instanca aplikacije ima `DB_NAME=studio_db_demo`, bez pristupa pravim podacima.
+
+---
+
+## 6. Redoslijed kad je „sve gotovo”
+
+1. Završiti guest login i link na demo (prema PLAN_AUTH_ROLES).
 2. Završiti ESIR integraciju (kad stigne dokumentacija).
 3. Testirati lokalno / na test okruženju da sve radi.
 4. **DO host:** Uraditi korake iz odjeljka 1 (upload, env, build, start, baza, nginx).
@@ -111,9 +131,26 @@ Na istom DO serveru možeš imati **jedan MySQL** sa **više baza** (npr. fluxa_
 6. **Korisnička dokumentacija:** Uputstvo za rad u Fluxi (bez tehničkih detalja), za predaju klijentima.
 7. Ažurirati ovaj dokument sa stvarnim putanjama, imenima skripti i linkovima (DO, repo).
 
+*(Odjeljak 5: Demo baza – šta je urađeno; odjeljak 7: U koji .env upisati bazu za demo.)*
+
 ---
 
-## 6. Napomene
+## 7. U koji .env upisati bazu za demo (tačka 1)
+
+Aplikacija čita bazu iz varijabli okruženja: **DB_HOST**, **DB_USER**, **DB_PASSWORD**, **DB_NAME** (vidi `src/lib/db.ts`). Koji fajl se koristi ovisi o tome **kako pokrećeš** aplikaciju:
+
+- **Lokalno (development):** Next.js učitava `.env.local` iz root foldera projekta. Ako lokalno testiraš demo, u `.env.local` staviš `DB_NAME=fluxa_demo` (ostalo isto kao za TAF).
+- **Na DO serveru – glavna aplikacija (Studio TAF):** Ona mora koristiti TAF bazu. Znači u env-u za tu instancu: `DB_NAME=` ime tvoje TAF baze (npr. `defaultdb` ili kako god se zove).
+- **Na DO serveru – demo aplikacija (npr. demo.fluxa.ba):** Ta instanca mora koristiti **fluxa_demo**. Znači upisuješ u **onaj .env koji ta demo instanca učitava** kad se pokrene:
+  - Ako imaš **poseban folder** za demo (npr. `/var/www/fluxa-demo/`), tamo staviš `.env.production` ili `.env.local` sa `DB_NAME=fluxa_demo` (host, user, password ostaju isti kao za DO bazu).
+  - Ako koristiš **PM2** sa dva procesa (jedan za TAF, jedan za demo), u konfiguraciji za demo proces staviš env: `DB_NAME=fluxa_demo`. Npr. u `ecosystem.config.js`: drugi app sa `env: { DB_NAME: 'fluxa_demo' }`.
+  - Ako na serveru postoji samo jedan folder s aplikacijom, a dva različita načina pokretanja (npr. dva PM2 procesa), onda **nemaš jedan fajl .env** – već za svaki proces u PM2-u (ili systemd) navodiš varijable; za demo proces navedeš `DB_NAME=fluxa_demo`.
+
+**Ukratko:** U **onaj .env (ili env konfiguraciju) koji se učitava kad se pokrene demo verzija aplikacije** – tu treba `DB_NAME=fluxa_demo`. Za TAF verziju u njenom env-u ostaje ime TAF baze.
+
+---
+
+## 8. Napomene
 
 - **Lozinke i tajne:** U .env.example nikad stvarne vrijednosti; u uputstvu naglasiti da korisnik mora postaviti svoje.
 - **Licenca / ugovor:** Ako Fluxa ide drugim studijima kao proizvod, odvojeno definirati licencu ili ugovor; ovaj dokument je samo tehnički plan instalacije i deploya.

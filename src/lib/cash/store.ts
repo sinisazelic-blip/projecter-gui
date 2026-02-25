@@ -14,6 +14,7 @@ export type CashEntry = {
   projectId: string | null;
   status: CashStatus; // "DRAFT"
   createdAt: string; // ISO
+  transactionDetails?: string; // Opis što se desilo (npr. "Projekat #123 arhiviran")
 };
 
 type CashFile = {
@@ -73,6 +74,7 @@ export function createCashDraft(input: {
   direction: CashDirection;
   note: string;
   projectId?: string | null;
+  transactionDetails?: string;
 }): CashEntry {
   const store = ensureStore();
 
@@ -89,6 +91,7 @@ export function createCashDraft(input: {
     projectId: input.projectId ?? null,
     status: "DRAFT",
     createdAt: nowIso,
+    transactionDetails: input.transactionDetails,
   };
 
   store.items.push(entry);

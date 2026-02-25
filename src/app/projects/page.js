@@ -579,7 +579,7 @@ export default async function Page({ searchParams }) {
                 href={`/projects?status_pick=${encodeURIComponent("group:active")}`}
                 className={`btn ${status_group === "active" && !status_id ? "btn--active" : ""}`}
                 style={{ fontSize: 13, padding: "6px 12px" }}
-                title="Filter: aktivni (1–8)"
+                title="Filter: aktivni (1–7)"
               >
                 ✅ Aktivni
               </Link>
@@ -623,7 +623,7 @@ export default async function Page({ searchParams }) {
                     className="input"
                     style={{ minWidth: 200, fontSize: 12, padding: "6px 10px" }}
                   >
-                    <option value="group:active">Aktivni (grupa 1–8)</option>
+                    <option value="group:active">Aktivni (grupa 1–7)</option>
                     <option value="group:archive">Arhiva (10 + 11)</option>
                     <option value="group:storno">Storno (12)</option>
                     <option value="group:all">Svi statusi (grupa)</option>

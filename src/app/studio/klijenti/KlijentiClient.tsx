@@ -16,6 +16,7 @@ type FormState = {
   adresa: string;
   grad: string;
   drzava: string;
+  email: string;
   rok_placanja_dana: string;
   napomena: string;
   aktivan: boolean;
@@ -33,6 +34,7 @@ const emptyForm = (): FormState => ({
   adresa: "",
   grad: "",
   drzava: "",
+  email: "",
   rok_placanja_dana: "0",
   napomena: "",
   aktivan: true,
@@ -162,6 +164,7 @@ export default function KlijentiClient({
         it.grad ?? "",
         it.drzava ?? "",
         it.adresa ?? "",
+        (it as any).email ?? "",
       ]
         .join(" ")
         .toLowerCase();
@@ -217,6 +220,7 @@ export default function KlijentiClient({
       adresa: it.adresa ?? "",
       grad: it.grad ?? "",
       drzava: it.drzava ?? "",
+      email: (it as any).email ?? "",
       rok_placanja_dana: String(it.rok_placanja_dana ?? 0),
       napomena: it.napomena ?? "",
       aktivan: Number(it.aktivan) === 1,
@@ -310,6 +314,7 @@ export default function KlijentiClient({
       adresa: form.adresa || null,
       grad: form.grad || null,
       drzava: form.drzava || null,
+      email: form.email || null,
       rok_placanja_dana: form.rok_placanja_dana,
       napomena: form.napomena || null,
       aktivan: !!form.aktivan,
@@ -481,7 +486,7 @@ export default function KlijentiClient({
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Traži (naziv, grad, porezni id, adresa)…"
+              placeholder="Traži (naziv, grad, email, porezni id, adresa)…"
               style={{ width: 420, maxWidth: "100%" }}
             />
 
@@ -866,6 +871,28 @@ export default function KlijentiClient({
                       setForm((s) => ({ ...s, drzava: e.target.value }))
                     }
                     placeholder="BiH"
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                  />
+                </div>
+
+                <div>
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 16,
+                      marginBottom: 8,
+                    }}
+                  >
+                    Email
+                  </div>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, email: e.target.value }))
+                    }
+                    placeholder="npr. kontakt@firma.ba"
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />

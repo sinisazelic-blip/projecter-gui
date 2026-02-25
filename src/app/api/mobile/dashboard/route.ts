@@ -150,7 +150,7 @@ export async function GET() {
     }
     const dobitYtd = Math.round((fakturisanoYtd - troskoviYtd) * 100) / 100;
 
-    // --- 4) Projekti u fazi izrade (status 1–8): suma budžeta ---
+    // --- 4) Projekti u fazi izrade (status 1–7): suma budžeta ---
     let budzetProjekata = 0;
     let brojProjekata = 0;
     try {
@@ -161,7 +161,7 @@ export async function GET() {
           COALESCE(SUM(COALESCE(vf.budzet_planirani, p.budzet_planirani, 0)), 0) AS budzet
         FROM projekti p
         LEFT JOIN vw_projekti_finansije vf ON vf.projekat_id = p.projekat_id
-        WHERE p.status_id BETWEEN 1 AND 8
+        WHERE p.status_id BETWEEN 1 AND 7
         `,
       )) as any[];
       brojProjekata = Number(sumRows?.[0]?.cnt ?? 0) || 0;

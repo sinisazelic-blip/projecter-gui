@@ -4,7 +4,7 @@ import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-// ✅ DEFAULT: aktivna grupa (1–8)
+// ✅ DEFAULT: aktivna grupa (1–7)
 const DEFAULT_STATUS_GROUP = "active";
 
 function intOrNull(v) {
@@ -98,7 +98,7 @@ export async function GET(req) {
     // ✅ STATUS FILTERING (KANON):
     // - ako je status_id (exact) dat → tačno taj status
     // - inače koristimo status_group:
-    //   active  => 1–8 (bez storniranih = 12)
+    //   active  => 1–7 (bez zatvorenih = 8 i storniranih = 12)
     //   archive => 10 i 11 (Arhiviran + importovani za analizu, bez storniranih = 12)
     //   storno  => samo 12 (Otkazan)
     //   all     => bez filtera (ali po defaultu sakrijemo storno)
@@ -110,7 +110,7 @@ export async function GET(req) {
     } else if (status_group === "storno") {
       where.push("p.status_id = 12");
     } else if (status_group === "active") {
-      where.push("p.status_id BETWEEN 1 AND 8");
+      where.push("p.status_id BETWEEN 1 AND 7");
     } else if (status_group === "archive") {
       where.push("p.status_id IN (10, 11)");
     } else {
@@ -268,8 +268,9 @@ export async function GET(req) {
       },
     });
   } catch (err) {
+    const msg = err?.message || "Greška na serveru";
     return NextResponse.json(
-      { ok: false, message: err?.message || "Greška na serveru" },
+      { ok: false, error: msg, message: msg },
       { status: 500 },
     );
   }

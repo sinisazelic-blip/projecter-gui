@@ -12,6 +12,7 @@ export type KlijentRow = {
   adresa: string | null;
   grad: string | null;
   drzava: string | null;
+  email: string | null;
   rok_placanja_dana: number;
   napomena: string | null;
   aktivan: number; // 1/0
@@ -28,18 +29,20 @@ export default async function KlijentiPage() {
        FROM INFORMATION_SCHEMA.COLUMNS
       WHERE TABLE_SCHEMA = DATABASE()
         AND LOWER(TABLE_NAME) = 'klijenti'
-        AND LOWER(COLUMN_NAME) IN ('created_at', 'updated_at', 'pdv_oslobodjen')`,
+        AND LOWER(COLUMN_NAME) IN ('created_at', 'updated_at', 'pdv_oslobodjen', 'email')`,
   )) as any[];
 
   const colSet = new Set((cols ?? []).map((r) => String(r.COLUMN_NAME).toLowerCase()));
   const hasPdvOslobodjen = colSet.has("pdv_oslobodjen");
+  const hasEmail = colSet.has("email");
 
   const pdvCols = hasPdvOslobodjen
     ? `, COALESCE(pdv_oslobodjen, 0) AS pdv_oslobodjen, pdv_oslobodjen_napomena`
     : ", 0 AS pdv_oslobodjen, NULL AS pdv_oslobodjen_napomena";
+  const emailCol = hasEmail ? ", email" : ", NULL AS email";
 
   const rows = await query(
-    `SELECT klijent_id, naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava,
+    `SELECT klijent_id, naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava${emailCol},
             rok_placanja_dana, napomena, aktivan, is_ino${pdvCols},
             DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
             DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at

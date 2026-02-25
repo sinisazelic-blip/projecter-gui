@@ -93,6 +93,7 @@ export default function StrategicCoreClient() {
   const searchParams = useSearchParams();
   const paramInicijacijaId = searchParams.get("inicijacija_id");
   const [screen, setScreen] = useState<Screen>("izbor");
+  const [izaberiLayoutSamoEdit, setIzaberiLayoutSamoEdit] = useState(false);
 
   const [layouts, setLayouts] = useState<LayoutRow[]>([]);
   const [layoutDetail, setLayoutDetail] = useState<{ layout: any; cells: LayoutCell[] } | null>(null);
@@ -465,6 +466,7 @@ export default function StrategicCoreClient() {
       loadLayouts();
       setEditingLayoutId(null);
       setEditingLayoutMeta(null);
+      setIzaberiLayoutSamoEdit(false);
       setScreen("izbor");
     } catch (e: any) {
       setError(e?.message || "Greška pri snimanju layouta.");
@@ -557,13 +559,23 @@ export default function StrategicCoreClient() {
             style={{ ...BTN_STYLE, border: "3px solid rgba(59,130,246,0.6)", background: "rgba(59,130,246,0.18)" }}
             onClick={handleNovi}
           >
-            📋 Novi +
+            📋 + Novi deal
           </button>
           <button
             style={{ ...BTN_STYLE, border: "3px solid rgba(34,197,94,0.6)", background: "rgba(34,197,94,0.18)" }}
             onClick={handleLayoutSC}
           >
-            🎛️ Layout SC
+            🎛️ Kreiraj novi SC layout
+          </button>
+          <button
+            style={{ ...BTN_STYLE, border: "2px solid rgba(148,163,184,0.5)", background: "rgba(148,163,184,0.12)", color: "var(--muted)" }}
+            onClick={() => {
+              setIzaberiLayoutSamoEdit(true);
+              loadLayouts();
+              setScreen("izaberi_layout");
+            }}
+          >
+            ✏️ Otvori / uredi postojeće SC layoute
           </button>
         </div>
       )}
@@ -653,17 +665,25 @@ export default function StrategicCoreClient() {
       {screen === "izaberi_layout" && (
         <div>
           <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 16 }}>
-            {paramInicijacijaId ? "Dodaj budžet u Deal – izaberi layout" : "Izaberi layout"}
+            {izaberiLayoutSamoEdit
+              ? "Uredi postojeći SC layout"
+              : paramInicijacijaId
+                ? "Dodaj budžet u Deal – izaberi layout"
+                : "Izaberi layout"}
           </h2>
           {layouts.length === 0 ? (
-            <p style={{ color: "var(--muted)" }}>Nema layouta. Kreiraj layout u Layout SC.</p>
+            <p style={{ color: "var(--muted)" }}>Nema layouta. Kreiraj layout u „Kreiraj novi SC layout”.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {layouts.map((l) => (
                 <div key={l.sc_layout_id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <button
                     type="button"
-                    onClick={() => handleSelectLayout(l.sc_layout_id)}
+                    onClick={() =>
+                      izaberiLayoutSamoEdit
+                        ? handleEditLayout(l.sc_layout_id)
+                        : handleSelectLayout(l.sc_layout_id)
+                    }
                     style={{
                       flex: 1,
                       padding: 14,
@@ -679,29 +699,36 @@ export default function StrategicCoreClient() {
                   >
                     {l.naziv}
                   </button>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); handleEditLayout(l.sc_layout_id); }}
-                    className="btn"
-                    style={{ padding: "10px 14px", fontSize: 13 }}
-                    title="Uredi layout"
-                  >
-                    ✏️
-                  </button>
+                  {!izaberiLayoutSamoEdit && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleEditLayout(l.sc_layout_id); }}
+                      className="btn"
+                      style={{ padding: "10px 14px", fontSize: 13 }}
+                      title="Uredi layout"
+                    >
+                      ✏️
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           )}
           <button
             className="btn"
-            onClick={() =>
-              paramInicijacijaId
-                ? router.push(`/inicijacije/${paramInicijacijaId}`)
-                : setScreen("izbor")
-            }
+            onClick={() => {
+              if (izaberiLayoutSamoEdit) {
+                setIzaberiLayoutSamoEdit(false);
+                setScreen("izbor");
+              } else if (paramInicijacijaId) {
+                router.push(`/inicijacije/${paramInicijacijaId}`);
+              } else {
+                setScreen("izbor");
+              }
+            }}
             style={{ ...BTN_STYLE, marginTop: 16 }}
           >
-            ← {paramInicijacijaId ? "Nazad na Deal" : "Nazad"}
+            ← {izaberiLayoutSamoEdit ? "Nazad na Izbor" : paramInicijacijaId ? "Nazad na Deal" : "Nazad"}
           </button>
         </div>
       )}
@@ -876,7 +903,7 @@ export default function StrategicCoreClient() {
             }}
           />
           <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn" onClick={() => { setScreen("izbor"); setEditingLayoutId(null); setEditingLayoutMeta(null); }} style={BTN_STYLE}>
+            <button className="btn" onClick={() => { setScreen("izbor"); setEditingLayoutId(null); setEditingLayoutMeta(null); setIzaberiLayoutSamoEdit(false); }} style={BTN_STYLE}>
               Odustani
             </button>
             <button className="btn btn--active" onClick={handleSaveLayout} disabled={loading} style={BTN_STYLE}>

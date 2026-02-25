@@ -1,4 +1,39 @@
 {
   "version": 1,
-  "items": []
+  "items": [
+    {
+      "id": "c_vndf4a23qejmlqsiqum",
+      "date": "2026-02-17T16:01:03.598Z",
+      "amount": 300,
+      "currency": "KM",
+      "direction": "IN",
+      "note": "test",
+      "projectId": "5787",
+      "status": "DRAFT",
+      "createdAt": "2026-02-17T16:01:03.598Z",
+      "transactionDetails": "Projekat #5787 arhiviran"
+    },
+    {
+      "id": "c_skn9knsteomlqsj9xe",
+      "date": "2026-02-17T16:01:28.322Z",
+      "amount": 100,
+      "currency": "KM",
+      "direction": "IN",
+      "note": "isplata sa TR",
+      "projectId": null,
+      "status": "DRAFT",
+      "createdAt": "2026-02-17T16:01:28.322Z"
+    },
+    {
+      "id": "c_nm3uljmjwhgmlqsk4rc",
+      "date": "2026-02-17T16:02:08.280Z",
+      "amount": 50,
+      "currency": "KM",
+      "direction": "OUT",
+      "note": "isplata",
+      "projectId": null,
+      "status": "DRAFT",
+      "createdAt": "2026-02-17T16:02:08.280Z"
+    }
+  ]
 }

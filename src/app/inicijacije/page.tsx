@@ -116,16 +116,16 @@ const VIEW_OPTIONS: { v: ViewMode; label: string; hint?: string }[] = [
   {
     v: "active",
     label: "Aktivno",
-    hint: "Sakrij arhivirane/otkazane/fakturisane projekte + odbijene deale",
+    hint: "Sakrij arhivirane/otkazane/fakturisane/zatvorene projekte + odbijene deale",
   },
   {
     v: "to_invoice",
-    label: "Spremno za fakturisanje",
+    label: "Zatvoren - Spreman za fakturisanje",
     hint: "Projekti: ZATVOREN (status 8)",
   },
   {
     v: "invoiced",
-    label: "Fakturisano (za naplatu)",
+    label: "Fakturisanje - Naplata",
     hint: "Projekti: FAKTURISAN (status 9)",
   },
   {
@@ -133,7 +133,7 @@ const VIEW_OPTIONS: { v: ViewMode; label: string; hint?: string }[] = [
     label: "Arhiva",
     hint: "Projekti: ARHIVIRAN/OTKAZAN + deal ODBIJEN",
   },
-  { v: "no_project", label: "Samo pregovori", hint: "Deal bez projekta" },
+  { v: "no_project", label: "Deals - pregovori", hint: "Deal bez projekta" },
   { v: "storno", label: "Storno", hint: "Stornirani projekti (12) i odbijeni deale (4)" },
   { v: "all", label: "Svi", hint: "Bez filtera" },
 ];
@@ -206,9 +206,9 @@ export default async function DealsPage({ searchParams }: any) {
       "((i.projekat_id IS NOT NULL AND p.status_id = 10) OR (i.projekat_id IS NULL AND i.status_id = 4))",
     );
   } else if (view === "active") {
-    // default: sakrij arhivu (10/12) + fakturisane (9) + odbijene deale (4)
+    // default: sakrij arhivu (10/12) + fakturisane (9) + zatvorene (8) + odbijene deale (4)
     where.push(
-      "((i.projekat_id IS NOT NULL AND p.status_id NOT IN (9,10,12)) OR (i.projekat_id IS NULL AND i.status_id <> 4))",
+      "((i.projekat_id IS NOT NULL AND p.status_id NOT IN (8,9,10,12)) OR (i.projekat_id IS NULL AND i.status_id <> 4))",
     );
   } else if (view === "all") {
     // "all" = prikaži sve osim storniranih (po defaultu sakrij storno)
