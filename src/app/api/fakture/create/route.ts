@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
     // 3) Generiši broj fakture (format: 001/2026)
     const godina = new Date(datumFakture).getFullYear();
 
-    // Izvor istine: MAX iz fakture (brojac_faktura može biti van sync-a)
+    // Sljedeći broj = max(MAX iz fakture, početna vrijednost iz brojac_faktura) + 1
     let maxIzFakture = 0;
     try {
       const [lastRows]: any = await conn.query(
@@ -153,7 +153,18 @@ export async function POST(req: NextRequest) {
       maxIzFakture = 0;
     }
 
-    const sledeciBroj = maxIzFakture + 1;
+    let brojacZadnji = 0;
+    try {
+      const [brojacRows]: any = await conn.query(
+        `SELECT zadnji_broj_u_godini FROM brojac_faktura WHERE godina = ? LIMIT 1`,
+        [godina],
+      );
+      brojacZadnji = Number(brojacRows?.[0]?.zadnji_broj_u_godini ?? 0) || 0;
+    } catch {
+      brojacZadnji = 0;
+    }
+
+    const sledeciBroj = Math.max(maxIzFakture, brojacZadnji) + 1;
 
     // Ažuriraj brojac_faktura (best-effort, za buduće pozive)
     try {

@@ -80,13 +80,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3) Sledeći broj i PFR za storno
+    // 3) Sledeći broj i PFR za storno (max iz fakture i brojac_faktura)
     const godina = Number(orig.godina) || new Date().getFullYear();
     const [maxRows]: any = await conn.query(
       `SELECT COALESCE(MAX(broj_u_godini), 0) AS m FROM fakture WHERE godina = ?`,
       [godina],
     );
-    const sledeciBroj = (Number(maxRows?.[0]?.m ?? 0) || 0) + 1;
+    let maxIzFakture = Number(maxRows?.[0]?.m ?? 0) || 0;
+    let brojacZadnji = 0;
+    try {
+      const [brojacRows]: any = await conn.query(
+        `SELECT zadnji_broj_u_godini FROM brojac_faktura WHERE godina = ? LIMIT 1`,
+        [godina],
+      );
+      brojacZadnji = Number(brojacRows?.[0]?.zadnji_broj_u_godini ?? 0) || 0;
+    } catch {
+      brojacZadnji = 0;
+    }
+    const sledeciBroj = Math.max(maxIzFakture, brojacZadnji) + 1;
 
     let pfrBroj: number | null = null;
     try {

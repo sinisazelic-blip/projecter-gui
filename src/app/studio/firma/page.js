@@ -2,6 +2,8 @@
 import Link from "next/link";
 import { query } from "@/lib/db";
 import LogoUpload from "./LogoUpload";
+import FiskalModal from "./FiskalModal";
+import BrojacFakturaCard from "./BrojacFakturaCard";
 
 export const dynamic = "force-dynamic";
 
@@ -465,10 +467,6 @@ export default async function Page({ searchParams }) {
                 <Link href="/dashboard" className="btn">
                   Odustani
                 </Link>
-                <span className="muted">
-                  Aktivni ID:{" "}
-                  <span className="mono">{pick(f?.firma_id) || "—"}</span>
-                </span>
               </div>
 
               <div className="hint">
@@ -477,6 +475,16 @@ export default async function Page({ searchParams }) {
                 vezuju za novi aktivni profil.
               </div>
             </form>
+
+            <div className="btnRow">
+              <FiskalModal />
+              <span className="muted">
+                Aktivni ID:{" "}
+                <span className="mono">{pick(f?.firma_id) || "—"}</span>
+              </span>
+            </div>
+
+            <BrojacFakturaCard />
           </div>
         </div>
       </div>
