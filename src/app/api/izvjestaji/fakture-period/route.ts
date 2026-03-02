@@ -110,7 +110,7 @@ async function loadArchiveInvoices(
     
     return {
       broj_fakture: brojFakture || "—",
-      datum_izdavanja: datumFakture ? formatDateDMY(String(datumFakture).slice(0, 10)) : "—",
+      datum_izdavanja: datumFakture ? formatDateDMY(datumFakture) : "—",
       narucilac_naziv: (r.klijent_id != null ? nazivById.get(r.klijent_id) : null) ?? "—",
       iznos_bez_pdv: osnovica,
       pdv_iznos: pdv,
@@ -171,7 +171,7 @@ export async function GET(req: NextRequest) {
       return {
         faktura_id: r.faktura_id,
         broj_fakture: brojFakture,
-        datum_izdavanja: r.datum_izdavanja ? formatDateDMY(String(r.datum_izdavanja).slice(0, 10)) : null,
+        datum_izdavanja: r.datum_izdavanja ? formatDateDMY(r.datum_izdavanja) : null,
         narucilac_naziv: r.narucilac_naziv || "—",
         iznos_bez_pdv: Number(r.iznos_bez_pdv) || 0,
         pdv_iznos: Number(r.pdv_iznos) || 0,

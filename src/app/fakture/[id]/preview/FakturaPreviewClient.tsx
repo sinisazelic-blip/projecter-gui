@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslation } from "@/components/LocaleProvider";
 
 function fmtDDMMYYYYFromISO(isoLike: string | null): string {
   if (!isoLike) return "—";
@@ -185,6 +186,7 @@ function formatBankAccounts(accounts: any[]): string[] {
 
 export default function FakturaPreviewClient() {
   const params = useParams();
+  const { t } = useTranslation();
   const fakturaId = Number(params.id);
 
   const [loading, setLoading] = useState(true);
@@ -352,7 +354,7 @@ export default function FakturaPreviewClient() {
         .save();
     } catch (err: any) {
       console.error("PDF greška:", err);
-      alert(err?.message || "Greška pri generisanju PDF-a. Pokušaj Štampaj → Save as PDF.");
+      alert(err?.message || t("fakture.pdfError"));
     }
   }
 
@@ -448,7 +450,7 @@ export default function FakturaPreviewClient() {
         </div>
         <div style={{ marginTop: 20 }}>
           <Link href="/fakture" className="btn">
-            ← Nazad na listu faktura
+            ← {t("fakture.nazadNaListuFaktura")}
           </Link>
         </div>
       </div>
@@ -815,8 +817,8 @@ export default function FakturaPreviewClient() {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">📄 Faktura #{invoiceNumber}</div>
-                  <div className="brandSub">Pregled fakture</div>
+                  <div className="brandTitle">📄 {t("fakture.previewTitle")} #{invoiceNumber}</div>
+                  <div className="brandSub">{t("fakture.previewSub")}</div>
                 </div>
               </div>
 
@@ -829,9 +831,9 @@ export default function FakturaPreviewClient() {
                     borderColor: "rgba(59, 130, 246, 0.4)",
                     fontWeight: 700,
                   }}
-                  title="Nazad na listu faktura"
+                  title={t("fakture.nazadNaListuFaktura")}
                 >
-                  ← Nazad
+                  ← {t("common.back")}
                 </Link>
                 
                 <button
@@ -842,9 +844,9 @@ export default function FakturaPreviewClient() {
                     borderColor: "rgba(34, 197, 94, 0.4)",
                     fontWeight: 600,
                   }}
-                  title="Štampaj fakturu"
+                  title={t("fakture.stampajFakturu")}
                 >
-                  🖨️ Štampaj
+                  🖨️ {t("fakture.stampaj")}
                 </button>
                 
                 <button
@@ -857,7 +859,7 @@ export default function FakturaPreviewClient() {
                   }}
                   title={`Preuzmi PDF: ${pdfFilename}.pdf`}
                 >
-                  💾 Save as PDF
+                  💾 {t("fakture.saveAsPdf")}
                 </button>
 
                 {!isStornoFaktura && (

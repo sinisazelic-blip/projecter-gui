@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 import { query } from "@/lib/db";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
 
@@ -68,6 +71,10 @@ function buildResetProjectHref(sp) {
 }
 
 export default async function BankaPage({ searchParams }) {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
+  const t = getT(locale);
+
   const sp = await Promise.resolve(searchParams);
 
   const q = (sp?.q ?? "").trim();
@@ -204,7 +211,7 @@ export default async function BankaPage({ searchParams }) {
                 </div>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <span className="brandTitle">Banka</span>
+                    <span className="brandTitle">{t("banka.title")}</span>
                     {hasProject && (
                       <span className="badge badge-green" title="Aktivan filter">
                         PROJEKAT #{projekatId}
@@ -213,17 +220,17 @@ export default async function BankaPage({ searchParams }) {
                     {alloc && <span className="badge">{alloc}</span>}
                     {q && <span className="badge">q</span>}
                   </div>
-                  <div className="brandSub">Canonical ledger (read-only). Filteri su UX.</div>
+                  <div className="brandSub">{t("banka.subtitle")}</div>
                 </div>
               </div>
               <div className="actions">
                 {hasProject && (
-                  <Link className="btn" href={resetProjectHref} title="Ukloni projekat filter">
-                    Reset projekat
+                  <Link className="btn" href={resetProjectHref} title={t("common.reset")}>
+                    {t("common.reset")} projekat
                   </Link>
                 )}
-                <Link className="btn" href="/finance">Finansije</Link>
-                <Link className="btn" href="/dashboard" title="Dashboard">🏠 Dashboard</Link>
+                <Link className="btn" href="/finance">{t("finance.title")}</Link>
+                <Link className="btn" href="/dashboard" title={t("common.dashboard")}>🏠 {t("common.dashboard")}</Link>
               </div>
             </div>
             <div className="divider" />

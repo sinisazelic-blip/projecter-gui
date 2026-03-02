@@ -97,7 +97,7 @@ async function loadArchivePdv(
     }
     
     return {
-      datum: datumFakture ? formatDateDMY(String(datumFakture).slice(0, 10)) : "—",
+      datum: datumFakture ? formatDateDMY(datumFakture) : "—",
       osnovica,
       pdv_izlazni,
       iz_arhive: true as const,
@@ -138,7 +138,7 @@ export async function GET(req: NextRequest) {
     );
 
     const stavke = (Array.isArray(rows) ? rows : []).map((r: any) => ({
-      datum: r.datum_izdavanja ? formatDateDMY(String(r.datum_izdavanja).slice(0, 10)) : null,
+      datum: r.datum_izdavanja ? formatDateDMY(r.datum_izdavanja) : null,
       pdv_izlazni: Number(r.pdv_izlazni) || 0,
       osnovica: Number(r.osnovica) || 0,
       iz_arhive: false,

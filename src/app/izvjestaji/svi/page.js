@@ -1,9 +1,16 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 import SviIzvjestajiClient from "./SviIzvjestajiClient";
 
 export const dynamic = "force-dynamic";
 
-export default function SviIzvjestajiPage() {
+export default async function SviIzvjestajiPage() {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
+  const t = getT(locale);
+
   return (
     <div className="container">
       <div className="pageWrap">
@@ -20,15 +27,13 @@ export default function SviIzvjestajiPage() {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Svi izvještaji</div>
-                  <div className="brandSub">
-                    Odaberi šta te interesuje i period (opciono). Bez datuma = svi podaci.
-                  </div>
+                  <div className="brandTitle">{t("izvjestajiSvi.title")}</div>
+                  <div className="brandSub">{t("izvjestajiSvi.subtitle")}</div>
                 </div>
               </div>
 
-              <Link href="/dashboard" className="btn" title="Dashboard">
-                🏠 Dashboard
+              <Link href="/dashboard" className="btn" title={t("common.dashboard")}>
+                🏠 {t("common.dashboard")}
               </Link>
             </div>
 

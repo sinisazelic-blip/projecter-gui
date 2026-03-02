@@ -1,9 +1,16 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 import GrafickiClient from "./GrafickiClient";
 
 export const dynamic = "force-dynamic";
 
-export default function GrafickiPage() {
+export default async function GrafickiPage() {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
+  const t = getT(locale);
+
   return (
     <div className="container">
       <div className="pageWrap">
@@ -20,15 +27,13 @@ export default function GrafickiPage() {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Grafički izvještaj</div>
-                  <div className="brandSub">
-                    Promet, troškovi i zarada po godinama i mjesecima (stg_master_finansije)
-                  </div>
+                  <div className="brandTitle">{t("izvjestajiGraficki.title")}</div>
+                  <div className="brandSub">{t("izvjestajiGraficki.subtitle")}</div>
                 </div>
               </div>
 
-              <Link href="/dashboard" className="btn" title="Dashboard">
-                🏠 Dashboard
+              <Link href="/dashboard" className="btn" title={t("common.dashboard")}>
+                🏠 {t("common.dashboard")}
               </Link>
             </div>
 

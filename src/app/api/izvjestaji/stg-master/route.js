@@ -39,12 +39,14 @@ function addToByYear(byYear, r) {
   byYear[g].zarada_ukuno = byYear[g].ukuno - byYear[g].troskovi_ukuno;
 }
 
+const YEARS_BACK = 20;
+
 export async function GET() {
   try {
     const cutoff = "2025-12-31";
     const byYear = {};
 
-    // 1) Arhiva: stg_master_finansije do 31.12.2025
+    // 1) Arhiva: stg_master_finansije — do 31.12.2025, do 20 godina unazad (kao Charts)
     const rows = await query(
       `
       SELECT
@@ -55,11 +57,12 @@ export async function GET() {
         ROUND(SUM(COALESCE(iznos_km, 0)) - SUM(COALESCE(iznos_troska_km, 0)), 2) AS zarada
       FROM stg_master_finansije
       WHERE datum_zavrsetka IS NOT NULL
+        AND datum_zavrsetka >= DATE_SUB(?, INTERVAL ? YEAR)
         AND datum_zavrsetka <= ?
       GROUP BY YEAR(datum_zavrsetka), MONTH(datum_zavrsetka)
       ORDER BY godina ASC, mjesec ASC
       `,
-      [cutoff]
+      [cutoff, YEARS_BACK, cutoff]
     );
     for (const r of rows || []) addToByYear(byYear, r);
 

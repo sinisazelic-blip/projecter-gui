@@ -114,7 +114,7 @@ async function loadArchiveKnjiga(
     }
     
     return {
-      datum: datumFakture ? formatDateDMY(String(datumFakture).slice(0, 10)) : "—",
+      datum: datumFakture ? formatDateDMY(datumFakture) : "—",
       broj_fakture: brojFakture || "—",
       kupac: (r.klijent_id != null ? nazivById.get(r.klijent_id) : null) ?? "—",
       osnovica,
@@ -172,7 +172,7 @@ export async function GET(req: NextRequest) {
         }
       }
       return {
-        datum: r.datum_izdavanja ? formatDateDMY(String(r.datum_izdavanja).slice(0, 10)) : null,
+        datum: r.datum_izdavanja ? formatDateDMY(r.datum_izdavanja) : null,
         broj_fakture: brojFakture,
         kupac: r.kupac || "—",
         osnovica: Number(r.osnovica) || 0,

@@ -20,7 +20,7 @@ export default function StrategicCorePage() {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">StrategicCore</div>
+                  <div className="brandTitle">SC Strategic Core®</div>
                   <div className="brandSub">Brzi budžet u pregovorima</div>
                 </div>
               </div>

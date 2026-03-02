@@ -1,4 +1,4 @@
-import Link from "next/link";
+import LoginForm from "./LoginForm";
 
 export default function HomePage() {
   return (
@@ -45,18 +45,7 @@ export default function HomePage() {
           Project & Finance Engine
         </p>
 
-        <Link
-          href="/dashboard"
-          className="btn btn--active"
-          style={{
-            marginTop: 24,
-            padding: "12px 28px",
-            fontSize: 15,
-            fontWeight: 600,
-          }}
-        >
-          Uđi u aplikaciju
-        </Link>
+        <LoginForm />
       </div>
     </main>
   );

@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslation } from "@/components/LocaleProvider";
 
 function fmtDDMMYYYYFromISO(isoLike: string | null): string {
   if (!isoLike) return "—";
@@ -129,6 +130,7 @@ type FirmaRow = {
 
 export default function PonudaPreviewClient() {
   const params = useParams();
+  const { t } = useTranslation();
   const id = Number(params?.id);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -377,7 +379,7 @@ export default function PonudaPreviewClient() {
         </div>
         <div style={{ marginTop: 20 }}>
           <Link href="/inicijacije" className="btn">
-            ← Nazad
+            ← {t("common.back")}
           </Link>
         </div>
       </div>
@@ -497,10 +499,10 @@ export default function PonudaPreviewClient() {
               <div className="brandWrap">
                 <div>
                   <div className="brandTitle">
-                    📄 {lang === "EN" ? "Quote" : "Ponuda"} {ponuda.broj_ponude}
+                    📄 {t("ponude.quote")} {ponuda.broj_ponude}
                   </div>
                   <div className="brandSub">
-                    {lang === "EN" ? "Quote – preview" : "Predračun – pregled"}
+                    {t("ponude.quotePreview")}
                   </div>
                 </div>
               </div>
@@ -513,9 +515,9 @@ export default function PonudaPreviewClient() {
                     borderColor: "rgba(59, 130, 246, 0.4)",
                     fontWeight: 700,
                   }}
-                  title={lang === "EN" ? "Back" : "Nazad"}
+                  title={t("common.back")}
                 >
-                  ← {lang === "EN" ? "Back" : "Nazad"}
+                  ← {t("common.back")}
                 </Link>
                 <button
                   className="btn"
@@ -525,9 +527,9 @@ export default function PonudaPreviewClient() {
                     borderColor: "rgba(34, 197, 94, 0.4)",
                     fontWeight: 600,
                   }}
-                  title={lang === "EN" ? "Print quote" : "Štampaj ponudu"}
+                  title={t("ponude.stampajPonudu")}
                 >
-                  🖨️ {lang === "EN" ? "Print" : "Štampaj"}
+                  🖨️ {t("ponude.print")}
                 </button>
                 <button
                   className="btn"
@@ -539,7 +541,7 @@ export default function PonudaPreviewClient() {
                   }}
                   title={`Preuzmi PDF: ${pdfFilename}.pdf`}
                 >
-                  💾 Save as PDF
+                  💾 {t("ponude.saveAsPdf")}
                 </button>
                 {mailtoHref && (
                   <a
@@ -550,13 +552,9 @@ export default function PonudaPreviewClient() {
                       borderColor: "rgba(234, 179, 8, 0.4)",
                       fontWeight: 600,
                     }}
-                    title={
-                      lang === "EN"
-                        ? "Send by email (pre-filled body)"
-                        : "Pošalji mailom (predpopunjen tekst)"
-                    }
+                    title={t("ponude.sendByEmailTitle")}
                   >
-                    ✉️ {lang === "EN" ? "Send by email" : "Pošalji mailom"}
+                    ✉️ {t("ponude.sendByEmail")}
                   </a>
                 )}
               </div>

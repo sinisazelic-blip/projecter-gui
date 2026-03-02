@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { downloadExcel } from "@/lib/exportExcel";
+import { useTranslation } from "@/components/LocaleProvider";
 
 function fmtDDMMYYYY(iso: string | null): string {
   if (!iso) return "—";
@@ -40,6 +41,7 @@ type Klijent = {
 export default function PonudePage() {
   const sp = useSearchParams();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [ponude, setPonude] = useState<Ponuda[]>([]);
   const [klijenti, setKlijenti] = useState<Klijent[]>([]);
@@ -61,12 +63,12 @@ export default function PonudePage() {
         const res = await fetch(`/api/ponude/list?${qs.toString()}`, { cache: "no-store" });
         const data = await res.json();
         if (!res.ok || !data.ok) {
-          throw new Error(data.error || "Greška pri učitavanju");
+          throw new Error(data.error || t("ponude.loadError"));
         }
         setPonude(data.ponude ?? []);
         setKlijenti(data.klijenti ?? []);
       } catch (err: any) {
-        setError(err?.message ?? "Greška");
+        setError(err?.message ?? t("common.error"));
       } finally {
         setLoading(false);
       }
@@ -105,17 +107,17 @@ export default function PonudePage() {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">📋 Ponude</div>
-                  <div className="brandSub">Lista generisanih ponuda (predračuni)</div>
+                  <div className="brandTitle">📋 {t("ponude.title")}</div>
+                  <div className="brandSub">{t("ponude.subtitle")}</div>
                 </div>
               </div>
-              <Link href="/dashboard" className="btn" style={{ minWidth: 130 }} title="Povratak na Dashboard">
-                🏠 Dashboard
+              <Link href="/dashboard" className="btn" style={{ minWidth: 130 }} title={t("ponude.backToDashboard")}>
+                🏠 {t("common.dashboard")}
               </Link>
             </div>
 
             <div style={{ marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "nowrap", overflowX: "auto" }}>
-              <label className="label" style={{ whiteSpace: "nowrap" }}>Broj ponude:</label>
+              <label className="label" style={{ whiteSpace: "nowrap" }}>{t("ponude.brojPonude")}:</label>
               <input
                 id="broj_ponude"
                 type="text"
@@ -124,15 +126,15 @@ export default function PonudePage() {
                 className="input small"
                 style={{ width: 150 }}
               />
-              <label className="label" style={{ whiteSpace: "nowrap" }}>Naručioc:</label>
+              <label className="label" style={{ whiteSpace: "nowrap" }}>{t("ponude.klijent")}:</label>
               <select id="klijent_id" defaultValue={klijentIdFilter} className="input" style={{ minWidth: 200 }}>
-                <option value="">Svi</option>
+                <option value="">{t("ponude.svi")}</option>
                 {klijenti.map((k) => (
                   <option key={k.klijent_id} value={String(k.klijent_id)}>{k.naziv_klijenta}</option>
                 ))}
               </select>
-              <button type="button" className="btn" onClick={handleFilter}>🔎 Filtriraj</button>
-              <button type="button" className="btn" onClick={handleReset}>🔄 Reset</button>
+              <button type="button" className="btn" onClick={handleFilter}>🔎 {t("ponude.filtriraj")}</button>
+              <button type="button" className="btn" onClick={handleReset}>🔄 {t("ponude.reset")}</button>
               {ponude.length > 0 && (
                 <button
                   type="button"
@@ -149,9 +151,9 @@ export default function PonudePage() {
                     ]);
                     downloadExcel({ filename: "ponude_lista", sheetName: "Ponude", headers, rows });
                   }}
-                  title="Preuzmi listu u Excel"
+                  title={t("ponude.exportExcel")}
                 >
-                  Export u Excel
+                  {t("ponude.exportExcel")}
                 </button>
               )}
             </div>
@@ -162,7 +164,7 @@ export default function PonudePage() {
 
         <div className="listWrap">
           {loading ? (
-            <div style={{ padding: 40, textAlign: "center", opacity: 0.7 }}>Učitavanje...</div>
+            <div style={{ padding: 40, textAlign: "center", opacity: 0.7 }}>{t("common.loading")}</div>
           ) : error ? (
             <div style={{ padding: 20, background: "rgba(255, 59, 48, 0.1)", borderRadius: 8, color: "#ff3b30" }}>
               ⚠️ {error}
@@ -184,7 +186,7 @@ export default function PonudePage() {
                   {ponude.length === 0 ? (
                     <tr>
                       <td colSpan={6} style={{ opacity: 0.7, padding: 20 }}>
-                        Nema ponuda za zadate filtere.
+                        {t("ponude.noPonude")}
                       </td>
                     </tr>
                   ) : (

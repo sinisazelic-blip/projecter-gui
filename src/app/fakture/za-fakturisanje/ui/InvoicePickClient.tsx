@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/components/LocaleProvider";
 
 type Row = {
   projekat_id: number;
@@ -86,6 +87,7 @@ export default function InvoicePickClient({
   initial: { narucilac_id: string; od: string; do: string };
 }) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [narucilacId, setNarucilacId] = useState<string>(
     initial.narucilac_id || "",
@@ -186,14 +188,14 @@ export default function InvoicePickClient({
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Za fakturisanje</div>
+                  <div className="brandTitle">{t("wizard.zaFakturisanje")}</div>
                   <div className="brandSub">
                     Izvještaj-forma · samo projekti ZATVOREN (8)
                   </div>
                 </div>
               </div>
-              <Link href="/dashboard" className="btn" title="Povratak na Dashboard">
-                🏠 Dashboard
+              <Link href="/dashboard" className="btn" title={t("wizard.backToDashboard")}>
+                🏠 {t("common.dashboard")}
               </Link>
             </div>
             <div className="topRow" style={{ marginTop: 14 }}>

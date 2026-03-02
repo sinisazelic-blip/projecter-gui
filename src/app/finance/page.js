@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
-function CardLink({ title, desc, href, href2, href2Label }) {
+function CardLink({ title, desc, href, href2, href2Label, openLabel }) {
   return (
     <div
       className="card"
@@ -23,11 +26,11 @@ function CardLink({ title, desc, href, href2, href2Label }) {
       </div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <Link className="btn btn--active" href={href} style={{ padding: "10px 16px" }}>
-          Otvori
+          {openLabel}
         </Link>
         {href2 ? (
           <Link className="btn" href={href2} style={{ padding: "10px 16px" }}>
-            {href2Label ?? "Drugo"}
+            {href2Label}
           </Link>
         ) : null}
       </div>
@@ -36,6 +39,10 @@ function CardLink({ title, desc, href, href2, href2Label }) {
 }
 
 export default async function FinanceHomePage() {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
+  const t = getT(locale);
+
   return (
     <div className="container">
       <div className="pageWrap">
@@ -52,15 +59,13 @@ export default async function FinanceHomePage() {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Finansije</div>
-                  <div className="brandSub">
-                    Banka je canonical truth. Business tabele su meaning + linkovi.
-                  </div>
+                  <div className="brandTitle">{t("finance.title")}</div>
+                  <div className="brandSub">{t("finance.subtitle")}</div>
                 </div>
               </div>
 
-              <Link href="/dashboard" className="btn" title="Dashboard">
-                🏠 Dashboard
+              <Link href="/dashboard" className="btn" title={t("common.dashboard")}>
+                🏠 {t("common.dashboard")}
               </Link>
             </div>
 
@@ -77,71 +82,31 @@ export default async function FinanceHomePage() {
         }}
       >
         <CardLink
-          title="Banka (postinzi)"
-          desc="Canonical ledger: šta se desilo. Detalj pokazuje linkove na prihode, plaćanja, troškove i fiksne."
+          title={t("finance.banka")}
+          desc={t("finance.bankaDesc")}
           href="/finance/banka"
+          openLabel={t("common.open")}
         />
 
+        <CardLink title={t("finance.bankaVsKnjige")} desc={t("finance.bankaVsKnjigeDesc")} href="/finance/banka-vs-knjige" openLabel={t("common.open")} />
+        <CardLink title={t("finance.potrazivanja")} desc={t("finance.potrazivanjaDesc")} href="/finance/potrazivanja" openLabel={t("common.open")} />
+        <CardLink title={t("finance.naplate")} desc={t("finance.naplateDesc")} href="/naplate" openLabel={t("common.open")} />
+        <CardLink title={t("finance.pdvPrijava")} desc={t("finance.pdvPrijavaDesc")} href="/finance/pdv" openLabel={t("common.open")} />
+        <CardLink title={t("finance.kuf")} desc={t("finance.kufDesc")} href="/finance/kuf" openLabel={t("common.open")} />
+        <CardLink title={t("dashboard.financeTools")} desc={t("finance.financeToolsDesc")} href="/studio/finance-tools" openLabel={t("common.open")} />
+        <CardLink title={t("finance.pocetnaStanja")} desc={t("finance.pocetnaStanjaDesc")} href="/finance/pocetna-stanja" openLabel={t("common.open")} />
+        <CardLink title={t("finance.dugovanja")} desc={t("finance.dugovanjaDesc")} href="/finance/dugovanja" openLabel={t("common.open")} />
+        <CardLink title={t("finance.prihodi")} desc={t("finance.prihodiDesc")} href="/finance/prihodi" openLabel={t("common.open")} />
+        <CardLink title={t("finance.placanja")} desc={t("finance.placanjaDesc")} href="/finance/placanja" openLabel={t("common.open")} />
+        <CardLink title={t("finance.cashflow")} desc={t("finance.cashflowDesc")} href="/finance/cashflow" openLabel={t("common.open")} />
+        <CardLink title={t("finance.krediti")} desc={t("finance.kreditiDesc")} href="/finance/krediti" openLabel={t("common.open")} />
         <CardLink
-          title="Potraživanja"
-          desc="Šta treba biti naplaćeno (meaning). Detalj pokazuje linkove na prihode i paid sum view."
-          href="/finance/potrazivanja"
-        />
-
-        <CardLink
-          title="Naplate"
-          desc="Šta dospijeva uskoro ili kasni. Projekti status 4/6, neplaćeno."
-          href="/naplate"
-        />
-
-        <CardLink
-          title="KUF (ulazne fakture)"
-          desc="Import ulaznih faktura + rasknjižavanje: projektni, fiksni, vanredni, investicije."
-          href="/finance/kuf"
-        />
-
-        <CardLink
-          title="Početna stanja"
-          desc="Evidencija stanja na 31.12.2025 — klijenti (potraživanja), dobavljači i talenti (naša dugovanja)."
-          href="/finance/pocetna-stanja"
-        />
-
-        <CardLink
-          title="Dugovanja"
-          desc="Obaveze prema dobavljačima/talentima. Lista + detalj sa paid sum."
-          href="/finance/dugovanja"
-        />
-
-        <CardLink
-          title="Prihodi"
-          desc="Business prihodi (meaning). Detalj pokazuje bank linkove + veze na potraživanja."
-          href="/finance/prihodi"
-        />
-
-        <CardLink
-          title="Plaćanja"
-          desc="Business plaćanja (meaning). Detalj pokazuje bank linkove + stavke (ako postoje)."
-          href="/finance/placanja"
-        />
-
-        <CardLink
-          title="CashFlow"
-          desc="Hronologija plaćanja — šta je sljedeće za plaćanje. Fiksni troškovi poredani po datumu."
-          href="/finance/cashflow"
-        />
-
-        <CardLink
-          title="Krediti"
-          desc="Ukupan iznos, broj rata, uplaćeno, ostatak duga, posljednja rata."
-          href="/finance/krediti"
-        />
-
-        <CardLink
-          title="Fiksni troškovi"
-          desc="Šifrarnik fiksnih troškova + raspored dospijeća (read-only)."
+          title={t("finance.fiksniTroskovi")}
+          desc={t("finance.fiksniTroskoviDesc")}
           href="/finance/fiksni-troskovi"
           href2="/finance/fiksni-troskovi/raspored"
-          href2Label="Raspored"
+          href2Label={t("finance.raspored")}
+          openLabel={t("common.open")}
         />
       </div>
 
@@ -156,10 +121,9 @@ export default async function FinanceHomePage() {
           padding: 18,
         }}
       >
-        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Napomena</div>
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>{t("finance.note")}</div>
         <div className="subtle" style={{ lineHeight: 1.7, fontSize: 13 }}>
-          Ovo je read-only skeleton faza. Linkovanje i pravila dolaze kasnije,
-          ali navigacija i prikazi moraju biti stabilni i jasni.
+          {t("finance.noteText")}
         </div>
       </div>
         </div>

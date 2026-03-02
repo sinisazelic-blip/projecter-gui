@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { KlijentRow } from "./page";
 import { createKlijent, setKlijentActive, updateKlijent } from "./actions";
 import ImportSection from "../ImportSection";
+import { useTranslation } from "@/components/LocaleProvider";
 
 type TipKlijenta = "direktni" | "agencija";
 
@@ -127,6 +128,7 @@ export default function KlijentiClient({
   initialItems: KlijentRow[];
 }) {
   const router = useRouter();
+  const { t, locale } = useTranslation();
   const [isPending, startTransition] = useTransition();
 
   const [q, setQ] = useState("");
@@ -204,9 +206,10 @@ export default function KlijentiClient({
   }
 
   function badgeTrziste(isIno: boolean) {
+    const label = locale === "en" ? (isIno ? t("vat.vatEuB2b") : t("vat.vatDomestic")) : (isIno ? "INO" : "BiH");
     return (
       <span className="badge" data-status={isIno ? "planned" : "active"}>
-        {isIno ? "INO" : "BiH"}
+        {label}
       </span>
     );
   }
@@ -914,10 +917,10 @@ export default function KlijentiClient({
                       fontWeight: 700,
                     }}
                   >
-                    INO klijent
+                    {locale === "en" ? t("vat.vatTreatment") : t("vat.inoClient")}
                   </span>
                   <span style={{ color: "var(--muted)", fontSize: 13 }}>
-                    — koristi INO cijene (EUR) u Deal-u
+                    {locale === "en" ? t("vat.vatTreatmentHint") : `— ${t("vat.inoClientHint")}`}
                   </span>
                 </div>
 
@@ -940,10 +943,10 @@ export default function KlijentiClient({
                       fontWeight: 700,
                     }}
                   >
-                    Oslobođen od plaćanja PDV-a
+                    {locale === "en" ? t("vat.vatExempt") : t("vat.pdvOslobodjenLabel")}
                   </span>
                   <span style={{ color: "var(--muted)", fontSize: 13 }}>
-                    — član 24, potvrda o oslobađanju
+                    — {t("vat.pdvOslobodjenHint")}
                   </span>
                 </div>
 
@@ -956,7 +959,7 @@ export default function KlijentiClient({
                         marginBottom: 6,
                       }}
                     >
-                      Napomena za fakturu (prikazuje se na računu)
+                      {t("vat.pdvNapomenaLabel")}
                     </div>
                     <textarea
                       value={form.pdv_oslobodjen_napomena}

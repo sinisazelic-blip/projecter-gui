@@ -12,7 +12,7 @@ export default function ProjectSummaryCard({ project }) {
 
   // ✅ Izračunaj budžet vidljiv radnicima (procenat od punog budžeta)
   const punBudzet = Number(project.budzet_planirani) || 0;
-  const procenatZaTim = Number(project.budzet_procenat_za_tim) || 50.00;
+  const procenatZaTim = Number(project.budzet_procenat_za_tim) || 100.00;
   const budzetZaTim = punBudzet * (procenatZaTim / 100);
 
   // ✅ Izračunaj planiranu zaradu na osnovu budžeta za tim

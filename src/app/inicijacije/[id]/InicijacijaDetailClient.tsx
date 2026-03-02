@@ -83,13 +83,6 @@ type ProjectStatusRow = {
 
 const USER_LABEL = "SiNY";
 
-const STATUSI = [
-  { id: 1, naziv: "Nova ponuda" },
-  { id: 2, naziv: "Na čekanju" },
-  { id: 3, naziv: "Spremno za otvaranje projekta" },
-  { id: 4, naziv: "Odbijeno" },
-];
-
 const VIA_OPTIONS = [
   { v: "", label: "—" },
   { v: "MAIL", label: "Mail" },
@@ -1661,7 +1654,7 @@ export default function InicijacijaDetailClient() {
                 {!dealReadOnly && (
                   <Link
                     href={`/studio/strategic-core?inicijacija_id=${id}`}
-                    className="btn-faze-important"
+                    className="btn btn-sc-strategic"
                     style={{
                       padding: "10px 18px",
                       fontSize: 14,
@@ -1672,9 +1665,9 @@ export default function InicijacijaDetailClient() {
                       alignItems: "center",
                       gap: 8,
                     }}
-                    title="Brzo određivanje budžeta putem Strategic Core"
+                    title="Brzo određivanje budžeta putem SC Strategic Core®"
                   >
-                    🎛️ SC Strategic Core
+                    🎛️ SC Strategic Core®
                   </Link>
                 )}
 
@@ -2107,21 +2100,6 @@ export default function InicijacijaDetailClient() {
                   }
                   style={inputStyle}
                 />
-
-                <div className="label">Faza pregovora</div>
-                <select
-                  value={row.status_id}
-                  onChange={(e) =>
-                    setRow({ ...row, status_id: Number(e.target.value) })
-                  }
-                  style={inputStyle}
-                >
-                  {STATUSI.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.naziv === "Nova inicijacija" ? "Novi Deal" : s.naziv}
-                    </option>
-                  ))}
-                </select>
 
                 <div className="label">Napomene za produkciju</div>
                 <textarea

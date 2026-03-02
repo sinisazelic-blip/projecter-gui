@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 import { query } from "@/lib/db";
 import KufImportForm from "./KufImportForm";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
@@ -30,6 +33,10 @@ const TIP_LABELS = {
 };
 
 export default async function KufPage({ searchParams }) {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
+  const t = getT(locale);
+
   const sp = await Promise.resolve(searchParams);
   const q = (sp?.q ?? "").trim();
   const tip = sp?.tip ?? "";
@@ -139,19 +146,17 @@ export default async function KufPage({ searchParams }) {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">KUF (ulazne fakture)</div>
-                  <div className="brandSub">
-                    Import i rasknjižavanje: projektni, fiksni, vanredni, investicije
-                  </div>
+                  <div className="brandTitle">{t("kuf.title")}</div>
+                  <div className="brandSub">{t("kuf.subtitle")}</div>
                 </div>
               </div>
 
               <div className="actions">
-                <Link className="btn" href="/finance" title="Finansije">
-                  Finansije
+                <Link className="btn" href="/finance" title={t("finance.title")}>
+                  {t("finance.title")}
                 </Link>
-                <Link className="btn" href="/dashboard" title="Dashboard">
-                  🏠 Dashboard
+                <Link className="btn" href="/dashboard" title={t("common.dashboard")}>
+                  🏠 {t("common.dashboard")}
                 </Link>
               </div>
             </div>

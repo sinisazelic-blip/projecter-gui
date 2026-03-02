@@ -36,6 +36,10 @@ function getSum(tableData, field) {
   return tableData.reduce((s, r) => s + (getUkuno(r, field) || 0), 0);
 }
 
+const colGodinaBg = { background: "rgba(255, 235, 150, 0.2)" };
+const colUkupnoBg = { background: "rgba(150, 200, 255, 0.2)" };
+const colProsjekBg = { background: "rgba(255, 200, 130, 0.2)" };
+
 function TableBlock({ title, tableData, field }) {
   return (
     <div className="reportTableWrap">
@@ -44,25 +48,25 @@ function TableBlock({ title, tableData, field }) {
         <table className="card tableCard reportTable">
           <thead>
             <tr>
-              <th style={{ width: 60 }}>God.</th>
+              <th style={{ width: 60, ...colGodinaBg }}>God.</th>
               {MJESI.map((m) => (
                 <th key={m} style={{ width: 72 }}>{m}</th>
               ))}
-              <th style={{ width: 100 }}>ukuno</th>
-              <th style={{ width: 120 }}>prosjek mjesečno</th>
+              <th style={{ width: 100, ...colUkupnoBg }}>ukuno</th>
+              <th style={{ width: 120, ...colProsjekBg }}>prosjek mjesečno</th>
             </tr>
           </thead>
           <tbody>
             {tableData?.map((r) => (
               <tr key={r.godina}>
-                <td>{r.godina}</td>
+                <td style={colGodinaBg}>{r.godina}</td>
                 {r.mjeseci_arr?.map((m, i) => (
                   <td key={i} className="num">
                     {m[field] ? fmtKM(m[field]) : "—"}
                   </td>
                 ))}
-                <td className="num bold">{fmtKM(getUkuno(r, field))}</td>
-                <td className="num">
+                <td className="num bold" style={colUkupnoBg}>{fmtKM(getUkuno(r, field))}</td>
+                <td className="num" style={colProsjekBg}>
                   {r.broj_mjeseci > 0 ? (
                     <>
                       {fmtKM(field === "promet" ? r.prosjek_mjesecno : field === "troskovi" ? r.prosjek_troskovi : r.prosjek_zarada)}
@@ -82,8 +86,8 @@ function TableBlock({ title, tableData, field }) {
           <tfoot>
             <tr className="footerRow">
               <td colSpan={13}></td>
-              <td className="num bold">{fmtKM(getSum(tableData, field))}</td>
-              <td></td>
+              <td className="num bold" style={colUkupnoBg}>{fmtKM(getSum(tableData, field))}</td>
+              <td style={colProsjekBg}></td>
             </tr>
           </tfoot>
         </table>
@@ -148,8 +152,8 @@ export default function GrafickiClient() {
         <div className="chartGrid">
           <div className="chartCard">
             <div className="chartTitle">Promet po godini</div>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={chartYearly} margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={chartYearly} margin={{ top: 36, right: 12, bottom: 12, left: 12 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                 <XAxis dataKey="godina" stroke="rgba(255,255,255,0.6)" fontSize={12} />
                 <YAxis stroke="rgba(255,255,255,0.6)" fontSize={12} tickFormatter={(v) => v >= 1000 ? Math.round(v / 1000) + "k" : Math.round(v)} />
@@ -164,7 +168,7 @@ export default function GrafickiClient() {
 
           <div className="chartCard">
             <div className="chartTitle">Troškovi i Zarada po godini</div>
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer width="100%" height={400}>
               <BarChart data={chartYearly} margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                 <XAxis dataKey="godina" stroke="rgba(255,255,255,0.6)" fontSize={12} />
@@ -173,7 +177,7 @@ export default function GrafickiClient() {
                   formatter={(v) => fmtKM(v)}
                   contentStyle={{ background: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10 }}
                 />
-                <Legend />
+                <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 8 }} />
                 <Bar dataKey="troskovi" fill="rgba(251, 146, 60, 0.8)" name="Troškovi" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="zarada" fill="rgba(34, 197, 94, 0.8)" name="Zarada" radius={[4, 4, 0, 0]} />
               </BarChart>

@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
       status_id: r.status_id,
       status_naziv: r.status_naziv ?? "—",
       narucilac_naziv: r.narucilac_naziv ?? "—",
-      rok_glavni: r.rok_glavni ? formatDateDMY(String(r.rok_glavni).slice(0, 10)) : null,
+      rok_glavni: r.rok_glavni ? formatDateDMY(r.rok_glavni) : null,
       budzet_planirani: Number(r.budzet_planirani) || 0,
       troskovi_ukupno: Number(r.troskovi_ukupno) || 0,
       planirana_zarada: Number(r.planirana_zarada) || 0,

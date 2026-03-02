@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { formatDateDMY } from "@/lib/format";
+import { formatDateDMY, toIsoDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
     const bucketSums: Record<string, number> = { "0-30": 0, "31-60": 0, "61-90": 0, "90+": 0 };
 
     for (const r of Array.isArray(rows) ? rows : []) {
-      const datumIzdavanja = r.datum_izdavanja ? String(r.datum_izdavanja).slice(0, 10) : null;
+      const datumIzdavanja = toIsoDate(r.datum_izdavanja);
       const rokDana = Number(r.rok_placanja_dana) || 0;
       let datumDospijeca: string | null = null;
       if (datumIzdavanja) {

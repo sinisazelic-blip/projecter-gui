@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslation } from "@/components/LocaleProvider";
 
 function pad2(n: number) {
   return String(n).padStart(2, "0");
@@ -34,6 +35,7 @@ function ddmmyyyyToISO(ddmmyyyy: string): string | null {
 export default function InvoiceWizard() {
   const sp = useSearchParams();
   const router = useRouter();
+  const { t } = useTranslation();
 
   // ✅ čitamo ids (novo) + pid (fallback)
   const ids = useMemo(() => {
@@ -277,14 +279,14 @@ export default function InvoiceWizard() {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Faktura — Wizard (2/3)</div>
+                  <div className="brandTitle">{t("wizard.fakturaWizardStep")}</div>
                   <div className="brandSub">
                     Priprema elemenata prije preview-a
                   </div>
                 </div>
               </div>
-              <Link href="/dashboard" className="btn" title="Dashboard">
-                🏠 Dashboard
+              <Link href="/dashboard" className="btn" title={t("wizard.backToDashboard")}>
+                🏠 {t("common.dashboard")}
               </Link>
             </div>
             <div className="topRow" style={{ marginTop: 14 }}>
@@ -293,9 +295,9 @@ export default function InvoiceWizard() {
                 <Link
                   href={`/fakture/za-fakturisanje`}
                   className="btn"
-                  title="Nazad na listu"
+                  title={t("wizard.nazadNaListu")}
                 >
-                  ← Nazad
+                  ← {t("wizard.nazad")}
                 </Link>
                 <button
                   className="btn"
@@ -318,19 +320,19 @@ export default function InvoiceWizard() {
                   }}
                   title={
                     ids.length === 0
-                      ? "Nema selekcije"
+                      ? t("wizard.nemaSelekcije")
                       : pnbLoading
-                        ? "Generišem poziv na broj…"
+                        ? t("wizard.generisemPnb")
                         : "Preview"
                   }
                 >
-                  ➜ Preview (3/3)
+                  ➜ {t("wizard.preview33")}
                 </button>
               </div>
             </div>
 
             <div className="muted" style={{ marginTop: 10 }}>
-              Projekti u fakturi: <b>{ids.length}</b> (
+              {t("wizard.projektiUFakturi")}: <b>{ids.length}</b> (
               {ids.slice(0, 12).join(", ")}
               {ids.length > 12 ? "…" : ""})
             </div>
@@ -341,22 +343,22 @@ export default function InvoiceWizard() {
         <div className="scrollWrap">
           <div className="container">
             <div className="cardLike">
-              <div style={{ fontWeight: 850, fontSize: 16 }}>Osnovno</div>
+              <div style={{ fontWeight: 850, fontSize: 16 }}>{t("wizard.osnovno")}</div>
 
               <div className="grid2" style={{ marginTop: 10 }}>
-                <div className="label">Datum fakture (dd.mm.yyyy)</div>
+                <div className="label">{t("wizard.datumFakture")}</div>
                 <input
                   className="input"
                   value={invoiceDateDD}
                   onChange={(e) => setInvoiceDateDD(e.target.value)}
-                  placeholder="dd.mm.yyyy"
+                  placeholder={t("wizard.placeholderDatum")}
                 />
 
                 <div className="label">
-                  Valuta plaćanja
+                  {t("wizard.valutaPlacanja")}
                   {isInoDetected && (
                     <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.8, fontWeight: 600, color: "rgba(59, 130, 246, 0.9)" }}>
-                      (auto: INO klijent)
+                      {t("wizard.autoInoKlijent")}
                     </span>
                   )}
                 </div>
@@ -370,15 +372,15 @@ export default function InvoiceWizard() {
                 </select>
 
                 <div className="label">
-                  PDV režim
+                  {t("wizard.pdvRezim")}
                   {isInoDetected && (
                     <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.8, fontWeight: 600, color: "rgba(59, 130, 246, 0.9)" }}>
-                      (auto: INO klijent)
+                      {t("wizard.autoInoKlijent")}
                     </span>
                   )}
                   {pdvOslobodjenDetected && !isInoDetected && (
                     <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.8, fontWeight: 600, color: "rgba(59, 130, 246, 0.9)" }}>
-                      (auto: oslobođen od PDV-a)
+                      {t("wizard.autoOslobodjen")}
                     </span>
                   )}
                 </div>
@@ -387,13 +389,13 @@ export default function InvoiceWizard() {
                   value={vatMode}
                   onChange={(e) => setVatMode(e.target.value as any)}
                 >
-                  <option value="BH_17">BiH (PDV 17%)</option>
-                  <option value="INO_0">INO / Oslobođen (0%)</option>
+                  <option value="BH_17">{t("wizard.pdvBiH17")}</option>
+                  <option value="INO_0">{t("wizard.pdvIno0")}</option>
                 </select>
 
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", gridColumn: "1 / -1" }}>
                   <div style={{ flex: "1 1 200px", minWidth: 140 }}>
-                    <div className="label">PFR broj (opciono)</div>
+                    <div className="label">{t("wizard.pfrBroj")}</div>
                     <input
                       className="input"
                       value={pfrBroj}
@@ -403,46 +405,45 @@ export default function InvoiceWizard() {
                     />
                   </div>
                   <div style={{ flex: "1 1 200px", minWidth: 200 }}>
-                    <div className="label">Koristi automatski sistem za fiskalizaciju (PU dropbox)</div>
+                    <div className="label">{t("wizard.fiskalizacijaDropbox")}</div>
                     <select
                       className="input"
                       value={useFiskalizacijaDropbox ? "1" : "0"}
                       onChange={(e) => setUseFiskalizacijaDropbox(e.target.value === "1")}
                       style={{ width: "100%" }}
                     >
-                      <option value="0">NE</option>
-                      <option value="1">DA</option>
+                      <option value="0">{t("wizard.ne")}</option>
+                      <option value="1">{t("wizard.da")}</option>
                     </select>
                   </div>
                 </div>
 
-                <div className="label">Poziv na broj (AUTO, 8 cifara)</div>
+                <div className="label">{t("wizard.pozivNaBroj")}</div>
                 <input
                   className="input"
-                  value={pnbLoading ? "Generišem…" : pozivNaBroj}
+                  value={pnbLoading ? t("wizard.generisem") : pozivNaBroj}
                   readOnly
                   disabled
                   style={{ opacity: 0.9 }}
                 />
 
-                <div className="label">Popust prije PDV-a (KM)</div>
+                <div className="label">{t("wizard.popustPrijePdv")}</div>
                 <input
                   type="number"
                   className="input"
                   value={popustKm}
                   onChange={(e) => setPopustKm(e.target.value)}
-                  placeholder="0"
+                  placeholder={t("wizard.popustPlaceholder")}
                   min="0"
                   step="0.01"
-                  title="Opciono — umanjenje osnovice prije obračuna PDV-a"
+                  title={t("wizard.popustTitle")}
                 />
               </div>
 
               {pnbErr ? <div className="err">{pnbErr}</div> : null}
 
               <div style={{ marginTop: 10, opacity: 0.8, fontSize: 12 }}>
-                * Poziv na broj generiše Fluxa automatski (ne ručno). Datum se
-                unosi kao <b>dd.mm.yyyy</b>.
+                {t("wizard.hintPnb")}
               </div>
             </div>
 
@@ -450,10 +451,10 @@ export default function InvoiceWizard() {
             {projectsData.length > 1 && (
               <div className="cardLike" style={{ marginTop: 16 }}>
                 <div style={{ fontWeight: 850, fontSize: 16, marginBottom: 10 }}>
-                  Kombinuj projekte u jednu stavku
+                  {t("wizard.kombinujProjekte")}
                 </div>
                 <div style={{ opacity: 0.85, fontSize: 13, marginBottom: 12 }}>
-                  Označi projekte koje želiš kombinovati u jednu stavku na fakturi (iznosi će se zbrojiti). Korisno kada ne želiš prikazati detalje o svakom projektu posebno.
+                  {t("wizard.kombinujHint")}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
                   {projectsData.map((proj) => (
@@ -483,13 +484,13 @@ export default function InvoiceWizard() {
                 {selectedForGrouping.size > 0 && (
                   <div style={{ marginTop: 12 }}>
                     <div className="label" style={{ marginBottom: 6 }}>
-                      Zajednički naziv za kombinovane projekte:
+                      {t("wizard.zajednickiNaziv")}
                     </div>
                     <input
                       className="input"
                       value={groupName}
                       onChange={(e) => setGroupName(e.target.value)}
-                      placeholder="Npr. Usluge dizajna i razvoja"
+                      placeholder={t("wizard.placeholderGrupa")}
                       style={{ width: "100%" }}
                     />
                     <button
@@ -522,13 +523,13 @@ export default function InvoiceWizard() {
                         opacity: !groupName.trim() || selectedForGrouping.size === 0 ? 0.5 : 1,
                       }}
                     >
-                      Kreiraj grupu
+                      {t("wizard.kreirajGrupu")}
                     </button>
                   </div>
                 )}
                 {Object.keys(projectGroups).length > 0 && (
                   <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,.1)" }}>
-                    <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8 }}>Kreirane grupe:</div>
+                    <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8 }}>{t("wizard.kreiraneGrupe")}</div>
                     {Object.entries(projectGroups).map(([groupId, group]) => (
                       <div
                         key={groupId}
@@ -545,7 +546,7 @@ export default function InvoiceWizard() {
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 13 }}>{group.name}</div>
                           <div style={{ fontSize: 11, opacity: 0.7 }}>
-                            Projekti: {group.projectIds.map((id) => `#${id}`).join(", ")}
+                            {t("wizard.projekti")}: {group.projectIds.map((id) => `#${id}`).join(", ")}
                           </div>
                         </div>
                         <button
@@ -571,7 +572,7 @@ export default function InvoiceWizard() {
                             cursor: "pointer",
                           }}
                         >
-                          Ukloni
+                          {t("wizard.ukloni")}
                         </button>
                       </div>
                     ))}
@@ -584,10 +585,10 @@ export default function InvoiceWizard() {
             {projectsData.length > 0 && (
               <div className="cardLike" style={{ marginTop: 16 }}>
                 <div style={{ fontWeight: 850, fontSize: 16, marginBottom: 10 }}>
-                  Nazivi projekata na fakturi
+                  {t("wizard.naziviProjekata")}
                 </div>
                 <div style={{ opacity: 0.85, fontSize: 13, marginBottom: 12 }}>
-                  Možeš promijeniti naziv projekta samo za ovu fakturu (ne mijenja bazu). Korisno za dodavanje PO broja naručioca. Projekti koji su u grupi već imaju zajednički naziv.
+                  {t("wizard.naziviHint")}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {projectsData.map((proj) => {
@@ -602,7 +603,7 @@ export default function InvoiceWizard() {
                           </div>
                           <div>
                             <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>
-                              Original: {proj.radni_naziv || "—"}
+                              {t("wizard.original")}: {proj.radni_naziv || "—"}
                             </div>
                             <input
                               className="input"
@@ -613,7 +614,7 @@ export default function InvoiceWizard() {
                                   [pid]: e.target.value,
                                 }));
                               }}
-                              placeholder={`Naziv za fakturu (prazno = koristi "${proj.radni_naziv || "#" + pid}")`}
+                              placeholder={t("wizard.nazivZaFakturuPlaceholder")}
                               style={{ width: "100%" }}
                             />
                           </div>
@@ -633,12 +634,12 @@ export default function InvoiceWizard() {
                                 }));
                               }}
                             />
-                            Dodaj opisne stavke (šta paket sadrži)
+                            {t("wizard.dodajOpisneStavke")}
                           </label>
                         </div>
                         {subState.enabled && (
                           <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-                            <div style={{ fontSize: 11, opacity: 0.75 }}>Stavke koje će se prikazati na fakturi (samo ne-prazne):</div>
+                            <div style={{ fontSize: 11, opacity: 0.75 }}>{t("wizard.stavkeNaFakturi")}</div>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                               {items.map((val, i) => (
                                 <input
@@ -653,7 +654,7 @@ export default function InvoiceWizard() {
                                       [pid]: { enabled: true, items: next },
                                     }));
                                   }}
-                                  placeholder={`Stavka ${i + 1}`}
+                                  placeholder={`${t("wizard.stavka")} ${i + 1}`}
                                   style={{ flex: "1 1 180px", minWidth: 140 }}
                                 />
                               ))}

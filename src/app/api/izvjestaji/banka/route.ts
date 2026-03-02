@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
       const tip = String(r.tip_troska || "OSTALO").toUpperCase();
       return {
         trosak_id: r.trosak_id,
-        datum_troska: r.datum_troska ? formatDateDMY(String(r.datum_troska).slice(0, 10)) : null,
+        datum_troska: r.datum_troska ? formatDateDMY(r.datum_troska) : null,
         opis: r.opis || "—",
         kategorija: r.tip_naziv || null,
         tip_naziv: r.tip_naziv || null,

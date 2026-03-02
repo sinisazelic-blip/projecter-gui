@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { downloadExcel } from "@/lib/exportExcel";
+import { useTranslation } from "@/components/LocaleProvider";
 
 function fmtDDMMYYYY(iso: string | null): string {
   if (!iso) return "—";
@@ -44,6 +45,7 @@ type Narucioc = {
 export default function FakturePage() {
   const sp = useSearchParams();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [fakture, setFakture] = useState<Faktura[]>([]);
   const [narucioci, setNarucioci] = useState<Narucioc[]>([]);
@@ -71,13 +73,13 @@ export default function FakturePage() {
         const data = await res.json();
 
         if (!res.ok || !data.ok) {
-          throw new Error(data.error || "Greška pri učitavanju");
+          throw new Error(data.error || t("fakture.loadError"));
         }
 
         setFakture(data.fakture || []);
         setNarucioci(data.narucioci || []);
       } catch (err: any) {
-        setError(err?.message || "Greška");
+        setError(err?.message || t("common.error"));
       } finally {
         setLoading(false);
       }
@@ -138,8 +140,8 @@ export default function FakturePage() {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">📄 Fakture</div>
-                  <div className="brandSub">Lista izdatih faktura</div>
+                  <div className="brandTitle">📄 {t("fakture.title")}</div>
+                  <div className="brandSub">{t("fakture.subtitle")}</div>
                 </div>
               </div>
 
@@ -147,14 +149,14 @@ export default function FakturePage() {
                 href="/dashboard"
                 className="btn"
                 style={{ minWidth: 130 }}
-                title="Povratak na Dashboard"
+                title={t("fakture.backToDashboard")}
               >
-                🏠 Dashboard
+                🏠 {t("common.dashboard")}
               </Link>
             </div>
 
             <div style={{ marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "nowrap", overflowX: "auto" }}>
-              <label className="label" style={{ whiteSpace: "nowrap" }}>Broj fakture:</label>
+              <label className="label" style={{ whiteSpace: "nowrap" }}>{t("fakture.brojFakture")}:</label>
               <input
                 id="broj_fakture"
                 type="text"
@@ -163,14 +165,14 @@ export default function FakturePage() {
                 className="input small"
                 style={{ width: 150 }}
               />
-              <label className="label" style={{ whiteSpace: "nowrap" }}>Naručioc:</label>
+              <label className="label" style={{ whiteSpace: "nowrap" }}>{t("fakture.narucilac")}:</label>
               <select
                 id="narucilac_id"
                 defaultValue={narucilacIdFilter}
                 className="input"
                 style={{ minWidth: 200 }}
               >
-                <option value="">Svi</option>
+                <option value="">{t("fakture.svi")}</option>
                 {narucioci.map((n) => (
                   <option key={n.klijent_id} value={String(n.klijent_id)}>
                     {n.naziv_klijenta}
@@ -178,10 +180,10 @@ export default function FakturePage() {
                 ))}
               </select>
               <button type="button" className="btn" onClick={handleFilter}>
-                🔎 Filtriraj
+                🔎 {t("fakture.filtriraj")}
               </button>
               <button type="button" className="btn" onClick={handleReset}>
-                🔄 Reset
+                🔄 {t("fakture.reset")}
               </button>
               {fakture.length > 0 && (
                 <button
@@ -207,9 +209,9 @@ const headers = ["Broj fakture", "PFR", "Datum izdavanja", "Datum dospijeća", "
                       rows,
                     });
                   }}
-                  title="Preuzmi listu u Excel"
+                  title={t("fakture.exportExcel")}
                 >
-                  Export u Excel
+                  {t("fakture.exportExcel")}
                 </button>
               )}
             </div>
@@ -221,7 +223,7 @@ const headers = ["Broj fakture", "PFR", "Datum izdavanja", "Datum dospijeća", "
         <div className="listWrap">
           {loading ? (
             <div style={{ padding: 40, textAlign: "center", opacity: 0.7 }}>
-              Učitavanje...
+              {t("common.loading")}
             </div>
           ) : error ? (
             <div
@@ -254,7 +256,7 @@ const headers = ["Broj fakture", "PFR", "Datum izdavanja", "Datum dospijeća", "
                   {fakture.length === 0 ? (
                     <tr>
                       <td colSpan={9} style={{ opacity: 0.7, padding: 20 }}>
-                        Nema faktura za zadate filtere.
+                        {t("fakture.noFakture")}
                       </td>
                     </tr>
                   ) : (

@@ -2,6 +2,7 @@
 
 import React, { useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "@/components/LocaleProvider";
 
 type ImportResponse = {
   ok: boolean;
@@ -65,6 +66,7 @@ function cleanSpaces(s: any) {
 }
 
 export default function BankImportPage() {
+  const { t } = useTranslation();
   // import
   const [file, setFile] = useState<File | null>(null);
   const [accountId, setAccountId] = useState<string>("1");
@@ -508,13 +510,13 @@ export default function BankImportPage() {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Import izvoda</div>
-                  <div className="brandSub">Bank Import (BAM XML v2) + Matching</div>
+                  <div className="brandTitle">{t("bankingImport.title")}</div>
+                  <div className="brandSub">{t("bankingImport.subtitle")}</div>
                 </div>
               </div>
 
-              <Link href="/dashboard" className="btn" title="Dashboard">
-                🏠 Dashboard
+              <Link href="/dashboard" className="btn" title={t("common.dashboard")}>
+                🏠 {t("common.dashboard")}
               </Link>
             </div>
 

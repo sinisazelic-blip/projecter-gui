@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslation } from "@/components/LocaleProvider";
 
 function fmtDDMMYYYYFromISO(isoLike: string | null): string {
   if (!isoLike) return "—";
@@ -221,6 +222,7 @@ function formatBankAccounts(accounts: any[]): string[] {
 
 export default function Page() {
   const sp = useSearchParams();
+  const { t } = useTranslation();
 
   const ids = useMemo(() => parseIds(String(sp.get("ids") ?? "")), [sp]);
 
@@ -1055,19 +1057,15 @@ export default function Page() {
                 </div>
                 <div>
                   <div className="brandTitle">
-                    {lang === "EN"
-                      ? "Invoice preview (3/3)"
-                      : "Preview računa (3/3)"}
+                    {t("wizard.previewRacuna33")}
                   </div>
                   <div className="brandSub">
-                    {lang === "EN"
-                      ? "Paper simulation — this is how the PDF/print will look."
-                      : "Paper simulacija — ovako izgleda PDF/štampa."}
+                    {t("wizard.previewRacunaSub")}
                   </div>
                 </div>
               </div>
-              <Link className="btn" href="/dashboard" title="Dashboard">
-                🏠 Dashboard
+              <Link className="btn" href="/dashboard" title={t("common.dashboard")}>
+                🏠 {t("common.dashboard")}
               </Link>
             </div>
             <div className="topRow topRowSecondary">
@@ -1079,9 +1077,9 @@ export default function Page() {
                     <Link
                       className="btn"
                       href={`/fakture/wizard?ids=${encodeURIComponent(ids.join(","))}`}
-                      title="Nazad na wizard"
+                      title={t("wizard.nazadNaWizard")}
                     >
-                      ← {lang === "EN" ? "Back (2/3)" : "Nazad (2/3)"}
+                      ← {t("wizard.nazad23")}
                     </Link>
 
                     {useFiskalizacijaDropbox && (
@@ -1097,14 +1095,10 @@ export default function Page() {
                           borderColor: "rgba(34, 197, 94, 0.4)",
                           fontWeight: 600,
                         }}
-                        title={
-                          lang === "EN"
-                            ? "Get fiscal elements from PU (QR code etc.) — do this before Create Invoice"
-                            : "Dobij fiskalne elemente od PU (QR kod itd.) — uradi prije Kreiraj račun"
-                        }
+                        title={t("wizard.fiskalizujTitle")}
                       >
                         {fiskalizujLoading ? "⏳" : fiskalizacijaDone ? "✓" : "📋"}{" "}
-                        {lang === "EN" ? "Fiscalize" : "Fiskalizuj"}
+                        {t("wizard.fiskalizuj")}
                       </button>
                     )}
 
@@ -1120,10 +1114,10 @@ export default function Page() {
                         borderColor: "rgba(255, 80, 80, 0.4)",
                         fontWeight: 700,
                       }}
-                      title={lang === "EN" ? "Create invoice" : "Kreiraj račun"}
+                      title={t("wizard.kreirajRacunTitle")}
                     >
                       {creating ? "⏳" : "📄"}{" "}
-                      {lang === "EN" ? "Create Invoice" : "Kreiraj račun"}
+                      {t("wizard.kreirajRacun")}
                     </button>
                   </>
                 ) : (
@@ -1132,9 +1126,9 @@ export default function Page() {
                       type="button"
                       className="btn"
                       onClick={handleCreatePDFAndShow}
-                      title={lang === "EN" ? "Create PDF and show" : "Kreiraj PDF i prikaži"}
+                      title={t("wizard.kreirajPdfTitle")}
                     >
-                      📄 {lang === "EN" ? "PDF & Show" : "PDF & Prikaži"}
+                      📄 {t("wizard.kreirajPdf")}
                     </button>
 
                     <button

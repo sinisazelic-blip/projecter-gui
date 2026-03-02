@@ -1,30 +1,16 @@
 // src/app/dashboard/page.js
-import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
+import DashboardTopActions from "./DashboardTopActions";
+import DashboardBody from "./DashboardBody";
 
 export const dynamic = "force-dynamic";
 
-function ActionBtn({ label, href, title, icon, className = "" }) {
-  const content = icon ? `${icon} ${label}` : label;
-  
-  if (!href) {
-    return (
-      <span
-        className={`btn btn--disabled ${className}`}
-        aria-disabled="true"
-        title={title || "Još nije implementirano"}
-      >
-        {content}
-      </span>
-    );
-  }
-  return (
-    <Link className={`btn ${className}`} href={href} title={title || label}>
-      {content}
-    </Link>
-  );
-}
-
-export default function Page() {
+export default async function Page() {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
+  const t = getT(locale);
   return (
     <div className="container dashboardPage">
       <style>{`
@@ -65,7 +51,7 @@ export default function Page() {
 
         .finansijeContainer {
           display: grid;
-          grid-template-columns: 1.75fr 0.75fr;
+          grid-template-columns: 1fr 1fr;
           gap: clamp(14px, 2vh, 24px);
           align-items: stretch;
         }
@@ -165,8 +151,9 @@ export default function Page() {
 
         .deskMainBtn {
           flex: 1;
-          min-width: 200px;
-          max-width: 300px;
+          min-width: 260px;
+          max-width: 380px;
+          min-height: 100px;
           padding: clamp(10px, 1.2vh, 14px) clamp(14px, 1.5vw, 20px);
           font-size: clamp(14px, 1.6vh, 16px);
           font-weight: 750;
@@ -176,6 +163,7 @@ export default function Page() {
           display: flex;
           flex-direction: column;
           align-items: center;
+          justify-content: center;
           gap: 6px;
           transition: transform 0.15s ease, box-shadow 0.15s ease;
           border: 2px solid;
@@ -206,31 +194,26 @@ export default function Page() {
           font-weight: 600;
         }
 
-        .deskSCBtn {
-          position: absolute;
-          bottom: 18px;
-          right: 20px;
-          padding: 8px 14px;
-          font-size: clamp(14px, 1.5vh, 16px);
+        .deskMainBtn--sc {
+          flex: 0 0 auto;
+          min-width: 72px;
+          max-width: 88px;
+          min-height: 100px;
+          padding: clamp(10px, 1.2vh, 14px) 10px;
+          font-size: clamp(13px, 1.4vh, 15px);
           border-color: rgba(251, 191, 36, 0.35);
           background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(245, 158, 11, 0.06));
-        }
-
-        .deskSCBtn:hover {
-          border-color: rgba(251, 191, 36, 0.5);
-          background: linear-gradient(135deg, rgba(251, 191, 36, 0.18), rgba(245, 158, 11, 0.1));
-        }
-
-        .deskSCBtn:hover .deskSCBtnSc {
-          color: rgba(254, 243, 199, 1);
-        }
-
-        .deskSCBtn .deskSCBtnSc {
           color: rgba(253, 230, 138, 0.95);
         }
 
-        .deskSCBtn .deskSCBtnLabel {
-          color: rgba(255, 255, 255, 0.95);
+        .deskMainBtn--sc:hover {
+          border-color: rgba(251, 191, 36, 0.5);
+          background: linear-gradient(135deg, rgba(251, 191, 36, 0.18), rgba(245, 158, 11, 0.1));
+          color: rgba(254, 243, 199, 1);
+        }
+
+        .deskMainBtn--sc .deskMainBtnSubtitle {
+          display: none;
         }
 
         /* Finansije grupa */
@@ -285,10 +268,25 @@ export default function Page() {
           gap: clamp(12px, 1.2vw, 18px);
         }
 
+        .finansijeRow--3 {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: clamp(12px, 1.2vw, 18px);
+        }
+
+        .finansijeRow--3 .btn {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 0;
+        }
+
         .finansijeRow--4 .btn,
         .finansijeRow--6 .btn,
         .finansijeRow--7 .btn,
-        .finansijeRow--2 .btn {
+        .finansijeRow--2 .btn,
+        .finansijeRow--3 .btn {
           width: 100%;
           display: flex;
           align-items: center;
@@ -340,6 +338,18 @@ export default function Page() {
           gap: clamp(12px, 1.2vw, 18px);
         }
 
+        .sifarniciRow--3cols {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: clamp(12px, 1.2vw, 18px);
+          width: 100%;
+        }
+
+        .sifarniciRow--3cols .btn {
+          width: 100%;
+          min-width: 0;
+        }
+
         .sifarniciRow--blue .btn {
           background: linear-gradient(135deg, rgba(125, 211, 252, 0.12), rgba(59, 130, 246, 0.08));
           border-color: rgba(125, 211, 252, 0.25);
@@ -385,6 +395,9 @@ export default function Page() {
           .sifarniciRow--equal {
             grid-template-columns: repeat(2, 1fr);
           }
+          .sifarniciRow--3cols {
+            grid-template-columns: repeat(2, 1fr);
+          }
           .sifarniciRow--equal-width {
             grid-template-columns: repeat(3, 1fr);
           }
@@ -409,13 +422,17 @@ export default function Page() {
           .sifarniciRow--equal {
             grid-template-columns: 1fr;
           }
+          .sifarniciRow--3cols {
+            grid-template-columns: 1fr;
+          }
           .sifarniciRow--equal-width {
             grid-template-columns: 1fr;
           }
           .finansijeRow--4,
           .finansijeRow--6,
           .finansijeRow--7,
-          .finansijeRow--2 {
+          .finansijeRow--2,
+          .finansijeRow--3 {
             grid-template-columns: 1fr;
           }
           .deskMainButtons {
@@ -441,30 +458,12 @@ export default function Page() {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Dashboard</div>
-                  <div className="brandSub">
-                    Centralna konzola
-                  </div>
+                  <div className="brandTitle">{t("dashboard.title")}</div>
+                  <div className="brandSub">{t("dashboard.subtitle")}</div>
                 </div>
               </div>
 
-              {/* ✅ TOPBAR: Blagajna + Mobile */}
-              <div className="actions">
-                <Link
-                  href="/mobile"
-                  className="btn"
-                  title="Pojednostavljena mobilna verzija (StrategicCore)"
-                >
-                  📱 Mobile
-                </Link>
-                <Link
-                  href="/cash"
-                  className="btn"
-                  title="Interna blagajna (owner-only signal)"
-                >
-                  💰 Blagajna
-                </Link>
-              </div>
+              <DashboardTopActions />
             </div>
 
             <div className="divider" />
@@ -473,119 +472,7 @@ export default function Page() {
 
         <div className="bodyWrap">
           <div className="dashboardWrap">
-            {/* ✅ GRUPA 1: Desk */}
-            <div className="dashboardGroup deskGroup">
-              <div className="groupHeader">
-                <div className="groupTitle">Desk</div>
-              </div>
-
-              <div className="deskMainButtons">
-                <Link
-                  href="/inicijacije"
-                  className="deskMainBtn deskMainBtn--blue"
-                  title="Deals lista"
-                >
-                  <span style={{ fontSize: 28 }}>📋</span>
-                  <span>Deals</span>
-                  <span className="deskMainBtnSubtitle">Pregovori</span>
-                </Link>
-
-                <Link
-                  href="/projects"
-                  className="deskMainBtn deskMainBtn--green"
-                  title="Pregled Projekata"
-                >
-                  <span style={{ fontSize: 28 }}>📊</span>
-                  <span>PP</span>
-                  <span className="deskMainBtnSubtitle">Pregled Projekata</span>
-                </Link>
-              </div>
-
-              <Link
-                href="/studio/strategic-core"
-                className="btn deskSCBtn"
-                title="Strategic Core – brzi budžet u pregovorima"
-              >
-                <span className="deskSCBtnSc">SC</span>{" "}
-                <span className="deskSCBtnLabel">Strategic Core</span>
-              </Link>
-            </div>
-
-            {/* ✅ GRUPA 2: Finansije - sa sidebar grupama */}
-            <div className="finansijeContainer">
-              <div className="dashboardGroup finansijeGroup">
-                <div className="groupHeader">
-                  <div className="groupTitle">Finansije</div>
-                  <span className="groupPill groupPill--operativa">operativa</span>
-                </div>
-                <div className="groupSubtitle">Operativni finansijski tokovi</div>
-
-                <div className="finansijeRow finansijeRow--4 finansijeRow--spaced">
-                  <ActionBtn label="Narudžbenice" href="/narudzbenice" />
-                  <ActionBtn label="Fakturisanje" href="/fakture/za-fakturisanje" title="Za fakturisanje → wizard" />
-                  <ActionBtn label="Naplate" href="/naplate" />
-                  <ActionBtn label="Dugovanja" href="/finance/dugovanja" />
-                </div>
-
-                <div className="finansijeRow finansijeRow--7">
-                  <ActionBtn label="Import izvoda" href="/banking/import" />
-                  <ActionBtn label="Izvodi" href="/izvodi" title="Lista bankovnih izvoda" className="btn--orange-accent" />
-                  <ActionBtn label="Ponude" href="/ponude" title="Lista generisanih ponuda (predračuni)" className="btn--purple-accent" />
-                  <ActionBtn label="Fakture" href="/fakture" title="Lista izdatih faktura" className="btn--orange-accent" />
-                  <ActionBtn label="KUF" href="/finance/kuf" title="Import i rasknjižavanje ulaznih faktura" />
-                  <ActionBtn label="CashFlow" href="/finance/cashflow" title="Hronologija plaćanja — šta je sljedeće" />
-                  <ActionBtn label="Krediti" href="/finance/krediti" title="Pregled kreditnih obaveza" />
-                </div>
-              </div>
-
-              <div className="finansijeSidebar">
-                <div className="dashboardGroup">
-                  <div className="groupHeader">
-                    <div className="groupTitle">Finansije analiza</div>
-                    <span className="groupPill groupPill--legacy">legacy</span>
-                  </div>
-                  <div className="finansijeRow finansijeRow--2">
-                    <ActionBtn label="Finance" href="/finance" />
-                    <ActionBtn label="Finance Tools" href="/studio/finance-tools" />
-                  </div>
-                </div>
-
-                <div className="dashboardGroup">
-                  <div className="groupHeader">
-                    <div className="groupTitle">Izvještaji</div>
-                    <span className="groupPill groupPill--reports">reports</span>
-                  </div>
-                  <div className="finansijeRow finansijeRow--2">
-                    <ActionBtn label="Svi" href="/izvjestaji/svi" title="Svi izvještaji – filter i period" />
-                    <ActionBtn label="Grafički" href="/izvjestaji/graficki" title="Promet, troškovi i zarada po godinama i mjesecima" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* ✅ GRUPA 3: Šifarnici */}
-            <div className="dashboardGroup">
-              <div className="groupHeader">
-                <div className="groupTitle">Šifarnici</div>
-                <span className="groupPill">#</span>
-              </div>
-              <div className="groupSubtitle">Svi operativni elementi</div>
-
-              <div className="sifarniciRow sifarniciRow--equal">
-                <ActionBtn label="Cjenovnik" href="/studio/cjenovnik" />
-                <ActionBtn label="Talenti" href="/studio/talenti" />
-                <ActionBtn label="Dobavljači" href="/studio/dobavljaci" />
-                <ActionBtn label="Klijenti" href="/studio/klijenti" />
-              </div>
-
-              <div className="sifarniciRow sifarniciRow--equal-width sifarniciRow--blue">
-                <ActionBtn label="Radne faze" href="/studio/radne-faze" />
-                <ActionBtn label="Radnici" href="/studio/radnici" />
-                <ActionBtn label="Users" href="/studio/users" title="Korisnici" />
-                <ActionBtn label="Roles" href="/studio/roles" title="Uloge" />
-                <ActionBtn label="All About Us" href="/studio/firma" icon="🏢" title="Firma identitet" />
-              </div>
-            </div>
+            <DashboardBody />
           </div>
         </div>
       </div>

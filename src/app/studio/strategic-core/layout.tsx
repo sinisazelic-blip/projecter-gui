@@ -8,7 +8,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "StrategicCore | Fluxa",
+  title: "SC Strategic Core® | Fluxa",
   description: "Brzo obračunavanje budžeta u pregovorima",
 };
 

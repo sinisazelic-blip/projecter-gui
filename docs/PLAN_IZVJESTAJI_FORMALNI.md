@@ -78,4 +78,4 @@ Kad odlučiš koje od ovih želiš u Fluxi prvo, možemo ih redom uvesti u modul
 | Pregled PDV-a po periodu | ✅ Implementirano | API `/api/izvjestaji/pdv` (PDV ulazni kad budu ulazni računi) |
 | Knjiga rashoda (ulaz) | 📋 Planirano | Izvor: KUF / ulazni računi |
 | Dugovanja (obaveze) | 📋 Planirano | Izvor: projektni_troskovi + placanja |
-| Banka vs knjige | 📋 Planirano | Usklađenost izvoda i interne evidencije |
+| Banka vs knjige | ✅ Implementirano | `/finance/banka-vs-knjige` – usklađenost izvoda i interne evidencije |

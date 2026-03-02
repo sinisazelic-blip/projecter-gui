@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { downloadExcel } from "@/lib/exportExcel";
+import { useTranslation } from "@/components/LocaleProvider";
 
 function fmtDDMMYYYY(iso: string | null): string {
   if (!iso) return "—";
@@ -36,6 +37,7 @@ type Izvod = {
 export default function IzvodiPage() {
   const sp = useSearchParams();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [izvodi, setIzvodi] = useState<Izvod[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,12 +64,12 @@ export default function IzvodiPage() {
         const data = await res.json();
 
         if (!res.ok || !data.ok) {
-          throw new Error(data.error || "Greška pri učitavanju");
+          throw new Error(data.error || t("fakture.loadError"));
         }
 
         setIzvodi(data.batches || []);
       } catch (err: any) {
-        setError(err?.message || "Greška");
+        setError(err?.message || t("common.error"));
       } finally {
         setLoading(false);
       }
@@ -149,12 +151,28 @@ export default function IzvodiPage() {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">🏦 Izvodi</div>
-                  <div className="brandSub">Lista bankovnih izvoda</div>
+                  <div className="brandTitle">🏦 {t("izvodi.title")}</div>
+                  <div className="brandSub">{t("izvodi.subtitle")}</div>
                 </div>
               </div>
 
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <Link
+                  href="/dashboard"
+                  className="btn"
+                  style={{ minWidth: 130 }}
+                  title={t("izvodi.backToDashboard")}
+                >
+                  🏠 {t("common.dashboard")}
+                </Link>
+                <Link
+                  href="/banking/import"
+                  className="btn"
+                  style={{ fontSize: 13 }}
+                  title={t("izvodi.importIzvodaTitle")}
+                >
+                  {t("izvodi.importIzvoda")}
+                </Link>
                 {izvodi.length > 0 && (
                   <button
                     type="button"
@@ -178,19 +196,11 @@ export default function IzvodiPage() {
                         rows,
                       });
                     }}
-                    title="Preuzmi listu u Excel"
+                    title={t("izvodi.exportExcelTitle")}
                   >
-                    Export u Excel
+                    {t("izvodi.exportExcel")}
                   </button>
                 )}
-                <Link
-                  href="/dashboard"
-                  className="btn"
-                  style={{ minWidth: 130 }}
-                  title="Povratak na Dashboard"
-                >
-                  🏠 Dashboard
-                </Link>
               </div>
             </div>
 
@@ -203,17 +213,17 @@ export default function IzvodiPage() {
                   flexWrap: "wrap",
                 }}
               >
-                <label className="label">Broj računa:</label>
+                <label className="label">{t("izvodi.account")}:</label>
                 <input
                   id="account"
                   type="text"
                   defaultValue={accountFilter}
-                  placeholder="Broj računa..."
+                  placeholder={`${t("izvodi.account")}...`}
                   className="input small"
                   style={{ width: 150 }}
                 />
 
-                <label className="label">Datum od:</label>
+                <label className="label">{t("izvodi.dateFrom")}:</label>
                 <input
                   id="date_from"
                   type="date"
@@ -222,7 +232,7 @@ export default function IzvodiPage() {
                   style={{ width: 150 }}
                 />
 
-                <label className="label">Datum do:</label>
+                <label className="label">{t("izvodi.dateTo")}:</label>
                 <input
                   id="date_to"
                   type="date"
@@ -237,7 +247,7 @@ export default function IzvodiPage() {
                   onClick={handleFilter}
                   style={{ fontSize: 13 }}
                 >
-                  🔎 Filtriraj
+                  🔎 {t("izvodi.filter")}
                 </button>
 
                 <button
@@ -246,7 +256,7 @@ export default function IzvodiPage() {
                   onClick={handleReset}
                   style={{ fontSize: 13 }}
                 >
-                  🔄 Reset
+                  🔄 {t("izvodi.reset")}
                 </button>
               </div>
             </div>
@@ -258,7 +268,7 @@ export default function IzvodiPage() {
         <div className="listWrap">
           {loading ? (
             <div style={{ padding: 40, textAlign: "center", opacity: 0.7 }}>
-              Učitavanje...
+              {t("common.loading")}
             </div>
           ) : error ? (
             <div

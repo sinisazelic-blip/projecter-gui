@@ -379,7 +379,7 @@ async function setOperativniSignal(formData) {
 
 /**
  * ✅ OWNER: postavljanje procenta budžeta vidljivog radnicima
- * - projekti.budzet_procenat_za_tim je procenat (default 50.00)
+ * - projekti.budzet_procenat_za_tim je procenat (default 100.00)
  * - Ako nije postavljeno, koristi se default 50%
  */
 async function setBudzetProcenatZaTim(formData) {
@@ -403,8 +403,8 @@ async function setBudzetProcenatZaTim(formData) {
 
   if (!Number.isFinite(projekatId)) redirect("/projects");
 
-  // Ako je procenat null ili prazan, postavi na default 50.00
-  const finalProcenat = procenat !== null ? procenat : 50.00;
+  // Ako je procenat null ili prazan, postavi na default 100.00
+  const finalProcenat = procenat !== null ? procenat : 100.00;
 
   await query(
     `
@@ -480,8 +480,8 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
       -- ✅ ProBono: nikad se ne fakturiše
       COALESCE(p.pro_bono, 0) AS pro_bono,
 
-      -- ✅ NOVO: procenat budžeta vidljiv radnicima (default 50.00)
-      COALESCE(p.budzet_procenat_za_tim, 50.00) AS budzet_procenat_za_tim,
+      -- ✅ NOVO: procenat budžeta vidljiv radnicima (default 100.00)
+      COALESCE(p.budzet_procenat_za_tim, 100.00) AS budzet_procenat_za_tim,
 
       -- ✅ FIX: view nema radni_naziv
       p.radni_naziv AS radni_naziv,
@@ -940,7 +940,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                 <input
                   type="number"
                   name="budzet_procenat_za_tim"
-                  defaultValue={String(project?.budzet_procenat_za_tim ?? 50.00)}
+                  defaultValue={String(project?.budzet_procenat_za_tim ?? 100.00)}
                   min="0"
                   max="100"
                   step="0.01"
@@ -982,7 +982,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
               {(() => {
                 const budzet = Number(project?.budzet_planirani) || 0;
                 const troskovi = Number(project?.troskovi_ukupno) || 0;
-                const procenat = Number(project?.budzet_procenat_za_tim) ?? 50;
+                const procenat = Number(project?.budzet_procenat_za_tim) ?? 100;
                 const budzetZaTim = budzet * (procenat / 100);
                 const ostatak = budzet * ((100 - procenat) / 100);
                 const zaradaRazlike = budzetZaTim - troskovi;

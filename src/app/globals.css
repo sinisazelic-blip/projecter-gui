@@ -561,6 +561,26 @@ option {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 1) 100%) !important;
 }
 
+/* SC Strategic Core® – zaštitni znak (žuta) */
+.btn-sc-strategic {
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  padding: 12px 20px !important;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(245, 158, 11, 0.2) 100%) !important;
+  border: 1px solid rgba(251, 191, 36, 0.5) !important;
+  color: rgba(254, 243, 199, 1) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.25) !important;
+  transition: all 0.2s !important;
+}
+.btn-sc-strategic:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 16px rgba(251, 191, 36, 0.35) !important;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.35) 0%, rgba(245, 158, 11, 0.28) 100%) !important;
+  border-color: rgba(251, 191, 36, 0.65) !important;
+}
+
 .skeleton-row {
   height: 14px;
   border-radius: 8px;

@@ -4,6 +4,7 @@ import { query } from "@/lib/db";
 import LogoUpload from "./LogoUpload";
 import FiskalModal from "./FiskalModal";
 import BrojacFakturaCard from "./BrojacFakturaCard";
+import FirmaHeader from "./FirmaHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -183,37 +184,7 @@ export default async function Page({ searchParams }) {
       <div className="pageWrap">
         <div className="topBlock">
           <div className="topInner">
-            <div className="topRow">
-              <div className="brandWrap">
-                <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
-                </div>
-                <div>
-                  <div className="brandTitle">Firma</div>
-                  <div className="brandSub">
-                    Identitet studija (kanonski profil za potpise i fakture)
-                  </div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                }}
-              >
-                <Link href="/dashboard" className="btn" title="Povratak na Dashboard">
-                  🏠 Dashboard
-                </Link>
-              </div>
-            </div>
+            <FirmaHeader />
 
             <div className="divider" />
           </div>
