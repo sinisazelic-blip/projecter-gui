@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { RadnaFazaRow } from "./page";
 import { createRadnaFaza, updateRadnaFaza } from "./actions";
+import { useTranslation } from "@/components/LocaleProvider";
 
 type FormState = {
   faza_id?: number;
@@ -92,19 +93,13 @@ const pageTitleRowStyle: React.CSSProperties = {
   gap: 10,
 };
 
-const logoStyle: React.CSSProperties = {
-  width: 90,
-  height: 35,
-  objectFit: "contain",
-  opacity: 0.95,
-};
-
 export default function RadneFazeClient({
   initialItems,
 }: {
   initialItems: RadnaFazaRow[];
 }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [isPending, startTransition] = useTransition();
 
   const [q, setQ] = useState("");
@@ -250,7 +245,6 @@ export default function RadneFazeClient({
       <div style={topbarStyle()}>
         <div style={{ minWidth: 280 }}>
           <div style={pageTitleRowStyle}>
-            <img src="/fluxa/logo-light.png" alt="Fluxa" style={logoStyle} />
             <h1
               style={{
                 fontSize: 22,
@@ -259,11 +253,11 @@ export default function RadneFazeClient({
                 margin: 0,
               }}
             >
-              Radne faze
+              {t("studioRadneFaze.title")}
             </h1>
           </div>
           <div style={{ marginTop: 6, color: "var(--muted)", fontSize: 14 }}>
-            Klikni red da ga označiš, pa koristi <b>Promijeni</b>.
+            {t("studioRadneFaze.hintClick")} <b>{t("studioRadneFaze.change")}</b>.
           </div>
         </div>
 
@@ -281,7 +275,7 @@ export default function RadneFazeClient({
             disabled={isPending}
             style={btnDisabled(isPending)}
           >
-            <span style={{ marginRight: 6 }}>➕</span> Novi
+            <span style={{ marginRight: 6 }}>➕</span> {t("studioRadneFaze.new")}
           </button>
 
           <button
@@ -289,13 +283,13 @@ export default function RadneFazeClient({
             onClick={openEdit}
             disabled={!selectedItem || isPending}
             style={btnDisabled(!selectedItem || isPending)}
-            title={!selectedItem ? "Prvo odaberi red" : "Promijeni"}
+            title={!selectedItem ? t("studioRadneFaze.selectFirst") : t("studioRadneFaze.change")}
           >
-            <span style={{ marginRight: 6 }}>✏️</span> Promijeni
+            <span style={{ marginRight: 6 }}>✏️</span> {t("studioRadneFaze.change")}
           </button>
 
           <button className="btn" onClick={onClosePage}>
-            <span style={{ marginRight: 6 }}>✖</span> Zatvori
+            <span style={{ marginRight: 6 }}>✖</span> {t("studioRadneFaze.close")}
           </button>
         </div>
       </div>
@@ -313,12 +307,12 @@ export default function RadneFazeClient({
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Traži (naziv, opis, složenost, vrsta)…"
+            placeholder={t("studioRadneFaze.searchPlaceholder")}
             style={{ width: 420, maxWidth: "100%" }}
           />
 
           <div style={{ color: "var(--muted)", fontSize: 14 }}>
-            Ukupno: <b style={{ color: "var(--text)" }}>{items.length}</b>
+            {t("studioRadneFaze.totalCount")}: <b style={{ color: "var(--text)" }}>{items.length}</b>
           </div>
         </div>
 
@@ -343,10 +337,10 @@ export default function RadneFazeClient({
         <table className="table">
           <thead>
             <tr>
-              <th>Naziv</th>
-              <th>Opis poslova</th>
-              <th>Složenost posla</th>
-              <th>Vrsta posla</th>
+              <th>{t("studioRadneFaze.colNaziv")}</th>
+              <th>{t("studioRadneFaze.colOpisPoslova")}</th>
+              <th>{t("studioRadneFaze.colSlozenostPosla")}</th>
+              <th>{t("studioRadneFaze.colVrstaPosla")}</th>
             </tr>
           </thead>
 
@@ -354,7 +348,7 @@ export default function RadneFazeClient({
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={4} style={{ color: "var(--muted)", padding: 16 }}>
-                  Nema radnih faza za prikaz.
+                  {t("studioRadneFaze.noItems")}
                 </td>
               </tr>
             ) : (
@@ -367,7 +361,7 @@ export default function RadneFazeClient({
                     onClick={() => setSelectedId(it.faza_id)}
                     onDoubleClick={() => openEditForItem(it)}
                     style={subtleRowStyle(isSelected)}
-                    title="Klik za selekciju, dupli klik za promjenu"
+                    title={t("studioRadneFaze.rowTitle")}
                   >
                     <td className="cell-wrap">
                       <div
@@ -468,8 +462,8 @@ export default function RadneFazeClient({
                 <div>
                   <div style={{ fontSize: 20, fontWeight: 700 }}>
                     {modalMode === "new"
-                      ? "Nova radna faza"
-                      : "Promijeni radnu fazu"}
+                      ? t("studioRadneFaze.modalNew")
+                      : t("studioRadneFaze.modalEdit")}
                   </div>
                   <div
                     style={{
@@ -478,7 +472,7 @@ export default function RadneFazeClient({
                       fontSize: 15,
                     }}
                   >
-                    Šifrarnik radnih faza.
+                    {t("studioRadneFaze.modalSubtitle")}
                   </div>
                 </div>
               </div>
@@ -503,14 +497,14 @@ export default function RadneFazeClient({
                       marginBottom: 8,
                     }}
                   >
-                    Naziv (obavezno)
+                    {t("studioRadneFaze.labelNaziv")}
                   </div>
                   <input
                     value={form.naziv}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, naziv: e.target.value }))
                     }
-                    placeholder="npr. Produkcija"
+                    placeholder={t("studioRadneFaze.placeholderNaziv")}
                     autoFocus
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
@@ -525,14 +519,14 @@ export default function RadneFazeClient({
                       marginBottom: 8,
                     }}
                   >
-                    Opis poslova
+                    {t("studioRadneFaze.labelOpisPoslova")}
                   </div>
                   <textarea
                     value={form.opis_poslova}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, opis_poslova: e.target.value }))
                     }
-                    placeholder="Detaljan opis poslova u fazi"
+                    placeholder={t("studioRadneFaze.placeholderOpisPoslova")}
                     className="input"
                     style={{
                       width: "100%",
@@ -552,7 +546,7 @@ export default function RadneFazeClient({
                       marginBottom: 8,
                     }}
                   >
-                    Složenost posla
+                    {t("studioRadneFaze.labelSlozenostPosla")}
                   </div>
                   <input
                     value={form.slozenost_posla}
@@ -562,7 +556,7 @@ export default function RadneFazeClient({
                         slozenost_posla: e.target.value,
                       }))
                     }
-                    placeholder="npr. Jednostavno, Srednje, Složeno"
+                    placeholder={t("studioRadneFaze.placeholderSlozenostPosla")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -576,14 +570,14 @@ export default function RadneFazeClient({
                       marginBottom: 8,
                     }}
                   >
-                    Vrsta posla
+                    {t("studioRadneFaze.labelVrstaPosla")}
                   </div>
                   <input
                     value={form.vrsta_posla}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, vrsta_posla: e.target.value }))
                     }
-                    placeholder="npr. Tehnički, Kreativni"
+                    placeholder={t("studioRadneFaze.placeholderVrstaPosla")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -600,7 +594,7 @@ export default function RadneFazeClient({
                     marginBottom: 10,
                   }}
                 >
-                  Sistem
+                  {t("studioRadneFaze.system")}
                 </div>
                 <div
                   style={{
@@ -611,7 +605,7 @@ export default function RadneFazeClient({
                 >
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 14 }}>
-                      ID
+                      {t("studioRadneFaze.id")}
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.faza_id ?? "—"}
@@ -619,7 +613,7 @@ export default function RadneFazeClient({
                   </div>
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 14 }}>
-                      Kreirano
+                      {t("studioRadneFaze.created")}
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.created_at ? fmtDateTime(form.created_at) : "—"}
@@ -627,7 +621,7 @@ export default function RadneFazeClient({
                   </div>
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 14 }}>
-                      Ažurirano
+                      {t("studioRadneFaze.updated")}
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.updated_at ? fmtDateTime(form.updated_at) : "—"}
@@ -660,7 +654,7 @@ export default function RadneFazeClient({
                     onClick={goPrev}
                     disabled={isPending || !canPrev}
                     style={btnDisabled(isPending || !canPrev)}
-                    title="Prethodni"
+                    title={t("studioRadneFaze.prev")}
                   >
                     ◀
                   </button>
@@ -669,7 +663,7 @@ export default function RadneFazeClient({
                     onClick={goNext}
                     disabled={isPending || !canNext}
                     style={btnDisabled(isPending || !canNext)}
-                    title="Naredni"
+                    title={t("studioRadneFaze.next")}
                   >
                     ▶
                   </button>
@@ -682,7 +676,7 @@ export default function RadneFazeClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                Otkaži
+                {t("studioRadneFaze.cancel")}
               </button>
               <button
                 className="btn btn--active"
@@ -690,7 +684,7 @@ export default function RadneFazeClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                {isPending ? "Snima..." : "Snimi"}
+                {isPending ? t("studioRadneFaze.saving") : t("studioRadneFaze.save")}
               </button>
             </div>
           </div>

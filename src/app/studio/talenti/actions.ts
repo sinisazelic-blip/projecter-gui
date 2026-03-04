@@ -9,7 +9,22 @@ type VrstaTalenta =
   | "pjevac"
   | "dijete"
   | "muzicar"
-  | "ostalo";
+  | "ostalo"
+  | "snimatelj"
+  | "kompozitor"
+  | "copywriter"
+  | "producent"
+  | "montazer"
+  | "reziser"
+  | "organizator"
+  | "account"
+  | "developer";
+
+const VRSTA_VALUES: Set<string> = new Set([
+  "spiker", "glumac", "pjevac", "dijete", "muzicar", "ostalo",
+  "snimatelj", "kompozitor", "copywriter", "producent", "montazer",
+  "reziser", "organizator", "account", "developer",
+]);
 
 function cleanStr(v: any) {
   const s = String(v ?? "").trim();
@@ -20,14 +35,7 @@ function normalizeVrsta(v: any): VrstaTalenta {
   const s = String(v ?? "")
     .trim()
     .toLowerCase();
-  if (
-    s === "spiker" ||
-    s === "glumac" ||
-    s === "pjevac" ||
-    s === "dijete" ||
-    s === "muzicar"
-  )
-    return s;
+  if (VRSTA_VALUES.has(s)) return s as VrstaTalenta;
   return "ostalo";
 }
 

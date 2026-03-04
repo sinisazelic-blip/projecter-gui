@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "@/components/LocaleProvider";
 
 const inputStyle = {
   padding: "10px 12px",
@@ -15,6 +16,7 @@ const inputStyle = {
 const labelStyle = { fontSize: 12, opacity: 0.75, marginBottom: 6 };
 
 export default function BrojacFakturaCard() {
+  const { t } = useTranslation();
   const [items, setItems] = useState([]);
   const [sljedeci, setSljedeci] = useState("");
   const [trenutnaGodina, setTrenutnaGodina] = useState(new Date().getFullYear());
@@ -31,16 +33,16 @@ export default function BrojacFakturaCard() {
     try {
       const res = await fetch("/api/firma/brojac-faktura");
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Greška učitavanja");
+      if (!res.ok) throw new Error(data?.error || t("firma.brojacErrorLoad"));
       setItems(data?.items ?? []);
       setSljedeci(data?.sljedeci_za_trenutnu_godinu ?? "");
       setTrenutnaGodina(data?.trenutna_godina ?? new Date().getFullYear());
     } catch (e) {
-      setError(e?.message || "Nije moguće učitati");
+      setError(e?.message || t("firma.brojacErrorLoadGeneric"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -51,11 +53,11 @@ export default function BrojacFakturaCard() {
     const g = parseInt(godina, 10);
     const z = parseInt(zadnjiBroj, 10);
     if (!Number.isFinite(g) || g < 2000 || g > 2100) {
-      setError("Godina mora biti između 2000 i 2100.");
+      setError(t("firma.brojacErrorYear"));
       return;
     }
     if (!Number.isFinite(z) || z < 0) {
-      setError("Posljednji broj mora biti 0 ili veći.");
+      setError(t("firma.brojacErrorZadnji"));
       return;
     }
     setSaving(true);
@@ -68,12 +70,12 @@ export default function BrojacFakturaCard() {
         body: JSON.stringify({ godina: g, zadnji_broj_u_godini: z }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Greška snimanja");
-      setOkMsg(data?.message || "Sačuvano.");
+      if (!res.ok) throw new Error(data?.error || t("firma.brojacErrorSave"));
+      setOkMsg(data?.message || t("firma.brojacOk"));
       setZadnjiBroj("");
       load();
     } catch (e) {
-      setError(e?.message || "Nije moguće snimiti");
+      setError(e?.message || t("firma.brojacErrorSaveGeneric"));
     } finally {
       setSaving(false);
     }
@@ -82,22 +84,22 @@ export default function BrojacFakturaCard() {
   if (loading) {
     return (
       <div style={{ marginTop: 20 }}>
-        <div className="sectionTitle">Brojač faktura</div>
-        <div className="hint">Učitavanje…</div>
+        <div className="sectionTitle">{t("firma.brojacTitle")}</div>
+        <div className="hint">{t("firma.brojacLoading")}</div>
       </div>
     );
   }
 
   return (
     <div style={{ marginTop: 24 }}>
-      <div className="sectionTitle">Brojač faktura</div>
+      <div className="sectionTitle">{t("firma.brojacTitle")}</div>
       <div className="hint" style={{ marginBottom: 12 }}>
-        Postavite posljednji izdati broj fakture prije korištenja Fluxe (samo jednom po godini). Od tog trenutka Fluxa preuzima kontrolu — sljedeća faktura dobit će n+1.
+        {t("firma.brojacHint")}
       </div>
 
       {sljedeci ? (
         <p style={{ margin: "0 0 14px 0", fontSize: 14, fontWeight: 600 }}>
-          Sljedeći broj fakture za {trenutnaGodina}:{" "}
+          {(t("firma.brojacNextFor") || "").replace("{{year}}", String(trenutnaGodina))}{" "}
           <span className="mono">{sljedeci}</span>
         </p>
       ) : null}
@@ -107,7 +109,7 @@ export default function BrojacFakturaCard() {
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
         <div>
-          <div style={labelStyle}>Godina</div>
+          <div style={labelStyle}>{t("firma.brojacLabelGodina")}</div>
           <input
             type="number"
             min={2000}
@@ -118,24 +120,24 @@ export default function BrojacFakturaCard() {
           />
         </div>
         <div>
-          <div style={labelStyle}>Posljednji izdati broj (prije Fluxe)</div>
+          <div style={labelStyle}>{t("firma.brojacLabelZadnji")}</div>
           <input
             type="number"
             min={0}
             value={zadnjiBroj}
             onChange={(e) => setZadnjiBroj(e.target.value)}
             style={inputStyle}
-            placeholder="npr. 42"
+            placeholder={t("firma.brojacPlaceholder")}
           />
         </div>
         <button type="submit" className="btn" disabled={saving} style={{ marginBottom: 0 }}>
-          {saving ? "Snimanje…" : "Postavi"}
+          {saving ? t("firma.brojacSaving") : t("firma.brojacSubmit")}
         </button>
       </form>
 
       {items.length > 0 ? (
         <div className="hint" style={{ marginTop: 14 }}>
-          Postavljene godine:{" "}
+          {t("firma.brojacSetYears")}{" "}
           {items
             .sort((a, b) => b.godina - a.godina)
             .map((x) => `${x.godina} → ${x.zadnji_broj_u_godini}`)

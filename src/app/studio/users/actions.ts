@@ -1,11 +1,10 @@
 "use server";
 
+import bcrypt from "bcryptjs";
 import { query } from "@/lib/db";
+import { normalizePassword } from "@/lib/auth/normalize-password";
 
-function cleanStr(v: any) {
-  const s = String(v ?? "").trim();
-  return s.length ? s : null;
-}
+const BCRYPT_ROUNDS = 10;
 
 function toBit(v: any): 0 | 1 {
   return v ? 1 : 0;
@@ -31,9 +30,12 @@ export async function createUser(input: {
       ? Number(input.radnik_id)
       : null;
 
+  const passwordNorm = normalizePassword(password);
+  const passwordHash = await bcrypt.hash(passwordNorm, BCRYPT_ROUNDS);
+
   await query(
-    `INSERT INTO users (username, password, password_hash, role_id, aktivan, radnik_id) VALUES (?,?,?,?,?,?)`,
-    [username, password, password, role_id, aktivan, radnik_id],
+    `INSERT INTO users (username, password, role_id, aktivan, radnik_id) VALUES (?,?,?,?,?)`,
+    [username, passwordHash, role_id, aktivan, radnik_id],
   );
 
   return { ok: true };
@@ -68,9 +70,10 @@ export async function updateUser(input: {
   let params: any[];
 
   if (hasPassword) {
-    const password = String(input.password).trim();
-    sql = `UPDATE users SET username=?, password=?, password_hash=?, role_id=?, aktivan=?, radnik_id=? WHERE user_id=?`;
-    params = [username, password, password, role_id, aktivan, radnik_id, id];
+    const passwordNorm = normalizePassword(String(input.password).trim());
+    const passwordHash = await bcrypt.hash(passwordNorm, BCRYPT_ROUNDS);
+    sql = `UPDATE users SET username=?, password=?, role_id=?, aktivan=?, radnik_id=? WHERE user_id=?`;
+    params = [username, passwordHash, role_id, aktivan, radnik_id, id];
   } else {
     sql = `UPDATE users SET username=?, role_id=?, aktivan=?, radnik_id=? WHERE user_id=?`;
     params = [username, role_id, aktivan, radnik_id, id];

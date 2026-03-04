@@ -1,13 +1,38 @@
 import DobavljaciClient from "./DobavljaciClient";
 import { query } from "@/lib/db";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export type DobavljacRow = {
   dobavljac_id: number;
   naziv: string;
-  vrsta: "studio" | "freelancer" | "servis" | "ostalo";
+  vrsta:
+    | "studio"
+    | "freelancer"
+    | "servis"
+    | "ostalo"
+    | "rental"
+    | "video_produkcija"
+    | "organizacija_dogadaja"
+    | "restoran"
+    | "transport"
+    | "rasvjeta"
+    | "bina"
+    | "led_video"
+    | "bilbordi"
+    | "novine"
+    | "web_portali"
+    | "socijalne_mreze"
+    | "developing"
+    | "web_developing"
+    | "tv"
+    | "radio"
+    | "oglasivaci"
+    | "agencije";
   pravno_lice: number; // 1/0
   drzava_iso2: string | null;
   grad: string | null;
@@ -22,6 +47,10 @@ export type DobavljacRow = {
 };
 
 export default async function DobavljaciPage() {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) ?? "sr";
+  const t = getT(locale);
+
   const rows = await query(
     `SELECT dobavljac_id, naziv, vrsta, pravno_lice, drzava_iso2, grad, postanski_broj,
             email, telefon, adresa, napomena, aktivan,
@@ -48,13 +77,13 @@ export default async function DobavljaciPage() {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Dobavljači</div>
-                  <div className="brandSub">Studio / Šifarnici</div>
+                  <div className="brandTitle">{t("studioDobavljaci.title")}</div>
+                  <div className="brandSub">{t("studioDobavljaci.subtitle")}</div>
                 </div>
               </div>
 
-              <Link href="/dashboard" className="btn" title="Dashboard">
-                🏠 Dashboard
+              <Link href="/dashboard" className="btn" title={t("dashboard.title")}>
+                🏠 {t("dashboard.title")}
               </Link>
             </div>
 

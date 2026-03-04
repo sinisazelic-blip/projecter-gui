@@ -3,7 +3,37 @@
 import { revalidatePath } from "next/cache";
 import { query } from "@/lib/db";
 
-type VrstaDobavljaca = "studio" | "freelancer" | "servis" | "ostalo";
+type VrstaDobavljaca =
+  | "studio"
+  | "freelancer"
+  | "servis"
+  | "ostalo"
+  | "rental"
+  | "video_produkcija"
+  | "organizacija_dogadaja"
+  | "restoran"
+  | "transport"
+  | "rasvjeta"
+  | "bina"
+  | "led_video"
+  | "bilbordi"
+  | "novine"
+  | "web_portali"
+  | "socijalne_mreze"
+  | "developing"
+  | "web_developing"
+  | "tv"
+  | "radio"
+  | "oglasivaci"
+  | "agencije";
+
+const VRSTA_VALUES: Set<string> = new Set([
+  "studio", "freelancer", "servis", "ostalo",
+  "rental", "video_produkcija", "organizacija_dogadaja", "restoran",
+  "transport", "rasvjeta", "bina", "led_video", "bilbordi", "novine",
+  "web_portali", "socijalne_mreze", "developing", "web_developing",
+  "tv", "radio", "oglasivaci", "agencije",
+]);
 
 function cleanStr(v: any) {
   const s = String(v ?? "").trim();
@@ -18,7 +48,7 @@ function normalizeVrsta(v: any): VrstaDobavljaca {
   const s = String(v ?? "")
     .trim()
     .toLowerCase();
-  if (s === "studio" || s === "freelancer" || s === "servis") return s;
+  if (VRSTA_VALUES.has(s)) return s as VrstaDobavljaca;
   return "ostalo";
 }
 

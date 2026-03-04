@@ -9,28 +9,39 @@ import {
   updateCjenovnikItem,
 } from "./actions";
 import ImportSection from "../ImportSection";
+import { useTranslation } from "@/components/LocaleProvider";
 
 type Jedinica = CjenovnikItem["jedinica"];
 const JEDINICE: Jedinica[] = ["KOM", "SAT", "MIN", "PAKET", "DAN", "OSTALO"];
+const JEDINICA_KEYS: Record<Jedinica, string> = {
+  KOM: "jedinicaKom",
+  SAT: "jedinicaSat",
+  MIN: "jedinicaMin",
+  PAKET: "jedinicaPaket",
+  DAN: "jedinicaDan",
+  OSTALO: "jedinicaOstalo",
+};
 
-const displayCurrency = (dbValuta: string) => {
+const displayCurrency = (dbValuta: string, locale?: string) => {
   const v = String(dbValuta || "")
     .trim()
     .toUpperCase();
+  if (locale === "en") {
+    if (!v || v === "BAM") return "EUR";
+    return v;
+  }
   if (!v) return "KM";
   if (v === "BAM") return "KM";
   return v;
 };
 
-const toUiCurrency = (dbValuta: string) => displayCurrency(dbValuta);
-const toDbCurrencyLabel = (uiValuta: string) =>
-  String(uiValuta || "")
-    .trim()
-    .toUpperCase() === "KM"
-    ? "BAM"
-    : String(uiValuta || "")
-        .trim()
-        .toUpperCase();
+const toUiCurrency = (dbValuta: string, locale?: string) =>
+  displayCurrency(dbValuta, locale);
+const toDbCurrencyLabel = (uiValuta: string, locale?: string) => {
+  const v = String(uiValuta || "").trim().toUpperCase();
+  if (locale === "en") return v || "EUR";
+  return v === "KM" ? "BAM" : v;
+};
 
 const fmtDate = (dt: string | null | undefined) => {
   if (!dt) return "—";
@@ -143,6 +154,7 @@ export default function CjenovnikClient({
   initialItems: CjenovnikItem[];
 }) {
   const router = useRouter();
+  const { t, locale } = useTranslation();
   const [isPending, startTransition] = useTransition();
 
   const [q, setQ] = useState("");
@@ -201,7 +213,7 @@ export default function CjenovnikClient({
         it.cijena_ino_eur === null || it.cijena_ino_eur === undefined
           ? ""
           : String(it.cijena_ino_eur),
-      valuta_ui: toUiCurrency(it.valuta_default ?? "BAM"),
+      valuta_ui: toUiCurrency(it.valuta_default ?? "BAM", locale),
       active: Number(it.active) === 1,
       created_at: it.created_at,
       updated_at: it.updated_at,
@@ -237,7 +249,10 @@ export default function CjenovnikClient({
     setError(null);
     setSelectedId(null);
     setModalMode("new");
-    setForm(emptyForm());
+    setForm({
+      ...emptyForm(),
+      valuta_ui: locale === "en" ? "EUR" : "KM",
+    });
     setModalOpen(true);
   }
 
@@ -280,7 +295,7 @@ export default function CjenovnikClient({
   function badgeStatus(active: boolean) {
     return (
       <span className="badge" data-status={active ? "active" : "closed"}>
-        {active ? "Aktivno" : "Neaktivno"}
+        {active ? t("studioCjenovnik.active") : t("studioCjenovnik.inactive")}
       </span>
     );
   }
@@ -293,7 +308,7 @@ export default function CjenovnikClient({
       jedinica: form.jedinica,
       cijena_default: form.cijena_default,
       cijena_ino_eur: form.cijena_ino_eur,
-      valuta_ui: form.valuta_ui || "KM",
+      valuta_ui: form.valuta_ui || (locale === "en" ? "EUR" : "KM"),
       active: !!form.active,
     };
 
@@ -371,15 +386,15 @@ export default function CjenovnikClient({
                 margin: 0,
               }}
             >
-              Cjenovnik
+              {t("studioCjenovnik.title")}
             </h1>
           </div>
           <div style={{ marginTop: 6, color: "var(--muted)", fontSize: 14 }}>
-            Klikni red da ga označiš, pa koristi <b>Promijeni</b> /{" "}
-            <b>Obriši</b>.
+            {t("studioCjenovnik.hintClick")} <b>{t("studioCjenovnik.change")}</b> /{" "}
+            <b>{t("studioCjenovnik.hintChangeDelete")}</b>.
             <span style={{ opacity: 0.9 }}>
               {" "}
-              “Obriši” = deaktiviraj (istorija ostaje).
+              {t("studioCjenovnik.hintDeleteMeaning")}
             </span>
           </div>
         </div>
@@ -398,7 +413,7 @@ export default function CjenovnikClient({
             disabled={isPending}
             style={btnDisabled(isPending)}
           >
-            <span style={{ marginRight: 6 }}>➕</span> Novi
+            <span style={{ marginRight: 6 }}>➕</span> {t("studioCjenovnik.new")}
           </button>
 
           <button
@@ -406,9 +421,9 @@ export default function CjenovnikClient({
             onClick={openEdit}
             disabled={!selectedItem || isPending}
             style={btnDisabled(!selectedItem || isPending)}
-            title={!selectedItem ? "Prvo odaberi red" : "Promijeni"}
+            title={!selectedItem ? t("studioCjenovnik.selectFirst") : t("studioCjenovnik.change")}
           >
-            <span style={{ marginRight: 6 }}>✏️</span> Promijeni
+            <span style={{ marginRight: 6 }}>✏️</span> {t("studioCjenovnik.change")}
           </button>
 
           <button
@@ -418,20 +433,20 @@ export default function CjenovnikClient({
             style={btnDisabled(!selectedItem || isPending)}
             title={
               !selectedItem
-                ? "Prvo odaberi red"
+                ? t("studioCjenovnik.selectFirst")
                 : selectedIsActive
-                  ? "Deaktiviraj"
-                  : "Aktiviraj"
+                  ? t("studioCjenovnik.deactivate")
+                  : t("studioCjenovnik.activate")
             }
           >
             <span style={{ marginRight: 6 }}>
               {selectedIsActive ? "🗑️" : "✅"}
             </span>
-            {selectedIsActive ? "Obriši" : "Aktiviraj"}
+            {selectedIsActive ? t("studioCjenovnik.delete") : t("studioCjenovnik.activate")}
           </button>
 
           <button className="btn" onClick={onClosePage}>
-            <span style={{ marginRight: 6 }}>✖</span> Zatvori
+            <span style={{ marginRight: 6 }}>✖</span> {t("studioCjenovnik.close")}
           </button>
         </div>
       </div>
@@ -463,7 +478,7 @@ export default function CjenovnikClient({
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Traži…"
+              placeholder={t("studioCjenovnik.searchPlaceholder")}
               style={{ width: 320, maxWidth: "100%" }}
             />
 
@@ -482,19 +497,19 @@ export default function CjenovnikClient({
                 onChange={(e) => setShowInactive(e.target.checked)}
                 style={{ width: 16, height: 16 }}
               />
-              Prikaži deaktivirane
+              {t("studioCjenovnik.showInactive")}
             </label>
           </div>
 
           <div style={{ color: "var(--muted)", fontSize: 14 }}>
             {showInactive ? (
               <>
-                Aktivni: <b style={{ color: "var(--text)" }}>{counts.active}</b>{" "}
-                / Ukupno: <b style={{ color: "var(--text)" }}>{counts.total}</b>
+                {t("studioCjenovnik.activeCount")}: <b style={{ color: "var(--text)" }}>{counts.active}</b>{" "}
+                / {t("studioCjenovnik.totalCount")}: <b style={{ color: "var(--text)" }}>{counts.total}</b>
               </>
             ) : (
               <>
-                Aktivni: <b style={{ color: "var(--text)" }}>{counts.active}</b>
+                {t("studioCjenovnik.activeCount")}: <b style={{ color: "var(--text)" }}>{counts.active}</b>
               </>
             )}
           </div>
@@ -521,13 +536,13 @@ export default function CjenovnikClient({
         <table className="table">
           <thead>
             <tr>
-              <th>Naziv</th>
-              <th>Jedinica</th>
-              <th className="num">Cijena (KM)</th>
-              <th className="num">INO (EUR)</th>
-              <th>Valuta</th>
-              <th>Status</th>
-              <th>Updated</th>
+              <th>{t("studioCjenovnik.colNaziv")}</th>
+              <th>{t("studioCjenovnik.colJedinica")}</th>
+              <th className="num">{t("studioCjenovnik.colCijenaKm")}</th>
+              <th className="num">{t("studioCjenovnik.colInoEur")}</th>
+              <th>{t("studioCjenovnik.colValuta")}</th>
+              <th>{t("studioCjenovnik.colStatus")}</th>
+              <th>{t("studioCjenovnik.colUpdated")}</th>
             </tr>
           </thead>
 
@@ -535,7 +550,7 @@ export default function CjenovnikClient({
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={7} style={{ color: "var(--muted)", padding: 16 }}>
-                  Nema stavki za prikaz.
+                  {t("studioCjenovnik.noItems")}
                 </td>
               </tr>
             ) : (
@@ -550,7 +565,7 @@ export default function CjenovnikClient({
                     onDoubleClick={() => openEditForItem(it)}
                     style={subtleRowStyle(isSelected)}
                     data-closed={isActive ? "0" : "1"}
-                    title="Klikni za selekciju, dvoklik za izmjenu"
+                    title={t("studioCjenovnik.rowTitle")}
                   >
                     <td>
                       <div
@@ -578,7 +593,7 @@ export default function CjenovnikClient({
                     </td>
 
                     <td>
-                      <span className="badge">{it.jedinica}</span>
+                      <span className="badge">{t(`studioCjenovnik.${JEDINICA_KEYS[it.jedinica]}`)}</span>
                     </td>
 
                     <td
@@ -599,7 +614,7 @@ export default function CjenovnikClient({
                         : fmtPrice(it.cijena_ino_eur)}
                     </td>
 
-                    <td>{displayCurrency(it.valuta_default)}</td>
+                    <td>{displayCurrency(it.valuta_default, locale)}</td>
 
                     <td>{badgeStatus(isActive)}</td>
 
@@ -642,7 +657,7 @@ export default function CjenovnikClient({
                 />
                 <div>
                   <div style={{ fontSize: 20, fontWeight: 700 }}>
-                    {modalMode === "new" ? "Novi artikl" : "Promijeni artikl"}
+                    {modalMode === "new" ? t("studioCjenovnik.modalNew") : t("studioCjenovnik.modalEdit")}
                   </div>
                   <div
                     style={{
@@ -651,8 +666,7 @@ export default function CjenovnikClient({
                       fontSize: 15,
                     }}
                   >
-                    Cjenovnik stavka. Domaća valuta se prikazuje kao <b>KM</b>{" "}
-                    (interno DB: BAM).
+                    {t("studioCjenovnik.modalSubtitle")}
                   </div>
                 </div>
               </div>
@@ -674,14 +688,14 @@ export default function CjenovnikClient({
                       marginBottom: 8,
                     }}
                   >
-                    Naziv (obavezno)
+                    {t("studioCjenovnik.labelNaziv")}
                   </div>
                   <input
                     value={form.naziv}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, naziv: e.target.value }))
                     }
-                    placeholder="npr. Mix pjesme"
+                    placeholder={t("studioCjenovnik.placeholderNaziv")}
                     autoFocus
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
@@ -696,7 +710,7 @@ export default function CjenovnikClient({
                       marginBottom: 8,
                     }}
                   >
-                    Jedinica
+                    {t("studioCjenovnik.labelJedinica")}
                   </div>
                   <select
                     value={form.jedinica}
@@ -711,7 +725,7 @@ export default function CjenovnikClient({
                   >
                     {JEDINICE.map((u) => (
                       <option key={u} value={u}>
-                        {u}
+                        {t(`studioCjenovnik.${JEDINICA_KEYS[u]}`)}
                       </option>
                     ))}
                   </select>
@@ -725,14 +739,14 @@ export default function CjenovnikClient({
                       marginBottom: 8,
                     }}
                   >
-                    Cijena (KM)
+                    {t("studioCjenovnik.labelCijenaKm")}
                   </div>
                   <input
                     value={form.cijena_default}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, cijena_default: e.target.value }))
                     }
-                    placeholder="0,00"
+                    placeholder={t("studioCjenovnik.placeholderCijena")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -743,7 +757,7 @@ export default function CjenovnikClient({
                       fontSize: 12,
                     }}
                   >
-                    Prikaz: <b>{fmtPrice(form.cijena_default)}</b>
+                    {t("studioCjenovnik.displayPreview")} <b>{fmtPrice(form.cijena_default)}</b>
                   </div>
                 </div>
 
@@ -755,14 +769,14 @@ export default function CjenovnikClient({
                       marginBottom: 8,
                     }}
                   >
-                    INO cijena (EUR)
+                    {t("studioCjenovnik.labelInoEur")}
                   </div>
                   <input
                     value={form.cijena_ino_eur}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, cijena_ino_eur: e.target.value }))
                     }
-                    placeholder="—"
+                    placeholder={t("studioCjenovnik.placeholderIno")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -773,7 +787,7 @@ export default function CjenovnikClient({
                       fontSize: 12,
                     }}
                   >
-                    Prazno = nema INO cijene.
+                    {t("studioCjenovnik.inoEmptyHint")}
                   </div>
                 </div>
 
@@ -785,7 +799,7 @@ export default function CjenovnikClient({
                       marginBottom: 8,
                     }}
                   >
-                    Valuta
+                    {t("studioCjenovnik.labelValuta")}
                   </div>
                   <select
                     value={form.valuta_ui}
@@ -795,7 +809,7 @@ export default function CjenovnikClient({
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   >
-                    <option value="KM">KM</option>
+                    {locale !== "en" && <option value="KM">KM</option>}
                     <option value="EUR">EUR</option>
                     <option value="USD">USD</option>
                     <option value="CHF">CHF</option>
@@ -808,7 +822,14 @@ export default function CjenovnikClient({
                       fontSize: 12,
                     }}
                   >
-                    Interno u bazi: <b>{toDbCurrencyLabel(form.valuta_ui)}</b>
+                    {locale === "en"
+                      ? t("studioCjenovnik.internalDbHint")
+                      : (
+                          <>
+                            {t("studioCjenovnik.internalDbHint")}{" "}
+                            <b>{toDbCurrencyLabel(form.valuta_ui, locale)}</b>
+                          </>
+                        )}
                   </div>
                 </div>
 
@@ -828,7 +849,7 @@ export default function CjenovnikClient({
                       fontWeight: 600,
                     }}
                   >
-                    Aktivno
+                    {t("studioCjenovnik.labelAktivno")}
                   </span>
                 </div>
               </div>
@@ -842,7 +863,7 @@ export default function CjenovnikClient({
                     textTransform: "uppercase",
                   }}
                 >
-                  Sistem
+                  {t("studioCjenovnik.system")}
                 </div>
                 <div
                   style={{
@@ -854,7 +875,7 @@ export default function CjenovnikClient({
                 >
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                      ID
+                      {t("studioCjenovnik.id")}
                     </div>
                     <div style={{ fontWeight: 700 }}>
                       {form.stavka_id ?? "—"}
@@ -862,7 +883,7 @@ export default function CjenovnikClient({
                   </div>
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                      Kreirano
+                      {t("studioCjenovnik.created")}
                     </div>
                     <div style={{ fontWeight: 700 }}>
                       {form.created_at ? fmtDate(form.created_at) : "—"}
@@ -870,7 +891,7 @@ export default function CjenovnikClient({
                   </div>
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                      Updated
+                      {t("studioCjenovnik.updated")}
                     </div>
                     <div style={{ fontWeight: 700 }}>
                       {form.updated_at ? fmtDate(form.updated_at) : "—"}
@@ -903,7 +924,7 @@ export default function CjenovnikClient({
                     onClick={goPrev}
                     disabled={isPending || !canPrev}
                     style={btnDisabled(isPending || !canPrev)}
-                    title="Prethodni"
+                    title={t("studioCjenovnik.prev")}
                   >
                     ◀
                   </button>
@@ -912,7 +933,7 @@ export default function CjenovnikClient({
                     onClick={goNext}
                     disabled={isPending || !canNext}
                     style={btnDisabled(isPending || !canNext)}
-                    title="Naredni"
+                    title={t("studioCjenovnik.next")}
                   >
                     ▶
                   </button>
@@ -925,7 +946,7 @@ export default function CjenovnikClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                Otkaži
+                {t("studioCjenovnik.cancel")}
               </button>
               <button
                 className="btn btn--active"
@@ -933,7 +954,7 @@ export default function CjenovnikClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                {isPending ? "Snima..." : "Snimi"}
+                {isPending ? t("studioCjenovnik.saving") : t("studioCjenovnik.save")}
               </button>
             </div>
           </div>
@@ -955,8 +976,8 @@ export default function CjenovnikClient({
               <div>
                 <div style={{ fontSize: 18, fontWeight: 800 }}>
                   {selectedIsActive
-                    ? "Deaktivirati stavku?"
-                    : "Aktivirati stavku?"}
+                    ? t("studioCjenovnik.confirmDeactivateTitle")
+                    : t("studioCjenovnik.confirmActivateTitle")}
                 </div>
                 <div
                   style={{ marginTop: 4, color: "var(--muted)", fontSize: 14 }}
@@ -978,8 +999,8 @@ export default function CjenovnikClient({
               }}
             >
               {selectedIsActive
-                ? "Stavka će biti sakrivena iz liste aktivnih. Možeš je vratiti kasnije."
-                : "Stavka će opet biti vidljiva u listi aktivnih."}
+                ? t("studioCjenovnik.confirmDeactivateBody")
+                : t("studioCjenovnik.confirmActivateBody")}
             </div>
 
             <div
@@ -997,7 +1018,7 @@ export default function CjenovnikClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                Otkaži
+                {t("studioCjenovnik.cancel")}
               </button>
               <button
                 className="btn btn--active"
@@ -1006,10 +1027,10 @@ export default function CjenovnikClient({
                 style={btnDisabled(isPending)}
               >
                 {isPending
-                  ? "Radi..."
+                  ? t("studioCjenovnik.working")
                   : selectedIsActive
-                    ? "Deaktiviraj"
-                    : "Aktiviraj"}
+                    ? t("studioCjenovnik.deactivate")
+                    : t("studioCjenovnik.activate")}
               </button>
             </div>
           </div>

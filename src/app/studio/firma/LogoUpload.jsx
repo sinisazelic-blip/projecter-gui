@@ -2,11 +2,13 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/components/LocaleProvider";
 
 const ALLOWED = "image/png, image/jpeg, image/jpg, image/svg+xml";
 const MAX_MB = 2;
 
 export default function LogoUpload({ logoPath }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
@@ -23,7 +25,7 @@ export default function LogoUpload({ logoPath }) {
     if (!file) return;
     setError(null);
     if (file.size > MAX_MB * 1024 * 1024) {
-      setError(`Maksimalna veličina ${MAX_MB} MB`);
+      setError((t("firma.logoMaxSize") || "").replace("{{max}}", String(MAX_MB)));
       return;
     }
     setUploading(true);
@@ -36,14 +38,14 @@ export default function LogoUpload({ logoPath }) {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(data?.error || "Greška pri uploadu");
+        setError(data?.error || t("firma.logoErrorUpload"));
         return;
       }
       const pathInput = document.querySelector('input[name="logo_path"]');
       if (pathInput) pathInput.value = data.path;
       router.refresh();
     } catch (err) {
-      setError(err?.message || "Greška");
+      setError(err?.message || t("firma.logoError"));
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -70,7 +72,7 @@ export default function LogoUpload({ logoPath }) {
         >
           <img
             src={currentSrc}
-            alt="Logo firme"
+            alt={t("firma.logoAlt")}
             style={{
               maxHeight: 80,
               maxWidth: 200,
@@ -89,7 +91,7 @@ export default function LogoUpload({ logoPath }) {
             style={{ display: "block", marginBottom: 8, fontSize: 12 }}
           />
           <p style={{ fontSize: 11, opacity: 0.75, margin: 0 }}>
-            PNG, JPG ili SVG, max {MAX_MB} MB. Prikazuje se na fakturi.
+            {(t("firma.logoHint") || "").replace("{{max}}", String(MAX_MB))}
           </p>
           {error && (
             <p style={{ color: "var(--error, #f87171)", fontSize: 12, marginTop: 6 }}>
@@ -97,7 +99,7 @@ export default function LogoUpload({ logoPath }) {
             </p>
           )}
           {uploading && (
-            <p style={{ fontSize: 12, opacity: 0.8, marginTop: 6 }}>Upload…</p>
+            <p style={{ fontSize: 12, opacity: 0.8, marginTop: 6 }}>{t("firma.logoUploading")}</p>
           )}
         </div>
       </div>

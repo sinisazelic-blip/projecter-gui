@@ -9,8 +9,31 @@ import {
   updateDobavljac,
 } from "./actions";
 import ImportSection from "../ImportSection";
+import { useTranslation } from "@/components/LocaleProvider";
 
-type VrstaDobavljaca = "studio" | "freelancer" | "servis" | "ostalo";
+type VrstaDobavljaca =
+  | "studio"
+  | "freelancer"
+  | "servis"
+  | "ostalo"
+  | "rental"
+  | "video_produkcija"
+  | "organizacija_dogadaja"
+  | "restoran"
+  | "transport"
+  | "rasvjeta"
+  | "bina"
+  | "led_video"
+  | "bilbordi"
+  | "novine"
+  | "web_portali"
+  | "socijalne_mreze"
+  | "developing"
+  | "web_developing"
+  | "tv"
+  | "radio"
+  | "oglasivaci"
+  | "agencije";
 
 type FormState = {
   dobavljac_id?: number;
@@ -120,12 +143,63 @@ const pageTitleRowStyle: React.CSSProperties = {
   gap: 10,
 };
 
+const VRSTA_KEYS: Record<VrstaDobavljaca, string> = {
+  studio: "vrstaStudio",
+  freelancer: "vrstaFreelancer",
+  servis: "vrstaServis",
+  ostalo: "vrstaOstalo",
+  rental: "vrstaRental",
+  video_produkcija: "vrstaVideoProdukcija",
+  organizacija_dogadaja: "vrstaOrganizacijaDogadaja",
+  restoran: "vrstaRestoran",
+  transport: "vrstaTransport",
+  rasvjeta: "vrstaRasvjeta",
+  bina: "vrstaBina",
+  led_video: "vrstaLedVideo",
+  bilbordi: "vrstaBilbordi",
+  novine: "vrstaNovine",
+  web_portali: "vrstaWebPortali",
+  socijalne_mreze: "vrstaSocijalneMreze",
+  developing: "vrstaDeveloping",
+  web_developing: "vrstaWebDeveloping",
+  tv: "vrstaTv",
+  radio: "vrstaRadio",
+  oglasivaci: "vrstaOglasivaci",
+  agencije: "vrstaAgencije",
+};
+
+const VRSTA_LIST: VrstaDobavljaca[] = [
+  "agencije",
+  "bina",
+  "bilbordi",
+  "developing",
+  "freelancer",
+  "led_video",
+  "novine",
+  "oglasivaci",
+  "organizacija_dogadaja",
+  "ostalo",
+  "radio",
+  "rasvjeta",
+  "rental",
+  "restoran",
+  "servis",
+  "socijalne_mreze",
+  "studio",
+  "transport",
+  "tv",
+  "video_produkcija",
+  "web_developing",
+  "web_portali",
+];
+
 export default function DobavljaciClient({
   initialItems,
 }: {
   initialItems: DobavljacRow[];
 }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [isPending, startTransition] = useTransition();
 
   const [q, setQ] = useState("");
@@ -195,7 +269,7 @@ export default function DobavljaciClient({
             : "unknown";
     return (
       <span className="badge" data-status={status}>
-        {v}
+        {t(`studioDobavljaci.${VRSTA_KEYS[v]}`)}
       </span>
     );
   }
@@ -203,7 +277,7 @@ export default function DobavljaciClient({
   function badgeStatus(active: boolean) {
     return (
       <span className="badge" data-status={active ? "active" : "closed"}>
-        {active ? "Aktivno" : "Neaktivno"}
+        {active ? t("studioDobavljaci.active") : t("studioDobavljaci.inactive")}
       </span>
     );
   }
@@ -375,8 +449,8 @@ export default function DobavljaciClient({
   }
 
   const kpiText = showInactive
-    ? `Aktivni: ${counts.active} / Ukupno: ${counts.total}`
-    : `Aktivni: ${counts.active}`;
+    ? `${t("studioDobavljaci.activeCount")}: ${counts.active} / ${t("studioDobavljaci.totalCount")}: ${counts.total}`
+    : `${t("studioDobavljaci.activeCount")}: ${counts.active}`;
 
   return (
     <div className="container" style={pageShellStyle}>
@@ -391,15 +465,15 @@ export default function DobavljaciClient({
                 margin: 0,
               }}
             >
-              Dobavljači
+              {t("studioDobavljaci.title")}
             </h1>
           </div>
           <div style={{ marginTop: 6, color: "var(--muted)", fontSize: 14 }}>
-            Klikni red da ga označiš, pa koristi <b>Promijeni</b> /{" "}
-            <b>Obriši</b>.
+            {t("studioDobavljaci.hintClick")} <b>{t("studioDobavljaci.change")}</b> /{" "}
+            <b>{t("studioDobavljaci.hintChangeDelete")}</b>.
             <span style={{ opacity: 0.9 }}>
               {" "}
-              “Obriši” = deaktiviraj (istorija ostaje).
+              {t("studioDobavljaci.hintDeleteMeaning")}
             </span>
           </div>
         </div>
@@ -418,7 +492,7 @@ export default function DobavljaciClient({
             disabled={isPending}
             style={btnDisabled(isPending)}
           >
-            <span style={{ marginRight: 6 }}>➕</span> Novi
+            <span style={{ marginRight: 6 }}>➕</span> {t("studioDobavljaci.new")}
           </button>
 
           <button
@@ -426,9 +500,9 @@ export default function DobavljaciClient({
             onClick={openEdit}
             disabled={!selectedItem || isPending}
             style={btnDisabled(!selectedItem || isPending)}
-            title={!selectedItem ? "Prvo odaberi red" : "Promijeni"}
+            title={!selectedItem ? t("studioDobavljaci.selectFirst") : t("studioDobavljaci.change")}
           >
-            <span style={{ marginRight: 6 }}>✏️</span> Promijeni
+            <span style={{ marginRight: 6 }}>✏️</span> {t("studioDobavljaci.change")}
           </button>
 
           <button
@@ -438,20 +512,20 @@ export default function DobavljaciClient({
             style={btnDisabled(!selectedItem || isPending)}
             title={
               !selectedItem
-                ? "Prvo odaberi red"
+                ? t("studioDobavljaci.selectFirst")
                 : selectedIsActive
-                  ? "Deaktiviraj"
-                  : "Aktiviraj"
+                  ? t("studioDobavljaci.deactivate")
+                  : t("studioDobavljaci.activate")
             }
           >
             <span style={{ marginRight: 6 }}>
               {selectedIsActive ? "🗑️" : "✅"}
             </span>
-            {selectedIsActive ? "Obriši" : "Aktiviraj"}
+            {selectedIsActive ? t("studioDobavljaci.delete") : t("studioDobavljaci.activate")}
           </button>
 
           <button className="btn" onClick={onClosePage}>
-            <span style={{ marginRight: 6 }}>✖</span> Zatvori
+            <span style={{ marginRight: 6 }}>✖</span> {t("studioDobavljaci.close")}
           </button>
         </div>
       </div>
@@ -483,7 +557,7 @@ export default function DobavljaciClient({
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Traži (naziv, vrsta, grad, email, telefon)…"
+              placeholder={t("studioDobavljaci.searchPlaceholder")}
               style={{ width: 420, maxWidth: "100%" }}
             />
 
@@ -502,7 +576,7 @@ export default function DobavljaciClient({
                 onChange={(e) => setShowInactive(e.target.checked)}
                 style={{ width: 16, height: 16 }}
               />
-              Prikaži deaktivirane
+              {t("studioDobavljaci.showInactive")}
             </label>
           </div>
 
@@ -537,11 +611,11 @@ export default function DobavljaciClient({
           </colgroup>
           <thead>
             <tr>
-              <th>Naziv</th>
-              <th>Vrsta</th>
-              <th>Adresa</th>
-              <th>Kontakt</th>
-              <th>Status</th>
+              <th>{t("studioDobavljaci.colNaziv")}</th>
+              <th>{t("studioDobavljaci.colVrsta")}</th>
+              <th>{t("studioDobavljaci.colAdresa")}</th>
+              <th>{t("studioDobavljaci.colKontakt")}</th>
+              <th>{t("studioDobavljaci.colStatus")}</th>
             </tr>
           </thead>
 
@@ -549,7 +623,7 @@ export default function DobavljaciClient({
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={5} style={{ color: "var(--muted)", padding: 16 }}>
-                  Nema dobavljača za prikaz.
+                  {t("studioDobavljaci.noSuppliers")}
                 </td>
               </tr>
             ) : (
@@ -572,7 +646,7 @@ export default function DobavljaciClient({
                     onDoubleClick={() => openEditForItem(it)}
                     style={subtleRowStyle(isSelected)}
                     data-closed={isActive ? "0" : "1"}
-                    title="Klikni za selekciju, dvoklik za izmjenu"
+                    title={t("studioDobavljaci.rowTitle")}
                   >
                     <td className="cell-wrap">
                       <div
@@ -602,7 +676,7 @@ export default function DobavljaciClient({
                             data-status="planned"
                             style={{ marginLeft: 6 }}
                           >
-                            Nije pravno lice
+                            {t("studioDobavljaci.notLegalEntity")}
                           </span>
                         ) : null}
                       </div>
@@ -667,8 +741,8 @@ export default function DobavljaciClient({
                 <div>
                   <div style={{ fontSize: 20, fontWeight: 700 }}>
                     {modalMode === "new"
-                      ? "Novi dobavljač"
-                      : "Promijeni dobavljača"}
+                      ? t("studioDobavljaci.modalNew")
+                      : t("studioDobavljaci.modalEdit")}
                   </div>
                   <div
                     style={{
@@ -677,7 +751,7 @@ export default function DobavljaciClient({
                       fontSize: 15,
                     }}
                   >
-                    Šifrarnik dobavljača (bez brisanja — samo deaktivacija).
+                    {t("studioDobavljaci.modalSubtitle")}
                   </div>
                 </div>
               </div>
@@ -699,14 +773,14 @@ export default function DobavljaciClient({
                       marginBottom: 8,
                     }}
                   >
-                    Naziv (obavezno)
+                    {t("studioDobavljaci.labelNaziv")}
                   </div>
                   <input
                     value={form.naziv}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, naziv: e.target.value }))
                     }
-                    placeholder="npr. Studio TAF"
+                    placeholder={t("studioDobavljaci.placeholderNaziv")}
                     autoFocus
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
@@ -721,7 +795,7 @@ export default function DobavljaciClient({
                       marginBottom: 8,
                     }}
                   >
-                    Vrsta
+                    {t("studioDobavljaci.labelVrsta")}
                   </div>
                   <select
                     value={form.vrsta}
@@ -734,10 +808,17 @@ export default function DobavljaciClient({
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   >
-                    <option value="studio">studio</option>
-                    <option value="freelancer">freelancer</option>
-                    <option value="servis">servis</option>
-                    <option value="ostalo">ostalo</option>
+                    {[...VRSTA_LIST]
+                      .sort((a, b) =>
+                        t(`studioDobavljaci.${VRSTA_KEYS[a]}`).localeCompare(
+                          t(`studioDobavljaci.${VRSTA_KEYS[b]}`),
+                        )
+                      )
+                      .map((v) => (
+                        <option key={v} value={v}>
+                          {t(`studioDobavljaci.${VRSTA_KEYS[v]}`)}
+                        </option>
+                      ))}
                   </select>
                 </div>
 
@@ -757,7 +838,7 @@ export default function DobavljaciClient({
                       fontWeight: 700,
                     }}
                   >
-                    Pravno lice
+                    {t("studioDobavljaci.labelPravnoLice")}
                   </span>
                 </div>
 
@@ -777,7 +858,7 @@ export default function DobavljaciClient({
                       fontWeight: 700,
                     }}
                   >
-                    Aktivno
+                    {t("studioDobavljaci.labelAktivno")}
                   </span>
                 </div>
 
@@ -789,7 +870,7 @@ export default function DobavljaciClient({
                       marginBottom: 8,
                     }}
                   >
-                    Država (ISO2)
+                    {t("studioDobavljaci.labelDrzava")}
                   </div>
                   <input
                     value={form.drzava_iso2}
@@ -799,7 +880,7 @@ export default function DobavljaciClient({
                         drzava_iso2: e.target.value.toUpperCase(),
                       }))
                     }
-                    placeholder="BA"
+                    placeholder={t("studioDobavljaci.placeholderDrzava")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -813,14 +894,14 @@ export default function DobavljaciClient({
                       marginBottom: 8,
                     }}
                   >
-                    Grad
+                    {t("studioDobavljaci.labelGrad")}
                   </div>
                   <input
                     value={form.grad}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, grad: e.target.value }))
                     }
-                    placeholder="Sarajevo"
+                    placeholder={t("studioDobavljaci.placeholderGrad")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -834,14 +915,14 @@ export default function DobavljaciClient({
                       marginBottom: 8,
                     }}
                   >
-                    Poštanski broj
+                    {t("studioDobavljaci.labelPostanskiBroj")}
                   </div>
                   <input
                     value={form.postanski_broj}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, postanski_broj: e.target.value }))
                     }
-                    placeholder="71000"
+                    placeholder={t("studioDobavljaci.placeholderPostanskiBroj")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -855,14 +936,14 @@ export default function DobavljaciClient({
                       marginBottom: 8,
                     }}
                   >
-                    Email
+                    {t("studioDobavljaci.labelEmail")}
                   </div>
                   <input
                     value={form.email}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, email: e.target.value }))
                     }
-                    placeholder="email@domena.com"
+                    placeholder={t("studioDobavljaci.placeholderEmail")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -876,14 +957,14 @@ export default function DobavljaciClient({
                       marginBottom: 8,
                     }}
                   >
-                    Telefon
+                    {t("studioDobavljaci.labelTelefon")}
                   </div>
                   <input
                     value={form.telefon}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, telefon: e.target.value }))
                     }
-                    placeholder="+387 ..."
+                    placeholder={t("studioDobavljaci.placeholderTelefon")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -897,14 +978,14 @@ export default function DobavljaciClient({
                       marginBottom: 8,
                     }}
                   >
-                    Adresa
+                    {t("studioDobavljaci.labelAdresa")}
                   </div>
                   <input
                     value={form.adresa}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, adresa: e.target.value }))
                     }
-                    placeholder="Ulica i broj"
+                    placeholder={t("studioDobavljaci.placeholderAdresa")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -918,14 +999,14 @@ export default function DobavljaciClient({
                       marginBottom: 8,
                     }}
                   >
-                    Napomena
+                    {t("studioDobavljaci.labelNapomena")}
                   </div>
                   <textarea
                     value={form.napomena}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, napomena: e.target.value }))
                     }
-                    placeholder="Interna napomena"
+                    placeholder={t("studioDobavljaci.placeholderNapomena")}
                     className="input"
                     style={{ width: "100%", minHeight: 90, resize: "vertical", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -941,7 +1022,7 @@ export default function DobavljaciClient({
                     textTransform: "uppercase",
                   }}
                 >
-                  Sistem
+                  {t("studioDobavljaci.system")}
                 </div>
                 <div
                   style={{
@@ -953,7 +1034,7 @@ export default function DobavljaciClient({
                 >
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                      ID
+                      {t("studioDobavljaci.id")}
                     </div>
                     <div style={{ fontWeight: 800 }}>
                       {form.dobavljac_id ?? "—"}
@@ -961,7 +1042,7 @@ export default function DobavljaciClient({
                   </div>
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                      Kreirano
+                      {t("studioDobavljaci.created")}
                     </div>
                     <div style={{ fontWeight: 800 }}>
                       {form.created_at ? fmtDateTime(form.created_at) : "—"}
@@ -969,7 +1050,7 @@ export default function DobavljaciClient({
                   </div>
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                      Updated
+                      {t("studioDobavljaci.updated")}
                     </div>
                     <div style={{ fontWeight: 800 }}>
                       {form.updated_at ? fmtDateTime(form.updated_at) : "—"}
@@ -1002,7 +1083,7 @@ export default function DobavljaciClient({
                     onClick={goPrev}
                     disabled={isPending || !canPrev}
                     style={btnDisabled(isPending || !canPrev)}
-                    title="Prethodni"
+                    title={t("studioDobavljaci.prev")}
                   >
                     ◀
                   </button>
@@ -1011,7 +1092,7 @@ export default function DobavljaciClient({
                     onClick={goNext}
                     disabled={isPending || !canNext}
                     style={btnDisabled(isPending || !canNext)}
-                    title="Naredni"
+                    title={t("studioDobavljaci.next")}
                   >
                     ▶
                   </button>
@@ -1024,7 +1105,7 @@ export default function DobavljaciClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                Otkaži
+                {t("studioDobavljaci.cancel")}
               </button>
               <button
                 className="btn btn--active"
@@ -1032,7 +1113,7 @@ export default function DobavljaciClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                {isPending ? "Snima..." : "Snimi"}
+                {isPending ? t("studioDobavljaci.saving") : t("studioDobavljaci.save")}
               </button>
             </div>
           </div>
@@ -1054,8 +1135,8 @@ export default function DobavljaciClient({
               <div>
                 <div style={{ fontSize: 18, fontWeight: 800 }}>
                   {selectedIsActive
-                    ? "Deaktivirati dobavljača?"
-                    : "Aktivirati dobavljača?"}
+                    ? t("studioDobavljaci.confirmDeactivateTitle")
+                    : t("studioDobavljaci.confirmActivateTitle")}
                 </div>
                 <div
                   style={{ marginTop: 4, color: "var(--muted)", fontSize: 14 }}
@@ -1077,8 +1158,8 @@ export default function DobavljaciClient({
               }}
             >
               {selectedIsActive
-                ? "Dobavljač će biti sakriven iz liste aktivnih. Možeš ga vratiti kasnije."
-                : "Dobavljač će opet biti vidljiv u listi aktivnih."}
+                ? t("studioDobavljaci.confirmDeactivateBody")
+                : t("studioDobavljaci.confirmActivateBody")}
             </div>
 
             <div
@@ -1096,7 +1177,7 @@ export default function DobavljaciClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                Otkaži
+                {t("studioDobavljaci.cancel")}
               </button>
               <button
                 className="btn btn--active"
@@ -1105,10 +1186,10 @@ export default function DobavljaciClient({
                 style={btnDisabled(isPending)}
               >
                 {isPending
-                  ? "Radi..."
+                  ? t("studioDobavljaci.working")
                   : selectedIsActive
-                    ? "Deaktiviraj"
-                    : "Aktiviraj"}
+                    ? t("studioDobavljaci.deactivate")
+                    : t("studioDobavljaci.activate")}
               </button>
             </div>
           </div>

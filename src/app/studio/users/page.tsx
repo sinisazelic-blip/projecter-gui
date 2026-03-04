@@ -1,6 +1,9 @@
 import UsersClient from "./UsersClient";
 import { query } from "@/lib/db";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +32,10 @@ export type RadnikOption = {
 };
 
 export default async function UsersPage() {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) ?? "sr";
+  const t = getT(locale);
+
   const [rows, roles, radnici] = await Promise.all([
     query<UserRow>(`
       SELECT
@@ -68,13 +75,13 @@ export default async function UsersPage() {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Korisnici</div>
-                  <div className="brandSub">Studio / Šifarnici</div>
+                  <div className="brandTitle">{t("studioUsers.title")}</div>
+                  <div className="brandSub">{t("studioUsers.subtitle")}</div>
                 </div>
               </div>
 
-              <Link href="/dashboard" className="btn" title="Dashboard">
-                🏠 Dashboard
+              <Link href="/dashboard" className="btn" title={t("dashboard.title")}>
+                🏠 {t("dashboard.title")}
               </Link>
             </div>
 

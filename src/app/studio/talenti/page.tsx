@@ -1,13 +1,31 @@
 import TalentiClient from "./TalentiClient";
 import { query } from "@/lib/db";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export type TalentRow = {
   talent_id: number;
   ime_prezime: string;
-  vrsta: "spiker" | "glumac" | "pjevac" | "dijete" | "muzicar" | "ostalo";
+  vrsta:
+    | "spiker"
+    | "glumac"
+    | "pjevac"
+    | "dijete"
+    | "muzicar"
+    | "ostalo"
+    | "snimatelj"
+    | "kompozitor"
+    | "copywriter"
+    | "producent"
+    | "montazer"
+    | "reziser"
+    | "organizator"
+    | "account"
+    | "developer";
   email: string | null;
   telefon: string | null;
   napomena: string | null;
@@ -17,6 +35,10 @@ export type TalentRow = {
 };
 
 export default async function TalentiPage() {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) ?? "sr";
+  const t = getT(locale);
+
   const rows = await query(
     `SELECT talent_id, ime_prezime, vrsta, email, telefon, napomena, aktivan,
             DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
@@ -42,13 +64,13 @@ export default async function TalentiPage() {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Talenti</div>
-                  <div className="brandSub">Studio / Šifarnici</div>
+                  <div className="brandTitle">{t("studioTalenti.title")}</div>
+                  <div className="brandSub">{t("studioTalenti.subtitle")}</div>
                 </div>
               </div>
 
-              <Link href="/dashboard" className="btn" title="Dashboard">
-                🏠 Dashboard
+              <Link href="/dashboard" className="btn" title={t("dashboard.title")}>
+                🏠 {t("dashboard.title")}
               </Link>
             </div>
 

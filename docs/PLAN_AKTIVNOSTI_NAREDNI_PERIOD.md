@@ -63,6 +63,7 @@ Detaljniji koncepti: **PLAN_JEZICI_I_PRETPLATA.md**, **I18N_LOKAL_KAO_TRZISTE.md
 - **Cilj:** Lokalizacija = **lokal (tržište)**, ne samo jezik. Prvo EU (valuta EUR, VAT, terminologija: Sales Ledger, Purchase Ledger, itd.), kasnije GB (funte), USA (USD), CH (CHF) – svako tržište svojim pravilima i oznakama. Otvorena mogućnost za dodavanje novih lokalizacija i jezika.
 - **Detalji:** Vidi **I18N_LOKAL_KAO_TRZISTE.md**, **PLAN_JEZICI_I_PRETPLATA.md** (pogl. 1 i 2).
 - **Implementacija:** Rad **jedan prozor po jedan**: za svaki prozor – stringovi u locale fajlovima (sr + en, s pravom terminologijom za tržište) + logika (valuta, porez, formati) ovisna o lokalu. Konfiguracija po regionu (stope VAT, valute, obavezna polja) – config ili tenant/postavke. Ne samo zamjena teksta, nego i prilagodba ponašanja.
+- **Status (23.02.2026):** Prilagodba/prevod na i18n (zamjena UI stringova, sr + en) **završena** za sve planirane Studio stranice i šifarnike. Sljedeći korak: pregled i popravke; zatim dalje po redu (lokal = tržište, valuta/VAT po potrebi).
 
 ## 2.4 User management i profil „Saradnik”
 

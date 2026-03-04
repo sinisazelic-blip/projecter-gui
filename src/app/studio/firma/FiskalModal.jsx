@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useTranslation } from "@/components/LocaleProvider";
 
 const inputStyle = {
   padding: "12px 14px",
@@ -24,6 +25,7 @@ const defaultSettings = {
 };
 
 export default function FiskalModal() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -36,19 +38,19 @@ export default function FiskalModal() {
     try {
       const res = await fetch("/api/firma/fiskal");
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Greška učitavanja");
+      if (!res.ok) throw new Error(data?.error || t("firma.fiskalErrorLoad"));
       setForm(
         data?.settings
           ? { ...defaultSettings, ...data.settings }
           : defaultSettings,
       );
     } catch (e) {
-      setError(e?.message || "Nije moguće učitati postavke");
+      setError(e?.message || t("firma.fiskalErrorLoadGeneric"));
       setForm(defaultSettings);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const openModal = () => {
     setOpen(true);
@@ -86,10 +88,10 @@ export default function FiskalModal() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Greška snimanja");
+      if (!res.ok) throw new Error(data?.error || t("firma.fiskalErrorSave"));
       closeModal();
     } catch (e) {
-      setError(e?.message || "Nije moguće snimiti");
+      setError(e?.message || t("firma.fiskalErrorSaveGeneric"));
     } finally {
       setSaving(false);
     }
@@ -101,13 +103,13 @@ export default function FiskalModal() {
         type="button"
         className="btn"
         onClick={openModal}
-        title="Postavke fiskalnog uređaja (L-PFR / Esir)"
+        title={t("firma.fiskalButtonTitle")}
         style={{
           border: "1px solid rgba(255,200,100,.25)",
           background: "rgba(255,200,100,.08)",
         }}
       >
-        🧾 Postavke fiskalnog uređaja
+        🧾 {t("firma.fiskalButton")}
       </button>
 
       {open && (
@@ -155,14 +157,14 @@ export default function FiskalModal() {
             .fiskalModal .err { color: #f88; font-size: 0.95rem; margin-bottom: 12px; }
           `}</style>
           <div className="fiskalModal">
-            <h2 id="fiskal-title">Postavke fiskalnog uređaja</h2>
+            <h2 id="fiskal-title">{t("firma.fiskalTitle")}</h2>
             <p className="hint" style={{ marginBottom: 14 }}>
-              Postavke su po aktivnoj firmi. Kad budete imali uređaj, ovdje unesite URL, API ključ i PIN; povezivanje prema dokumentaciji testirat ćete kasnije.
+              {t("firma.fiskalIntro")}
             </p>
 
             {error && <div className="err">{error}</div>}
             {loading ? (
-              <div className="hint">Učitavanje…</div>
+              <div className="hint">{t("firma.fiskalLoading")}</div>
             ) : (
               <div
                 role="form"
@@ -171,37 +173,37 @@ export default function FiskalModal() {
                 }}
               >
                 <div style={{ marginBottom: 14 }}>
-                  <label style={labelStyle}>Base URL uređaja (obavezno za slanje)</label>
+                  <label style={labelStyle}>{t("firma.fiskalLabelBaseUrl")}</label>
                   <input
                     type="url"
                     value={form.base_url}
                     onChange={(e) => handleChange("base_url", e.target.value)}
                     style={inputStyle}
-                    placeholder="http://192.168.x.x:3566/"
+                    placeholder={t("firma.fiskalPlaceholderBaseUrl")}
                   />
-                  <div className="hint">npr. http://IP:3566/ — WiFi/LAN</div>
+                  <div className="hint">{t("firma.fiskalHintBaseUrl")}</div>
                 </div>
 
                 <div style={{ marginBottom: 14 }}>
-                  <label style={labelStyle}>API ključ (EsirKey)</label>
+                  <label style={labelStyle}>{t("firma.fiskalLabelApiKey")}</label>
                   <input
                     type="text"
                     value={form.api_key}
                     onChange={(e) => handleChange("api_key", e.target.value)}
                     style={inputStyle}
-                    placeholder="hex string, opciono"
+                    placeholder={t("firma.fiskalPlaceholderApiKey")}
                     autoComplete="off"
                   />
                 </div>
 
                 <div style={{ marginBottom: 14 }}>
-                  <label style={labelStyle}>PIN</label>
+                  <label style={labelStyle}>{t("firma.fiskalLabelPin")}</label>
                   <input
                     type="password"
                     value={form.pin}
                     onChange={(e) => handleChange("pin", e.target.value)}
                     style={inputStyle}
-                    placeholder="prazno = ručni unos na uređaju"
+                    placeholder={t("firma.fiskalPlaceholderPin")}
                     autoComplete="off"
                   />
                 </div>
@@ -215,14 +217,14 @@ export default function FiskalModal() {
                         handleChange("use_external_printer", e.target.checked)
                       }
                     />
-                    <span style={labelStyle}>Koristi eksterni štampač</span>
+                    <span style={labelStyle}>{t("firma.fiskalUseExternalPrinter")}</span>
                   </label>
                 </div>
 
                 {form.use_external_printer && (
                   <>
                     <div style={{ marginBottom: 14 }}>
-                      <label style={labelStyle}>Naziv eksternog štampača</label>
+                      <label style={labelStyle}>{t("firma.fiskalLabelPrinterName")}</label>
                       <input
                         type="text"
                         value={form.external_printer_name}
@@ -230,11 +232,11 @@ export default function FiskalModal() {
                           handleChange("external_printer_name", e.target.value)
                         }
                         style={inputStyle}
-                        placeholder="EsirExtStampac"
+                        placeholder={t("firma.fiskalPlaceholderPrinterName")}
                       />
                     </div>
                     <div style={{ marginBottom: 14 }}>
-                      <label style={labelStyle}>Širina (znakova)</label>
+                      <label style={labelStyle}>{t("firma.fiskalLabelWidth")}</label>
                       <input
                         type="number"
                         min={1}
@@ -244,7 +246,7 @@ export default function FiskalModal() {
                           handleChange("external_printer_width", e.target.value)
                         }
                         style={inputStyle}
-                        placeholder="EsirExtSirina"
+                        placeholder={t("firma.fiskalPlaceholderWidth")}
                       />
                     </div>
                   </>
@@ -260,10 +262,10 @@ export default function FiskalModal() {
                       handleSubmit(e);
                     }}
                   >
-                    {saving ? "Snimanje…" : "Snimi postavke"}
+                    {saving ? t("firma.fiskalSaving") : t("firma.fiskalSaveButton")}
                   </button>
                   <button type="button" className="btn" onClick={closeModal}>
-                    Odustani
+                    {t("firma.fiskalCancel")}
                   </button>
                 </div>
               </div>

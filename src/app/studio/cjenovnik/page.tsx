@@ -1,6 +1,9 @@
 import { query } from "@/lib/db";
 import CjenovnikClient from "./CjenovnikClient";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +21,10 @@ export type CjenovnikItem = {
 };
 
 export default async function CjenovnikPage() {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) ?? "sr";
+  const t = getT(locale);
+
   const rows = await query(
     `SELECT stavka_id, naziv, jedinica, cijena_default, cijena_ino_eur, valuta_default,
             sort_order, active,
@@ -45,13 +52,13 @@ export default async function CjenovnikPage() {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Cjenovnik</div>
-                  <div className="brandSub">Studio / Šifarnici</div>
+                  <div className="brandTitle">{t("studioCjenovnik.title")}</div>
+                  <div className="brandSub">{t("studioCjenovnik.subtitle")}</div>
                 </div>
               </div>
 
-              <Link href="/dashboard" className="btn" title="Dashboard">
-                🏠 Dashboard
+              <Link href="/dashboard" className="btn" title={t("dashboard.title")}>
+                🏠 {t("dashboard.title")}
               </Link>
             </div>
 

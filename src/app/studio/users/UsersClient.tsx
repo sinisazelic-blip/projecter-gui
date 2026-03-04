@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/components/LocaleProvider";
 import type { UserRow, RoleOption, RadnikOption } from "./page";
 import { createUser, setUserActive, updateUser } from "./actions";
 
@@ -88,13 +89,6 @@ const tableScrollWrapStyle: React.CSSProperties = {
   borderRadius: 16,
 };
 
-const logoStyle: React.CSSProperties = {
-  width: 90,
-  height: 35,
-  objectFit: "contain",
-  opacity: 0.95,
-};
-
 export default function UsersClient({
   initialItems,
   roles = [],
@@ -104,6 +98,7 @@ export default function UsersClient({
   roles: RoleOption[];
   radnici: RadnikOption[];
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -156,7 +151,7 @@ export default function UsersClient({
   function badgeStatus(active: boolean) {
     return (
       <span className="badge" data-status={active ? "active" : "closed"}>
-        {active ? "Aktivno" : "Neaktivno"}
+        {active ? t("studioUsers.statusActive") : t("studioUsers.statusInactive")}
       </span>
     );
   }
@@ -253,7 +248,7 @@ export default function UsersClient({
       try {
         if (modalMode === "new") {
           if (!form.password.trim())
-            throw new Error("Lozinka je obavezna za novog korisnika.");
+            throw new Error(t("studioUsers.errorPasswordRequired"));
           await createUser({
             username: form.username,
             password: form.password,
@@ -262,7 +257,7 @@ export default function UsersClient({
             aktivan: form.aktivan,
           });
         } else {
-          if (!form.user_id) throw new Error("Nedostaje ID za izmjenu.");
+          if (!form.user_id) throw new Error(t("studioUsers.errorMissingId"));
           await updateUser({
             user_id: form.user_id,
             username: form.username,
@@ -276,7 +271,7 @@ export default function UsersClient({
         setSelectedId(null);
         router.refresh();
       } catch (e: any) {
-        setError(e?.message || "Greška pri snimanju.");
+        setError(e?.message || t("studioUsers.errorSave"));
       }
     });
   }
@@ -295,7 +290,7 @@ export default function UsersClient({
         setSelectedId(null);
         router.refresh();
       } catch (e: any) {
-        setError(e?.message || "Greška pri promjeni statusa.");
+        setError(e?.message || t("studioUsers.errorToggle"));
       }
     });
   }
@@ -305,7 +300,6 @@ export default function UsersClient({
       <div style={topbarStyle()}>
         <div style={{ minWidth: 280 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <img src="/fluxa/logo-light.png" alt="Fluxa" style={logoStyle} />
             <h1
               style={{
                 fontSize: 22,
@@ -314,16 +308,13 @@ export default function UsersClient({
                 margin: 0,
               }}
             >
-              Korisnici
+              {t("studioUsers.title")}
             </h1>
           </div>
           <div style={{ marginTop: 6, color: "var(--muted)", fontSize: 14 }}>
-            Klikni red da ga označiš, pa koristi <b>Promijeni</b> /{" "}
-            <b>Obriši</b>.
-            <span style={{ opacity: 0.9 }}>
-              {" "}
-              "Obriši" = deaktiviraj (istorija ostaje).
-            </span>
+            {t("studioUsers.hintClick")} <b>{t("studioUsers.change")}</b> /{" "}
+            <b>{t("studioUsers.delete")}</b>.{" "}
+            <span style={{ opacity: 0.9 }}>{t("studioUsers.hintDelete")}</span>
           </div>
         </div>
 
@@ -341,7 +332,7 @@ export default function UsersClient({
             disabled={isPending}
             style={btnDisabled(isPending)}
           >
-            <span style={{ marginRight: 6 }}>➕</span> Novi
+            <span style={{ marginRight: 6 }}>➕</span> {t("studioUsers.new")}
           </button>
 
           <button
@@ -349,9 +340,9 @@ export default function UsersClient({
             onClick={openEdit}
             disabled={!selectedItem || isPending}
             style={btnDisabled(!selectedItem || isPending)}
-            title={!selectedItem ? "Prvo odaberi red" : "Promijeni"}
+            title={!selectedItem ? t("studioUsers.selectFirst") : t("studioUsers.change")}
           >
-            <span style={{ marginRight: 6 }}>✏️</span> Promijeni
+            <span style={{ marginRight: 6 }}>✏️</span> {t("studioUsers.change")}
           </button>
 
           <button
@@ -361,20 +352,20 @@ export default function UsersClient({
             style={btnDisabled(!selectedItem || isPending)}
             title={
               !selectedItem
-                ? "Prvo odaberi red"
+                ? t("studioUsers.selectFirst")
                 : selectedIsActive
-                  ? "Deaktiviraj"
-                  : "Aktiviraj"
+                  ? t("studioUsers.deactivate")
+                  : t("studioUsers.activate")
             }
           >
             <span style={{ marginRight: 6 }}>
               {selectedIsActive ? "🗑️" : "✅"}
             </span>
-            {selectedIsActive ? "Obriši" : "Aktiviraj"}
+            {selectedIsActive ? t("studioUsers.delete") : t("studioUsers.activate")}
           </button>
 
           <button className="btn" onClick={onClosePage}>
-            <span style={{ marginRight: 6 }}>✖</span> Zatvori
+            <span style={{ marginRight: 6 }}>✖</span> {t("studioUsers.close")}
           </button>
         </div>
       </div>
@@ -400,7 +391,7 @@ export default function UsersClient({
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Traži (korisnik, uloga)…"
+              placeholder={t("studioUsers.searchPlaceholder")}
               style={{ width: 320, maxWidth: "100%" }}
             />
 
@@ -419,19 +410,19 @@ export default function UsersClient({
                 onChange={(e) => setShowInactive(e.target.checked)}
                 style={{ width: 16, height: 16 }}
               />
-              Prikaži deaktivirane
+              {t("studioUsers.showInactive")}
             </label>
           </div>
 
           <div style={{ color: "var(--muted)", fontSize: 14 }}>
             {showInactive ? (
               <>
-                Aktivni: <b style={{ color: "var(--text)" }}>{counts.active}</b>{" "}
-                / Ukupno: <b style={{ color: "var(--text)" }}>{counts.total}</b>
+                {t("studioUsers.activeCount")} <b style={{ color: "var(--text)" }}>{counts.active}</b>{" "}
+                / {t("studioUsers.totalCount")} <b style={{ color: "var(--text)" }}>{counts.total}</b>
               </>
             ) : (
               <>
-                Aktivni: <b style={{ color: "var(--text)" }}>{counts.active}</b>
+                {t("studioUsers.activeCount")} <b style={{ color: "var(--text)" }}>{counts.active}</b>
               </>
             )}
           </div>
@@ -458,10 +449,10 @@ export default function UsersClient({
         <table className="table">
           <thead>
             <tr>
-              <th>Korisnik</th>
-              <th>Uloga</th>
-              <th>Radnik (osoba)</th>
-              <th>Status</th>
+              <th>{t("studioUsers.colUser")}</th>
+              <th>{t("studioUsers.colRole")}</th>
+              <th>{t("studioUsers.colRadnik")}</th>
+              <th>{t("studioUsers.colStatus")}</th>
             </tr>
           </thead>
 
@@ -469,7 +460,7 @@ export default function UsersClient({
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={4} style={{ color: "var(--muted)", padding: 16 }}>
-                  Nema korisnika za prikaz.
+                  {t("studioUsers.noItems")}
                 </td>
               </tr>
             ) : (
@@ -484,7 +475,7 @@ export default function UsersClient({
                     onDoubleClick={() => openEditForItem(it)}
                     style={subtleRowStyle(isSelected)}
                     data-closed={isActive ? "0" : "1"}
-                    title="Klik za selekciju, dupli klik za promjenu"
+                    title={t("studioUsers.rowTitle")}
                   >
                     <td className="cell-wrap">
                       <div
@@ -568,8 +559,8 @@ export default function UsersClient({
                 <div>
                   <div style={{ fontSize: 20, fontWeight: 700 }}>
                     {modalMode === "new"
-                      ? "Novi korisnik"
-                      : "Promijeni korisnika"}
+                      ? t("studioUsers.modalNew")
+                      : t("studioUsers.modalEdit")}
                   </div>
                   <div
                     style={{
@@ -579,8 +570,8 @@ export default function UsersClient({
                     }}
                   >
                     {modalMode === "edit"
-                      ? "Ostavi lozinku praznom da je ne mijenjaš."
-                      : "Šifrarnik korisnika."}
+                      ? t("studioUsers.modalSubtitleEdit")
+                      : t("studioUsers.modalSubtitleNew")}
                   </div>
                 </div>
               </div>
@@ -605,14 +596,14 @@ export default function UsersClient({
                       marginBottom: 8,
                     }}
                   >
-                    Korisničko ime (obavezno)
+                    {t("studioUsers.labelUsername")}
                   </div>
                   <input
                     value={form.username}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, username: e.target.value }))
                     }
-                    placeholder="npr. admin"
+                    placeholder={t("studioUsers.placeholderUsername")}
                     autoFocus
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
@@ -627,15 +618,15 @@ export default function UsersClient({
                       marginBottom: 8,
                     }}
                   >
-                    Lozinka
+                    {t("studioUsers.labelPassword")}
                     {modalMode === "edit" && (
                       <span style={{ marginLeft: 8, fontWeight: 400 }}>
-                        (ostavi prazno = ne mijenjaj)
+                        {t("studioUsers.passwordLeaveEmpty")}
                       </span>
                     )}
                     {modalMode === "new" && (
                       <span style={{ marginLeft: 8, fontWeight: 400 }}>
-                        (obavezno)
+                        {t("studioUsers.passwordRequired")}
                       </span>
                     )}
                   </div>
@@ -645,7 +636,7 @@ export default function UsersClient({
                     onChange={(e) =>
                       setForm((s) => ({ ...s, password: e.target.value }))
                     }
-                    placeholder={modalMode === "edit" ? "••••••••" : "Unesi lozinku"}
+                    placeholder={modalMode === "edit" ? t("studioUsers.placeholderPasswordEdit") : t("studioUsers.placeholderPasswordNew")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -659,7 +650,7 @@ export default function UsersClient({
                       marginBottom: 8,
                     }}
                   >
-                    Uloga
+                    {t("studioUsers.labelRole")}
                   </div>
                   <select
                     value={form.role_id}
@@ -669,7 +660,7 @@ export default function UsersClient({
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   >
-                    <option value="">— nema uloge —</option>
+                    <option value="">{t("studioUsers.roleNone")}</option>
                     {roles.map((r) => (
                       <option key={r.role_id} value={r.role_id}>
                         {r.naziv}
@@ -686,7 +677,7 @@ export default function UsersClient({
                       marginBottom: 8,
                     }}
                   >
-                    Radnik (osoba)
+                    {t("studioUsers.labelRadnik")}
                   </div>
                   <select
                     value={form.radnik_id}
@@ -695,9 +686,9 @@ export default function UsersClient({
                     }
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
-                    title="Poveži ovaj login sa osobom iz šifarnika Radnici"
+                    title={t("studioUsers.radnikTitle")}
                   >
-                    <option value="">— nijedan (samo login) —</option>
+                    <option value="">{t("studioUsers.radnikNone")}</option>
                     {radnici.map((rad) => (
                       <option key={rad.radnik_id} value={rad.radnik_id}>
                         {rad.prezime} {rad.ime}
@@ -722,7 +713,7 @@ export default function UsersClient({
                       fontWeight: 700,
                     }}
                   >
-                    Aktivan
+                    {t("studioUsers.labelActive")}
                   </span>
                 </div>
               </div>
@@ -737,7 +728,7 @@ export default function UsersClient({
                     marginBottom: 10,
                   }}
                 >
-                  Sistem
+                  {t("studioUsers.system")}
                 </div>
                 <div
                   style={{
@@ -748,7 +739,7 @@ export default function UsersClient({
                 >
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 14 }}>
-                      ID
+                      {t("studioUsers.id")}
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.user_id ?? "—"}
@@ -756,7 +747,7 @@ export default function UsersClient({
                   </div>
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 14 }}>
-                      Kreirano
+                      {t("studioUsers.created")}
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.created_at ? fmtDateTime(form.created_at) : "—"}
@@ -764,7 +755,7 @@ export default function UsersClient({
                   </div>
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 14 }}>
-                      Ažurirano
+                      {t("studioUsers.updated")}
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.updated_at ? fmtDateTime(form.updated_at) : "—"}
@@ -797,7 +788,7 @@ export default function UsersClient({
                     onClick={goPrev}
                     disabled={isPending || !canPrev}
                     style={btnDisabled(isPending || !canPrev)}
-                    title="Prethodni"
+                    title={t("studioUsers.prev")}
                   >
                     ◀
                   </button>
@@ -806,7 +797,7 @@ export default function UsersClient({
                     onClick={goNext}
                     disabled={isPending || !canNext}
                     style={btnDisabled(isPending || !canNext)}
-                    title="Naredni"
+                    title={t("studioUsers.next")}
                   >
                     ▶
                   </button>
@@ -819,7 +810,7 @@ export default function UsersClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                Otkaži
+                {t("studioUsers.cancel")}
               </button>
               <button
                 className="btn btn--active"
@@ -827,7 +818,7 @@ export default function UsersClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                {isPending ? "Snima..." : "Snimi"}
+                {isPending ? t("studioUsers.saving") : t("studioUsers.save")}
               </button>
             </div>
           </div>
@@ -850,8 +841,8 @@ export default function UsersClient({
               <div>
                 <div style={{ fontSize: 18, fontWeight: 800 }}>
                   {selectedIsActive
-                    ? "Deaktivirati korisnika?"
-                    : "Aktivirati korisnika?"}
+                    ? t("studioUsers.confirmDeactivateTitle")
+                    : t("studioUsers.confirmActivateTitle")}
                 </div>
                 <div
                   style={{ marginTop: 4, color: "var(--muted)", fontSize: 14 }}
@@ -875,8 +866,8 @@ export default function UsersClient({
               }}
             >
               {selectedIsActive
-                ? "Korisnik će biti sakriven iz liste aktivnih. Možeš ga vratiti kasnije."
-                : "Korisnik će opet biti vidljiv u listi aktivnih."}
+                ? t("studioUsers.confirmDeactivateBody")
+                : t("studioUsers.confirmActivateBody")}
             </div>
 
             <div
@@ -894,7 +885,7 @@ export default function UsersClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                Otkaži
+                {t("studioUsers.cancel")}
               </button>
               <button
                 className="btn btn--active"
@@ -903,10 +894,10 @@ export default function UsersClient({
                 style={btnDisabled(isPending)}
               >
                 {isPending
-                  ? "Radi..."
+                  ? t("studioUsers.confirmWorking")
                   : selectedIsActive
-                    ? "Deaktiviraj"
-                    : "Aktiviraj"}
+                    ? t("studioUsers.deactivate")
+                    : t("studioUsers.activate")}
               </button>
             </div>
           </div>

@@ -1,6 +1,9 @@
 import RolesClient from "./RolesClient";
 import { query } from "@/lib/db";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +17,10 @@ export type RoleRow = {
 };
 
 export default async function RolesPage() {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) ?? "sr";
+  const t = getT(locale);
+
   const cols: any[] = (await query(
     `SELECT COLUMN_NAME
        FROM INFORMATION_SCHEMA.COLUMNS
@@ -68,13 +75,13 @@ export default async function RolesPage() {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Uloge</div>
-                  <div className="brandSub">Studio / Šifarnici</div>
+                  <div className="brandTitle">{t("studioRoles.title")}</div>
+                  <div className="brandSub">{t("studioRoles.subtitle")}</div>
                 </div>
               </div>
 
-              <Link href="/dashboard" className="btn" title="Dashboard">
-                🏠 Dashboard
+              <Link href="/dashboard" className="btn" title={t("dashboard.title")}>
+                🏠 {t("dashboard.title")}
               </Link>
             </div>
 

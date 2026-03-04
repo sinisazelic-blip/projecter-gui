@@ -1,8 +1,10 @@
 // src/app/studio/firma/page.js
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { query } from "@/lib/db";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 import LogoUpload from "./LogoUpload";
-import FiskalModal from "./FiskalModal";
 import BrojacFakturaCard from "./BrojacFakturaCard";
 import FirmaHeader from "./FirmaHeader";
 
@@ -26,6 +28,10 @@ function accOrEmpty(accs, idx) {
 }
 
 export default async function Page({ searchParams }) {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) ?? "sr";
+  const t = getT(locale);
+
   const sp = await Promise.resolve(searchParams);
   const saved = String(sp?.saved ?? "") === "1";
 
@@ -194,16 +200,16 @@ export default async function Page({ searchParams }) {
           <div className="card">
             {saved
               ? <div className="ok">
-                  ✅ Sačuvano. Ovaj profil je sada aktivan.
+                  ✅ {t("firma.savedOk")}
                 </div>
               : null}
 
-            <div className="sectionTitle">Osnovno</div>
+            <div className="sectionTitle">{t("firma.sectionBasic")}</div>
 
             <form action="/api/firma/save" method="POST">
               <div className="twoCol" style={row2}>
                 <div>
-                  <div style={labelStyle}>Naziv (obavezno)</div>
+                  <div style={labelStyle}>{t("firma.labelNaziv")}</div>
                   <input
                     name="naziv"
                     defaultValue={pick(f?.naziv) || "Studio TAF"}
@@ -211,12 +217,12 @@ export default async function Page({ searchParams }) {
                     required
                   />
                   <div className="hint">
-                    Ovo ide u potpis (npr. Studio TAF).
+                    {t("firma.hintNaziv")}
                   </div>
                 </div>
 
                 <div>
-                  <div style={labelStyle}>Pravni naziv</div>
+                  <div style={labelStyle}>{t("firma.labelPravniNaziv")}</div>
                   <input
                     name="pravni_naziv"
                     defaultValue={pick(f?.pravni_naziv)}
@@ -229,7 +235,7 @@ export default async function Page({ searchParams }) {
 
               <div className="threeCol" style={row3}>
                 <div>
-                  <div style={labelStyle}>Email</div>
+                  <div style={labelStyle}>{t("firma.labelEmail")}</div>
                   <input
                     name="email"
                     defaultValue={pick(f?.email)}
@@ -237,7 +243,7 @@ export default async function Page({ searchParams }) {
                   />
                 </div>
                 <div>
-                  <div style={labelStyle}>Telefon</div>
+                  <div style={labelStyle}>{t("firma.labelTelefon")}</div>
                   <input
                     name="telefon"
                     defaultValue={pick(f?.telefon)}
@@ -245,7 +251,7 @@ export default async function Page({ searchParams }) {
                   />
                 </div>
                 <div>
-                  <div style={labelStyle}>Web</div>
+                  <div style={labelStyle}>{t("firma.labelWeb")}</div>
                   <input
                     name="web"
                     defaultValue={pick(f?.web)}
@@ -256,11 +262,11 @@ export default async function Page({ searchParams }) {
 
               <div style={{ height: 18 }} />
 
-              <div className="sectionTitle">Adresa</div>
+              <div className="sectionTitle">{t("firma.sectionAddress")}</div>
 
               <div className="twoCol" style={row2}>
                 <div>
-                  <div style={labelStyle}>Adresa</div>
+                  <div style={labelStyle}>{t("firma.labelAdresa")}</div>
                   <input
                     name="adresa"
                     defaultValue={pick(f?.adresa)}
@@ -268,7 +274,7 @@ export default async function Page({ searchParams }) {
                   />
                 </div>
                 <div>
-                  <div style={labelStyle}>Grad</div>
+                  <div style={labelStyle}>{t("firma.labelGrad")}</div>
                   <input
                     name="grad"
                     defaultValue={pick(f?.grad)}
@@ -281,7 +287,7 @@ export default async function Page({ searchParams }) {
 
               <div className="threeCol" style={row3}>
                 <div>
-                  <div style={labelStyle}>Poštanski broj</div>
+                  <div style={labelStyle}>{t("firma.labelPostanskiBroj")}</div>
                   <input
                     name="postanski_broj"
                     defaultValue={pick(f?.postanski_broj)}
@@ -289,7 +295,7 @@ export default async function Page({ searchParams }) {
                   />
                 </div>
                 <div>
-                  <div style={labelStyle}>Država</div>
+                  <div style={labelStyle}>{t("firma.labelDrzava")}</div>
                   <input
                     name="drzava"
                     defaultValue={pick(f?.drzava)}
@@ -297,12 +303,12 @@ export default async function Page({ searchParams }) {
                   />
                 </div>
                 <div>
-                  <div style={labelStyle}>Logo firme (na fakturi)</div>
+                  <div style={labelStyle}>{t("firma.labelLogoFirma")}</div>
                   <input
                     name="logo_path"
                     defaultValue={pick(f?.logo_path) || "/fluxa/logo-light.png"}
                     style={inputStyle}
-                    placeholder="/logos/logo-firma-xxx.png"
+                    placeholder={t("firma.placeholderLogoPath")}
                   />
                   <LogoUpload logoPath={pick(f?.logo_path)} />
                 </div>
@@ -310,11 +316,11 @@ export default async function Page({ searchParams }) {
 
               <div style={{ height: 18 }} />
 
-              <div className="sectionTitle">Porezni i registri</div>
+              <div className="sectionTitle">{t("firma.sectionTax")}</div>
 
               <div className="threeCol" style={row3}>
                 <div>
-                  <div style={labelStyle}>JIB</div>
+                  <div style={labelStyle}>{t("firma.labelJib")}</div>
                   <input
                     name="jib"
                     defaultValue={pick(f?.jib)}
@@ -322,7 +328,7 @@ export default async function Page({ searchParams }) {
                   />
                 </div>
                 <div>
-                  <div style={labelStyle}>PIB</div>
+                  <div style={labelStyle}>{t("firma.labelPib")}</div>
                   <input
                     name="pib"
                     defaultValue={pick(f?.pib)}
@@ -330,7 +336,7 @@ export default async function Page({ searchParams }) {
                   />
                 </div>
                 <div>
-                  <div style={labelStyle}>PDV broj</div>
+                  <div style={labelStyle}>{t("firma.labelPdvBroj")}</div>
                   <input
                     name="pdv_broj"
                     defaultValue={pick(f?.pdv_broj)}
@@ -341,21 +347,36 @@ export default async function Page({ searchParams }) {
 
               <div style={{ height: 10 }} />
 
+<div>
+                  <div style={labelStyle}>{t("firma.labelBrojRjesenja")}</div>
+                  <input
+                    name="broj_rjesenja"
+                    defaultValue={pick(f?.broj_rjesenja)}
+                    style={inputStyle}
+                  />
+                </div>
+
+              <div style={{ height: 10 }} />
+
               <div>
-                <div style={labelStyle}>Broj rješenja (registracija)</div>
+                <div style={labelStyle}>{t("firma.labelVatRateLocal")}</div>
                 <input
-                  name="broj_rjesenja"
-                  defaultValue={pick(f?.broj_rjesenja)}
+                  type="number"
+                  name="vat_rate_local"
+                  min="0"
+                  max="30"
+                  step="0.01"
+                  defaultValue={f?.vat_rate_local != null ? String(f.vat_rate_local) : ""}
                   style={inputStyle}
+                  placeholder={t("firma.placeholderVatRateLocal")}
                 />
               </div>
 
               <div style={{ height: 18 }} />
 
-              <div className="sectionTitle">Banke / računi</div>
+              <div className="sectionTitle">{t("firma.sectionBanks")}</div>
               <div className="hint">
-                Firma može imati više računa. Po BiH pravilima mora postojati
-                tačno jedan <b>glavni</b> račun (radio).
+                {t("firma.hintBanks")}
               </div>
 
               {/* ✅ hidden: da API zna koji je “glavni” */}
@@ -370,7 +391,7 @@ export default async function Page({ searchParams }) {
                 return (
                   <div key={i} className="bankCard">
                     <div className="bankHead">
-                      <div className="pill">Račun #{i}</div>
+                      <div className="pill">{(t("firma.accountNum") || "").replace("{{n}}", String(i))}</div>
 
                       <label className="pill" style={{ cursor: "pointer" }}>
                         <input
@@ -380,13 +401,13 @@ export default async function Page({ searchParams }) {
                           defaultChecked={String(primaryIdx) === String(i)}
                           style={{ marginRight: 8 }}
                         />
-                        Glavni račun
+                        {t("firma.primaryAccount")}
                       </label>
                     </div>
 
                     <div className="twoCol" style={row2}>
                       <div>
-                        <div style={labelStyle}>Naziv banke</div>
+                        <div style={labelStyle}>{t("firma.labelBankNaziv")}</div>
                         <input
                           name={`bank_naziv_${i}`}
                           defaultValue={pick(a.bank_naziv)}
@@ -394,7 +415,7 @@ export default async function Page({ searchParams }) {
                         />
                       </div>
                       <div>
-                        <div style={labelStyle}>Račun</div>
+                        <div style={labelStyle}>{t("firma.labelRacun")}</div>
                         <input
                           name={`bank_racun_${i}`}
                           defaultValue={pick(a.bank_racun)}
@@ -407,7 +428,7 @@ export default async function Page({ searchParams }) {
 
                     <div className="twoCol" style={row2}>
                       <div>
-                        <div style={labelStyle}>IBAN</div>
+                        <div style={labelStyle}>{t("firma.labelIban")}</div>
                         <input
                           name={`iban_${i}`}
                           defaultValue={pick(a.iban)}
@@ -415,7 +436,7 @@ export default async function Page({ searchParams }) {
                         />
                       </div>
                       <div>
-                        <div style={labelStyle}>SWIFT</div>
+                        <div style={labelStyle}>{t("firma.labelSwift")}</div>
                         <input
                           name={`swift_${i}`}
                           defaultValue={pick(a.swift)}
@@ -425,7 +446,7 @@ export default async function Page({ searchParams }) {
                     </div>
 
                     <div className="hint">
-                      Ako su sva polja prazna, račun #{i} se neće snimiti.
+                      {(t("firma.accountEmptyHint") || "").replace("{{n}}", String(i))}
                     </div>
                   </div>
                 );
@@ -433,27 +454,17 @@ export default async function Page({ searchParams }) {
 
               <div className="btnRow">
                 <button type="submit" className="btn">
-                  Sačuvaj
+                  {t("firma.save")}
                 </button>
                 <Link href="/dashboard" className="btn">
-                  Odustani
+                  {t("firma.cancel")}
                 </Link>
               </div>
 
               <div className="hint">
-                Snimanjem se pravi novi zapis profila i postaje aktivan.
-                Prethodni aktivni se deaktivira (nema brisanja). Bank računi se
-                vezuju za novi aktivni profil.
+                {t("firma.saveHint")}
               </div>
             </form>
-
-            <div className="btnRow">
-              <FiskalModal />
-              <span className="muted">
-                Aktivni ID:{" "}
-                <span className="mono">{pick(f?.firma_id) || "—"}</span>
-              </span>
-            </div>
 
             <BrojacFakturaCard />
           </div>

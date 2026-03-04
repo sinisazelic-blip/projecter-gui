@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/components/LocaleProvider";
 import type { RoleRow } from "./page";
 import { createRole, updateRole } from "./actions";
 
@@ -84,18 +85,12 @@ const tableScrollWrapStyle: React.CSSProperties = {
   borderRadius: 16,
 };
 
-const logoStyle: React.CSSProperties = {
-  width: 90,
-  height: 35,
-  objectFit: "contain",
-  opacity: 0.95,
-};
-
 export default function RolesClient({
   initialItems,
 }: {
   initialItems: RoleRow[];
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -216,14 +211,14 @@ export default function RolesClient({
         if (modalMode === "new") {
           await createRole(payload);
         } else {
-          if (!form.role_id) throw new Error("Nedostaje ID za izmjenu.");
+          if (!form.role_id) throw new Error(t("studioRoles.errorMissingId"));
           await updateRole({ role_id: form.role_id, ...payload });
         }
         setModalOpen(false);
         setSelectedId(null);
         router.refresh();
       } catch (e: any) {
-        setError(e?.message || "Greška pri snimanju.");
+        setError(e?.message || t("studioRoles.errorSave"));
       }
     });
   }
@@ -233,7 +228,6 @@ export default function RolesClient({
       <div style={topbarStyle()}>
         <div style={{ minWidth: 280 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <img src="/fluxa/logo-light.png" alt="Fluxa" style={logoStyle} />
             <h1
               style={{
                 fontSize: 22,
@@ -242,11 +236,11 @@ export default function RolesClient({
                 margin: 0,
               }}
             >
-              Uloge
+              {t("studioRoles.title")}
             </h1>
           </div>
           <div style={{ marginTop: 6, color: "var(--muted)", fontSize: 14 }}>
-            Klikni red da ga označiš, pa koristi <b>Promijeni</b>.
+            {t("studioRoles.hintClick")} <b>{t("studioRoles.change")}</b>.
           </div>
         </div>
 
@@ -264,7 +258,7 @@ export default function RolesClient({
             disabled={isPending}
             style={btnDisabled(isPending)}
           >
-            <span style={{ marginRight: 6 }}>➕</span> Novi
+            <span style={{ marginRight: 6 }}>➕</span> {t("studioRoles.new")}
           </button>
 
           <button
@@ -272,13 +266,13 @@ export default function RolesClient({
             onClick={openEdit}
             disabled={!selectedItem || isPending}
             style={btnDisabled(!selectedItem || isPending)}
-            title={!selectedItem ? "Prvo odaberi red" : "Promijeni"}
+            title={!selectedItem ? t("studioRoles.selectFirst") : t("studioRoles.change")}
           >
-            <span style={{ marginRight: 6 }}>✏️</span> Promijeni
+            <span style={{ marginRight: 6 }}>✏️</span> {t("studioRoles.change")}
           </button>
 
           <button className="btn" onClick={onClosePage}>
-            <span style={{ marginRight: 6 }}>✖</span> Zatvori
+            <span style={{ marginRight: 6 }}>✖</span> {t("studioRoles.close")}
           </button>
         </div>
       </div>
@@ -296,12 +290,12 @@ export default function RolesClient({
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Traži (naziv, opis)…"
+            placeholder={t("studioRoles.searchPlaceholder")}
             style={{ width: 360, maxWidth: "100%" }}
           />
 
           <div style={{ color: "var(--muted)", fontSize: 14 }}>
-            Ukupno: <b style={{ color: "var(--text)" }}>{items.length}</b>
+            {t("studioRoles.totalCount")} <b style={{ color: "var(--text)" }}>{items.length}</b>
           </div>
         </div>
 
@@ -326,9 +320,9 @@ export default function RolesClient({
         <table className="table">
           <thead>
             <tr>
-              <th>Naziv</th>
-              <th className="num">Nivo ovlaštenja</th>
-              <th>Opis</th>
+              <th>{t("studioRoles.colNaziv")}</th>
+              <th className="num">{t("studioRoles.colNivoOvlastenja")}</th>
+              <th>{t("studioRoles.colOpis")}</th>
             </tr>
           </thead>
 
@@ -336,7 +330,7 @@ export default function RolesClient({
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={3} style={{ color: "var(--muted)", padding: 16 }}>
-                  Nema uloga za prikaz.
+                  {t("studioRoles.noItems")}
                 </td>
               </tr>
             ) : (
@@ -349,7 +343,7 @@ export default function RolesClient({
                     onClick={() => setSelectedId(it.role_id)}
                     onDoubleClick={() => openEditForItem(it)}
                     style={subtleRowStyle(isSelected)}
-                    title="Klik za selekciju, dupli klik za promjenu"
+                    title={t("studioRoles.rowTitle")}
                   >
                     <td className="cell-wrap">
                       <div
@@ -441,8 +435,8 @@ export default function RolesClient({
                 <div>
                   <div style={{ fontSize: 20, fontWeight: 700 }}>
                     {modalMode === "new"
-                      ? "Nova uloga"
-                      : "Promijeni ulogu"}
+                      ? t("studioRoles.modalNew")
+                      : t("studioRoles.modalEdit")}
                   </div>
                   <div
                     style={{
@@ -451,7 +445,7 @@ export default function RolesClient({
                       fontSize: 15,
                     }}
                   >
-                    Šifrarnik uloga (nivo ovlaštenja: veći broj = više prava).
+                    {t("studioRoles.modalSubtitle")}
                   </div>
                 </div>
               </div>
@@ -476,14 +470,14 @@ export default function RolesClient({
                       marginBottom: 8,
                     }}
                   >
-                    Naziv (obavezno)
+                    {t("studioRoles.labelNaziv")}
                   </div>
                   <input
                     value={form.naziv}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, naziv: e.target.value }))
                     }
-                    placeholder="npr. Administrator"
+                    placeholder={t("studioRoles.placeholderNaziv")}
                     autoFocus
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
@@ -498,7 +492,7 @@ export default function RolesClient({
                       marginBottom: 8,
                     }}
                   >
-                    Nivo ovlaštenja
+                    {t("studioRoles.labelNivoOvlastenja")}
                   </div>
                   <input
                     type="number"
@@ -509,7 +503,7 @@ export default function RolesClient({
                         nivo_ovlastenja: e.target.value,
                       }))
                     }
-                    placeholder="0"
+                    placeholder={t("studioRoles.placeholderNivo")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -523,14 +517,14 @@ export default function RolesClient({
                       marginBottom: 8,
                     }}
                   >
-                    Opis
+                    {t("studioRoles.labelOpis")}
                   </div>
                   <textarea
                     value={form.opis}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, opis: e.target.value }))
                     }
-                    placeholder="Opis uloge i ovlaštenja"
+                    placeholder={t("studioRoles.placeholderOpis")}
                     className="input"
                     style={{
                       width: "100%",
@@ -553,7 +547,7 @@ export default function RolesClient({
                     marginBottom: 10,
                   }}
                 >
-                  Sistem
+                  {t("studioRoles.system")}
                 </div>
                 <div
                   style={{
@@ -564,7 +558,7 @@ export default function RolesClient({
                 >
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 14 }}>
-                      ID
+                      {t("studioRoles.id")}
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.role_id ?? "—"}
@@ -572,7 +566,7 @@ export default function RolesClient({
                   </div>
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 14 }}>
-                      Kreirano
+                      {t("studioRoles.created")}
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.created_at ? fmtDateTime(form.created_at) : "—"}
@@ -580,7 +574,7 @@ export default function RolesClient({
                   </div>
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 14 }}>
-                      Ažurirano
+                      {t("studioRoles.updated")}
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.updated_at ? fmtDateTime(form.updated_at) : "—"}
@@ -613,7 +607,7 @@ export default function RolesClient({
                     onClick={goPrev}
                     disabled={isPending || !canPrev}
                     style={btnDisabled(isPending || !canPrev)}
-                    title="Prethodni"
+                    title={t("studioRoles.prev")}
                   >
                     ◀
                   </button>
@@ -622,7 +616,7 @@ export default function RolesClient({
                     onClick={goNext}
                     disabled={isPending || !canNext}
                     style={btnDisabled(isPending || !canNext)}
-                    title="Naredni"
+                    title={t("studioRoles.next")}
                   >
                     ▶
                   </button>
@@ -635,7 +629,7 @@ export default function RolesClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                Otkaži
+                {t("studioRoles.cancel")}
               </button>
               <button
                 className="btn btn--active"
@@ -643,7 +637,7 @@ export default function RolesClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                {isPending ? "Snima..." : "Snimi"}
+                {isPending ? t("studioRoles.saving") : t("studioRoles.save")}
               </button>
             </div>
           </div>

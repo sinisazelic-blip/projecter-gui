@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { TalentRow } from "./page";
 import { createTalent, setTalentActive, updateTalent } from "./actions";
 import ImportSection from "../ImportSection";
+import { useTranslation } from "@/components/LocaleProvider";
 
 type VrstaTalenta =
   | "spiker"
@@ -12,7 +13,16 @@ type VrstaTalenta =
   | "pjevac"
   | "dijete"
   | "muzicar"
-  | "ostalo";
+  | "ostalo"
+  | "snimatelj"
+  | "kompozitor"
+  | "copywriter"
+  | "producent"
+  | "montazer"
+  | "reziser"
+  | "organizator"
+  | "account"
+  | "developer";
 
 type FormState = {
   talent_id?: number;
@@ -112,12 +122,49 @@ const pageTitleRowStyle: React.CSSProperties = {
   gap: 10,
 };
 
+const VRSTA_KEYS: Record<VrstaTalenta, string> = {
+  spiker: "vrstaSpiker",
+  glumac: "vrstaGlumac",
+  pjevac: "vrstaPjevac",
+  muzicar: "vrstaMuzicar",
+  dijete: "vrstaDijete",
+  ostalo: "vrstaOstalo",
+  snimatelj: "vrstaSnimatelj",
+  kompozitor: "vrstaKompozitor",
+  copywriter: "vrstaCopywriter",
+  producent: "vrstaProducent",
+  montazer: "vrstaMontazer",
+  reziser: "vrstaReziser",
+  organizator: "vrstaOrganizator",
+  account: "vrstaAccount",
+  developer: "vrstaDeveloper",
+};
+
+const VRSTA_LIST: VrstaTalenta[] = [
+  "account",
+  "copywriter",
+  "developer",
+  "dijete",
+  "glumac",
+  "kompozitor",
+  "montazer",
+  "muzicar",
+  "organizator",
+  "ostalo",
+  "pjevac",
+  "producent",
+  "reziser",
+  "snimatelj",
+  "spiker",
+];
+
 export default function TalentiClient({
   initialItems,
 }: {
   initialItems: TalentRow[];
 }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [isPending, startTransition] = useTransition();
 
   const [q, setQ] = useState("");
@@ -189,7 +236,7 @@ export default function TalentiClient({
 
     return (
       <span className="badge" data-status={status}>
-        {v}
+        {t(`studioTalenti.${VRSTA_KEYS[v]}`)}
       </span>
     );
   }
@@ -197,7 +244,7 @@ export default function TalentiClient({
   function badgeStatus(active: boolean) {
     return (
       <span className="badge" data-status={active ? "active" : "closed"}>
-        {active ? "Aktivno" : "Neaktivno"}
+        {active ? t("studioTalenti.active") : t("studioTalenti.inactive")}
       </span>
     );
   }
@@ -359,8 +406,8 @@ export default function TalentiClient({
   }
 
   const kpiText = showInactive
-    ? `Aktivni: ${counts.active} / Ukupno: ${counts.total}`
-    : `Aktivni: ${counts.active}`;
+    ? `${t("studioTalenti.activeCount")}: ${counts.active} / ${t("studioTalenti.totalCount")}: ${counts.total}`
+    : `${t("studioTalenti.activeCount")}: ${counts.active}`;
 
   return (
     <div className="container" style={pageShellStyle}>
@@ -375,15 +422,15 @@ export default function TalentiClient({
                 margin: 0,
               }}
             >
-              Talenti
+              {t("studioTalenti.title")}
             </h1>
           </div>
           <div style={{ marginTop: 6, color: "var(--muted)", fontSize: 14 }}>
-            Klikni red da ga označiš, pa koristi <b>Promijeni</b> /{" "}
-            <b>Obriši</b>.
+            {t("studioTalenti.hintClick")} <b>{t("studioTalenti.change")}</b> /{" "}
+            <b>{t("studioTalenti.hintChangeDelete")}</b>.
             <span style={{ opacity: 0.9 }}>
               {" "}
-              “Obriši” = deaktiviraj (istorija ostaje).
+              {t("studioTalenti.hintDeleteMeaning")}
             </span>
           </div>
         </div>
@@ -402,7 +449,7 @@ export default function TalentiClient({
             disabled={isPending}
             style={btnDisabled(isPending)}
           >
-            <span style={{ marginRight: 6 }}>➕</span> Novi
+            <span style={{ marginRight: 6 }}>➕</span> {t("studioTalenti.new")}
           </button>
 
           <button
@@ -410,9 +457,9 @@ export default function TalentiClient({
             onClick={openEdit}
             disabled={!selectedItem || isPending}
             style={btnDisabled(!selectedItem || isPending)}
-            title={!selectedItem ? "Prvo odaberi red" : "Promijeni"}
+            title={!selectedItem ? t("studioTalenti.selectFirst") : t("studioTalenti.change")}
           >
-            <span style={{ marginRight: 6 }}>✏️</span> Promijeni
+            <span style={{ marginRight: 6 }}>✏️</span> {t("studioTalenti.change")}
           </button>
 
           <button
@@ -422,20 +469,20 @@ export default function TalentiClient({
             style={btnDisabled(!selectedItem || isPending)}
             title={
               !selectedItem
-                ? "Prvo odaberi red"
+                ? t("studioTalenti.selectFirst")
                 : selectedIsActive
-                  ? "Deaktiviraj"
-                  : "Aktiviraj"
+                  ? t("studioTalenti.deactivate")
+                  : t("studioTalenti.activate")
             }
           >
             <span style={{ marginRight: 6 }}>
               {selectedIsActive ? "🗑️" : "✅"}
             </span>
-            {selectedIsActive ? "Obriši" : "Aktiviraj"}
+            {selectedIsActive ? t("studioTalenti.delete") : t("studioTalenti.activate")}
           </button>
 
           <button className="btn" onClick={onClosePage}>
-            <span style={{ marginRight: 6 }}>✖</span> Zatvori
+            <span style={{ marginRight: 6 }}>✖</span> {t("studioTalenti.close")}
           </button>
         </div>
       </div>
@@ -467,7 +514,7 @@ export default function TalentiClient({
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Traži (ime, vrsta, email, telefon)…"
+              placeholder={t("studioTalenti.searchPlaceholder")}
               style={{ width: 420, maxWidth: "100%" }}
             />
 
@@ -486,7 +533,7 @@ export default function TalentiClient({
                 onChange={(e) => setShowInactive(e.target.checked)}
                 style={{ width: 16, height: 16 }}
               />
-              Prikaži deaktivirane
+              {t("studioTalenti.showInactive")}
             </label>
           </div>
 
@@ -514,11 +561,11 @@ export default function TalentiClient({
         <table className="table">
           <thead>
             <tr>
-              <th>Ime i prezime</th>
-              <th>Vrsta</th>
-              <th>Kontakt</th>
-              <th>Napomena</th>
-              <th>Status</th>
+              <th>{t("studioTalenti.colImePrezime")}</th>
+              <th>{t("studioTalenti.colVrsta")}</th>
+              <th>{t("studioTalenti.colKontakt")}</th>
+              <th>{t("studioTalenti.colNapomena")}</th>
+              <th>{t("studioTalenti.colStatus")}</th>
             </tr>
           </thead>
 
@@ -526,7 +573,7 @@ export default function TalentiClient({
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={5} style={{ color: "var(--muted)", padding: 16 }}>
-                  Nema talenata za prikaz.
+                  {t("studioTalenti.noTalents")}
                 </td>
               </tr>
             ) : (
@@ -548,7 +595,7 @@ export default function TalentiClient({
                     onDoubleClick={() => openEditForItem(it)}
                     style={subtleRowStyle(isSelected)}
                     data-closed={isActive ? "0" : "1"}
-                    title="Klikni za selekciju, dvoklik za izmjenu"
+                    title={t("studioTalenti.rowTitle")}
                   >
                     <td className="cell-wrap">
                       <div
@@ -645,7 +692,7 @@ export default function TalentiClient({
                 />
                 <div>
                   <div style={{ fontSize: 20, fontWeight: 700 }}>
-                    {modalMode === "new" ? "Novi talenat" : "Promijeni talenat"}
+                    {modalMode === "new" ? t("studioTalenti.modalNew") : t("studioTalenti.modalEdit")}
                   </div>
                   <div
                     style={{
@@ -654,7 +701,7 @@ export default function TalentiClient({
                       fontSize: 15,
                     }}
                   >
-                    Šifrarnik talenata (bez brisanja — samo deaktivacija).
+                    {t("studioTalenti.modalSubtitle")}
                   </div>
                 </div>
               </div>
@@ -676,14 +723,14 @@ export default function TalentiClient({
                       marginBottom: 8,
                     }}
                   >
-                    Ime i prezime (obavezno)
+                    {t("studioTalenti.labelImePrezime")}
                   </div>
                   <input
                     value={form.ime_prezime}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, ime_prezime: e.target.value }))
                     }
-                    placeholder="npr. Muhamed Bahonjić"
+                    placeholder={t("studioTalenti.placeholderImePrezime")}
                     autoFocus
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
@@ -698,7 +745,7 @@ export default function TalentiClient({
                       marginBottom: 8,
                     }}
                   >
-                    Vrsta
+                    {t("studioTalenti.labelVrsta")}
                   </div>
                   <select
                     value={form.vrsta}
@@ -711,12 +758,17 @@ export default function TalentiClient({
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   >
-                    <option value="spiker">spiker</option>
-                    <option value="glumac">glumac</option>
-                    <option value="pjevac">pjevac</option>
-                    <option value="muzicar">muzicar</option>
-                    <option value="dijete">dijete</option>
-                    <option value="ostalo">ostalo</option>
+                    {[...VRSTA_LIST]
+                      .sort((a, b) =>
+                        t(`studioTalenti.${VRSTA_KEYS[a]}`).localeCompare(
+                          t(`studioTalenti.${VRSTA_KEYS[b]}`),
+                        )
+                      )
+                      .map((v) => (
+                        <option key={v} value={v}>
+                          {t(`studioTalenti.${VRSTA_KEYS[v]}`)}
+                        </option>
+                      ))}
                   </select>
                 </div>
 
@@ -736,7 +788,7 @@ export default function TalentiClient({
                       fontWeight: 700,
                     }}
                   >
-                    Aktivno
+                    {t("studioTalenti.labelAktivno")}
                   </span>
                 </div>
 
@@ -750,14 +802,14 @@ export default function TalentiClient({
                       marginBottom: 8,
                     }}
                   >
-                    Email
+                    {t("studioTalenti.labelEmail")}
                   </div>
                   <input
                     value={form.email}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, email: e.target.value }))
                     }
-                    placeholder="email@domena.com"
+                    placeholder={t("studioTalenti.placeholderEmail")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -771,14 +823,14 @@ export default function TalentiClient({
                       marginBottom: 8,
                     }}
                   >
-                    Telefon
+                    {t("studioTalenti.labelTelefon")}
                   </div>
                   <input
                     value={form.telefon}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, telefon: e.target.value }))
                     }
-                    placeholder="+387 ..."
+                    placeholder={t("studioTalenti.placeholderTelefon")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -792,14 +844,14 @@ export default function TalentiClient({
                       marginBottom: 8,
                     }}
                   >
-                    Napomena
+                    {t("studioTalenti.labelNapomena")}
                   </div>
                   <textarea
                     value={form.napomena}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, napomena: e.target.value }))
                     }
-                    placeholder="Interna napomena"
+                    placeholder={t("studioTalenti.placeholderNapomena")}
                     className="input"
                     style={{ width: "100%", minHeight: 90, resize: "vertical", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -815,7 +867,7 @@ export default function TalentiClient({
                     textTransform: "uppercase",
                   }}
                 >
-                  Sistem
+                  {t("studioTalenti.system")}
                 </div>
                 <div
                   style={{
@@ -827,7 +879,7 @@ export default function TalentiClient({
                 >
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                      ID
+                      {t("studioTalenti.id")}
                     </div>
                     <div style={{ fontWeight: 800 }}>
                       {form.talent_id ?? "—"}
@@ -835,7 +887,7 @@ export default function TalentiClient({
                   </div>
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                      Kreirano
+                      {t("studioTalenti.created")}
                     </div>
                     <div style={{ fontWeight: 800 }}>
                       {form.created_at ? fmtDateTime(form.created_at) : "—"}
@@ -843,7 +895,7 @@ export default function TalentiClient({
                   </div>
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                      Updated
+                      {t("studioTalenti.updated")}
                     </div>
                     <div style={{ fontWeight: 800 }}>
                       {form.updated_at ? fmtDateTime(form.updated_at) : "—"}
@@ -876,7 +928,7 @@ export default function TalentiClient({
                     onClick={goPrev}
                     disabled={isPending || !canPrev}
                     style={btnDisabled(isPending || !canPrev)}
-                    title="Prethodni"
+                    title={t("studioTalenti.prev")}
                   >
                     ◀
                   </button>
@@ -885,7 +937,7 @@ export default function TalentiClient({
                     onClick={goNext}
                     disabled={isPending || !canNext}
                     style={btnDisabled(isPending || !canNext)}
-                    title="Naredni"
+                    title={t("studioTalenti.next")}
                   >
                     ▶
                   </button>
@@ -898,7 +950,7 @@ export default function TalentiClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                Otkaži
+                {t("studioTalenti.cancel")}
               </button>
               <button
                 className="btn btn--active"
@@ -906,7 +958,7 @@ export default function TalentiClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                {isPending ? "Snima..." : "Snimi"}
+                {isPending ? t("studioTalenti.saving") : t("studioTalenti.save")}
               </button>
             </div>
           </div>
@@ -929,8 +981,8 @@ export default function TalentiClient({
               <div>
                 <div style={{ fontSize: 20, fontWeight: 800 }}>
                   {selectedIsActive
-                    ? "Deaktivirati talenat?"
-                    : "Aktivirati talenat?"}
+                    ? t("studioTalenti.confirmDeactivateTitle")
+                    : t("studioTalenti.confirmActivateTitle")}
                 </div>
                 <div
                   style={{ marginTop: 6, color: "var(--muted)", fontSize: 16 }}
@@ -954,8 +1006,8 @@ export default function TalentiClient({
               }}
             >
               {selectedIsActive
-                ? "Talenat će biti sakriven iz liste aktivnih. Možeš ga vratiti kasnije."
-                : "Talenat će opet biti vidljiv u listi aktivnih."}
+                ? t("studioTalenti.confirmDeactivateBody")
+                : t("studioTalenti.confirmActivateBody")}
             </div>
 
             <div
@@ -973,7 +1025,7 @@ export default function TalentiClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                Otkaži
+                {t("studioTalenti.cancel")}
               </button>
               <button
                 className="btn btn--active"
@@ -982,10 +1034,10 @@ export default function TalentiClient({
                 style={btnDisabled(isPending)}
               >
                 {isPending
-                  ? "Radi..."
+                  ? t("studioTalenti.working")
                   : selectedIsActive
-                    ? "Deaktiviraj"
-                    : "Aktiviraj"}
+                    ? t("studioTalenti.deactivate")
+                    : t("studioTalenti.activate")}
               </button>
             </div>
           </div>

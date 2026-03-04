@@ -1,6 +1,9 @@
 import RadneFazeClient from "./RadneFazeClient";
 import { query } from "@/lib/db";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +18,10 @@ export type RadnaFazaRow = {
 };
 
 export default async function RadneFazePage() {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) ?? "sr";
+  const t = getT(locale);
+
   const rows = await query(
     `SELECT faza_id, naziv, opis_poslova, slozenost_posla, vrsta_posla, created_at, updated_at
        FROM radne_faze
@@ -38,13 +45,13 @@ export default async function RadneFazePage() {
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Radne faze</div>
-                  <div className="brandSub">Studio / Šifarnici</div>
+                  <div className="brandTitle">{t("studioRadneFaze.title")}</div>
+                  <div className="brandSub">{t("studioRadneFaze.subtitle")}</div>
                 </div>
               </div>
 
-              <Link href="/dashboard" className="btn" title="Dashboard">
-                🏠 Dashboard
+              <Link href="/dashboard" className="btn" title={t("dashboard.title")}>
+                🏠 {t("dashboard.title")}
               </Link>
             </div>
 
