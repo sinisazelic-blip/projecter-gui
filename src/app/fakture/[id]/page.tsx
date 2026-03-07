@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import FluxaLogo from "@/components/FluxaLogo";
 
 function fmtDDMMYYYYFromISO(iso: string | null): string {
   if (!iso) return "—";
@@ -192,12 +193,7 @@ export default function FakturaDetailPage() {
             <div className="topRow" style={{ justifyContent: "space-between" }}>
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
                   <div className="brandTitle">📄 Faktura #{faktura.broj_fakture}</div>

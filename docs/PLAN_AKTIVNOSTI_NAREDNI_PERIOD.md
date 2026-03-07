@@ -4,6 +4,26 @@
 
 ---
 
+## Status realizacije (23.02.2026)
+
+**Urađeno danas:**
+
+| Stavka | Status |
+|--------|--------|
+| **Čišćenje baze (2.2)** | ✅ Završeno. Obrisani testni podaci 2026: fakture, ponude, deal timeline, inicijacije, blagajna stavke, projektni troškovi (jan–feb 2026), testni projekti (od #5754). Arhiva (projekti do #5753) ostala. |
+| **Backup baze** | ✅ Skripta `scripts/backup-studio-db.bat` + upute za Workbench; backup radi iz MySQL Workbencha. |
+| **Tenant / Licence sistem (1.2)** | ✅ Implementirano: tabele `plans` i `tenants` (s `licence_token`), modul Licence (Dashboard → 🔐 Licence), lista tenanata, Produži / Promijeni plan / Suspend / Vrati pristup, Novi tenant, token (kopiraj / regeneriši). **Licence check:** klijentska Fluxa šalje token prema master API-ju (`/api/public/licence-check`); ako `allowed: false` (suspendovano ili isteklo), prikazuje se blok stranica. Sve kontrolišete iz konzole. Docs: **MASTER_FLUXA_NOVI_KORISNICI.md**. |
+| **Tooltip (2.6)** | ✅ Završeno. Globalni custom tooltip presreće sve `title` atribute; veći font (15px / 18px na 4K), čitljiv na običnim i 4K displejima; tooltip služi kao svojevrsni help. Pojedinačne korekcije po potrebi. |
+
+**Na čekanju / sljedeće:**
+
+| Stavka | Napomena |
+|--------|----------|
+| **Fiskalni uređaj (2.1)** | **Čekamo dodatna pojašnjenja** (format zahtjeva, obavezna polja, poruka greške) od developera / servisera prije nastavka implementacije. |
+| **Ostalo iz plana** | V. sekciju „Šta nam je ostalo” na kraju dokumenta. |
+
+---
+
 ## Pregled
 
 Plan je podijeljen u:
@@ -17,6 +37,8 @@ Detaljniji koncepti: **PLAN_JEZICI_I_PRETPLATA.md**, **I18N_LOKAL_KAO_TRZISTE.md
 ---
 
 # 1. Prodaja licenci i admin tenant centar
+
+**Status (23.02.2026):** ✅ **Implementirano.** Tabele `plans` i `tenants` (s `licence_token`), modul Licence (Dashboard → 🔐 Licence), lista tenanata, Produži / Promijeni plan / Suspend / Vrati pristup, Novi tenant, token (prikaz, kopiraj, regeneriši). Provjera pretplate pri loginu (redirect na „Pretplata je istekla”). **Licence check:** klijentska instanca u .env ima `LICENCE_CHECK_URL` i `LICENCE_TOKEN`; pri učitavanju pita master API; ako suspendovano ili isteklo → blok stranica („Obratite se administratoru Fluxe”). V. **MASTER_FLUXA_NOVI_KORISNICI.md**.
 
 ## 1.1 Koncept (kratki rezime)
 
@@ -49,21 +71,18 @@ Detaljniji koncepti: **PLAN_JEZICI_I_PRETPLATA.md**, **I18N_LOKAL_KAO_TRZISTE.md
 
 - **Cilj:** Fiskalni uređaj (L-PFR API) povezan s Fluxom; pri izboru „DA” za automatsku fiskalizaciju u wizardu – poziv prema uređaju, odgovor (QR, PFR broj, vrijeme, brojač) snimiti u fakturu i prikazati **fiskalni blok** na PDF-u.
 - **Detalji:** Vidi **FLUXA-V1-FISKAL-NAPOMENE.md** (poglavlja 2 i dalje).
-- **Implementacija:** Koristiti postavke iz `firma_fiskal_settings` (Base URL, EsirKey, PIN). Wizard korak 2/3: ako automatska fiskalizacija → poziv API-ja uređaja; u fakturu upisati PFR broj i ostale elemente; na PDF-u ispod stavki prikazati blok „FISKALNI RAČUN” (QR, PFR vrijeme, PFR broj, brojač, KRAJ FISKALNOG RAČUNA). Kad je ručno – nema bloka, PFR ostaje u headeru kao sada. PFR broj za sljedeću fakturu: koristiti ono što PU vrati (n+1).
+- **Status (23.02.2026):** Čekamo odgovor developera (OFS / serviser) na pitanja o formatu zahtjeva i poruci greške (400 Bad Request). **Implementacija planirana za ponedjeljak.** Fiskalni blok na PDF-u (layout) već pripremljen; API poziv treba uskladiti s odgovorom.
+- **Implementacija (kad stigne spec):** Koristiti postavke iz `firma_fiskal_settings`. Wizard: ako automatska fiskalizacija → poziv API-ja; u fakturu upisati PFR broj i ostale elemente; na PDF-u blok „FISKALNI RAČUN” (QR, PFR vrijeme, broj, brojač, KRAJ).
 
 ## 2.2 Čišćenje baze – testovi i arhiva
 
 - **Cilj:** Ukloniti sve test podatke (projekti, dialovi, ponude, izvodi, itd.). Ostaviti **samo arhivu** svih projekata do 31.12.2025.
-- **Provjera:** Posljednji arhivirani projekat – pretpostavlja se **#5753** (provjeriti u bazi).
-- **Poslije čišćenja:** Kad Fluxa krene u upotrebu, prvi sljedeći projekat je **#5754**. Prva faktura: **001/2026**. PFR **51** (ili onaj koji PU RS vrati pri prvoj automatskoj fiskalizaciji – v. FLUXA-V1-FISKAL-NAPOMENE).
-- **Implementacija:** Backup baze; skripta ili ručno brisanje test projekata, deals, ponuda, izvoda koji nisu dio arhive; zadržati projekte arhivirane do 31.12.2025. Brojač faktura i PFR postaviti u skladu s gore navedenim.
+- **Status (23.02.2026):** ✅ **Završeno.** Korištene skripte: `scripts/clean-2026-test-data.sql` (fakture, ponude, inicijacije, blagajna), `scripts/clean-2026-troskovi.sql` (projektni troškovi jan–feb 2026), `scripts/clean-2026-test-projekti.sql` (projekti od #5754). Backup: `scripts/backup-studio-db.bat` + Workbench opcije. Arhiva (projekti do #5753) ostala.
 
 ## 2.3 Završetak lokalizacije (i18n)
 
-- **Cilj:** Lokalizacija = **lokal (tržište)**, ne samo jezik. Prvo EU (valuta EUR, VAT, terminologija: Sales Ledger, Purchase Ledger, itd.), kasnije GB (funte), USA (USD), CH (CHF) – svako tržište svojim pravilima i oznakama. Otvorena mogućnost za dodavanje novih lokalizacija i jezika.
-- **Detalji:** Vidi **I18N_LOKAL_KAO_TRZISTE.md**, **PLAN_JEZICI_I_PRETPLATA.md** (pogl. 1 i 2).
-- **Implementacija:** Rad **jedan prozor po jedan**: za svaki prozor – stringovi u locale fajlovima (sr + en, s pravom terminologijom za tržište) + logika (valuta, porez, formati) ovisna o lokalu. Konfiguracija po regionu (stope VAT, valute, obavezna polja) – config ili tenant/postavke. Ne samo zamjena teksta, nego i prilagodba ponašanja.
-- **Status (23.02.2026):** Prilagodba/prevod na i18n (zamjena UI stringova, sr + en) **završena** za sve planirane Studio stranice i šifarnike. Sljedeći korak: pregled i popravke; zatim dalje po redu (lokal = tržište, valuta/VAT po potrebi).
+- **Cilj:** Lokalizacija = **lokal (tržište)**, ne samo jezik. Prvo EU (valuta EUR, VAT, terminologija), kasnije GB, USA, CH – svako tržište svojim pravilima i oznakama.
+- **Status (23.02.2026):** ✅ **Završeno.** Dvojezična varijanta (sr + en), bira se na dugme. Dalje proširenje (lokal = tržište, valuta/VAT po regionu) po potrebi.
 
 ## 2.4 User management i profil „Saradnik”
 
@@ -82,7 +101,8 @@ Detaljniji koncepti: **PLAN_JEZICI_I_PRETPLATA.md**, **I18N_LOKAL_KAO_TRZISTE.md
 ## 2.6 Tooltip (zamjena za help)
 
 - **Cilj:** Na funkcijska dugmad (i gdje god ima smisla) pri prelasku mišem prikazati **tooltip** – kratko objašnjenje šta dugme radi. Tooltip treba biti **uočljiviji** (trenutno previše sitan); treba da bude zamjena za help gdje je moguće.
-- **Implementacija:** Pregled postojećih tooltipova (title, aria-label, custom komponenta); povećati font/veličinu i kontrast; uvesti konzistentnu komponentu (npr. `Tooltip`) i koristiti je na ključnim akcijama. Opciono: i18n za tekstove tooltipova (locale).
+- **Status (17.02.2026):** ✅ **Završeno.** Globalni custom tooltip (`GlobalTooltip.jsx`) presreće sve native `title` atribute; prikazuje ih većim fontom (15px, na 4K 18px), čitljivo na običnim i 4K displejima. Pojedinačne korekcije teksta/prikaza po potrebi.
+- **Implementacija (urađeno):** Presretanje `title` u layoutu; CSS klasa `.fluxa-global-tooltip` u globals.css; media query za 4K.
 
 ## 2.7 Export prazne SQL baze (struktura) za novi tenant
 
@@ -98,26 +118,50 @@ Detaljniji koncepti: **PLAN_JEZICI_I_PRETPLATA.md**, **I18N_LOKAL_KAO_TRZISTE.md
 
 # 3. Redoslijed i zavisnosti
 
-Predloženi redoslijed (može se prilagoditi):
+Predloženi redoslijed (ažurirano 23.02.2026):
 
-| Red | Zadatak | Napomena |
-|-----|---------|----------|
-| 1 | Čišćenje baze (2.2) | Da imate „čistu” arhivu i jasne brojeve (#5754, 001/2026, PFR). |
-| 2 | Automatski fiskalni račun (2.1) | Završetak fiskalnog toka u fakturi prije go-live. |
-| 3 | Export prazne SQL baze (2.7) | Spremno za konfiguraciju novog tenanta; može ranije. |
-| 4 | Tenant + plan + subscription (1.2) | Baza i logika za tenante, planove, datume isteka; provjera pri loginu. |
-| 5 | Admin modul (1.2) | Vaša super verzija – modul za listu tenanata, produženje, promjena plana; build/config za client verziju bez modula. |
-| 6 | User management + Saradnik (2.4) | Uloge, prava, limit saradnika po tenantu. |
-| 7 | i18n lokalizacija (2.3) | Jedan prozor po jedan, lokal = tržište. |
-| 8 | Tooltip (2.6) | Uočljiviji, zamjena za help. |
-| 9 | Dokumentacija i User manual (2.5) | Za nove korisnike. |
-| – | Poslovanje Studio TAF (2.8) | Priprema ranije po potrebi, paralelno s ostalim. |
-| – | Online plaćanje (PayPal Business, webhook) | Nakon prve prodaje; unutar godinu dana. |
+| Red | Zadatak | Status |
+|-----|---------|--------|
+| 1 | Čišćenje baze (2.2) | ✅ Završeno |
+| 2 | Automatski fiskalni račun (2.1) | ⏳ Čekamo odgovor developera; implementacija u ponedjeljak |
+| 3 | Export prazne SQL baze (2.7) | 📋 Ostalo |
+| 4 | Tenant + plan + subscription (1.2) | ✅ Završeno |
+| 5 | Admin modul + licence check (1.2) | ✅ Završeno |
+| 6 | User management + Saradnik (2.4) | 📋 Ostalo |
+| 7 | i18n lokalizacija (2.3) | ✅ Završeno (dvojezično, bira se na dugme) |
+| 8 | Tooltip (2.6) | ✅ Završeno |
+| 9 | Dokumentacija i User manual (2.5) | 📋 Ostalo |
+| – | Poslovanje Studio TAF (2.8) | Priprema po potrebi, paralelno |
+| – | Online plaćanje (PayPal, webhook) | Nakon prve prodaje |
 
 ---
 
-# 4. Reference na postojeće planove
+# 4. Šta nam je ostalo
 
+**Na čekanju (traže se pojašnjenja):**
+
+- **Fiskalni uređaj (2.1)** – za nastavak implementacije potrebna su **dodatna pojašnjenja** (format zahtjeva, obavezna polja, poruka greške) od developera / servisera. Dok to ne stigne, ovaj zadatak ne krećemo.
+
+**Šta još imamo raditi (osim fiskalnog uređaja):**
+
+1. **Export prazne SQL baze (2.7)** – schema-only export za novi tenant; spremno za prve klijente.
+2. **User management + Saradnik (2.4)** – uloge, prava po modulima, profil Saradnik, limit saradnika po tenantu.
+3. **Dokumentacija i User manual (2.5)** – korak-po-korak za nove korisnike.
+
+*(Tooltip (2.6) je završen.)*
+
+**Kasnije / po potrebi:**
+
+- Poslovanje Studio TAF (2.8) – pravno/računovodstveno za licence i DO troškove.
+- Online plaćanje (webhook za produženje pretplate).
+- **Promo / video:** angažovan videograf – passthrough i video materijali za promo Fluxe kad aplikacija bude gotova.
+- **Web portal Fluxe** – javna stranica u Fluxa stilu (engleski, opušteno, umjetnički ton): informacije, cjenovnik, demo (link na app.studiotaf.xyz Demo/Guest), login za korisnike, samousluga licenci, podrška. V. **FLUXA_PORTAL_SPEC.md**.
+
+---
+
+# 5. Reference na postojeće planove
+
+- **MASTER_FLUXA_NOVI_KORISNICI.md** – kako vezati kupce licence, licence check, Suspend, token.
 - **FLUXA_KANONSKI_PRIKAZ.md** – kanonski spisak: šta Fluxa trenutno radi i šta će raditi kad završimo (sve u jednom mjestu).
 - **PLAN_JEZICI_I_PRETPLATA.md** – jezici, tržišta, pretplata, cjenovni razredi.
 - **I18N_LOKAL_KAO_TRZISTE.md** – zašto lokal = tržište, kako raditi prozor po prozor.

@@ -4,6 +4,7 @@ import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
 import { query } from "@/lib/db";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
+import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -206,8 +207,7 @@ export default async function BankaPage({ searchParams }) {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>

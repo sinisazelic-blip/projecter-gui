@@ -29,13 +29,13 @@ export async function GET(req: Request) {
       params.push(Number(narucilac_id));
     }
 
-    // period filter je po closed_at
+    // period filter po closed_at (projekti bez audit zapisa ostaju u listi kad nema filtera)
     if (od) {
-      where.push("a.closed_at >= ?");
+      where.push("(a.closed_at >= ? OR a.closed_at IS NULL)");
       params.push(`${od} 00:00:00`);
     }
     if (doD) {
-      where.push("a.closed_at <= ?");
+      where.push("(a.closed_at <= ? OR a.closed_at IS NULL)");
       params.push(`${doD} 23:59:59`);
     }
 
@@ -56,7 +56,7 @@ export async function GET(req: Request) {
           ELSE ROUND(vf.budzet_planirani * 1.17, 2)
         END AS sa_pdv_km
       FROM projekti p
-      JOIN (
+      LEFT JOIN (
         SELECT projekat_id, MIN(created_at) AS closed_at
         FROM project_audit
         WHERE action = 'PROJECT_CLOSE'

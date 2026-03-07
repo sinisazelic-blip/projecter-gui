@@ -32,6 +32,18 @@ function ensureCell(byYear: Record<number, YearRow>, g: number, m: number): Mont
   return byYear[g].mjeseci[m];
 }
 
+/** Stvarno ime tabele stg_master_finansije (zbog case-sensitivity na nekim serverima). Klijent = narucilac_id, krajnji_klijent_id (imena u tabeli klijenti). */
+async function getStgTableName(): Promise<string> {
+  try {
+    const tables = (await query(
+      `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND LOWER(TABLE_NAME) = 'stg_master_finansije' LIMIT 1`
+    )) as { TABLE_NAME: string }[];
+    return (tables ?? [])[0]?.TABLE_NAME ?? "stg_master_finansije";
+  } catch {
+    return "stg_master_finansije";
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
@@ -42,28 +54,10 @@ export async function GET(req: NextRequest) {
     }
 
     const byYear: Record<number, YearRow> = {};
+    const archiveDateParams = [ARHIVA_CUTOFF, YEARS_BACK, ARHIVA_CUTOFF];
 
-    // Arhiva: stg_master_finansije po klijentu — ista logika kao Charts, 20 godina unazad
-    try {
-      const archiveRows = await query(
-        `
-        SELECT
-          YEAR(datum_zavrsetka) AS godina,
-          MONTH(datum_zavrsetka) AS mjesec,
-          ROUND(SUM(COALESCE(iznos_km, 0)), 2) AS realized,
-          ROUND(SUM(COALESCE(iznos_troska_km, 0)), 2) AS troskovi,
-          ROUND(SUM(COALESCE(iznos_ukupno_km, iznos_sa_pdv_km, iznos_km)) - SUM(COALESCE(iznos_km, 0)), 2) AS vat
-        FROM stg_master_finansije
-        WHERE datum_zavrsetka IS NOT NULL
-          AND datum_zavrsetka >= DATE_SUB(?, INTERVAL ? YEAR)
-          AND datum_zavrsetka <= ?
-          AND (COALESCE(narucilac_id, krajnji_klijent_id) = ?)
-        GROUP BY YEAR(datum_zavrsetka), MONTH(datum_zavrsetka)
-        ORDER BY godina, mjesec
-        `,
-        [ARHIVA_CUTOFF, YEARS_BACK, ARHIVA_CUTOFF, kid]
-      );
-      for (const r of Array.isArray(archiveRows) ? archiveRows : []) {
+    function applyArchiveRows(rows: unknown[]) {
+      for (const r of Array.isArray(rows) ? rows : []) {
         const g = (r as any).godina;
         const m = (r as any).mjesec;
         const cell = ensureCell(byYear, g, m);
@@ -73,8 +67,69 @@ export async function GET(req: NextRequest) {
         cell.profit = cell.realized - cell.troskovi - cell.vat;
         cell.margin_pct = cell.troskovi > 0 ? (cell.profit / cell.troskovi) * 100 : 0;
       }
-    } catch (archiveErr) {
-      console.warn("Margin po klijentu: arhiva (stg_master_finansije) nije učitana:", (archiveErr as Error)?.message);
+    }
+
+    // Arhiva: stg_master_finansije — narucilac_id, krajnji_klijent_id (ID; imena u tabeli klijenti). Stvarno ime tabele iz baze zbog case-sensitivity.
+    let archiveSource: "direct" | "join" | "none" = "none";
+    let archiveRowCount = 0;
+    const stgTableName = await getStgTableName();
+
+    // stg_master_finansije ima iznos_km, iznos_troska_km, datum_zavrsetka; iznos_ukupno_km/iznos_sa_pdv_km ne postoje u svim okruženjima
+    const safeTable = stgTableName.replace(/`/g, "``");
+    const stgSelect = `
+      SELECT
+        YEAR(s.datum_zavrsetka) AS godina,
+        MONTH(s.datum_zavrsetka) AS mjesec,
+        ROUND(SUM(COALESCE(s.iznos_km, 0)), 2) AS realized,
+        ROUND(SUM(COALESCE(s.iznos_troska_km, 0)), 2) AS troskovi,
+        0 AS vat
+      FROM \`${safeTable}\` s
+      WHERE s.datum_zavrsetka IS NOT NULL
+        AND s.datum_zavrsetka >= DATE_SUB(?, INTERVAL ? YEAR)
+        AND s.datum_zavrsetka <= ?
+        AND (s.narucilac_id = ? OR s.krajnji_klijent_id = ?)
+      GROUP BY YEAR(s.datum_zavrsetka), MONTH(s.datum_zavrsetka)
+      ORDER BY godina, mjesec
+    `;
+    const stgParams = [...archiveDateParams, kid, kid];
+    try {
+      const rows = await query(stgSelect, stgParams);
+      const arr = Array.isArray(rows) ? rows : [];
+      archiveRowCount = arr.length;
+      applyArchiveRows(arr);
+      archiveSource = "direct";
+    } catch (e) {
+      console.warn("Margin po klijentu: arhiva direct (narucilac_id/krajnji_klijent_id):", (e as Error)?.message);
+    }
+
+    if (archiveSource === "none") {
+      try {
+        const rows = await query(
+          `
+          SELECT
+            YEAR(s.datum_zavrsetka) AS godina,
+            MONTH(s.datum_zavrsetka) AS mjesec,
+            ROUND(SUM(COALESCE(s.iznos_km, 0)), 2) AS realized,
+            ROUND(SUM(COALESCE(s.iznos_troska_km, 0)), 2) AS troskovi,
+            0 AS vat
+          FROM \`${safeTable}\` s
+          INNER JOIN projekti p ON (p.id_po = s.id_po OR p.projekat_id = s.id_po)
+            AND (p.narucilac_id = ? OR p.krajnji_klijent_id = ?)
+          WHERE s.datum_zavrsetka IS NOT NULL
+            AND s.datum_zavrsetka >= DATE_SUB(?, INTERVAL ? YEAR)
+            AND s.datum_zavrsetka <= ?
+          GROUP BY YEAR(s.datum_zavrsetka), MONTH(s.datum_zavrsetka)
+          ORDER BY godina, mjesec
+          `,
+          [kid, kid, ...archiveDateParams]
+        );
+        const arr = Array.isArray(rows) ? rows : [];
+        archiveRowCount = arr.length;
+        applyArchiveRows(arr);
+        archiveSource = "join";
+      } catch (e2) {
+        console.warn("Margin po klijentu: arhiva (join projekti):", (e2 as Error)?.message);
+      }
     }
 
     // Od 2026: fakture (bill_to_klijent_id) i troškovi po projektima tog klijenta
@@ -109,7 +164,7 @@ export async function GET(req: NextRequest) {
           MONTH(pt.datum_troska) AS mjesec,
           ROUND(SUM(COALESCE(pt.iznos_km, 0)), 2) AS troskovi
         FROM projektni_troskovi pt
-        INNER JOIN projekti p ON p.projekt_id = pt.projekt_id AND (p.narucilac_id = ? OR p.krajnji_klijent_id = ?)
+        INNER JOIN projekti p ON p.projekat_id = pt.projekat_id AND (p.narucilac_id = ? OR p.krajnji_klijent_id = ?)
         WHERE (pt.status IS NULL OR pt.status <> 'STORNIRANO') AND pt.datum_troska >= ?
         GROUP BY YEAR(pt.datum_troska), MONTH(pt.datum_troska)
         `,
@@ -162,6 +217,7 @@ export async function GET(req: NextRequest) {
       klijent_id: kid,
       klijent_naziv: klijentNaziv,
       mjeseciNames: ["Jan", "Feb", "Mar", "Apr", "Maj", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"],
+      _debug: { archiveSource, archiveRowCount, stgTable: stgTableName },
     });
   } catch (e) {
     return NextResponse.json(

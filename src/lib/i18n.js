@@ -30,4 +30,14 @@ export function setLocaleInDocument(locale) {
   return value;
 }
 
+/**
+ * Valuta po regionu (Regional Settings).
+ * sr (BiH) → KM, en (EU) → EUR. Kasnije npr. "us" → USD.
+ */
+export function getCurrencyForLocale(locale) {
+  const loc = getValidLocale(locale);
+  if (loc === "en") return "EUR";
+  return "KM";
+}
+
 export { DEFAULT_LOCALE, VALID_LOCALES, COOKIE_NAME };

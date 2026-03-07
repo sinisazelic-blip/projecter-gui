@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CloseButtonClient } from "./CloseButtonClient";
 import { ReadOnlyGuard } from "@/components/ReadOnlyGuard";
+import { useTranslation } from "@/components/LocaleProvider";
 
 function money(v: any) {
   if (v === null || v === undefined || v === "") return "—";
@@ -46,27 +47,19 @@ function getCorePhase(p: any) {
 
 function statusNameFallbackById(status_id: any) {
   const sid = Number(status_id);
-  const map: Record<number, string> = {
-    1: "Otvoren",
-    2: "U razradi",
-    3: "Service",
-    4: "U produkciji",
-    5: "Produkcija",
-    6: "Postprodukcija",
-    7: "Završen",
-    8: "Isporučen",
-    9: "Fakturisan",
-    10: "Arhiviran",
-    11: "Na čekanju",
-    12: "Otkazan",
-  };
-  return map[sid] || `Status ${sid}`;
+  return `Status ${sid}`;
 }
 
-function getStatusName(p: any) {
+function getStatusName(p: any, t?: (key: string) => string) {
+  const id = p?.status_id;
+  if (t != null && id != null) {
+    const key = `statuses.project.${id}`;
+    const translated = t(key);
+    if (translated !== key) return translated;
+  }
   const n = p?.naziv_statusa || p?.status_naziv || p?.status_name;
   if (n) return String(n);
-  return statusNameFallbackById(p?.status_id);
+  return statusNameFallbackById(id);
 }
 
 function formatAuditAction(a: any) {
@@ -94,6 +87,7 @@ async function fetchJson(url: string) {
 }
 
 export default function ProjectDetailsClient() {
+  const { t } = useTranslation();
   const [id, setId] = useState<string | null>(null);
 
   const [p, setP] = useState<any>(null);
@@ -107,7 +101,7 @@ export default function ProjectDetailsClient() {
     setId(pid);
 
     if (!pid) {
-      setErr("Neispravan ID projekta.");
+      setErr(t("common.invalidProjectId"));
       setLoading(false);
       return;
     }
@@ -127,21 +121,21 @@ export default function ProjectDetailsClient() {
         const list = aj?.data || [];
         setAuditLast(Array.isArray(list) && list.length ? list[0] : null);
       } catch (e: any) {
-        setErr(e?.message || "Greška pri učitavanju projekta.");
+        setErr(e?.message || t("common.loadErrorProject"));
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [t]);
 
   const core = useMemo(() => getCorePhase(p), [p]);
   const isClosed = core === "closed";
-  const statusName = useMemo(() => getStatusName(p), [p]);
+  const statusName = useMemo(() => getStatusName(p, t), [p, t]);
 
   if (loading) {
     return (
       <div className="container">
-        <div className="card">Učitavam…</div>
+        <div className="card">{t("common.loading")}</div>
       </div>
     );
   }
@@ -158,12 +152,12 @@ export default function ProjectDetailsClient() {
           }}
         >
           <Link className="btn" href="/projects">
-            ← Nazad
+            ← {t("common.back")}
           </Link>
-          <h1 style={{ fontSize: 22, margin: 0 }}>Greška</h1>
+          <h1 style={{ fontSize: 22, margin: 0 }}>{t("common.error")}</h1>
         </div>
         <div className="card">
-          {err || "Neispravan ID projekta."}
+          {err || t("common.invalidProjectId")}
           <div style={{ marginTop: 8, opacity: 0.8, fontSize: 12 }}>
             (debug: pathname ={" "}
             {String(

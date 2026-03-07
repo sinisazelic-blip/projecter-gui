@@ -46,6 +46,7 @@ export async function POST(req) {
     pib: clean(form.get("pib")),
     pdv_broj: clean(form.get("pdv_broj")),
     broj_rjesenja: clean(form.get("broj_rjesenja")),
+    vat_rate_local: form.get("vat_rate_local") !== null && form.get("vat_rate_local") !== "" ? Number(form.get("vat_rate_local")) : null,
 
     logo_path: clean(form.get("logo_path")),
   };
@@ -89,9 +90,9 @@ export async function POST(req) {
         adresa, grad, postanski_broj, drzava,
         telefon, email, web,
         jib, pib, pdv_broj, broj_rjesenja,
+        vat_rate_local,
         logo_path,
 
-        -- legacy bank kolone ostaju NULL (računi idu u child tabelu)
         bank_naziv, bank_racun, swift, iban
       ) VALUES (
         1,
@@ -99,6 +100,7 @@ export async function POST(req) {
         ?, ?, ?, ?,
         ?, ?, ?,
         ?, ?, ?, ?,
+        ?,
         ?,
         NULL, NULL, NULL, NULL
       )
@@ -120,6 +122,7 @@ export async function POST(req) {
         payload.pib,
         payload.pdv_broj,
         payload.broj_rjesenja,
+        payload.vat_rate_local,
 
         payload.logo_path,
       ],

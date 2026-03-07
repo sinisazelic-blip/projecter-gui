@@ -1,13 +1,19 @@
 // src/app/inicijacije/page.tsx
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { query } from "@/lib/db";
+import { getValidLocale } from "@/lib/i18n";
+import { getT } from "@/lib/translations";
+import FluxaLogo from "@/components/FluxaLogo";
 import DealTableRow from "./DealTableRow";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "Deals lista",
-};
+export async function generateMetadata() {
+  const locale = getValidLocale((await cookies()).get("NEXT_LOCALE")?.value ?? "sr");
+  const t = getT(locale);
+  return { title: t("deals.title") };
+}
 
 // Date | string -> "YYYY-MM-DD" (ili null)
 function toISODateOnly(v: any): string | null {
@@ -59,17 +65,20 @@ function daysDiffFromToday(isoDate: string) {
   return Math.round(ms / (1000 * 60 * 60 * 24));
 }
 
-function semaforFor(isoDate: string | null) {
-  if (!isoDate) return { cls: "sem--none", title: "Nema roka" };
+function semaforFor(
+  isoDate: string | null,
+  t: (key: string) => string,
+) {
+  if (!isoDate) return { cls: "sem--none", title: t("deals.semaforNone") };
   const diff = daysDiffFromToday(isoDate);
   if (!Number.isFinite(diff))
-    return { cls: "sem--none", title: "Nevažeći rok" };
+    return { cls: "sem--none", title: t("deals.semaforInvalid") };
 
   if (diff <= 0)
-    return { cls: "sem--red", title: "Deadline je danas ili prošao" };
+    return { cls: "sem--red", title: t("deals.semaforOverdue") };
   if (diff <= 3)
-    return { cls: "sem--orange", title: "Deadline uskoro (≤ 3 dana)" };
-  return { cls: "sem--green", title: "Deadline OK (> 3 dana)" };
+    return { cls: "sem--orange", title: t("deals.semaforSoon") };
+  return { cls: "sem--green", title: t("deals.semaforOk") };
 }
 
 function normSignal(v: any) {
@@ -78,7 +87,10 @@ function normSignal(v: any) {
     .toUpperCase();
 }
 
-function signalMeta(sigRaw: any) {
+function signalMeta(
+  sigRaw: any,
+  t: (key: string) => string,
+) {
   const sig = normSignal(sigRaw);
 
   if (sig === "STOP") {
@@ -87,7 +99,7 @@ function signalMeta(sigRaw: any) {
       bg: "rgba(255, 80, 80, .16)",
       border: "rgba(255, 80, 80, .40)",
       dot: "rgba(255, 80, 80, .95)",
-      title: "STOP — eskalirano",
+      title: t("deals.signalStop"),
     };
   }
 
@@ -97,7 +109,7 @@ function signalMeta(sigRaw: any) {
       bg: "rgba(255, 165, 0, .16)",
       border: "rgba(255, 165, 0, .40)",
       dot: "rgba(255, 165, 0, .95)",
-      title: "PAŽNJA — potencijalni problem",
+      title: t("deals.signalPaznja"),
     };
   }
 
@@ -112,33 +124,19 @@ type ViewMode =
   | "no_project"
   | "all";
 
-const VIEW_OPTIONS: { v: ViewMode; label: string; hint?: string }[] = [
-  {
-    v: "active",
-    label: "Aktivno",
-    hint: "Sakrij arhivirane/otkazane/fakturisane/zatvorene projekte + odbijene deale",
-  },
-  {
-    v: "to_invoice",
-    label: "Zatvoren - Spreman za fakturisanje",
-    hint: "Projekti: ZATVOREN (status 8)",
-  },
-  {
-    v: "invoiced",
-    label: "Fakturisanje - Naplata",
-    hint: "Projekti: FAKTURISAN (status 9)",
-  },
-  {
-    v: "archived",
-    label: "Arhiva",
-    hint: "Projekti: ARHIVIRAN/OTKAZAN + deal ODBIJEN",
-  },
-  { v: "no_project", label: "Deals - pregovori", hint: "Deal bez projekta" },
-  { v: "storno", label: "Storno", hint: "Stornirani projekti (12) i odbijeni deale (4)" },
-  { v: "all", label: "Svi", hint: "Bez filtera" },
+const VIEW_OPTIONS_KEYS: ViewMode[] = [
+  "active",
+  "to_invoice",
+  "invoiced",
+  "archived",
+  "no_project",
+  "storno",
+  "all",
 ];
 
 export default async function DealsPage({ searchParams }: any) {
+  const locale = getValidLocale((await cookies()).get("NEXT_LOCALE")?.value ?? "sr");
+  const t = getT(locale);
   const sp = await Promise.resolve(searchParams);
 
   const q = String(sp?.q ?? "").trim();
@@ -420,16 +418,11 @@ export default async function DealsPage({ searchParams }: any) {
               {/* ✅ LOGO + naslov (diskretno) */}
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">{t("deals.pageSubtitle")}</span>
                 </div>
                 <div>
-                  <div className="brandTitle">📋 Deals</div>
-                  <div className="brandSub">Project & Finance Engine</div>
+                  <div className="brandTitle">📋 {t("deals.pageTitle")}</div>
+                  <div className="brandSub">{t("deals.pageDescription")}</div>
                 </div>
               </div>
 
@@ -437,9 +430,9 @@ export default async function DealsPage({ searchParams }: any) {
                 <Link
                   href="/dashboard"
                   className="glassbtn"
-                  title="Povratak na Dashboard"
+                  title={t("deals.backToDashboard")}
                 >
-                  🏠 Dashboard
+                  🏠 {t("dashboard.title")}
                 </Link>
               </div>
             </div>
@@ -448,27 +441,27 @@ export default async function DealsPage({ searchParams }: any) {
             <div className="filtersRowWrap">
               <form method="GET" className="filtersRow">
                 <div className="field">
-                  <div className="labelSmall">Traži</div>
+                  <div className="labelSmall">{t("deals.searchLabel")}</div>
                   <input
                     name="q"
                     defaultValue={q}
-                    placeholder="ID Deal / Broj projekta / Naziv…"
+                    placeholder={t("deals.searchPlaceholder")}
                     className="input"
                     style={{ width: 320 }}
                   />
                 </div>
 
                 <div className="field">
-                  <div className="labelSmall">Pregled</div>
+                  <div className="labelSmall">{t("deals.viewLabel")}</div>
                   <select
                     name="view"
                     defaultValue={view}
                     className="input"
                     style={{ width: 260 }}
                   >
-                    {VIEW_OPTIONS.map((o) => (
-                      <option key={o.v} value={o.v}>
-                        {o.label}
+                    {VIEW_OPTIONS_KEYS.map((v) => (
+                      <option key={v} value={v}>
+                        {t(`deals.view_${v}`)}
                       </option>
                     ))}
                   </select>
@@ -477,9 +470,9 @@ export default async function DealsPage({ searchParams }: any) {
                 <button
                   type="submit"
                   className="glassbtn"
-                  title="Primijeni filtere"
+                  title={t("deals.applyFilters")}
                 >
-                  🔎 Primijeni
+                  🔎 {t("deals.applyFilters")}
                 </button>
               </form>
 
@@ -487,16 +480,16 @@ export default async function DealsPage({ searchParams }: any) {
                 <Link
                   href="/inicijacije/novo"
                   className="glassbtn btnNovi"
-                  title="Novi Deal"
+                  title={t("deals.newDeal")}
                 >
-                  ➕ NOVI
+                  ➕ {t("deals.newDealBtn")}
                 </Link>
                 <Link
                   href="/inicijacije"
                   className="glassbtn"
-                  title="Osvježi listu"
+                  title={t("deals.refreshTitle")}
                 >
-                  ⟳ Osvježi
+                  ⟳ {t("deals.refresh")}
                 </Link>
               </div>
             </div>
@@ -511,11 +504,11 @@ export default async function DealsPage({ searchParams }: any) {
             <table className="table">
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Deal</th>
-                  <th>Rok</th>
-                  <th>Status</th>
-                  <th>Vrijeme</th>
+                  <th>{t("deals.colId")}</th>
+                  <th>{t("deals.colDeal")}</th>
+                  <th>{t("deals.colRok")}</th>
+                  <th>{t("deals.colStatus")}</th>
+                  <th>{t("deals.colTime")}</th>
                 </tr>
               </thead>
 
@@ -523,7 +516,7 @@ export default async function DealsPage({ searchParams }: any) {
                 {rows.length === 0 ? (
                   <tr>
                     <td colSpan={5} style={{ opacity: 0.7, padding: 18 }}>
-                      Nema deal-ova za zadate filtere.
+                      {t("deals.noDeals")}
                     </td>
                   </tr>
                 ) : (
@@ -540,19 +533,26 @@ export default async function DealsPage({ searchParams }: any) {
                       ? String(r.status_naziv)
                       : null;
 
+                    const dealStatusKey = `statuses.deal.${r.status_id}`;
+                    const dealStatusTranslated = t(dealStatusKey);
                     const dealStatusDisplay =
                       dealStatusName === "Nova inicijacija"
-                        ? "Novi Deal"
-                        : dealStatusName;
+                        ? t("deals.statusNoviDeal")
+                        : dealStatusTranslated !== dealStatusKey
+                          ? dealStatusTranslated
+                          : dealStatusName;
+                    const projectStatusKey = `statuses.project.${r.projekat_status_id}`;
+                    const projectStatusTranslated = t(projectStatusKey);
                     const statusLabel = opened
-                      ? (projectStatusName ??
-                        `Projekt #${Number(r.projekat_status_id ?? 0)}`)
+                      ? (projectStatusTranslated !== projectStatusKey
+                          ? projectStatusTranslated
+                          : projectStatusName ?? t("deals.projectHash") + Number(r.projekat_status_id ?? 0))
                       : (dealStatusDisplay ?? "—");
 
                     const rokIso = toISODateOnly(r.rok_glavni);
-                    const sem = semaforFor(rokIso);
+                    const sem = semaforFor(rokIso, t);
 
-                    const sig = opened ? signalMeta(r.operativni_signal) : null;
+                    const sig = opened ? signalMeta(r.operativni_signal, t) : null;
 
                     return (
                       <DealTableRow

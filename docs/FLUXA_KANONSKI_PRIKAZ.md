@@ -1,6 +1,6 @@
 # Fluxa – kanonski prikaz: šta radi sada i šta će raditi
 
-*Jedan spisak svega što je u Fluxi implementirano i funkcionalno do sada, te svega što smo dogovorili da će raditi kad završimo rad. Referenca za prezentaciju, planiranje i implementaciju. Ažurirano: 17.02.2026.*
+*Jedan spisak svega što je u Fluxi implementirano i funkcionalno do sada, te svega što smo dogovorili da će raditi kad završimo rad. Referenca za prezentaciju, planiranje i implementaciju. Ažurirano: 23.02.2026.*
 
 ---
 
@@ -179,11 +179,11 @@ Sve navedeno u ovom odjeljku je **planirano i dogovoreno**; implementacija slije
 
 | Kategorija | Sada (implementirano) | Kasnije (dogovoreno) |
 |------------|------------------------|----------------------|
-| **Fakturisanje** | Wizard, preview, storno, brojač, ručni PFR, postavke fiskalnog uređaja | Automatski fiskalni račun (L-PFR, blok na PDF) |
-| **Baza** | Operativni podaci, arhiva projekata | Čišćenje testova, go-live #5754, 001/2026, PFR od PU |
-| **Jezik / tržište** | Djelimični prevodi, izbor jezika u Firma | Lokal = tržište (EU, GB, US, CH), valuta, VAT, terminologija |
+| **Fakturisanje** | Wizard, preview, storno, brojač, ručni PFR, postavke fiskalnog uređaja | Automatski fiskalni račun (L-PFR, blok na PDF) – *planirano ponedjeljak, čekamo odgovor developera* |
+| **Baza** | Operativni podaci, arhiva, čišćenje testova, go-live #5754, backup | Export prazne baze za novi tenant |
+| **Jezik / tržište** | Dvojezična varijanta (sr + en), bira se na dugme | Lokal = tržište (valuta, VAT po regionu) po potrebi |
 | **Korisnici** | Users, Roles (priprema) | User management (uloge), Saradnik, limit saradnika |
-| **Prodaja** | – | Tenant, plan (Light/Full), pretplata, admin modul (super verzija), client verzija, export prazne baze, online plaćanje (webhook) |
+| **Prodaja** | Tenant, plan (Light/Full), pretplata, admin modul (Licence), licence check (Suspend → blok na klijentu), token | Export prazne baze, online plaćanje (webhook) |
 | **Dokumentacija** | Tehnički docs u repo | User manual, tooltip uočljiviji |
 | **Poslovanje** | – | Studio TAF: prihod od licenci, troškovi DO |
 

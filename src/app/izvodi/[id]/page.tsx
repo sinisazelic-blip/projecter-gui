@@ -4,6 +4,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslation } from "@/components/LocaleProvider";
+import FluxaLogo from "@/components/FluxaLogo";
 
 function fmtDDMMYYYY(iso: string | null): string {
   if (!iso) return "—";
@@ -62,6 +64,7 @@ type Transakcija = {
 export default function IzvodDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { t } = useTranslation();
   const izvodId = Number(params.id);
 
   const [loading, setLoading] = useState(true);
@@ -71,7 +74,7 @@ export default function IzvodDetailPage() {
 
   useEffect(() => {
     if (!Number.isFinite(izvodId) || izvodId <= 0) {
-      setError("Neispravan ID izvoda");
+      setError(t("izvodi.invalidId"));
       setLoading(false);
       return;
     }
@@ -87,13 +90,13 @@ export default function IzvodDetailPage() {
         const data = await res.json();
 
         if (!res.ok || !data.ok) {
-          throw new Error(data.error || "Greška pri učitavanju izvoda");
+          throw new Error(data.error || t("izvodi.loadErrorDetail"));
         }
 
         setIzvod(data.batch);
         setTransakcije(data.txs || []);
       } catch (err: any) {
-        setError(err?.message || "Greška");
+        setError(err?.message || t("common.error"));
       } finally {
         setLoading(false);
       }
@@ -106,7 +109,7 @@ export default function IzvodDetailPage() {
     return (
       <div className="container">
         <div style={{ padding: 40, textAlign: "center", opacity: 0.7 }}>
-          Učitavanje...
+          {t("common.loading")}
         </div>
       </div>
     );
@@ -123,11 +126,11 @@ export default function IzvodDetailPage() {
             color: "#ff3b30",
           }}
         >
-          ⚠️ {error || "Izvod nije pronađen"}
+          ⚠️ {error || t("izvodi.notFound")}
         </div>
         <div style={{ marginTop: 20 }}>
           <Link href="/izvodi" className="btn">
-            ← Nazad na listu izvoda
+            ← {t("izvodi.backToList")}
           </Link>
         </div>
       </div>
@@ -210,11 +213,21 @@ export default function IzvodDetailPage() {
           width: 210mm;
           min-height: 297mm;
           background: #ffffff;
-          color: #111111;
+          color: #000;
           border-radius: 12px;
           box-shadow: 0 18px 60px rgba(0,0,0,.35);
           border: 1px solid rgba(0,0,0,.08);
           padding: 18mm 16mm;
+        }
+        .paper .table,
+        .paper .table thead th,
+        .paper .table tbody td,
+        .paper .table td,
+        .paper .table th,
+        .paper .table .num,
+        .paper .table .desc,
+        .paper .table .ref {
+          color: #000 !important;
         }
         @media (max-width: 980px){
           .paper{ width: min(100%, 210mm); padding: 16px; }
@@ -232,6 +245,7 @@ export default function IzvodDetailPage() {
           text-align: center;
           margin-bottom: 12px;
           letter-spacing: .5px;
+          color: #000 !important;
         }
 
         .izvodMeta{
@@ -249,43 +263,94 @@ export default function IzvodDetailPage() {
         }
 
         .metaLabel{
-          color: #555;
+          color: #000 !important;
           font-weight: 600;
         }
 
         .metaValue{
-          color: #111;
+          color: #000 !important;
           font-weight: 700;
         }
 
         .tblWrap{
           border: 1px solid rgba(0,0,0,.10);
           border-radius: 10px;
-          overflow:hidden;
+          overflow: visible;
           margin-top: 20px;
         }
-        table{ width:100%; border-collapse:collapse; }
-        thead tr{ background: rgba(0,0,0,.04); }
+        .paper .tblWrap {
+          overflow: hidden !important;
+          max-width: 100%;
+        }
+        .paper .table {
+          table-layout: fixed;
+          width: 100%;
+          overflow: visible !important;
+        }
+        .paper .table tbody tr {
+          height: auto !important;
+        }
+        .paper .table tbody td {
+          height: auto !important;
+          overflow: visible !important;
+          line-height: 1.35;
+          padding: 10px 8px;
+        }
+        .paper .table th.desc {
+          width: 38%;
+          max-width: 38%;
+          box-sizing: border-box;
+          white-space: normal !important;
+          word-break: break-word !important;
+          overflow-wrap: break-word !important;
+          min-width: 0;
+        }
+        .paper .table td.desc,
+        .paper .table .desc {
+          width: 38%;
+          max-width: 38%;
+          box-sizing: border-box;
+          overflow: hidden !important;
+          word-break: break-word !important;
+          overflow-wrap: break-word !important;
+          white-space: normal !important;
+          line-height: 1.4;
+          min-width: 0;
+        }
+        table{ width:100%; border-collapse:collapse; color: #000; }
+        thead tr{ background: rgba(0,0,0,.06); }
         th{
           padding: 10px 8px;
           font-size: 10px;
           text-transform: uppercase;
           letter-spacing: .3px;
-          color:#555;
+          color: #000;
           text-align:left;
           border-bottom: 2px solid rgba(0,0,0,.12);
           white-space: nowrap;
           font-weight: 800;
         }
         td{
-          padding: 8px 8px;
+          padding: 10px 8px;
           font-size: 11px;
           border-top: 1px solid rgba(0,0,0,.08);
           vertical-align: top;
+          color: #000;
+          line-height: 1.35;
+          overflow: visible;
         }
-        .num{ text-align:right; white-space:nowrap; font-family: 'Courier New', monospace; }
-        .desc{ color:#111; }
-        .ref{ font-weight: 600; color:#333; }
+        .num{ text-align:right; white-space:nowrap; font-family: 'Courier New', monospace; color: #000; }
+        .desc{
+          color: #000;
+          white-space: normal;
+          word-break: break-word;
+          overflow-wrap: break-word;
+          overflow: visible;
+          min-width: 0;
+          max-width: 100%;
+          line-height: 1.4;
+        }
+        .ref{ font-weight: 600; color: #000; }
 
         .izvodFooter{
           margin-top: 20px;
@@ -306,12 +371,12 @@ export default function IzvodDetailPage() {
         }
 
         .footerLabel{
-          color: #555;
+          color: #000 !important;
           font-weight: 700;
         }
 
         .footerValue{
-          color: #111;
+          color: #000 !important;
           font-weight: 800;
           font-family: 'Courier New', monospace;
         }
@@ -409,9 +474,35 @@ export default function IzvodDetailPage() {
             margin: 0 auto !important;
             background: #ffffff !important;
             background-color: #ffffff !important;
-            color: #111111 !important;
+            color: #000 !important;
             page-break-after: always;
             page-break-inside: avoid;
+          }
+          .paper table,
+          .paper th,
+          .paper td,
+          .paper .num,
+          .paper .desc,
+          .paper .ref {
+            color: #000 !important;
+          }
+          .paper .tblWrap { overflow: hidden !important; max-width: 100%; }
+          .paper .table { overflow: visible !important; }
+          .paper .table tbody tr { height: auto !important; }
+          .paper .table tbody td {
+            height: auto !important;
+            overflow: visible !important;
+            line-height: 1.35;
+          }
+          .paper .table th.desc,
+          .paper .table td.desc {
+            width: 38% !important;
+            max-width: 38% !important;
+            overflow: hidden !important;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+            white-space: normal !important;
+            line-height: 1.4;
           }
         }
       `}</style>
@@ -422,16 +513,11 @@ export default function IzvodDetailPage() {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">🏦 Izvod #{izvod.statement_no || izvod.batch_id}</div>
-                  <div className="brandSub">Pregled bankovnog izvoda</div>
+                  <div className="brandTitle">🏦 {t("izvodi.statementShort")} #{izvod.statement_no || izvod.batch_id}</div>
+                  <div className="brandSub">{t("izvodi.overviewSubtitle")}</div>
                 </div>
               </div>
 
@@ -443,9 +529,9 @@ export default function IzvodDetailPage() {
                   borderColor: "rgba(59, 130, 246, 0.4)",
                   fontWeight: 700,
                 }}
-                title="Nazad na listu izvoda"
+                title={t("izvodi.backToListTitle")}
               >
-                ← Nazad
+                ← {t("izvodi.back")}
               </Link>
             </div>
 
@@ -461,27 +547,27 @@ export default function IzvodDetailPage() {
                 <div className="izvodTitle">
                   UNICREDIT BANK D.D.
                   <br />
-                  I Z V A D A K / I Z V O D br: {izvod.statement_no || "—"}
+                  {t("izvodi.statementNoLabel")} {izvod.statement_no || "—"}
                 </div>
                 
                 <div className="izvodMeta">
                   <div className="metaRow">
-                    <span className="metaLabel">Datum:</span>
+                    <span className="metaLabel">{t("izvodi.date")}</span>
                     <span className="metaValue">{fmtDDMMYYYY(izvod.statement_date)}</span>
                   </div>
                   <div className="metaRow">
-                    <span className="metaLabel">Na dan:</span>
+                    <span className="metaLabel">{t("izvodi.asOfDate")}</span>
                     <span className="metaValue">{fmtDDMMYYYY(izvod.statement_date)}</span>
                   </div>
                   {izvod.bank_account_no && (
                     <>
                       <div className="metaRow">
-                        <span className="metaLabel">Broj računa:</span>
+                        <span className="metaLabel">{t("izvodi.accountNo")}</span>
                         <span className="metaValue">{izvod.bank_account_no}</span>
                       </div>
                       {isEUR && (
                         <div className="metaRow">
-                          <span className="metaLabel">IBAN:</span>
+                          <span className="metaLabel">{t("izvodi.iban")}</span>
                           <span className="metaValue">{izvod.bank_account_no}</span>
                         </div>
                       )}
@@ -489,18 +575,18 @@ export default function IzvodDetailPage() {
                   )}
                   {izvod.company_name && (
                     <div className="metaRow">
-                      <span className="metaLabel">Klijent:</span>
+                      <span className="metaLabel">{t("izvodi.client")}</span>
                       <span className="metaValue">{izvod.company_name}</span>
                     </div>
                   )}
                   {izvod.tax_id && (
                     <div className="metaRow">
-                      <span className="metaLabel">M.B:</span>
+                      <span className="metaLabel">{t("izvodi.taxId")}</span>
                       <span className="metaValue">{izvod.tax_id}</span>
                     </div>
                   )}
                   <div className="metaRow">
-                    <span className="metaLabel">Valuta:</span>
+                    <span className="metaLabel">{t("izvodi.currency")}</span>
                     <span className="metaValue">{valuta}</span>
                   </div>
                 </div>
@@ -511,22 +597,22 @@ export default function IzvodDetailPage() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th style={{ width: "100px" }}>Referenca</th>
+                      <th style={{ width: "100px" }}>{t("izvodi.reference")}</th>
                       {isEUR ? (
                         <>
-                          <th style={{ width: "80px" }}>Dat.knj.</th>
-                          <th style={{ width: "80px" }}>Dat.val.</th>
+                          <th style={{ width: "80px" }}>{t("izvodi.dateBook")}</th>
+                          <th style={{ width: "80px" }}>{t("izvodi.valueDate")}</th>
                         </>
                       ) : (
-                        <th style={{ width: "100px" }}>Datum</th>
+                        <th style={{ width: "100px" }}>{t("izvodi.colDate")}</th>
                       )}
-                      <th>Opis</th>
-                      <th className="num" style={{ width: "120px" }}>Duguje ({valuta})</th>
-                      <th className="num" style={{ width: "120px" }}>Potražuje ({valuta})</th>
+                      <th className="desc">{t("izvodi.description")}</th>
+                      <th className="num" style={{ width: "120px" }}>{t("izvodi.debit")} ({valuta})</th>
+                      <th className="num" style={{ width: "120px" }}>{t("izvodi.credit")} ({valuta})</th>
                       {isEUR && (
                         <>
-                          <th className="num" style={{ width: "120px" }}>Duguje (BAM)</th>
-                          <th className="num" style={{ width: "120px" }}>Potražuje (BAM)</th>
+                          <th className="num" style={{ width: "120px" }}>{t("izvodi.debit")} (BAM)</th>
+                          <th className="num" style={{ width: "120px" }}>{t("izvodi.credit")} (BAM)</th>
                         </>
                       )}
                     </tr>
@@ -534,8 +620,8 @@ export default function IzvodDetailPage() {
                   <tbody>
                     {transakcije.length === 0 ? (
                       <tr>
-                        <td colSpan={isEUR ? 8 : 5} style={{ padding: 20, textAlign: "center", color: "#666" }}>
-                          Nema transakcija u ovom izvodu.
+                        <td colSpan={isEUR ? 8 : 5} style={{ padding: 20, textAlign: "center", color: "#000" }}>
+                          {t("izvodi.noTransactions")}
                         </td>
                       </tr>
                     ) : (
@@ -601,7 +687,7 @@ export default function IzvodDetailPage() {
                             <td className="desc">
                               {tx.full_description || tx.description || "—"}
                               {tx.counterparty && (
-                                <div style={{ fontSize: 10, color: "#666", marginTop: 2 }}>
+                                <div style={{ fontSize: 10, color: "#000", marginTop: 2 }}>
                                   {tx.counterparty}
                                 </div>
                               )}
@@ -635,25 +721,25 @@ export default function IzvodDetailPage() {
                 {isEUR ? (
                   <React.Fragment>
                     <div className="footerRow">
-                      <span className="footerLabel">Promet:</span>
+                      <span className="footerLabel">{t("izvodi.turnover")}</span>
                       <span className="footerValue">
                         {fmtMoney(ukupnoDuguje, valuta)} / {fmtMoney(ukupnoPotrazuje, valuta)} / {fmtMoney(ukupnoDugujeBAM, "BAM")} / {fmtMoney(ukupnoPotrazujeBAM, "BAM")}
                       </span>
                     </div>
                     <div className="footerRow">
-                      <span className="footerLabel">Stari saldo:</span>
+                      <span className="footerLabel">{t("izvodi.openingBalance")}</span>
                       <span className="footerValue">
                         {fmtMoney(izvod.opening_balance, valuta)} / {fmtMoney(stariSaldoBAM, "BAM")}
                       </span>
                     </div>
                     <div className="footerRow">
-                      <span className="footerLabel">Saldo prometa:</span>
+                      <span className="footerLabel">{t("izvodi.turnoverBalance")}</span>
                       <span className="footerValue" style={{ color: saldoPrometa < 0 ? "#d32f2f" : "#1976d2" }}>
                         {saldoPrometa >= 0 ? "+" : ""}{fmtMoney(saldoPrometa, valuta)} / {saldoPrometaBAM >= 0 ? "+" : ""}{fmtMoney(saldoPrometaBAM, "BAM")}
                       </span>
                     </div>
                     <div className="footerRow total">
-                      <span className="footerLabel">Novi saldo:</span>
+                      <span className="footerLabel">{t("izvodi.closingBalance")}</span>
                       <span className="footerValue">
                         {fmtMoney(izvod.closing_balance, valuta)} / {fmtMoney(noviSaldoBAM, "BAM")}
                       </span>
@@ -662,25 +748,25 @@ export default function IzvodDetailPage() {
                 ) : (
                   <React.Fragment>
                     <div className="footerRow">
-                      <span className="footerLabel">Promet u valuti:</span>
+                      <span className="footerLabel">{t("izvodi.turnoverInCurrency")}</span>
                       <span className="footerValue">
                         {fmtMoney(ukupnoDuguje, valuta)} / {fmtMoney(ukupnoPotrazuje, valuta)}
                       </span>
                     </div>
                     <div className="footerRow">
-                      <span className="footerLabel">Stari saldo:</span>
+                      <span className="footerLabel">{t("izvodi.openingBalance")}</span>
                       <span className="footerValue">
                         {fmtMoney(izvod.opening_balance, valuta)}
                       </span>
                     </div>
                     <div className="footerRow">
-                      <span className="footerLabel">Saldo prometa:</span>
+                      <span className="footerLabel">{t("izvodi.turnoverBalance")}</span>
                       <span className="footerValue" style={{ color: saldoPrometa < 0 ? "#d32f2f" : "#1976d2" }}>
                         {saldoPrometa >= 0 ? "+" : ""}{fmtMoney(saldoPrometa, valuta)}
                       </span>
                     </div>
                     <div className="footerRow total">
-                      <span className="footerLabel">Novi saldo:</span>
+                      <span className="footerLabel">{t("izvodi.closingBalance")}</span>
                       <span className="footerValue">
                         {fmtMoney(izvod.closing_balance, valuta)}
                       </span>

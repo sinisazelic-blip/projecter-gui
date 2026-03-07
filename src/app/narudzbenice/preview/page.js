@@ -1,6 +1,10 @@
 // src/app/narudzbenice/preview/page.js
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 import { query } from "@/lib/db";
+import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +32,7 @@ function buildQuery(paramsObj) {
   return parts.length ? `?${parts.join("&")}` : "";
 }
 
-function buildEmail({
+function buildEmail(t, {
   mode,
   projectSingle,
   klijent_id,
@@ -38,38 +42,44 @@ function buildEmail({
 }) {
   let subject = "";
   if (mode === "single") {
-    subject = `Narudžbenica — PO-${projectSingle.projekat_id} — ${projectSingle.radni_naziv}`;
+    subject = (t("narudzbenice.emailSubjectSingle") || "")
+      .replace("{{projectId}}", String(projectSingle?.projekat_id ?? ""))
+      .replace("{{projectName}}", String(projectSingle?.radni_naziv ?? ""));
   } else {
-    subject = `Narudžbenica — Klijent #${klijent_id} — ${supplierName} — ${dateStr}`;
+    subject = (t("narudzbenice.emailSubjectMulti") || "")
+      .replace("{{clientId}}", String(klijent_id ?? ""))
+      .replace("{{supplierName}}", String(supplierName ?? ""))
+      .replace("{{date}}", String(dateStr ?? ""));
   }
 
   const lines = [];
-  lines.push("Pozdrav,");
+  lines.push(t("narudzbenice.emailGreeting"));
   lines.push("");
-  lines.push("Molimo fakturišite sljedeće usluge:");
+  lines.push(t("narudzbenice.emailIntro"));
   lines.push("");
 
   for (const it of items) {
-    lines.push(`• Projekat: ${it.radni_naziv}`);
-    lines.push(`  PO: PO-${it.projekat_id}`);
-    lines.push(`  Iznos: ${fmtAmount(it.iznos)} ${it.valuta_original}`);
-    if (it.opis_agregat) lines.push(`  Naš opis: ${it.opis_agregat}`);
+    lines.push(`• ${t("narudzbenice.emailProject")} ${it.radni_naziv}`);
+    lines.push(`  ${t("narudzbenice.emailPO")} PO-${it.projekat_id}`);
+    lines.push(`  ${t("narudzbenice.emailAmount")} ${fmtAmount(it.iznos)} ${it.valuta_original}`);
+    if (it.opis_agregat) lines.push(`  ${t("narudzbenice.emailOurDesc")} ${it.opis_agregat}`);
     lines.push("");
   }
 
-  lines.push("Molimo da u opisu računa navedete i naš PO broj (PO-xxxx).");
+  lines.push(t("narudzbenice.emailPleaseRef"));
   lines.push("");
 
-  const STUDIO_SIGNATURE = process.env.STUDIO_SIGNATURE || "Studio TAF";
-  lines.push("Srdačan pozdrav,");
-  lines.push(STUDIO_SIGNATURE);
+  lines.push(t("narudzbenice.emailSignature"));
 
   return { subject, body: lines.join("\n") };
 }
 
 export default async function Page({ searchParams }) {
-  const sp = await Promise.resolve(searchParams);
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
+  const t = getT(locale);
 
+  const sp = await Promise.resolve(searchParams);
   const klijentRaw = String(sp?.klijent_id ?? "").trim();
   const dobRaw = String(sp?.dobavljac_id ?? "").trim();
 
@@ -80,9 +90,9 @@ export default async function Page({ searchParams }) {
     return (
       <div className="container" style={{ padding: 18 }}>
         <div style={{ opacity: 0.8 }}>
-          Nedostaju parametri. Vrati se na{" "}
+          {t("narudzbenice.missingParams")}{" "}
           <Link href="/narudzbenice" className="btn">
-            Narudžbenice
+            {t("narudzbenice.backToList")}
           </Link>
           .
         </div>
@@ -129,9 +139,9 @@ export default async function Page({ searchParams }) {
       ? { projekat_id: items[0].projekat_id, radni_naziv: items[0].radni_naziv }
       : null;
 
-  const supplierName = supplier?.naziv || `Dobavljač #${dobavljac_id}`;
+  const supplierName = supplier?.naziv || (t("narudzbenice.supplierFallback") || "").replace("{{id}}", String(dobavljac_id));
 
-  const email = buildEmail({
+  const email = buildEmail(t, {
     mode,
     projectSingle,
     klijent_id,
@@ -221,16 +231,11 @@ export default async function Page({ searchParams }) {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Narudžbenica — Preview</div>
-                  <div className="brandSub">Pošalji mail / Odustani</div>
+                  <div className="brandTitle">{t("narudzbenice.previewTitle")}</div>
+                  <div className="brandSub">{t("narudzbenice.previewSubtitle")}</div>
                 </div>
               </div>
 
@@ -243,10 +248,10 @@ export default async function Page({ searchParams }) {
                 }}
               >
                 <Link href={`/narudzbenice${qsBack}`} className="btn">
-                  ← Nazad
+                  {t("narudzbenice.back")}
                 </Link>
-                <Link href="/dashboard" className="btn" title="Dashboard">
-                  🏠 Dashboard
+                <Link href="/dashboard" className="btn" title={t("common.dashboard")}>
+                  🏠 {t("common.dashboard")}
                 </Link>
               </div>
             </div>
@@ -259,35 +264,34 @@ export default async function Page({ searchParams }) {
           <div className="card">
             <div className="metaRow">
               <span className="pill">
-                Klijent: <b>#{klijent_id}</b>
+                {t("narudzbenice.pillClient")} <b>#{klijent_id}</b>
               </span>
               <span className="pill">
-                Dobavljač: <b>{supplierName}</b>
+                {t("narudzbenice.pillSupplier")} <b>{supplierName}</b>
               </span>
               <span className="pill">
-                Mode: <b>{mode === "single" ? "1 projekat" : "objedinjeno"}</b>
+                {t("narudzbenice.pillMode")} <b>{mode === "single" ? t("narudzbenice.modeSingle") : t("narudzbenice.modeMulti")}</b>
               </span>
               <span className="pill">
-                PO: <b>{projectIds.map((id) => `PO-${id}`).join(", ")}</b>
+                {t("narudzbenice.pillPO")} <b>{projectIds.map((id) => `PO-${id}`).join(", ")}</b>
               </span>
             </div>
 
             {!supplier?.email ? (
               <div className="warn">
-                ⚠️ Dobavljač nema email u <b>dobavljaci.email</b>. Dugme
-                &quot;Pošalji mail&quot; neće raditi dok ne upišeš email.
+                ⚠️ {t("narudzbenice.warnNoEmail")}
               </div>
             ) : null}
 
             <div style={{ marginTop: 12 }}>
-              <div className="boxLabel">Subject</div>
+              <div className="boxLabel">{t("narudzbenice.subjectLabel")}</div>
               <div className="monoBox" style={{ minHeight: 44 }}>
                 {email.subject}
               </div>
             </div>
 
             <div style={{ marginTop: 12 }}>
-              <div className="boxLabel">Body</div>
+              <div className="boxLabel">{t("narudzbenice.bodyLabel")}</div>
               <div className="monoBox">{email.body}</div>
             </div>
 
@@ -308,24 +312,23 @@ export default async function Page({ searchParams }) {
                     display: "inline-flex",
                     alignItems: "center",
                   }}
-                  title="Otvara email klijent s predpopunjenim Subject i Body"
+                  title={t("narudzbenice.sendMailLinkTitle")}
                 >
-                  📧 Pošalji mail
+                  📧 {t("narudzbenice.sendMail")}
                 </a>
               ) : (
-                <button type="button" className="btn" disabled title="Dobavljač nema email">
-                  📧 Pošalji mail
+                <button type="button" className="btn" disabled title={t("narudzbenice.sendMailDisabledTitle")}>
+                  📧 {t("narudzbenice.sendMail")}
                 </button>
               )}
 
               <Link href={`/narudzbenice${qsBack}`} className="btn">
-                Odustani
+                {t("narudzbenice.cancel")}
               </Link>
             </div>
 
             <div style={{ marginTop: 10, opacity: 0.7, fontSize: 12 }}>
-              Klik <b>Pošalji mail</b> otvara tvoj email klijent s preddefiniranim
-              Subject i Body. Samo pošalji poruku.
+              {t("narudzbenice.sendMailHint")}
             </div>
           </div>
         </div>

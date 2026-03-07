@@ -1,4 +1,6 @@
+import Link from "next/link";
 import LoginForm from "./LoginForm";
+import FluxaLogo from "@/components/FluxaLogo";
 
 export default function HomePage() {
   return (
@@ -22,9 +24,8 @@ export default function HomePage() {
           textAlign: "center",
         }}
       >
-        <img
-          src="/fluxa/logo-light.png"
-          alt="Fluxa"
+        <FluxaLogo
+          className=""
           style={{
             width: 260,
             maxWidth: "90%",
@@ -46,6 +47,19 @@ export default function HomePage() {
         </p>
 
         <LoginForm />
+        <Link
+          href="/owner-login"
+          style={{
+            marginTop: 8,
+            fontSize: 13,
+            color: "var(--muted)",
+            textDecoration: "none",
+            opacity: 0.9,
+          }}
+          title="Unesite owner šifru za pristup verziji Fluxe i dodatnim opcijama"
+        >
+          Owner pristup
+        </Link>
       </div>
     </main>
   );

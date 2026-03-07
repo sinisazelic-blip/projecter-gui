@@ -1,29 +1,43 @@
 // src/app/projects/[id]/_components/ProjectSummaryCard.js
 "use client";
 
-const fmtKM = (v) => {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return n.toFixed(2) + " KM";
-};
+import { useTranslation } from "@/components/LocaleProvider";
+import { getCurrencyForLocale } from "@/lib/i18n";
 
-export default function ProjectSummaryCard({ project }) {
+const EUR_TO_BAM = 1.95583;
+
+function formatAmount(amountKm, locale, t) {
+  const n = Number(amountKm);
+  if (!Number.isFinite(n)) return "—";
+  const ccy = getCurrencyForLocale(locale);
+  const suffix = ccy === "EUR" ? ` ${t("projectDetail.currencyEur")}` : ` ${t("projectDetail.currencyKm")}`;
+  const val = ccy === "EUR" ? n / EUR_TO_BAM : n;
+  const fixed = val.toFixed(2);
+  const formatted = locale === "en" ? fixed : fixed.replace(".", ",");
+  return formatted + suffix;
+}
+
+export default function ProjectSummaryCard({ project, locale: localeProp }) {
+  const { t, locale: ctxLocale } = useTranslation();
+  const locale = localeProp ?? ctxLocale ?? "sr";
+
   if (!project) return null;
 
-  // ✅ Izračunaj budžet vidljiv radnicima (procenat od punog budžeta)
   const punBudzet = Number(project.budzet_planirani) || 0;
   const procenatZaTim = Number(project.budzet_procenat_za_tim) || 100.00;
   const budzetZaTim = punBudzet * (procenatZaTim / 100);
-
-  // ✅ Izračunaj planiranu zaradu na osnovu budžeta za tim
   const planiranaZaradaZaTim = budzetZaTim - (Number(project.troskovi_ukupno) || 0);
+
+  const currencyLabel = getCurrencyForLocale(locale) === "EUR"
+    ? t("projectDetail.currencyEur")
+    : t("projectDetail.currencyKm");
 
   return (
     <div className="card">
       <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 240px" }}>
           <div className="muted">
-            Budžet (KM)
+            {t("projectDetail.budgetLabel")} ({currencyLabel})
             {procenatZaTim !== 100 && (
               <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 6 }}>
                 ({procenatZaTim.toFixed(0)}%)
@@ -31,7 +45,7 @@ export default function ProjectSummaryCard({ project }) {
             )}
           </div>
           <div style={{ fontSize: 18, fontWeight: 600 }}>
-            {fmtKM(budzetZaTim)}
+            {formatAmount(budzetZaTim, locale, t)}
           </div>
           {procenatZaTim !== 100 && punBudzet > 0 && (
             <div
@@ -41,22 +55,22 @@ export default function ProjectSummaryCard({ project }) {
                 marginTop: 2,
                 fontStyle: "italic",
               }}
-              title={`Puni budžet: ${fmtKM(punBudzet)}`}
+              title={`${t("projectDetail.budgetFull")} ${formatAmount(punBudzet, locale, t)}`}
             >
-              (Puni: {fmtKM(punBudzet)})
+              ({t("projectDetail.budgetFullShort")} {formatAmount(punBudzet, locale, t)})
             </div>
           )}
         </div>
 
         <div style={{ flex: "1 1 240px" }}>
-          <div className="muted">Troškovi ukupno</div>
+          <div className="muted">{t("projectDetail.costsTotal")}</div>
           <div style={{ fontSize: 18, fontWeight: 600 }}>
-            {fmtKM(project.troskovi_ukupno)}
+            {formatAmount(project.troskovi_ukupno, locale, t)}
           </div>
         </div>
 
         <div style={{ flex: "1 1 240px" }}>
-          <div className="muted">Planirana zarada</div>
+          <div className="muted">{t("projectDetail.plannedProfit")}</div>
           <div
             style={{
               fontSize: 18,
@@ -64,7 +78,7 @@ export default function ProjectSummaryCard({ project }) {
               color: planiranaZaradaZaTim < 0 ? "rgba(255, 80, 80, 0.95)" : "inherit",
             }}
           >
-            {fmtKM(planiranaZaradaZaTim)}
+            {formatAmount(planiranaZaradaZaTim, locale, t)}
           </div>
         </div>
       </div>

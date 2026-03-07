@@ -25,7 +25,7 @@ export async function GET() {
     }
 
     const rows = await query(
-      `SELECT base_url, api_key, pin, use_external_printer, external_printer_name, external_printer_width
+      `SELECT base_url, api_path, api_key, yid, pin, use_external_printer, external_printer_name, external_printer_width
        FROM firma_fiskal_settings WHERE firma_id = ?`,
       [firmaId],
     );
@@ -35,7 +35,9 @@ export async function GET() {
       settings: s
         ? {
             base_url: s.base_url ?? "",
+            api_path: s.api_path ?? "",
             api_key: s.api_key ?? "",
+            yid: s.yid ?? "",
             pin: s.pin ?? "",
             use_external_printer: Boolean(Number(s.use_external_printer)),
             external_printer_name: s.external_printer_name ?? "",
@@ -46,7 +48,9 @@ export async function GET() {
           }
         : {
             base_url: "",
+            api_path: "",
             api_key: "",
+            yid: "",
             pin: "",
             use_external_printer: false,
             external_printer_name: "",
@@ -77,7 +81,9 @@ export async function POST(req) {
 
     const body = await req.json().catch(() => ({}));
     const base_url = cleanStr(body.base_url);
+    const api_path = cleanStr(body.api_path);
     const api_key = cleanStr(body.api_key);
+    const yid = cleanStr(body.yid);
     const pin = cleanStr(body.pin);
     const use_external_printer = Boolean(body.use_external_printer);
     const external_printer_name = cleanStr(body.external_printer_name);
@@ -91,12 +97,14 @@ export async function POST(req) {
     await pool.query(
       `
       INSERT INTO firma_fiskal_settings (
-        firma_id, base_url, api_key, pin,
+        firma_id, base_url, api_path, api_key, yid, pin,
         use_external_printer, external_printer_name, external_printer_width
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         base_url = VALUES(base_url),
+        api_path = VALUES(api_path),
         api_key = VALUES(api_key),
+        yid = VALUES(yid),
         pin = VALUES(pin),
         use_external_printer = VALUES(use_external_printer),
         external_printer_name = VALUES(external_printer_name),
@@ -106,7 +114,9 @@ export async function POST(req) {
       [
         firmaId,
         base_url,
+        api_path,
         api_key,
+        yid,
         pin,
         use_external_printer ? 1 : 0,
         external_printer_name,

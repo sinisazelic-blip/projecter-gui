@@ -4,6 +4,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
+import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,9 @@ export default async function RadneFazePage() {
   const t = getT(locale);
 
   const rows = await query(
-    `SELECT faza_id, naziv, opis_poslova, slozenost_posla, vrsta_posla, created_at, updated_at
+    `SELECT faza_id, naziv, opis_poslova, slozenost_posla, vrsta_posla,
+            DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+            DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
        FROM radne_faze
        ORDER BY naziv ASC
        LIMIT 1000`,
@@ -37,12 +40,7 @@ export default async function RadneFazePage() {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
                   <div className="brandTitle">{t("studioRadneFaze.title")}</div>

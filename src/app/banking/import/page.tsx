@@ -3,6 +3,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "@/components/LocaleProvider";
+import FluxaLogo from "@/components/FluxaLogo";
 
 type ImportResponse = {
   ok: boolean;
@@ -122,7 +123,14 @@ export default function BankImportPage() {
   async function loadBatchList() {
     const r = await fetch("/api/bank/batch", { cache: "no-store" });
     const j: BatchListResponse = await r.json();
-    if (j.ok) setBatchList(j.batches ?? []);
+    if (j.ok) {
+      const list = (j.batches ?? []).slice().sort((a: any, b: any) => {
+        const da = a.statement_date || "";
+        const db = b.statement_date || "";
+        return db.localeCompare(da);
+      });
+      setBatchList(list);
+    }
   }
 
   async function loadMatching(batch_id: number) {
@@ -150,7 +158,7 @@ export default function BankImportPage() {
 
   async function onImport() {
     if (!file) {
-      setImportRes({ ok: false, error: "Odaberi XML fajl." });
+      setImportRes({ ok: false, error: t("bankingImport.selectXmlFile") });
       return;
     }
 
@@ -175,7 +183,7 @@ export default function BankImportPage() {
       } catch {
         setImportRes({
           ok: false,
-          error: `Server vratio nešto što nije JSON (HTTP ${r.status}). Prvih 200 znakova: ${text.slice(0, 200)}`,
+          error: `${t("bankingImport.serverNotJson")} (HTTP ${r.status}). ${t("bankingImport.firstChars")}: ${text.slice(0, 200)}`,
         });
         return;
       }
@@ -187,7 +195,7 @@ export default function BankImportPage() {
         await loadBatchList();
       }
     } catch (e: any) {
-      setImportRes({ ok: false, error: e?.message ?? "Greška" });
+      setImportRes({ ok: false, error: e?.message ?? t("bankingImport.error") });
     } finally {
       setImporting(false);
     }
@@ -196,7 +204,7 @@ export default function BankImportPage() {
   async function runAutoMatch() {
     const bid = Number(batchRes?.batch?.batch_id);
     if (!Number.isFinite(bid) || bid <= 0) {
-      setAutoMatchRes({ ok: false, error: "Nema odabranog batch-a." });
+      setAutoMatchRes({ ok: false, error: t("bankingImport.noBatchSelected") });
       return;
     }
 
@@ -216,7 +224,7 @@ export default function BankImportPage() {
       } catch {
         setAutoMatchRes({
           ok: false,
-          error: `Server vratio nešto što nije JSON (HTTP ${r.status}). Prvih 200 znakova: ${text.slice(0, 200)}`,
+          error: `${t("bankingImport.serverNotJson")} (HTTP ${r.status}). ${t("bankingImport.firstChars")}: ${text.slice(0, 200)}`,
         });
         return;
       }
@@ -228,7 +236,7 @@ export default function BankImportPage() {
         setView("UNMATCHED");
       }
     } catch (e: any) {
-      setAutoMatchRes({ ok: false, error: e?.message ?? "Greška" });
+      setAutoMatchRes({ ok: false, error: e?.message ?? t("bankingImport.error") });
     } finally {
       setAutoMatching(false);
     }
@@ -237,7 +245,7 @@ export default function BankImportPage() {
   async function commitBatch() {
     const bid = Number(batchRes?.batch?.batch_id);
     if (!Number.isFinite(bid) || bid <= 0) {
-      alert("Nema batch-a");
+      alert(t("bankingImport.noBatch"));
       return;
     }
 
@@ -255,12 +263,12 @@ export default function BankImportPage() {
       setCommitRes(j);
 
       if (!j.ok) {
-        alert(j.error || "Commit greška");
+        alert(j.error || t("bankingImport.commitError"));
         return;
       }
 
       alert(
-        `✅ Commit OK · committed ${j.committed}/${j.matched_count} (skipped ${j.skipped_already_committed})`,
+        `✅ ${t("bankingImport.commitOk")} · committed ${j.committed}/${j.matched_count} (skipped ${j.skipped_already_committed})`,
       );
     } finally {
       setCommitting(false);
@@ -270,7 +278,7 @@ export default function BankImportPage() {
   async function commitToProjectCosts() {
     const bid = Number(batchRes?.batch?.batch_id);
     if (!Number.isFinite(bid) || bid <= 0) {
-      alert("Nema batch-a");
+      alert(t("bankingImport.noBatch"));
       return;
     }
 
@@ -288,12 +296,12 @@ export default function BankImportPage() {
       setCostRes(j);
 
       if (!j.ok) {
-        alert(j.error || "Greška");
+        alert(j.error || t("bankingImport.error"));
         return;
       }
 
       alert(
-        `✅ Troškovi upisani: ${j.inserted}/${j.scanned} (skipped ${j.skipped})`,
+        `✅ ${t("bankingImport.costsWritten")}: ${j.inserted}/${j.scanned} (skipped ${j.skipped})`,
       );
     } finally {
       setCosting(false);
@@ -363,13 +371,13 @@ export default function BankImportPage() {
 
     const tx_id = Number(manualTx.tx_id);
     if (!Number.isFinite(tx_id) || tx_id <= 0) {
-      alert("Neispravan tx_id");
+      alert(t("bankingImport.invalidTxId"));
       return;
     }
 
     const bid = Number(batchRes?.batch?.batch_id);
     if (!Number.isFinite(bid) || bid <= 0) {
-      alert("Nema batch-a");
+      alert(t("bankingImport.noBatch"));
       return;
     }
 
@@ -389,7 +397,7 @@ export default function BankImportPage() {
 
       const j = await r.json();
       if (!j.ok) {
-        alert(j.error || "Greška pri snimanju");
+        alert(j.error || t("bankingImport.errorSaving"));
         return;
       }
 
@@ -407,13 +415,13 @@ export default function BankImportPage() {
 
     const match_text = String(ruleText || "").trim();
     if (!match_text) {
-      alert("Upiši tekst pravila (npr. ime partnera ili dio opisa).");
+      alert(t("bankingImport.enterRuleText"));
       return;
     }
 
     const bid = Number(batchRes?.batch?.batch_id);
     if (!Number.isFinite(bid) || bid <= 0) {
-      alert("Nema batch-a");
+      alert(t("bankingImport.noBatch"));
       return;
     }
 
@@ -435,7 +443,7 @@ export default function BankImportPage() {
 
       const j = await r.json();
       if (!j.ok) {
-        alert(j.error || "Greška pri snimanju pravila");
+        alert(j.error || t("bankingImport.errorSavingRule"));
         return;
       }
 
@@ -450,13 +458,13 @@ export default function BankImportPage() {
         j2 = JSON.parse(text2);
       } catch {
         alert(
-          `Auto-match nije vratio JSON (HTTP ${r2.status}). Prvih 200 znakova: ${text2.slice(0, 200)}`,
+          `${t("bankingImport.autoMatchNoJson")} (HTTP ${r2.status}). Prvih 200 znakova: ${text2.slice(0, 200)}`,
         );
         return;
       }
 
       if (!j2?.ok) {
-        alert(j2?.error || "Auto-match greška");
+        alert(j2?.error || t("bankingImport.autoMatchError"));
         return;
       }
 
@@ -464,8 +472,8 @@ export default function BankImportPage() {
       setView("UNMATCHED");
       setProjectHits([]);
       alert(
-        (j.created ? "✅ Pravilo snimljeno" : "✅ Pravilo već postoji") +
-          ` · Auto-match: matched ${j2.matched ?? "?"}/${j2.scanned ?? "?"}`,
+        (j.created ? `✅ ${t("bankingImport.ruleSaved")}` : `✅ ${t("bankingImport.ruleExists")}`) +
+          ` · ${t("bankingImport.autoMatchResult")}: matched ${j2.matched ?? "?"}/${j2.scanned ?? "?"}`,
       );
 
       setManualTx(null);
@@ -502,12 +510,7 @@ export default function BankImportPage() {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
                   <div className="brandTitle">{t("bankingImport.title")}</div>
@@ -536,7 +539,7 @@ export default function BankImportPage() {
         />
 
         <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span className="label">account_id</span>
+          <span className="label">{t("bankingImport.accountId")}</span>
           <input
             value={accountId}
             onChange={(e) => setAccountId(e.target.value)}
@@ -551,14 +554,14 @@ export default function BankImportPage() {
           className={`btn ${importing ? "btn--disabled" : ""}`}
           aria-disabled={importing}
         >
-          {importing ? "Importujem..." : "Importuj u staging"}
+          {importing ? t("bankingImport.importing") : t("bankingImport.importToStaging")}
         </button>
 
         <button
           onClick={loadBatchList}
           className="btn"
         >
-          Osvježi listu batch-eva
+          {t("bankingImport.refreshBatchList")}
         </button>
 
         <button
@@ -566,9 +569,9 @@ export default function BankImportPage() {
           disabled={!batchId || autoMatching}
           className={`btn btn--active ${!batchId || autoMatching ? "btn--disabled" : ""}`}
           aria-disabled={!batchId || autoMatching}
-          title={!batchId ? "Odaberi batch prvo" : "Primijeni match pravila"}
+          title={!batchId ? t("bankingImport.selectBatchFirst") : t("bankingImport.applyMatchRules")}
         >
-          {autoMatching ? "Auto-match..." : "Auto-match"}
+          {autoMatching ? t("bankingImport.autoMatching") : t("bankingImport.autoMatch")}
         </button>
 
         <button
@@ -578,11 +581,11 @@ export default function BankImportPage() {
           aria-disabled={!batchId || committing}
           title={
             !batchId
-              ? "Odaberi batch prvo"
-              : "Upiši matched stavke u bank_tx_posting (ledger)"
+              ? t("bankingImport.selectBatchFirst")
+              : t("bankingImport.writeToLedger")
           }
         >
-          {committing ? "Commit..." : "Commit batch"}
+          {committing ? t("bankingImport.committing") : t("bankingImport.commitBatch")}
         </button>
 
         <button
@@ -592,11 +595,11 @@ export default function BankImportPage() {
           aria-disabled={!batchId || costing}
           title={
             !batchId
-              ? "Odaberi batch prvo"
-              : "Upiši postings (bank_tx_posting) u projektne troškove"
+              ? t("bankingImport.selectBatchFirst")
+              : t("bankingImport.writeToCosts")
           }
         >
-          {costing ? "To Costs..." : "To project costs"}
+          {costing ? t("bankingImport.toCosts") : t("bankingImport.toProjectCosts")}
         </button>
       </div>
 
@@ -605,7 +608,7 @@ export default function BankImportPage() {
         <div className="card" style={{ marginTop: 12 }}>
           {importRes.ok ? (
             <>
-              <div style={{ fontWeight: 800 }}>✅ Import OK</div>
+              <div style={{ fontWeight: 800 }}>✅ {t("bankingImport.importOk")}</div>
               <div style={{ marginTop: 6, fontSize: 14 }}>
                 batch_id: <b>{importRes.batch_id}</b> · parsed:{" "}
                 <b>{importRes.parsed}</b> · inserted:{" "}
@@ -619,7 +622,7 @@ export default function BankImportPage() {
           ) : (
             <>
               <div style={{ fontWeight: 800, color: "var(--bad)" }}>
-                ❌ Import greška
+                ❌ {t("bankingImport.importError")}
               </div>
               <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>
                 {importRes.error}
@@ -634,7 +637,7 @@ export default function BankImportPage() {
         <div className="card" style={{ marginTop: 12 }}>
           {autoMatchRes.ok ? (
             <>
-              <div style={{ fontWeight: 800 }}>✅ Auto-match OK</div>
+              <div style={{ fontWeight: 800 }}>✅ {t("bankingImport.autoMatchOk")}</div>
               <div style={{ marginTop: 6, fontSize: 14 }}>
                 batch_id: <b>{autoMatchRes.batch_id}</b> · rules:{" "}
                 <b>{autoMatchRes.rules}</b> · scanned:{" "}
@@ -645,7 +648,7 @@ export default function BankImportPage() {
           ) : (
             <>
               <div style={{ fontWeight: 800, color: "var(--bad)" }}>
-                ❌ Auto-match greška
+                ❌ {t("bankingImport.autoMatchErrorTitle")}
               </div>
               <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>
                 {autoMatchRes.error}
@@ -660,7 +663,7 @@ export default function BankImportPage() {
         <div className="card" style={{ marginTop: 12 }}>
           {commitRes.ok ? (
             <div>
-              <div style={{ fontWeight: 900 }}>✅ Commit OK</div>
+              <div style={{ fontWeight: 900 }}>✅ {t("bankingImport.commitOkTitle")}</div>
               <div style={{ marginTop: 6, fontSize: 14 }}>
                 committed <b>{commitRes.committed}</b> / matched{" "}
                 <b>{commitRes.matched_count}</b> · skipped{" "}
@@ -669,7 +672,7 @@ export default function BankImportPage() {
             </div>
           ) : (
             <div style={{ color: "var(--bad)" }}>
-              <div style={{ fontWeight: 900 }}>❌ Commit greška</div>
+              <div style={{ fontWeight: 900 }}>❌ {t("bankingImport.commitErrorTitle")}</div>
               <div style={{ marginTop: 6 }}>{commitRes.error}</div>
             </div>
           )}
@@ -682,7 +685,7 @@ export default function BankImportPage() {
           {costRes.ok ? (
             <div>
               <div style={{ fontWeight: 900 }}>
-                ✅ Troškovi upisani u projektni_troskovi
+                ✅ {t("bankingImport.costsWrittenTitle")}
               </div>
               <div style={{ marginTop: 6, fontSize: 14 }}>
                 inserted <b>{costRes.inserted}</b> / scanned{" "}
@@ -693,13 +696,13 @@ export default function BankImportPage() {
               </div>
               {Array.isArray(costRes.errors) && costRes.errors.length > 0 && (
                 <div style={{ marginTop: 10, color: "var(--bad)", fontSize: 13 }}>
-                  errors: {costRes.errors.length} (pogledaj JSON u response)
+                  {t("bankingImport.errorsInResponse")}: {costRes.errors.length}
                 </div>
               )}
             </div>
           ) : (
             <div style={{ color: "var(--bad)" }}>
-              <div style={{ fontWeight: 900 }}>❌ Greška</div>
+              <div style={{ fontWeight: 900 }}>❌ {t("bankingImport.errorTitle")}</div>
               <div style={{ marginTop: 6 }}>{costRes.error}</div>
               {costRes.debug && (
                 <pre
@@ -733,22 +736,21 @@ export default function BankImportPage() {
           >
             <div>
               <div style={{ fontWeight: 900, fontSize: 16 }}>
-                Batch #{batchRes.batch.batch_id} — izvod{" "}
-                {batchRes.batch.statement_no} ({batchRes.batch.statement_date})
+                Batch #{batchRes.batch.batch_id} — {t("bankingImport.statementWord")} {batchRes.batch.statement_no} ({batchRes.batch.statement_date})
               </div>
               <div style={{ marginTop: 6, fontSize: 14, opacity: 0.9 }}>
-                Račun: <b>{batchRes.batch.bank_account_no}</b> · Firma:{" "}
+                {t("bankingImport.account")}: <b>{batchRes.batch.bank_account_no}</b> · {t("bankingImport.company")}:{" "}
                 <b>{batchRes.batch.company_name}</b>
               </div>
             </div>
 
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 14 }}>
-                Stari saldo:{" "}
+                {t("bankingImport.openingBalance")}:{" "}
                 <b>{fmtMoney(Number(batchRes.batch.opening_balance))}</b>
               </div>
               <div style={{ fontSize: 14 }}>
-                Novi saldo:{" "}
+                {t("bankingImport.closingBalance")}:{" "}
                 <b>{fmtMoney(Number(batchRes.batch.closing_balance))}</b>
               </div>
             </div>
@@ -762,14 +764,14 @@ export default function BankImportPage() {
                 className={`btn ${filter === k ? "btn--active" : ""}`}
               >
                 {k === "ALL"
-                  ? "Sve"
+                  ? t("bankingImport.filterAll")
                   : k === "FEES"
-                    ? "Provizije"
+                    ? t("bankingImport.filterFees")
                     : k === "EXCH"
-                      ? "Konverzija"
+                      ? t("bankingImport.filterExch")
                       : k === "IN"
-                        ? "Uplate"
-                        : "Isplate"}
+                        ? t("bankingImport.filterIn")
+                        : t("bankingImport.filterOut")}
               </button>
             ))}
           </div>
@@ -785,7 +787,7 @@ export default function BankImportPage() {
               onClick={() => setView("UNMATCHED")}
               className={`btn ${view === "UNMATCHED" ? "btn--active" : ""}`}
             >
-              Unmatched (
+              {t("bankingImport.unmatched")} (
               {unmatchedRes?.ok ? unmatchedRes.unmatched.length : "?"})
             </button>
 
@@ -793,7 +795,7 @@ export default function BankImportPage() {
               onClick={() => setView("MATCHED")}
               className={`btn ${view === "MATCHED" ? "btn--active" : ""}`}
             >
-              Matched ({matchedRes?.ok ? matchedRes.matched.length : "?"})
+              {t("bankingImport.matched")} ({matchedRes?.ok ? matchedRes.matched.length : "?"})
             </button>
             </div>
 
@@ -801,7 +803,7 @@ export default function BankImportPage() {
               onClick={() => batchId && loadMatching(batchId)}
               className="btn"
             >
-              Refresh match list
+              {t("bankingImport.refreshMatchList")}
             </button>
           </div>
 
@@ -809,23 +811,23 @@ export default function BankImportPage() {
             <div style={{ marginTop: 12 }}>
               {!unmatchedRes ? (
                 <div style={{ opacity: 0.7 }}>
-                  Nema podataka (učitaj batch).
+                  {t("bankingImport.noDataLoadBatch")}
                 </div>
               ) : !unmatchedRes.ok ? (
                 <div style={{ color: "var(--bad)" }}>
-                  Greška: {unmatchedRes.error}
+                  {t("bankingImport.errorTitle")}: {unmatchedRes.error}
                 </div>
               ) : (
                 <div className="tableCard table-wrap">
                   <table className="table">
                     <thead>
                       <tr>
-                        <th>Datum</th>
-                        <th>Ref</th>
-                        <th style={{ textAlign: "right" }}>Iznos</th>
-                        <th>Partner</th>
-                        <th>Opis</th>
-                        <th>Akcija</th>
+                        <th>{t("bankingImport.colDate")}</th>
+                        <th>{t("bankingImport.colRef")}</th>
+                        <th style={{ textAlign: "right" }}>{t("bankingImport.colAmount")}</th>
+                        <th>{t("bankingImport.colPartner")}</th>
+                        <th>{t("bankingImport.colDescription")}</th>
+                        <th>{t("bankingImport.colAction")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -856,7 +858,7 @@ export default function BankImportPage() {
                                 onClick={() => openManualMatch(t)}
                                 className="btn"
                               >
-                                Ručni match
+                                {t("bankingImport.manualMatch")}
                               </button>
                             </td>
                           </tr>
@@ -866,7 +868,7 @@ export default function BankImportPage() {
                       {!unmatchedRes.unmatched.length && (
                         <tr>
                           <td colSpan={6} style={{ padding: 12, opacity: 0.7 }}>
-                            Nema unmatched stavki 🎉
+                            {t("bankingImport.noUnmatched")} 🎉
                           </td>
                         </tr>
                       )}
@@ -881,23 +883,23 @@ export default function BankImportPage() {
             <div style={{ marginTop: 12 }}>
               {!matchedRes ? (
                 <div style={{ opacity: 0.7 }}>
-                  Nema podataka (učitaj batch).
+                  {t("bankingImport.noDataLoadBatch")}
                 </div>
               ) : !matchedRes.ok ? (
                 <div style={{ color: "var(--bad)" }}>
-                  Greška: {matchedRes.error}
+                  {t("bankingImport.errorTitle")}: {matchedRes.error}
                 </div>
               ) : (
                 <div className="tableCard table-wrap">
                   <table className="table">
                     <thead>
                       <tr>
-                        <th>Datum</th>
-                        <th style={{ textAlign: "right" }}>Iznos</th>
-                        <th>Partner</th>
-                        <th>Opis</th>
-                        <th>Kategorija</th>
-                        <th>Matched</th>
+                        <th>{t("bankingImport.colDate")}</th>
+                        <th style={{ textAlign: "right" }}>{t("bankingImport.colAmount")}</th>
+                        <th>{t("bankingImport.colPartner")}</th>
+                        <th>{t("bankingImport.colDescription")}</th>
+                        <th>{t("bankingImport.colCategory")}</th>
+                        <th>{t("bankingImport.colMatched")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -934,7 +936,7 @@ export default function BankImportPage() {
                       {!matchedRes.matched.length && (
                         <tr>
                           <td colSpan={6} style={{ padding: 12, opacity: 0.7 }}>
-                            Nema matched stavki.
+                            {t("bankingImport.noMatched")}
                           </td>
                         </tr>
                       )}
@@ -951,7 +953,7 @@ export default function BankImportPage() {
       {batchRes?.ok && (
         <div className="card" style={{ marginTop: 16 }}>
           <div className="cardTitle" style={{ marginBottom: 8 }}>
-            Raw stavke iz staginga (preview) ({filteredTxs.length} /{" "}
+            {t("bankingImport.rawStagingPreview")} ({filteredTxs.length} /{" "}
             {txs.length})
           </div>
 
@@ -959,11 +961,11 @@ export default function BankImportPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Datum</th>
-                  <th>Ref</th>
-                  <th style={{ textAlign: "right" }}>Iznos</th>
-                  <th>Kome / Od koga</th>
-                  <th>Opis</th>
+                  <th>{t("bankingImport.colDate")}</th>
+                  <th>{t("bankingImport.colRef")}</th>
+                  <th style={{ textAlign: "right" }}>{t("bankingImport.colAmount")}</th>
+                  <th>{t("bankingImport.colToFrom")}</th>
+                  <th>{t("bankingImport.colDescription")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -996,7 +998,7 @@ export default function BankImportPage() {
                 {!filteredTxs.length && (
                   <tr>
                     <td colSpan={5} className="muted" style={{ padding: 12 }}>
-                      Nema stavki za odabrani filter.
+                      {t("bankingImport.noItemsForFilter")}
                     </td>
                   </tr>
                 )}
@@ -1007,7 +1009,7 @@ export default function BankImportPage() {
           {batchList.length > 0 && (
             <div style={{ marginTop: 14 }}>
               <div className="cardTitle" style={{ marginBottom: 6 }}>
-                Zadnji batch-evi
+                {t("bankingImport.recentBatches")}
               </div>
               <div className="actions">
                 {batchList.slice(0, 12).map((b: any) => (
@@ -1015,9 +1017,9 @@ export default function BankImportPage() {
                     key={b.batch_id}
                     onClick={() => loadBatch(Number(b.batch_id))}
                     className="btn"
-                    title={`Račun ${b.bank_account_no}`}
+                    title={`${t("bankingImport.account")} ${b.bank_account_no}`}
                   >
-                    #{b.batch_id} · izvod {b.statement_no} ·{" "}
+                    #{b.batch_id} · {t("bankingImport.statementWord")} {b.statement_no} ·{" "}
                     {String(b.statement_date ?? "")}
                   </button>
                 ))}
@@ -1029,7 +1031,7 @@ export default function BankImportPage() {
 
       {batchRes && !batchRes.ok && (
         <div className="card" style={{ marginTop: 12, color: "var(--bad)" }}>
-          Greška pri učitavanju batch-a: {batchRes.error}
+          {t("bankingImport.errorLoadingBatch")} {batchRes.error}
         </div>
       )}
 
@@ -1048,7 +1050,7 @@ export default function BankImportPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modalHeader">
-              <h3 className="modalTitleText">Ručni match</h3>
+              <h3 className="modalTitleText">{t("bankingImport.manualMatchTitle")}</h3>
             </div>
 
             <div className="modalBody">
@@ -1061,25 +1063,25 @@ export default function BankImportPage() {
 
             {/* Projekat search */}
             <label className="field">
-              <span className="label">Projekat (upiši broj ili naziv)</span>
+              <span className="label">{t("bankingImport.projectLabel")}</span>
               <input
                 value={projectQuery}
                 onChange={(e) => onProjectQueryChange(e.target.value)}
-                placeholder="npr. 123 ili 'kampanja'"
+                placeholder={t("bankingImport.projectPlaceholder")}
                 className="input"
               />
 
               <div style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>
-                Odabrani projekat:{" "}
+                {t("bankingImport.selectedProject")}{" "}
                 <b>
                   {manualTx.projekat_id
                     ? `#${manualTx.projekat_id}`
-                    : "— bez projekta —"}
+                    : t("bankingImport.noProject")}
                 </b>
               </div>
 
               {projectLoading && (
-                <div style={{ marginTop: 6, fontSize: 13 }}>Tražim...</div>
+                <div style={{ marginTop: 6, fontSize: 13 }}>{t("bankingImport.searching")}</div>
               )}
 
               {!!projectHits.length && (
@@ -1123,7 +1125,7 @@ export default function BankImportPage() {
                   }}
                   className="btn"
                 >
-                  Bez projekta
+                  {t("bankingImport.noProjectBtn")}
                 </button>
 
                 <button
@@ -1135,38 +1137,37 @@ export default function BankImportPage() {
                     setProjectHits([]);
                   }}
                   className="btn"
-                  title="Ako si upisao broj, postavi ga kao projekat_id"
+                  title={t("bankingImport.setNumberFromInput")}
                 >
-                  Postavi broj iz inputa
+                  {t("bankingImport.setNumberFromInput")}
                 </button>
               </div>
             </label>
 
             {/* kategorija */}
             <label className="field">
-              <span className="label">Kategorija</span>
+              <span className="label">{t("bankingImport.category")}</span>
               <input
                 value={manualTx.kategorija ?? ""}
                 onChange={(e) =>
                   setManualTx({ ...manualTx, kategorija: e.target.value })
                 }
-                placeholder="npr. GORIVO"
+                placeholder={t("bankingImport.categoryPlaceholder")}
                 className="input"
               />
             </label>
 
             {/* Save as rule */}
             <label className="field">
-              <span className="label">Save as rule (tekst za prepoznavanje)</span>
+              <span className="label">{t("bankingImport.saveAsRuleLabel")}</span>
               <input
                 value={ruleText}
                 onChange={(e) => setRuleText(e.target.value)}
-                placeholder="npr. AERO CENTAR KRILA ili EXCH KONVERZIJA"
+                placeholder={t("bankingImport.saveAsRulePlaceholder")}
                 className="input"
               />
               <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-                Savjet: za partnere koristi dio imena (npr. “AERO CENTAR”), za
-                konverziju “EXCH”, za interne prenose “PRENOS”.
+                {t("bankingImport.saveAsRuleHint")}
               </div>
             </label>
 
@@ -1179,7 +1180,7 @@ export default function BankImportPage() {
                 className={`btn btn--active ${savingRule ? "btn--disabled" : ""}`}
                 aria-disabled={savingRule}
               >
-                {savingRule ? "Snima rule..." : "Save as rule"}
+                {savingRule ? t("bankingImport.savingRule") : t("bankingImport.saveAsRule")}
               </button>
 
               <button
@@ -1189,7 +1190,7 @@ export default function BankImportPage() {
                 }}
                 className="btn"
               >
-                Otkaži
+                {t("bankingImport.cancel")}
               </button>
 
               <button
@@ -1198,7 +1199,7 @@ export default function BankImportPage() {
                 className={`btn btn--active ${savingManual ? "btn--disabled" : ""}`}
                 aria-disabled={savingManual}
               >
-                {savingManual ? "Snima..." : "Sačuvaj (MANUAL)"}
+                {savingManual ? t("bankingImport.saving") : t("bankingImport.saveManual")}
               </button>
             </div>
           </div>

@@ -33,7 +33,16 @@ export type ListCashFilters = {
 };
 
 function rowToEntry(r: any): CashEntry {
-  const dateVal = r.datum ? String(r.datum).slice(0, 10) : "";
+  let dateVal = "";
+  if (r.datum) {
+    if (r.datum instanceof Date && !Number.isNaN(r.datum.getTime())) {
+      dateVal = r.datum.toISOString().slice(0, 10);
+    } else {
+      const s = String(r.datum);
+      const match = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      dateVal = match ? match[0] : s.slice(0, 10);
+    }
+  }
   const dateIso = dateVal ? `${dateVal}T12:00:00.000Z` : new Date().toISOString();
   const createdAt = r.created_at
     ? new Date(r.created_at).toISOString()

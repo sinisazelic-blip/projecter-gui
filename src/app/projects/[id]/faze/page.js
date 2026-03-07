@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { query } from "@/lib/db";
 import { redirect } from "next/navigation";
+import { getValidLocale } from "@/lib/i18n";
+import { getT } from "@/lib/translations";
+import FluxaLogo from "@/components/FluxaLogo";
 import FazeClient from "./FazeClient";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +13,10 @@ export default async function ProjekatFazePage({ params }) {
   const { id } = await params;
   const projekatId = Number(id);
   if (!Number.isFinite(projekatId)) redirect("/projects");
+
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value ?? "sr");
+  const t = getT(locale);
 
   const [proj] = await query(
     `SELECT projekat_id, radni_naziv, DATE_FORMAT(rok_glavni, '%Y-%m-%d') AS rok_glavni FROM projekti WHERE projekat_id = ? LIMIT 1`,
@@ -34,11 +42,10 @@ export default async function ProjekatFazePage({ params }) {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Faze projekta</div>
+                  <div className="brandTitle">{t("fazePage.pageTitle")}</div>
                   <div className="brandSub">
                     #{projekatId} — {proj.radni_naziv}
                   </div>
@@ -46,11 +53,11 @@ export default async function ProjekatFazePage({ params }) {
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <Link href={`/projects/${projekatId}`} className="btn" title="Nazad na projekat">
-                  ← Projekat
+                <Link href={`/projects/${projekatId}`} className="btn" title={t("fazePage.backToProjectTitle")}>
+                  {t("fazePage.backToProject")}
                 </Link>
-                <Link href="/dashboard" className="btn" title="Dashboard">
-                  🏠 Dashboard
+                <Link href="/dashboard" className="btn" title={t("fazePage.dashboard")}>
+                  🏠 {t("fazePage.dashboard")}
                 </Link>
               </div>
             </div>
@@ -66,6 +73,7 @@ export default async function ProjekatFazePage({ params }) {
             radneFaze={radneFaze || []}
             radnici={radnici || []}
             dobavljaci={dobavljaci || []}
+            locale={locale}
           />
         </div>
       </div>

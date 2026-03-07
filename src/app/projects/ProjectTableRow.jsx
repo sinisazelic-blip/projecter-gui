@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "@/components/LocaleProvider";
 
 // Helper funkcije
 function pad2(n) {
@@ -56,12 +57,12 @@ function semColor(daysDiff) {
   if (daysDiff <= 3) return "orange";
   return "green";
 }
-function semLabel(daysDiff) {
-  if (daysDiff === null) return "rok nepoznat";
-  if (daysDiff < 0) return `kasni ${Math.abs(daysDiff)}d`;
-  if (daysDiff === 0) return "danas";
-  if (daysDiff === 1) return "sutra";
-  return `za ${daysDiff}d`;
+function getSemLabel(daysDiff, t) {
+  if (daysDiff === null) return t("projectsPage.deadlineUnknown");
+  if (daysDiff < 0) return t("projectsPage.deadlineLate").replace("{days}", Math.abs(daysDiff));
+  if (daysDiff === 0) return t("projectsPage.today");
+  if (daysDiff === 1) return t("projectsPage.tomorrow");
+  return t("projectsPage.deadlineIn").replace("{days}", daysDiff);
 }
 function dotBg(sem) {
   if (sem === "red") return "rgba(255, 80, 80, .95)";
@@ -69,11 +70,11 @@ function dotBg(sem) {
   if (sem === "green") return "rgba(80, 220, 140, .95)";
   return "rgba(180, 180, 180, .85)";
 }
-const fmt = (v) => {
+const fmtWithSuffix = (v, currencySuffix) => {
   if (v === null || v === undefined) return "—";
   const n = Number(v);
-  if (Number.isNaN(n)) return v;
-  return n.toFixed(2) + " KM";
+  if (Number.isNaN(n)) return String(v);
+  return n.toFixed(2) + currencySuffix;
 };
 
 // Status badge komponente
@@ -89,16 +90,15 @@ function statusToneById(statusId) {
   return "status-badge--unknown";
 }
 
-function StatusBadge({ project }) {
-  const label = project?.status_name
-    ? String(project.status_name)
-    : project?.status_id
-      ? `Status #${project.status_id}`
-      : "—";
+function StatusBadge({ project, t }) {
+  const label =
+    project?.statusDisplayName ??
+    (project?.status_name ? String(project.status_name) : null) ??
+    (project?.status_id ? `Status #${project.status_id}` : "—");
   const cls = statusToneById(project?.status_id);
 
   return (
-    <span className={`status-badge ${cls}`} title={`Status: ${label}`}>
+    <span className={`status-badge ${cls}`} title={`${t("projectsPage.statusTitle")} ${label}`}>
       <span className="status-badge__dot" />
       {label}
     </span>
@@ -111,27 +111,27 @@ function normalizeFinStatus(project) {
   return String(raw).trim().toLowerCase();
 }
 
-function finMeta(fin) {
+function finMeta(fin, t) {
   switch (fin) {
     case "bez_budzeta":
-      return { label: "BEZ BUDŽETA", className: "fin-badge--bez_budzeta" };
+      return { label: t("projectsPage.finNoBudget"), className: "fin-badge--bez_budzeta" };
     case "u_plusu":
-      return { label: "U PLUSU", className: "fin-badge--u_plusu" };
+      return { label: t("projectsPage.finInPlus"), className: "fin-badge--u_plusu" };
     case "u_minusu":
-      return { label: "U MINUSU", className: "fin-badge--u_minusu" };
+      return { label: t("projectsPage.finInMinus"), className: "fin-badge--u_minusu" };
     default:
-      return { label: "FIN: ?", className: "fin-badge--unknown" };
+      return { label: t("projectsPage.finUnknown"), className: "fin-badge--unknown" };
   }
 }
 
-function FinancialBadge({ project }) {
+function FinancialBadge({ project, t }) {
   const fin = normalizeFinStatus(project);
-  const meta = finMeta(fin);
+  const meta = finMeta(fin, t);
 
   return (
     <span
       className={`fin-badge ${meta.className}`}
-      title={`Fin status: ${fin}`}
+      title={`${t("projectsPage.finStatusTitle")} ${fin}`}
     >
       <span className="fin-badge__dot" />
       {meta.label}
@@ -149,10 +149,10 @@ function normalizeSignal(project) {
   return "NORMALNO";
 }
 
-function signalMeta(sig) {
+function signalMeta(sig, t) {
   if (sig === "STOP") {
     return {
-      label: "STOP",
+      label: t("projectsPage.signalStop"),
       bg: "rgba(255, 80, 80, .22)",
       border: "rgba(255, 80, 80, .35)",
       dot: "rgba(255, 80, 80, .95)",
@@ -160,27 +160,27 @@ function signalMeta(sig) {
   }
   if (sig === "PAZNJA") {
     return {
-      label: "PAZNJA",
+      label: t("projectsPage.signalAttention"),
       bg: "rgba(255, 165, 0, .20)",
       border: "rgba(255, 165, 0, .35)",
       dot: "rgba(255, 165, 0, .95)",
     };
   }
   return {
-    label: "NORMALNO",
+    label: t("projectsPage.signalNormal"),
     bg: "rgba(80, 220, 140, .18)",
     border: "rgba(80, 220, 140, .32)",
     dot: "rgba(80, 220, 140, .95)",
   };
 }
 
-function SignalBadge({ project }) {
+function SignalBadge({ project, t }) {
   const sig = normalizeSignal(project);
-  const meta = signalMeta(sig);
+  const meta = signalMeta(sig, t);
 
   return (
     <span
-      title={`Operativni signal: ${sig}`}
+      title={`${t("projectsPage.operativniSignalTitle")} ${sig}`}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -210,14 +210,8 @@ function SignalBadge({ project }) {
   );
 }
 
-const FLOW_STEPS = [
-  { k: "DEAL", label: "Deal" },
-  { k: "PROD", label: "Produkcija" },
-  { k: "DONE", label: "Završen" },
-  { k: "CLOSED", label: "Zatvoren" },
-  { k: "INVOICED", label: "Fakturisan" },
-  { k: "ARCH", label: "Arhiviran" },
-];
+const FLOW_KEYS = ["deal", "prod", "done", "closed", "invoiced", "arch"];
+const FLOW_STEPS = FLOW_KEYS.map((k) => ({ k: k.toUpperCase(), label: k }));
 
 function flowIndexForProjectStatusId(statusId) {
   const id = Number(statusId ?? 0);
@@ -267,7 +261,8 @@ function flowAccentByProjectStatusId(statusId) {
   };
 }
 
-function StatusFlowInline({ project }) {
+function StatusFlowInline({ project, flowSteps, t }) {
+  const steps = flowSteps || FLOW_STEPS;
   const statusId = Number(project?.status_id ?? 0);
   const activeIdx = flowIndexForProjectStatusId(statusId);
   const acc = flowAccentByProjectStatusId(statusId);
@@ -280,17 +275,17 @@ function StatusFlowInline({ project }) {
         paddingTop: 10,
         borderTop: "1px solid rgba(255,255,255,.10)",
       }}
-      aria-label="Tok statusa"
+      aria-label={t("projectsPage.statusFlowAria")}
     >
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `repeat(${FLOW_STEPS.length}, minmax(0, 1fr))`,
+          gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`,
           gap: 10,
           alignItems: "start",
         }}
       >
-        {FLOW_STEPS.map((s, idx) => {
+        {steps.map((s, idx) => {
           const isPast = idx < activeIdx;
           const isActive = idx === activeIdx;
 
@@ -363,11 +358,22 @@ function StatusFlowInline({ project }) {
 }
 
 export default function ProjectTableRow({ project }) {
+  const { t } = useTranslation();
+  const currencySuffix = t("projectsPage.currencySuffix");
+  const fmt = (v) => fmtWithSuffix(v, currencySuffix);
+  const flowSteps = useMemo(
+    () =>
+      FLOW_KEYS.map((k) => ({
+        k: k.toUpperCase(),
+        label: t(`statuses.flow.${k}`),
+      })),
+    [t],
+  );
   const d0 = parseToDateOnly(project?.rok_glavni);
   const rokText = fmtDDMMYYYY(d0);
   const diff = computeDaysDiff(d0);
   const sem = semColor(diff);
-  const label = semLabel(diff);
+  const label = getSemLabel(diff, t);
 
   // ✅ Provera da li je owner (za sada proveravamo localStorage, kasnije će biti pravi owner sistem)
   const [isOwner, setIsOwner] = useState(false);
@@ -422,7 +428,7 @@ export default function ProjectTableRow({ project }) {
           </Link>
 
           {/* ✅ STATUS FLOW (ispod naziva, preko širine ćelije) */}
-          <StatusFlowInline project={project} />
+          <StatusFlowInline project={project} flowSteps={flowSteps} t={t} />
         </div>
       </td>
 
@@ -471,7 +477,7 @@ export default function ProjectTableRow({ project }) {
                     opacity: 0.6,
                     fontStyle: "italic",
                   }}
-                  title={`Puni budžet: ${fmt(punBudzet)}`}
+                  title={`${t("projectsPage.fullBudgetTitle")} ${fmt(punBudzet)}`}
                 >
                   ({procenatZaTim.toFixed(0)}%)
                 </span>
@@ -514,9 +520,9 @@ export default function ProjectTableRow({ project }) {
             alignItems: "center",
           }}
         >
-          <SignalBadge project={project} />
+          <SignalBadge project={project} t={t} />
           <span style={{ opacity: 0.45 }}>·</span>
-          <StatusBadge project={project} />
+          <StatusBadge project={project} t={t} />
         </div>
       </td>
     </tr>

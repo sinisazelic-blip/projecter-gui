@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { downloadExcel } from "@/lib/exportExcel";
 import { useTranslation } from "@/components/LocaleProvider";
+import FluxaLogo from "@/components/FluxaLogo";
 
 function fmtDDMMYYYY(iso: string | null): string {
   if (!iso) return "—";
@@ -64,10 +65,17 @@ export default function IzvodiPage() {
         const data = await res.json();
 
         if (!res.ok || !data.ok) {
-          throw new Error(data.error || t("fakture.loadError"));
+          throw new Error(data.error || t("izvodi.loadError"));
         }
 
-        setIzvodi(data.batches || []);
+        const batches = data.batches || [];
+        setIzvodi(
+          [...batches].sort((a, b) => {
+            const da = a.statement_date || "";
+            const db = b.statement_date || "";
+            return db.localeCompare(da);
+          })
+        );
       } catch (err: any) {
         setError(err?.message || t("common.error"));
       } finally {
@@ -143,12 +151,7 @@ export default function IzvodiPage() {
             <div className="topRow" style={{ justifyContent: "space-between" }}>
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
                   <div className="brandTitle">🏦 {t("izvodi.title")}</div>
@@ -156,52 +159,61 @@ export default function IzvodiPage() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <Link
-                  href="/dashboard"
-                  className="btn"
-                  style={{ minWidth: 130 }}
-                  title={t("izvodi.backToDashboard")}
-                >
-                  🏠 {t("common.dashboard")}
-                </Link>
-                <Link
-                  href="/banking/import"
+              <Link
+                href="/dashboard"
+                className="btn"
+                style={{ minWidth: 130 }}
+                title={t("izvodi.backToDashboard")}
+              >
+                🏠 {t("common.dashboard")}
+              </Link>
+            </div>
+
+            <div style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <Link
+                href="/banking/import"
+                className="btn"
+                style={{ fontSize: 13 }}
+                title={t("izvodi.importIzvodaTitle")}
+              >
+                {t("izvodi.importIzvoda")}
+              </Link>
+              {izvodi.length > 0 && (
+                <button
+                  type="button"
                   className="btn"
                   style={{ fontSize: 13 }}
-                  title={t("izvodi.importIzvodaTitle")}
+                  onClick={() => {
+                    const headers = [
+                      t("izvodi.colStatementNo"),
+                      t("izvodi.colStatementDate"),
+                      t("izvodi.colAccountNo"),
+                      t("izvodi.colOpening"),
+                      t("izvodi.colClosing"),
+                      t("izvodi.colCurrency"),
+                      t("izvodi.colImported"),
+                    ];
+                    const rows = izvodi.map((i) => [
+                      i.statement_no || `#${i.batch_id}`,
+                      fmtDDMMYYYY(i.statement_date),
+                      i.bank_account_no ?? "—",
+                      i.opening_balance ?? "",
+                      i.closing_balance ?? "",
+                      i.currency ?? "—",
+                      i.imported_at ? String(i.imported_at).slice(0, 19) : "—",
+                    ]);
+                    downloadExcel({
+                      filename: "izvodi_lista",
+                      sheetName: t("izvodi.excelSheetName"),
+                      headers,
+                      rows,
+                    });
+                  }}
+                  title={t("izvodi.exportExcelTitle")}
                 >
-                  {t("izvodi.importIzvoda")}
-                </Link>
-                {izvodi.length > 0 && (
-                  <button
-                    type="button"
-                    className="btn"
-                    style={{ fontSize: 13 }}
-                    onClick={() => {
-                      const headers = ["Broj izvoda", "Datum izvoda", "Broj računa", "Otvaranje", "Zatvaranje", "Valuta", "Uvezeno"];
-                      const rows = izvodi.map((i) => [
-                        i.statement_no || `#${i.batch_id}`,
-                        fmtDDMMYYYY(i.statement_date),
-                        i.bank_account_no ?? "—",
-                        i.opening_balance ?? "",
-                        i.closing_balance ?? "",
-                        i.currency ?? "—",
-                        i.imported_at ? String(i.imported_at).slice(0, 19) : "—",
-                      ]);
-                      downloadExcel({
-                        filename: "izvodi_lista",
-                        sheetName: "Izvodi",
-                        headers,
-                        rows,
-                      });
-                    }}
-                    title={t("izvodi.exportExcelTitle")}
-                  >
-                    {t("izvodi.exportExcel")}
-                  </button>
-                )}
-              </div>
+                  {t("izvodi.exportExcel")}
+                </button>
+              )}
             </div>
 
             <div style={{ marginTop: 14 }}>
@@ -286,16 +298,16 @@ export default function IzvodiPage() {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Broj izvoda</th>
-                    <th>Datum izvoda</th>
-                    <th>Broj računa</th>
+                    <th>{t("izvodi.colStatementNo")}</th>
+                    <th>{t("izvodi.colStatementDate")}</th>
+                    <th>{t("izvodi.colAccountNo")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {izvodi.length === 0 ? (
                     <tr>
                       <td colSpan={3} style={{ opacity: 0.7, padding: 20 }}>
-                        Nema izvoda za zadate filtere.
+                        {t("izvodi.noIzvodi")}
                       </td>
                     </tr>
                   ) : (

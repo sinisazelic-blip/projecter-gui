@@ -2,22 +2,26 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/components/LocaleProvider";
 
-const TIP_RASKNJIZAVANJA = [
-  { val: "PROJEKTNI_TROSAK", label: "Projektni trošak (dobavljač)" },
-  { val: "FIKSNI_TROSAK", label: "Fiksni trošak" },
-  { val: "VANREDNI_TROSAK", label: "Vanredni trošak" },
-  { val: "INVESTICIJE", label: "Investicije" },
+const TIP_RASKNJIZAVANJA_KEYS = [
+  { val: "PROJEKTNI_TROSAK", key: "tipProjektniLabel" },
+  { val: "FIKSNI_TROSAK", key: "tipFiksniLabel" },
+  { val: "VANREDNI_TROSAK", key: "tipVanredniLabel" },
+  { val: "INVESTICIJE", key: "tipInvesticijeLabel" },
 ];
 
-const VANREDNI_PODTIP = [
-  { val: "SERVIS", label: "Servis" },
-  { val: "REPRO_MATERIJAL", label: "Repro materijal" },
-  { val: "POTROSNI_MATERIJAL", label: "Potrošni materijal" },
+const VANREDNI_PODTIP_KEYS = [
+  { val: "SERVIS", key: "podtipServis" },
+  { val: "REPRO_MATERIJAL", key: "podtipRepro" },
+  { val: "POTROSNI_MATERIJAL", key: "podtipPotrosni" },
 ];
+
+const CURRENCIES = [{ code: "EUR" }, { code: "USD" }];
 
 export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTroskovi }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     broj_fakture: "",
     datum_fakture: "",
@@ -26,7 +30,7 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
     klijent_id: "",
     partner_naziv: "",
     iznos: "",
-    valuta: "BAM",
+    valuta: "EUR",
     iznos_km: "",
     kurs: "",
     opis: "",
@@ -72,11 +76,11 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
       const json = await res.json();
 
       if (!json.ok) {
-        setMsg({ type: "error", text: json.error || "Greška" });
+        setMsg({ type: "error", text: json.error || t("kuf.errorGeneric") });
         return;
       }
 
-      setMsg({ type: "ok", text: `Uvezeno. KUF ID: ${json.kuf_id}` });
+      setMsg({ type: "ok", text: `${t("kuf.msgImportedPrefix")} ${json.kuf_id}` });
       router.refresh();
       setForm({
         broj_fakture: "",
@@ -86,7 +90,7 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
         klijent_id: "",
         partner_naziv: "",
         iznos: "",
-        valuta: "BAM",
+        valuta: "EUR",
         iznos_km: "",
         kurs: "",
         opis: "",
@@ -98,7 +102,7 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
         investicija_opis: "",
       });
     } catch (err) {
-      setMsg({ type: "error", text: err?.message || "Greška" });
+      setMsg({ type: "error", text: err?.message || t("kuf.errorGeneric") });
     } finally {
       setSaving(false);
     }
@@ -109,23 +113,23 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
   return (
     <form onSubmit={handleSubmit} className="card">
       <div className="cardHead">
-        <div className="cardTitle">Unos ulazne fakture (KUF)</div>
+        <div className="cardTitle">{t("kuf.formTitle")}</div>
       </div>
 
       <div className="filters" style={{ flexWrap: "wrap", display: "flex", gap: 12 }}>
         <div className="field">
-          <span className="label">Broj fakture</span>
+          <span className="label">{t("kuf.invoiceNo")}</span>
           <input
             className="input"
             name="broj_fakture"
             value={form.broj_fakture}
             onChange={handleChange}
-            placeholder="npr. 123/2025"
+            placeholder={t("kuf.invoiceNoPlaceholder")}
           />
         </div>
 
         <div className="field">
-          <span className="label">Datum fakture * (dd.mm.yyyy)</span>
+          <span className="label">{t("kuf.dateInvoice")}</span>
           <input
             className="input"
             type="date"
@@ -137,7 +141,7 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
         </div>
 
         <div className="field">
-          <span className="label">Datum dospijeća (dd.mm.yyyy)</span>
+          <span className="label">{t("kuf.dateDue")}</span>
           <input
             className="input"
             type="date"
@@ -148,14 +152,14 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
         </div>
 
         <div className="field" style={{ minWidth: 200 }}>
-          <span className="label">Dobavljač (iz šifarnika)</span>
+          <span className="label">{t("kuf.supplier")}</span>
           <select
             className="input"
             name="dobavljac_id"
             value={form.dobavljac_id}
             onChange={handleChange}
           >
-            <option value="">— Izaberi —</option>
+            <option value="">{t("kuf.selectChoose")}</option>
             {(dobavljaci || []).map((d) => (
               <option key={d.dobavljac_id} value={d.dobavljac_id}>
                 {d.naziv}
@@ -165,14 +169,14 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
         </div>
 
         <div className="field" style={{ minWidth: 200 }}>
-          <span className="label">Klijent (ako je partner u klijentima)</span>
+          <span className="label">{t("kuf.client")}</span>
           <select
             className="input"
             name="klijent_id"
             value={form.klijent_id}
             onChange={handleChange}
           >
-            <option value="">— Izaberi —</option>
+            <option value="">{t("kuf.selectChoose")}</option>
             {(klijenti || []).map((k) => (
               <option key={k.klijent_id} value={k.klijent_id}>
                 {k.naziv_klijenta}
@@ -182,18 +186,18 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
         </div>
 
         <div className="field" style={{ minWidth: 220 }}>
-          <span className="label">Partner (naziv ako nije u šifarniku)</span>
+          <span className="label">{t("kuf.partner")}</span>
           <input
             className="input"
             name="partner_naziv"
             value={form.partner_naziv}
             onChange={handleChange}
-            placeholder="npr. Neka firma d.o.o."
+            placeholder={t("kuf.partnerPlaceholder")}
           />
         </div>
 
         <div className="field">
-          <span className="label">Iznos *</span>
+          <span className="label">{t("kuf.amount")}</span>
           <input
             className="input"
             type="number"
@@ -207,21 +211,21 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
         </div>
 
         <div className="field">
-          <span className="label">Valuta</span>
+          <span className="label">{t("kuf.currency")}</span>
           <select
             className="input"
             name="valuta"
             value={form.valuta}
             onChange={handleChange}
           >
-            <option value="BAM">BAM</option>
-            <option value="EUR">EUR</option>
-            <option value="USD">USD</option>
+            {CURRENCIES.map((c) => (
+              <option key={c.code} value={c.code}>{c.code}</option>
+            ))}
           </select>
         </div>
 
         <div className="field">
-          <span className="label">Iznos (KM)</span>
+          <span className="label">{t("kuf.amountBam")}</span>
           <input
             className="input"
             type="number"
@@ -230,23 +234,23 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
             name="iznos_km"
             value={form.iznos_km}
             onChange={handleChange}
-            placeholder="Ako nije BAM"
+            placeholder={t("kuf.amountBamPlaceholder")}
           />
         </div>
 
         <div className="field">
-          <span className="label">Opis stavke</span>
+          <span className="label">{t("kuf.description")}</span>
           <input
             className="input"
             name="opis"
             value={form.opis}
             onChange={handleChange}
-            placeholder="npr. Usluge repro materijala"
+            placeholder={t("kuf.descriptionPlaceholder")}
           />
         </div>
 
         <div className="field" style={{ minWidth: 200 }}>
-          <span className="label">Napomena</span>
+          <span className="label">{t("kuf.note")}</span>
           <input
             className="input"
             name="napomena"
@@ -257,12 +261,12 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
       </div>
 
       <div className="cardHead" style={{ marginTop: 16 }}>
-        <div className="cardTitle">Rasknjižavanje</div>
+        <div className="cardTitle">{t("kuf.posting")}</div>
       </div>
 
       <div className="filters" style={{ flexWrap: "wrap", display: "flex", gap: 12 }}>
         <div className="field" style={{ minWidth: 260 }}>
-          <span className="label">Tip rasknjižavanja *</span>
+          <span className="label">{t("kuf.postingType")}</span>
           <select
             className="input"
             name="tip_rasknjizavanja"
@@ -270,9 +274,9 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
             onChange={handleChange}
             required
           >
-            {TIP_RASKNJIZAVANJA.map((t) => (
-              <option key={t.val} value={t.val}>
-                {t.label}
+            {TIP_RASKNJIZAVANJA_KEYS.map((opt) => (
+              <option key={opt.val} value={opt.val}>
+                {t("kuf." + opt.key)}
               </option>
             ))}
           </select>
@@ -280,14 +284,14 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
 
         {tip === "PROJEKTNI_TROSAK" && (
           <div className="field" style={{ minWidth: 200 }}>
-            <span className="label">Projekat</span>
+            <span className="label">{t("kuf.project")}</span>
             <select
               className="input"
               name="projekat_id"
               value={form.projekat_id}
               onChange={handleChange}
             >
-              <option value="">— Izaberi —</option>
+              <option value="">{t("kuf.selectChoose")}</option>
               {(projekti || []).map((p) => (
                 <option key={p.projekat_id} value={p.projekat_id}>
                   #{p.projekat_id} {p.radni_naziv}
@@ -299,14 +303,14 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
 
         {tip === "FIKSNI_TROSAK" && (
           <div className="field" style={{ minWidth: 200 }}>
-            <span className="label">Fiksni trošak</span>
+            <span className="label">{t("kuf.fixedCost")}</span>
             <select
               className="input"
               name="fiksni_trosak_id"
               value={form.fiksni_trosak_id}
               onChange={handleChange}
             >
-              <option value="">— Izaberi —</option>
+              <option value="">{t("kuf.selectChoose")}</option>
               {(fiksniTroskovi || []).map((f) => (
                 <option key={f.trosak_id} value={f.trosak_id}>
                   {f.naziv_troska}
@@ -318,17 +322,17 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
 
         {tip === "VANREDNI_TROSAK" && (
           <div className="field" style={{ minWidth: 200 }}>
-            <span className="label">Podtip</span>
+            <span className="label">{t("kuf.podtip")}</span>
             <select
               className="input"
               name="vanredni_podtip"
               value={form.vanredni_podtip}
               onChange={handleChange}
             >
-              <option value="">— Izaberi —</option>
-              {VANREDNI_PODTIP.map((v) => (
+              <option value="">{t("kuf.selectChoose")}</option>
+              {VANREDNI_PODTIP_KEYS.map((v) => (
                 <option key={v.val} value={v.val}>
-                  {v.label}
+                  {t("kuf." + v.key)}
                 </option>
               ))}
             </select>
@@ -337,13 +341,13 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
 
         {tip === "INVESTICIJE" && (
           <div className="field" style={{ minWidth: 220 }}>
-            <span className="label">Šta je (oprema, uređaji…)</span>
+            <span className="label">{t("kuf.investWhat")}</span>
             <input
               className="input"
               name="investicija_opis"
               value={form.investicija_opis}
               onChange={handleChange}
-              placeholder="npr. Kupovina monitora"
+              placeholder={t("kuf.investPlaceholder")}
             />
           </div>
         )}
@@ -365,7 +369,7 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
 
       <div className="actions" style={{ marginTop: 12 }}>
         <button type="submit" className="btn btn--active" disabled={saving}>
-          {saving ? "Unosim…" : "Unesi KUF"}
+          {saving ? t("kuf.submitSaving") : t("kuf.submitButton")}
         </button>
       </div>
     </form>

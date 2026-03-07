@@ -1,6 +1,10 @@
 import RadniciClient from "./RadniciClient";
 import { query } from "@/lib/db";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
+import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +24,10 @@ export type RadnikRow = {
 };
 
 export default async function RadniciPage() {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) ?? "sr";
+  const t = getT(locale);
+
   const existingCols: any[] = await query(
     `SELECT COLUMN_NAME
        FROM INFORMATION_SCHEMA.COLUMNS
@@ -57,8 +65,12 @@ export default async function RadniciPage() {
     hasJib ? "jib" : "NULL AS jib",
     hasAktivan ? "aktivan" : "1 AS aktivan",
     hasOpis ? "opis" : "NULL AS opis",
-    hasCreatedAt ? "created_at" : "NULL AS created_at",
-    hasUpdatedAt ? "updated_at" : "NULL AS updated_at",
+    hasCreatedAt
+      ? "DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at"
+      : "NULL AS created_at",
+    hasUpdatedAt
+      ? "DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at"
+      : "NULL AS updated_at",
   ].join(", ");
 
   const orderBy = hasAktivan
@@ -80,21 +92,16 @@ export default async function RadniciPage() {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Radnici</div>
-                  <div className="brandSub">Studio / Šifarnici</div>
+                  <div className="brandTitle">{t("studioRadnici.title")}</div>
+                  <div className="brandSub">{t("studioRadnici.subtitle")}</div>
                 </div>
               </div>
 
-              <Link href="/dashboard" className="btn" title="Dashboard">
-                🏠 Dashboard
+              <Link href="/dashboard" className="btn" title={t("dashboard.title")}>
+                🏠 {t("dashboard.title")}
               </Link>
             </div>
 

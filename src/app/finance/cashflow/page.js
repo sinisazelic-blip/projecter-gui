@@ -1,4 +1,8 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
+import FluxaLogo from "@/components/FluxaLogo";
 import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -64,7 +68,7 @@ function computeAllDueDates(row, fromDate, toDate) {
   return dates;
 }
 
-function classifyDue(dueDate) {
+function classifyDue(t, dueDate) {
   if (!dueDate) return { text: "—", kind: "neutral" };
 
   const today = new Date();
@@ -76,12 +80,12 @@ function classifyDue(dueDate) {
     (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
   );
 
-  if (diffDays < 0) return { text: `Kasni ${Math.abs(diffDays)}d`, kind: "bad" };
-  if (diffDays === 0) return { text: "Danas", kind: "bad" };
-  if (diffDays === 1) return { text: "Sutra", kind: "warn" };
-  if (diffDays <= 7) return { text: `Za ${diffDays}d`, kind: "warn" };
-  if (diffDays <= 14) return { text: `Za ${diffDays}d`, kind: "ok" };
-  return { text: `Za ${diffDays}d`, kind: "ok" };
+  if (diffDays < 0) return { text: (t("cashflow.overdueDays") || "").replace("{{days}}", Math.abs(diffDays)), kind: "bad" };
+  if (diffDays === 0) return { text: t("cashflow.today"), kind: "bad" };
+  if (diffDays === 1) return { text: t("cashflow.tomorrow"), kind: "warn" };
+  if (diffDays <= 7) return { text: (t("cashflow.inDays") || "").replace("{{days}}", diffDays), kind: "warn" };
+  if (diffDays <= 14) return { text: (t("cashflow.inDays") || "").replace("{{days}}", diffDays), kind: "ok" };
+  return { text: (t("cashflow.inDays") || "").replace("{{days}}", diffDays), kind: "ok" };
 }
 
 function badge(text, kind = "neutral") {
@@ -97,6 +101,10 @@ function badge(text, kind = "neutral") {
 }
 
 export default async function CashFlowPage({ searchParams }) {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
+  const t = getT(locale);
+
   const sp = await Promise.resolve(searchParams);
   const horizonDays = Math.min(90, Math.max(14, Number(sp?.dana ?? 60) || 60));
 
@@ -144,6 +152,15 @@ export default async function CashFlowPage({ searchParams }) {
 
   const nextDue = items.find((x) => x.due_obj >= today) ?? items[0];
 
+  const freqLabel = (r) => {
+    if (r.frekvencija === "MJESECNO" && r.dan_u_mjesecu != null) {
+      return (t("cashflow.everyDayOfMonth") || "").replace("{{day}}", r.dan_u_mjesecu);
+    }
+    if (r.frekvencija === "GODISNJE") return t("cashflow.yearly");
+    if (r.frekvencija === "JEDNOKRATNO") return t("cashflow.once");
+    return r.frekvencija ?? "—";
+  };
+
   return (
     <div className="container">
       <div className="pageWrap">
@@ -152,30 +169,27 @@ export default async function CashFlowPage({ searchParams }) {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">CashFlow</div>
+                  <div className="brandTitle">{t("cashflow.title")}</div>
                   <div className="brandSub">
-                    Hronologija plaćanja · Uvijek vidiš šta je sljedeće
+                    {t("cashflow.subtitleFull")}
                   </div>
                 </div>
               </div>
 
               <div className="actions">
                 <Link className="btn" href="/finance/fiksni-troskovi">
-                  Fiksni troškovi
+                  {t("cashflow.fixedCosts")}
                 </Link>
-                <Link className="btn" href="/finance" title="Finansije">
-                  Finansije
-                </Link>
-                <Link className="btn" href="/dashboard" title="Dashboard">
-                  🏠 Dashboard
+                {locale === "sr" && (
+                  <Link className="btn" href="/finance" title={t("finance.title")}>
+                    {t("finance.title")}
+                  </Link>
+                )}
+                <Link className="btn" href="/dashboard" title={t("common.dashboard")}>
+                  🏠 {t("common.dashboard")}
                 </Link>
               </div>
             </div>
@@ -190,7 +204,7 @@ export default async function CashFlowPage({ searchParams }) {
             <div className="card" style={{ marginBottom: 12 }}>
               <div className="cardHead">
                 <div className="cardTitleRow">
-                  <div className="cardTitle">Sljedeće za plaćanje</div>
+                  <div className="cardTitle">{t("cashflow.nextToPay")}</div>
                   <span className="muted">
                     {fmtDate(nextDue.due_date)} · {nextDue.naziv_troska}
                   </span>
@@ -216,13 +230,9 @@ export default async function CashFlowPage({ searchParams }) {
                 >
                   {fmtKM(nextDue.iznos, nextDue.valuta)}
                 </div>
-                <div>{badge(classifyDue(nextDue.due_date).text, classifyDue(nextDue.due_date).kind)}</div>
+                <div>{badge(classifyDue(t, nextDue.due_date).text, classifyDue(t, nextDue.due_date).kind)}</div>
                 <div className="muted" style={{ fontSize: 14 }}>
-                  {nextDue.frekvencija === "MJESECNO"
-                    ? `Svaki ${nextDue.dan_u_mjesecu}. u mjesecu`
-                    : nextDue.frekvencija === "GODISNJE"
-                      ? "Godišnje"
-                      : "Jednokratno"}
+                  {freqLabel(nextDue)}
                 </div>
               </div>
             </div>
@@ -233,10 +243,10 @@ export default async function CashFlowPage({ searchParams }) {
             <div className="cardHead">
               <div className="cardTitleRow">
                 <div className="cardTitle">
-                  Hronologija plaćanja (narednih {horizonDays} dana)
+                  {(t("cashflow.timelineTitle") || "").replace("{{days}}", horizonDays)}
                 </div>
                 <span className="muted">
-                  Prikazano: {items.length} stavki
+                  {(t("cashflow.shownItems") || "").replace("{{count}}", items.length)}
                 </span>
               </div>
             </div>
@@ -253,18 +263,18 @@ export default async function CashFlowPage({ searchParams }) {
                 </colgroup>
                 <thead>
                   <tr>
-                    <th>Datum</th>
-                    <th>Trošak</th>
-                    <th>Frekvencija</th>
-                    <th className="num">Iznos</th>
-                    <th>Zadnje plaćeno</th>
-                    <th>Status</th>
+                    <th>{t("cashflow.colDate")}</th>
+                    <th>{t("cashflow.colCost")}</th>
+                    <th>{t("cashflow.colFrequency")}</th>
+                    <th className="num">{t("cashflow.colAmount")}</th>
+                    <th>{t("cashflow.colLastPaid")}</th>
+                    <th>{t("cashflow.colStatus")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.length
                     ? items.map((r, idx) => {
-                        const sig = classifyDue(r.due_date);
+                        const sig = classifyDue(t, r.due_date);
                         return (
                           <tr
                             key={`${r.trosak_id}-${r.due_date}-${idx}`}
@@ -279,11 +289,7 @@ export default async function CashFlowPage({ searchParams }) {
                             <td style={{ fontWeight: 700 }}>
                               {r.naziv_troska ?? "—"}
                             </td>
-                            <td>
-                              {r.frekvencija === "MJESECNO"
-                                ? `${r.dan_u_mjesecu}. u mjesecu`
-                                : r.frekvencija ?? "—"}
-                            </td>
+                            <td>{freqLabel(r)}</td>
                             <td className="num">
                               {fmtKM(r.iznos, r.valuta)}
                             </td>
@@ -299,8 +305,7 @@ export default async function CashFlowPage({ searchParams }) {
                     : (
                         <tr>
                           <td colSpan={6} className="muted" style={{ padding: 16 }}>
-                            Nema aktivnih fiksnih troškova u narednih{" "}
-                            {horizonDays} dana.
+                            {(t("cashflow.noItems") || "").replace("{{days}}", horizonDays)}
                           </td>
                         </tr>
                       )}
@@ -312,7 +317,7 @@ export default async function CashFlowPage({ searchParams }) {
           <div className="card" style={{ marginTop: 12 }}>
             <form method="GET" className="filters" style={{ flexWrap: "wrap" }}>
               <div className="field">
-                <span className="label">Horizont (dana)</span>
+                <span className="label">{t("cashflow.horizonLabel")}</span>
                 <input
                   className="input"
                   type="number"
@@ -325,10 +330,10 @@ export default async function CashFlowPage({ searchParams }) {
               </div>
               <div className="actions">
                 <button className="btn btn--active" type="submit">
-                  Primijeni
+                  {t("cashflow.apply")}
                 </button>
                 <Link className="btn" href="/finance/cashflow">
-                  Reset (60 dana)
+                  {t("cashflow.reset")}
                 </Link>
               </div>
             </form>

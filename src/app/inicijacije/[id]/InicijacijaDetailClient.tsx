@@ -5,7 +5,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DatePickerDDMMYYYY } from "@/components/DatePickers";
+import FluxaLogo from "@/components/FluxaLogo";
 import StatusTimelineBar from "@/components/StatusTimelineBar";
+import { useTranslation } from "@/components/LocaleProvider";
+import { getCurrencyForLocale, getLocaleFromDocument } from "@/lib/i18n";
 
 type Row = {
   inicijacija_id: number;
@@ -83,26 +86,35 @@ type ProjectStatusRow = {
 
 const USER_LABEL = "SiNY";
 
-const VIA_OPTIONS = [
-  { v: "", label: "—" },
-  { v: "MAIL", label: "Mail" },
-  { v: "PHONE", label: "Telefon" },
-  { v: "VERBAL", label: "Usmeno" },
-  { v: "OTHER", label: "Ostalo" },
-];
+function getViaOptions(t: (k: string) => string) {
+  return [
+    { v: "", label: "—" },
+    { v: "MAIL", label: t("dealDetail.viaMail") },
+    { v: "PHONE", label: t("dealDetail.viaPhone") },
+    { v: "VERBAL", label: t("dealDetail.viaVerbal") },
+    { v: "OTHER", label: t("dealDetail.viaOther") },
+  ];
+}
 
 function pad2(n: number) {
   return n < 10 ? `0${n}` : `${n}`;
 }
 
-function formatHumanDT(v: string | null | undefined) {
+const LOCALE_MAP: Record<string, string> = { sr: "bs-BA", en: "en-GB" };
+
+function formatHumanDT(v: string | null | undefined, locale: string) {
   if (!v) return "—";
   const s = String(v).replace(" ", "T");
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return "—";
-  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(
-    d.getMinutes(),
-  )}`;
+  const loc = LOCALE_MAP[locale] || "bs-BA";
+  return d.toLocaleString(loc, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function parseHumanToIso(v: string): string | null {
@@ -172,10 +184,11 @@ const inputStyle = {
   fontSize: 15,
 } as const;
 
-function fmtMoney(n: number) {
+function fmtMoney(n: number, locale?: string) {
   const x = Number(n);
   if (!Number.isFinite(x)) return "0.00";
-  return x.toFixed(2);
+  const loc = locale ? LOCALE_MAP[locale] || "bs-BA" : "bs-BA";
+  return x.toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function normCcy(v: any) {
@@ -217,29 +230,32 @@ function daysDiffFromToday(isoDate: string) {
   return Math.round(ms / (1000 * 60 * 60 * 24));
 }
 
-function semaforFor(isoDate: string | null) {
+function semaforFor(
+  isoDate: string | null,
+  t: (k: string) => string,
+) {
   if (!isoDate)
-    return { cls: "sem--none", title: "Nema roka", label: "Nema roka" };
+    return { cls: "sem--none", title: t("dealDetail.semaforNone"), label: t("dealDetail.semaforNone") };
   const diff = daysDiffFromToday(isoDate);
   if (!Number.isFinite(diff))
-    return { cls: "sem--none", title: "Nevažeći rok", label: "Nevažeći rok" };
+    return { cls: "sem--none", title: t("dealDetail.semaforInvalid"), label: t("dealDetail.semaforInvalid") };
 
   if (diff <= 0)
     return {
       cls: "sem--red",
-      title: "Deadline je danas ili prošao",
-      label: "DANAS / PROŠAO",
+      title: t("dealDetail.semaforOverdue"),
+      label: t("dealDetail.semaforOverdueLabel"),
     };
   if (diff <= 3)
     return {
       cls: "sem--orange",
-      title: "Deadline uskoro (≤ 3 dana)",
-      label: "USKORO (≤3d)",
+      title: t("dealDetail.semaforSoon"),
+      label: t("dealDetail.semaforSoonLabel"),
     };
   return {
     cls: "sem--green",
-    title: "Deadline OK (> 3 dana)",
-    label: "OK (>3d)",
+    title: t("dealDetail.semaforOk"),
+    label: t("dealDetail.semaforOkLabel"),
   };
 }
 
@@ -247,7 +263,7 @@ async function fetchJson(url: string, init?: RequestInit) {
   const res = await fetch(url, { cache: "no-store", ...(init || {}) });
   const j = await res.json().catch(() => null);
   if (!res.ok) {
-    const msg = j?.message || j?.error || "Greška.";
+    const msg = j?.message || j?.error || "Error";
     const err: any = new Error(msg);
     err.payload = j;
     err.status = res.status;
@@ -257,9 +273,13 @@ async function fetchJson(url: string, init?: RequestInit) {
 }
 
 export default function InicijacijaDetailClient() {
+  const { t, locale } = useTranslation();
   const params = useParams();
   const router = useRouter();
   const id = Number(params?.id);
+  const primaryCurrency = getCurrencyForLocale(locale);
+  const isEurPrimary = primaryCurrency === "EUR";
+  const VIA_OPTIONS = useMemo(() => getViaOptions(t), [t]);
 
   const [row, setRow] = useState<Row | null>(null);
   const [klijenti, setKlijenti] = useState<Klijent[]>([]);
@@ -339,8 +359,8 @@ export default function InicijacijaDetailClient() {
     [acceptedIso],
   );
   const sem = useMemo(
-    () => semaforFor(acceptedIsoDateOnly),
-    [acceptedIsoDateOnly],
+    () => semaforFor(acceptedIsoDateOnly, t),
+    [acceptedIsoDateOnly, t],
   );
 
   const totalsByCcy = useMemo(() => {
@@ -387,6 +407,9 @@ export default function InicijacijaDetailClient() {
     () => (Number.isFinite(totalEUR) ? totalEUR * EUR_TO_BAM : 0),
     [totalEUR],
   );
+
+  const budgetPrimaryValue = isEurPrimary ? budgetKM / EUR_TO_BAM : budgetKM;
+  const budgetPrimaryCode = isEurPrimary ? "EUR" : "BAM";
 
   async function loadKlijenti() {
     try {
@@ -453,7 +476,7 @@ export default function InicijacijaDetailClient() {
     } catch (e: any) {
       setProjStatus(null);
       setProjStatusError(
-        e?.message ?? "Greška pri učitavanju statusa projekta.",
+        e?.message ?? t("dealDetail.loadStatusError"),
       );
     } finally {
       setProjStatusLoading(false);
@@ -471,7 +494,7 @@ export default function InicijacijaDetailClient() {
       setCloseData(j as CloseCheck);
     } catch (e: any) {
       setCloseData(null);
-      setCloseError(e?.message ?? "Greška pri provjeri zatvaranja.");
+      setCloseError(e?.message ?? t("dealDetail.closeCheckError"));
     } finally {
       setCloseLoading(false);
     }
@@ -535,7 +558,7 @@ export default function InicijacijaDetailClient() {
     if (!row) return;
     if (dealReadOnly) return;
     if (row.status_id === 4) return; // već odbijeno
-    if (!window.confirm("Da li ste sigurni da želite stornirati ovaj Deal?")) return;
+    if (!window.confirm(t("dealDetail.confirmStornoDeal"))) return;
 
     setSaving(true);
     setError(null);
@@ -557,7 +580,7 @@ export default function InicijacijaDetailClient() {
       });
       const data = await res.json();
       if (!data?.ok) throw new Error(data?.error || "Greška");
-      setMsg("Deal je storniran.");
+      setMsg(t("dealDetail.dealStorned"));
       await load();
     } catch (e: any) {
       setError(e?.message ?? "Greška");
@@ -591,7 +614,7 @@ export default function InicijacijaDetailClient() {
 
       const data = await res.json();
       if (!data?.ok) throw new Error(data?.error || "Greška");
-      setMsg("Sačuvano.");
+      setMsg(t("dealDetail.saved"));
       await load();
     } catch (e: any) {
       setError(e?.message ?? "Greška");
@@ -611,7 +634,7 @@ export default function InicijacijaDetailClient() {
 
     if (t_accepted.trim() && !accepted_iso) {
       setSavingTimeline(false);
-      setError("Deadline mora biti u formatu: dd.mm.yyyy (ili dd.mm.yyyy HH:mm za ručno vrijeme).");
+      setError(t("dealDetail.deadlineFormatError"));
       return;
     }
 
@@ -633,7 +656,7 @@ export default function InicijacijaDetailClient() {
       const data = await res.json();
       if (!data?.ok) throw new Error(data?.error || "Greška (timeline)");
 
-      setMsg("Timeline sačuvan (novi zapis).");
+      setMsg(t("dealDetail.timelineSaved"));
       await loadTimeline();
     } catch (e: any) {
       setError(e?.message ?? "Greška");
@@ -659,14 +682,14 @@ export default function InicijacijaDetailClient() {
     const k = asNum(kolicina);
     if (!k || k <= 0) {
       setAddingItem(false);
-      setError("Količina mora biti broj > 0.");
+      setError(t("dealDetail.quantityError"));
       return;
     }
 
     const cij = asNum(cijenaUI);
     if (cij === null || cij < 0) {
       setAddingItem(false);
-      setError("Cijena mora biti broj ≥ 0.");
+      setError(t("dealDetail.priceError"));
       return;
     }
 
@@ -690,7 +713,7 @@ export default function InicijacijaDetailClient() {
       setKolicina("1");
       setCijenaUI("");
       setOpisStavke("");
-      setMsg("Stavka dodana.");
+      setMsg(t("dealDetail.itemAdded"));
       await loadStavke();
     } catch (e: any) {
       setError(e?.message ?? "Greška");
@@ -702,9 +725,7 @@ export default function InicijacijaDetailClient() {
   async function stornoItem(inicijacija_stavka_id: number) {
     if (dealReadOnly) return;
 
-    const ok = window.confirm(
-      "Stornirati ovu stavku? (Ne briše se; samo se sakrije i ne računa u zbir.)",
-    );
+    const ok = window.confirm(t("dealDetail.confirmStornoItem"));
     if (!ok) return;
 
     setError(null);
@@ -720,7 +741,7 @@ export default function InicijacijaDetailClient() {
       const data = await res.json();
       if (!data?.ok) throw new Error(data?.error || "Greška (storno)");
 
-      setMsg("Stavka stornirana.");
+      setMsg(t("dealDetail.itemStorned"));
       await loadStavke();
     } catch (e: any) {
       setError(e?.message ?? "Greška");
@@ -753,11 +774,11 @@ export default function InicijacijaDetailClient() {
     const cij = asNum(editCijena);
 
     if (k === null || k <= 0) {
-      setError("Količina mora biti broj > 0.");
+      setError(t("dealDetail.quantityError"));
       return;
     }
     if (cij === null || cij < 0) {
-      setError("Cijena mora biti broj ≥ 0.");
+      setError(t("dealDetail.priceError"));
       return;
     }
 
@@ -781,7 +802,7 @@ export default function InicijacijaDetailClient() {
       const data = await res.json();
       if (!data?.ok) throw new Error(data?.error || "Greška (snimi promjene)");
 
-      setMsg("Promjene snimljene.");
+      setMsg(t("dealDetail.changesSaved"));
       cancelEdit();
       await loadStavke();
     } catch (e: any) {
@@ -805,7 +826,7 @@ export default function InicijacijaDetailClient() {
       if (!data?.ok) throw new Error(data?.error || "Greška");
 
       const pid = data?.projekat_id as number | null;
-      setMsg(pid ? `Projekat otvoren (#${pid}).` : "Projekat otvoren.");
+      setMsg(pid ? t("dealDetail.projectOpenedWithId").replace("#{id}", String(pid)) : t("dealDetail.projectOpened"));
       await load();
 
       if (pid) router.push(`/projects/${pid}`);
@@ -838,10 +859,10 @@ export default function InicijacijaDetailClient() {
     } catch (e: any) {
       const payload = e?.payload;
       if (payload?.error === "CLOSE_BLOCKED")
-        setCloseError("Ne može se zatvoriti projekat. Provjeri blokade.");
+        setCloseError(t("dealDetail.closeBlocked"));
       else if (payload?.error === "CLOSE_NEEDS_CONFIRM")
-        setCloseError("Potrebna je potvrda upozorenja (čekiraj).");
-      else setCloseError(e?.message ?? "Greška pri zatvaranju projekta.");
+        setCloseError(t("dealDetail.closeNeedsConfirm"));
+      else setCloseError(e?.message ?? t("dealDetail.closeError"));
 
       try {
         await loadCloseCheck(pid);
@@ -862,23 +883,28 @@ export default function InicijacijaDetailClient() {
   if (!Number.isFinite(id) || id <= 0)
     return (
       <div className="container" style={{ padding: 16 }}>
-        Neispravan ID.
+        {t("dealDetail.invalidId")}
       </div>
     );
 
-  const dealTitle = row?.radni_naziv ? row.radni_naziv : `Deal #${id}`;
+  const dealTitle = row?.radni_naziv ? row.radni_naziv : `${t("dealDetail.dealHash")}${id}`;
 
   const hasHardBlocks = (closeData?.hard_blocks?.length ?? 0) > 0;
   const hasWarnings = (closeData?.warnings?.length ?? 0) > 0;
 
+  const projectStatusKey = projectStatusId ? `statuses.project.${projectStatusId}` : "";
+  const projectStatusTranslated =
+    projectStatusKey && t(projectStatusKey) !== projectStatusKey
+      ? t(projectStatusKey)
+      : projectStatusName;
   const projectStatusLabel = !row?.projekat_id
     ? null
     : projStatusLoading
-      ? "Učitavam…"
+      ? t("common.loading")
       : projStatusError
-        ? "Greška"
-        : projectStatusName
-          ? projectStatusName
+        ? t("dealDetail.error")
+        : projectStatusTranslated
+          ? projectStatusTranslated
           : projectStatusId
             ? `Status #${projectStatusId}`
             : "—";
@@ -968,34 +994,29 @@ export default function InicijacijaDetailClient() {
           <div className="topbar">
             <div className="topbarLeft">
               <div className="brandLogoBlock">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
-                <span className="brandSlogan">Project & Finance Engine</span>
+                <FluxaLogo /><span className="brandSlogan">{t("dealDetail.brandSlogan")}</span>
               </div>
               <div className="pageBrand">
-                <div className="brandTitle">Deal</div>
-                <div className="brandSub">Detalji ponude</div>
+                <div className="brandTitle">{t("dealDetail.pageTitle")}</div>
+                <div className="brandSub">{t("dealDetail.pageSubtitle")}</div>
               </div>
             </div>
 
             <div className="navBtns">
               <Link
                 href="/inicijacije"
-                aria-label="Povratak na Deals"
-                title="Povratak na Deals"
+                aria-label={t("dealDetail.backToDeals")}
+                title={t("dealDetail.backToDeals")}
                 className="glassbtn actionBtn"
               >
-                📋 Povratak na Deals
+                📋 {t("dealDetail.backToDeals")}
               </Link>
               <Link
                 href="/dashboard"
                 className="glassbtn actionBtn"
-                title="Povratak na Dashboard"
+                title={t("dealDetail.dashboard")}
               >
-                🏠 Dashboard
+                🏠 {t("dealDetail.dashboard")}
               </Link>
             </div>
           </div>
@@ -1006,10 +1027,10 @@ export default function InicijacijaDetailClient() {
               {dealTitle}
               <span className="muted" style={{ fontWeight: 600 }}>
                 {" "}
-                · Deal #{id}
+                · {t("dealDetail.dealHash")}{id}
               </span>
               {row?.projekat_id ? (
-                <span className="muted"> · Projekt #{row.projekat_id}</span>
+                <span className="muted"> · {t("dealDetail.projectHash")}{row.projekat_id}</span>
               ) : null}
             </h1>
 
@@ -1023,7 +1044,7 @@ export default function InicijacijaDetailClient() {
                     type="button"
                     style={{ opacity: saving ? 0.7 : 1 }}
                   >
-                    {saving ? "Snima..." : "Sačuvaj"}
+                    {saving ? t("dealDetail.saving") : t("dealDetail.save")}
                   </button>
                   <button
                     onClick={openProject}
@@ -1037,11 +1058,11 @@ export default function InicijacijaDetailClient() {
                     }}
                     title={
                       !acceptedOk
-                        ? "Ne može bez Deadline-a (dd.mm.yyyy HH:mm)."
-                        : "Otvori projekat iz Deal-a."
+                        ? t("dealDetail.needDeadline")
+                        : t("dealDetail.openProjectTitle")
                     }
                   >
-                    {openingProject ? "Otvaram..." : "Otvori projekat"}
+                    {openingProject ? t("dealDetail.opening") : t("dealDetail.openProject")}
                   </button>
                   <Link
                     href={row ? `/inicijacije/${id}/ponuda-wizard` : "#"}
@@ -1050,18 +1071,18 @@ export default function InicijacijaDetailClient() {
                       opacity: loading || !row ? 0.6 : 1,
                       pointerEvents: loading || !row ? "none" : undefined,
                     }}
-                    title="Priprema ponude (popust, nazivi, grupisanje) pa snimanje i preview."
+                    title={t("dealDetail.quoteTitle")}
                   >
-                    Ponuda
+                    {t("dealDetail.quote")}
                   </Link>
                   <button
                     className="glassbtn actionBtn"
                     type="button"
                     disabled
                     style={{ opacity: 0.4, cursor: "not-allowed" }}
-                    title="Dostupno kada je projekat otvoren"
+                    title={t("dealDetail.closeDisabledTitle")}
                   >
-                    🔒 Zatvori projekat
+                    🔒 {t("dealDetail.closeProject")}
                   </button>
                 </>
               ) : (
@@ -1073,9 +1094,9 @@ export default function InicijacijaDetailClient() {
                       opacity: loading || !row ? 0.6 : 1,
                       pointerEvents: loading || !row ? "none" : undefined,
                     }}
-                    title="Priprema ponude (popust, nazivi, grupisanje) pa snimanje i preview."
+                    title={t("dealDetail.quoteTitle")}
                   >
-                    Ponuda
+                    {t("dealDetail.quote")}
                   </Link>
                   <div style={{ position: "relative" }}>
                     <button
@@ -1084,12 +1105,12 @@ export default function InicijacijaDetailClient() {
                       type="button"
                       title={
                         dealReadOnly
-                          ? "Deal je read-only jer projekat ima zaključavajući status."
-                          : "Zatvori projekat (soft-lock) i spremi za fakturisanje."
+                          ? t("dealDetail.closeReadOnlyTitle")
+                          : t("dealDetail.closeTitle")
                       }
                       style={{ opacity: dealReadOnly ? 0.9 : 1 }}
                     >
-                      🔒 Zatvori projekat
+                      🔒 {t("dealDetail.closeProject")}
                     </button>
 
                     {closeOpen && (
@@ -1103,14 +1124,14 @@ export default function InicijacijaDetailClient() {
                           }}
                         >
                           <div style={{ fontWeight: 900 }}>
-                            Zatvori projekat
+                            {t("dealDetail.closePopoverTitle")}
                           </div>
                           <button
                             type="button"
                             className="btn"
                             onClick={() => setCloseOpen(false)}
                             disabled={closeSaving}
-                            title="Zatvori"
+                            title={t("dealDetail.closeBtn")}
                           >
                             ✕
                           </button>
@@ -1119,19 +1140,18 @@ export default function InicijacijaDetailClient() {
                         <div
                           style={{ marginTop: 8, opacity: 0.88, fontSize: 13 }}
                         >
-                          Ovo znači: projekat ulazi u status <b>ZATVOREN</b>{" "}
-                          (soft-lock) i spreman je za fakturisanje.
+                          {t("dealDetail.closePopoverMeaning")}
                         </div>
 
                         <div style={{ marginTop: 12 }}>
                           {closeLoading ? (
                             <div style={{ opacity: 0.85 }}>
-                              Učitavam provjeru…
+                              {t("dealDetail.loadingCheck")}
                             </div>
                           ) : !closeData ? (
                             <div style={{ opacity: 0.9 }}>
                               <div style={{ fontWeight: 800, marginBottom: 6 }}>
-                                Nije moguće učitati provjeru
+                                {t("dealDetail.cannotLoadCheck")}
                               </div>
                               <div style={{ opacity: 0.9 }}>
                                 {closeError ?? "—"}
@@ -1150,7 +1170,7 @@ export default function InicijacijaDetailClient() {
                                   onClick={() => setCloseOpen(false)}
                                   disabled={closeSaving}
                                 >
-                                  Zatvori
+                                  {t("dealDetail.closeBtn")}
                                 </button>
                                 <button
                                   className="btn"
@@ -1161,7 +1181,7 @@ export default function InicijacijaDetailClient() {
                                   }
                                   disabled={closeSaving}
                                 >
-                                  Pokušaj ponovo
+                                  {t("dealDetail.tryAgain")}
                                 </button>
                               </div>
                             </div>
@@ -1180,7 +1200,7 @@ export default function InicijacijaDetailClient() {
                                   <div
                                     style={{ fontWeight: 900, marginBottom: 6 }}
                                   >
-                                    Ne može se zatvoriti projekat
+                                    {t("dealDetail.cannotClose")}
                                   </div>
                                   <ul
                                     style={{
@@ -1266,7 +1286,7 @@ export default function InicijacijaDetailClient() {
                                       }
                                       disabled={closeSaving}
                                     />
-                                    Razumijem i želim nastaviti
+                                    {t("dealDetail.understandContinue")}
                                   </label>
                                 </div>
                               )}
@@ -1298,29 +1318,29 @@ export default function InicijacijaDetailClient() {
                                 <button
                                   className="btn"
                                   type="button"
-                                  onClick={() => setCloseOpen(false)}
-                                  disabled={closeSaving}
-                                >
-                                  Otkaži
-                                </button>
-                                <button
-                                  className="btn"
-                                  type="button"
-                                  onClick={doCloseProject}
-                                  disabled={
-                                    closeSaving ||
-                                    hasHardBlocks ||
-                                    (hasWarnings && !closeConfirmWarnings) ||
-                                    isProjectClosed
-                                  }
-                                  title="Zatvori projekat (status = ZATVOREN)"
-                                >
-                                  {closeSaving
-                                    ? "Snima…"
-                                    : isProjectClosed
-                                      ? "Već zatvoren"
-                                      : "Zatvori projekat"}
-                                </button>
+onClick={() => setCloseOpen(false)}
+                                disabled={closeSaving}
+                              >
+                                {t("dealDetail.cancel")}
+                              </button>
+                              <button
+                                className="btn"
+                                type="button"
+                                onClick={doCloseProject}
+                                disabled={
+                                  closeSaving ||
+                                  hasHardBlocks ||
+                                  (hasWarnings && !closeConfirmWarnings) ||
+                                  isProjectClosed
+                                }
+                                title={t("dealDetail.closeConfirmTitle")}
+                              >
+                                {closeSaving
+                                  ? t("dealDetail.saving")
+                                  : isProjectClosed
+                                    ? t("dealDetail.alreadyClosed")
+                                    : t("dealDetail.closeProject")}
+                              </button>
                               </div>
                             </>
                           )}
@@ -1333,7 +1353,7 @@ export default function InicijacijaDetailClient() {
             </div>
             {(ponudeList.length > 0 && (
               <div style={{ marginTop: 8, fontSize: 13, opacity: 0.9 }}>
-                Ponude za ovaj deal:{" "}
+                {t("dealDetail.quotesForDeal")}{" "}
                 {ponudeList.map((p) => (
                   <Link
                     key={p.ponuda_id}
@@ -1367,13 +1387,13 @@ export default function InicijacijaDetailClient() {
                   }}
                 >
                   <span>
-                    Otvoren: <b>{formatHumanDT(row?.opened_at ?? null)}</b>
+                    {t("dealDetail.openedAt")}: <b>{formatHumanDT(row?.opened_at ?? null, locale)}</b>
                     {"  "}·{"  "}
-                    Timeline:{" "}
+                    {t("dealDetail.timeline")}:{" "}
                     {timeline?.created_at ? (
-                      <b>zadnji zapis {formatHumanDT(timeline.created_at)}</b>
+                      <b>{t("dealDetail.lastRecord")} {formatHumanDT(timeline.created_at, locale)}</b>
                     ) : (
-                      <span className="muted">nema zapisa</span>
+                      <span className="muted">{t("dealDetail.noRecord")}</span>
                     )}
                   </span>
 
@@ -1399,7 +1419,7 @@ export default function InicijacijaDetailClient() {
                                   : "rgba(55,214,122,.95)",
                         }}
                       />
-                      <span style={{ opacity: 0.9 }}>Status projekta:</span>
+                      <span style={{ opacity: 0.9 }}>{t("dealDetail.projectStatus")}</span>
                       <span style={{ fontWeight: 900 }}>
                         {projectStatusLabel}
                       </span>
@@ -1418,7 +1438,7 @@ export default function InicijacijaDetailClient() {
                         color: "rgba(255, 214, 102, .95)",
                       }}
                     >
-                      · 🔒 Deal je read-only (status projekta zaključava)
+                      · 🔒 {t("dealDetail.dealReadOnly")}
                     </span>
                   ) : null}
 
@@ -1428,9 +1448,9 @@ export default function InicijacijaDetailClient() {
                       className="stornoBtn"
                       onClick={handleStorno}
                       disabled={saving}
-                      title="Storniraj Deal (klijent odustao)"
+                      title={t("dealDetail.stornoDealTitle")}
                     >
-                      STORNO
+                      {t("dealDetail.stornoDeal")}
                     </button>
                   ) : null}
                 </div>
@@ -1450,18 +1470,18 @@ export default function InicijacijaDetailClient() {
             >
               <div style={{ minWidth: 0 }}>
                 <div className="dealBannerTitle">
-                  ⚠️ Ovaj Deal je već prešao u projekat.
+                  ⚠️ {t("dealDetail.bannerAlreadyProject")}
                 </div>
                 <div className="dealBannerText">
-                  Budžet i stavke u projektu su snapshotovani.{" "}
+                  {t("dealDetail.bannerSnapshot")}{" "}
                   {isProjectArchived || isProjectCancelled ? (
-                    <b>Deal je istorija jer je projekat u ARHIVI.</b>
+                    <b>{t("dealDetail.bannerArchive")}</b>
                   ) : isProjectInvoiced ? (
-                    <b>Projekat je FAKTURISAN (9) — prati naplatu.</b>
+                    <b>{t("dealDetail.bannerInvoiced")}</b>
                   ) : isProjectClosed ? (
-                    <b>Deal je zaključan jer je projekat ZATVOREN (8).</b>
+                    <b>{t("dealDetail.bannerClosed")}</b>
                   ) : (
-                    <span>Promjene ovdje više nisu primarni izvor istine.</span>
+                    <span>{t("dealDetail.bannerNotPrimary")}</span>
                   )}
                 </div>
               </div>
@@ -1516,9 +1536,9 @@ export default function InicijacijaDetailClient() {
             </div>
           ) : null}
 
-          {loading && <div className="cardLike">Učitavam...</div>}
+          {loading && <div className="cardLike">{t("common.loading")}</div>}
           {!!error && !loading && (
-            <div className="cardLike msgErr">Greška: {error}</div>
+            <div className="cardLike msgErr">{t("dealDetail.error")}: {error}</div>
           )}
           {!!msg && !loading && <div className="cardLike msgOk">{msg}</div>}
           <div className="divider" />
@@ -1532,7 +1552,7 @@ export default function InicijacijaDetailClient() {
           {!loading && (
             <div className="cardLike">
               <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 10 }}>
-                Timeline (Deal)
+                {t("dealDetail.timelineDeal")}
               </div>
 
               <div
@@ -1543,13 +1563,13 @@ export default function InicijacijaDetailClient() {
                   pointerEvents: dealReadOnly ? "none" : "auto",
                 }}
               >
-                <div className="label">Otvoren Deal</div>
+                <div className="label">{t("dealDetail.openedAt")}</div>
                 <div style={{ ...inputStyle, opacity: 0.9 }}>
-                  {formatHumanDT(row?.opened_at ?? null)}
+                  {formatHumanDT(row?.opened_at ?? null, locale)}
                 </div>
 
                 <div className="label deadlineLabel">
-                  Deadline / vrijeme događaja
+                  {t("dealDetail.deadlineLabel")}
                 </div>
                 <div className="deadlineWrap">
                   <DatePickerDDMMYYYY
@@ -1566,18 +1586,17 @@ export default function InicijacijaDetailClient() {
                     </span>
                     <span className="muted">
                       {acceptedIsoDateOnly
-                        ? `datum: ${acceptedIsoDateOnly}`
-                        : "nema unesenog roka"}
+                        ? `${t("dealDetail.deadlineDatePrefix")} ${acceptedIsoDateOnly}`
+                        : t("dealDetail.deadlineNoDate")}
                     </span>
                   </div>
 
                   <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-                    * Ovo je jedini rok koji je bitan za otvaranje projekta i
-                    prioritete.
+                    {t("dealDetail.deadlineOnlyMattersHint")}
                   </div>
                 </div>
 
-                <div className="label">Potvrđeno putem</div>
+                <div className="label">{t("dealDetail.via")}</div>
                 <select
                   value={t_via}
                   onChange={(e) => setTVia(e.target.value)}
@@ -1590,11 +1609,11 @@ export default function InicijacijaDetailClient() {
                   ))}
                 </select>
 
-                <div className="label">Bilješka</div>
+                <div className="label">{t("dealDetail.note")}</div>
                 <input
                   value={t_note}
                   onChange={(e) => setTNote(e.target.value)}
-                  placeholder="kratko…"
+                  placeholder={t("dealDetail.notePlaceholderDeal")}
                   style={inputStyle}
                 />
               </div>
@@ -1623,7 +1642,7 @@ export default function InicijacijaDetailClient() {
                       : "Snima novi timeline zapis (stari se ne briše)."
                   }
                 >
-                  {savingTimeline ? "Snima..." : "Sačuvaj timeline"}
+                  {savingTimeline ? t("dealDetail.saving") : t("dealDetail.saveTimeline")}
                 </button>
               </div>
             </div>
@@ -1648,7 +1667,7 @@ export default function InicijacijaDetailClient() {
                 }}
               >
                 <div style={{ fontWeight: 750, fontSize: 16 }}>
-                  Stavke – određivanje budžeta
+                  {t("dealDetail.budgetTitle")}
                 </div>
 
                 {!dealReadOnly && (
@@ -1665,24 +1684,23 @@ export default function InicijacijaDetailClient() {
                       alignItems: "center",
                       gap: 8,
                     }}
-                    title="Brzo određivanje budžeta putem SC Strategic Core®"
+                    title={t("dealDetail.scStrategicCoreTitle")}
                   >
-                    🎛️ SC Strategic Core®
+                    🎛️ {t("dealDetail.scStrategicCore")}
                   </Link>
                 )}
 
                 <div
                   className="sumPill"
-                  title="Budžet (KM/BAM) = BAM + (EUR→BAM)"
+                  title={t("dealDetail.budgetTooltip")}
                 >
-                  Ukupno / budžet: <b>{fmtMoney(budgetKM)} BAM</b>
+                  {t("dealDetail.totalBudget")}: <b>{fmtMoney(budgetPrimaryValue, locale)} {budgetPrimaryCode}</b>
                 </div>
               </div>
 
               {row?.projekat_id ? (
                 <div className="muted" style={{ marginTop: 8, fontSize: 12 }}>
-                  ⚠️ Budžet je već snapshotovan u projektu. Promjene ovdje{" "}
-                  <b>ne mijenjaju automatski</b> postojeći projekat.
+                  ⚠️ {t("dealDetail.budgetSnapshotNote")}
                 </div>
               ) : null}
 
@@ -1694,35 +1712,43 @@ export default function InicijacijaDetailClient() {
                   flexWrap: "wrap",
                 }}
               >
-                <div
-                  className="sumPill"
-                  title="Zbir stavki u domaćoj valuti (BAM/KM)"
-                >
-                  BAM/KM: <b>{fmtMoney(totalBAM)} BAM</b>
-                </div>
-
+                {!isEurPrimary && (
+                  <div
+                    className="sumPill"
+                    title={t("dealDetail.budgetTooltip")}
+                  >
+                    {t("dealDetail.bamKm")}: <b>{fmtMoney(totalBAM, locale)} BAM</b>
+                  </div>
+                )}
                 {totalEUR > 0 ? (
                   <div
                     className="sumPill"
-                    title={`EUR subtotal i preračun u BAM (1 EUR = ${EUR_TO_BAM} BAM)`}
+                    title={t("dealDetail.eurTooltip")}
                   >
-                    EUR: <b>{fmtMoney(totalEUR)} EUR</b>{" "}
-                    <span className="muted">→</span>{" "}
-                    <b>{fmtMoney(eurInKM)} BAM</b>
+                    EUR: <b>{fmtMoney(totalEUR, locale)} EUR</b>
+                    {!isEurPrimary && (
+                      <>
+                        {" "}
+                        <span className="muted">→</span>{" "}
+                        <b>{fmtMoney(eurInKM, locale)} BAM</b>
+                      </>
+                    )}
+                  </div>
+                ) : null}
+                {isEurPrimary && totalBAM > 0 ? (
+                  <div className="sumPill">
+                    BAM: <b>{fmtMoney(totalBAM, locale)} BAM</b>
                   </div>
                 ) : null}
               </div>
 
               {hasUnsupportedFX ? (
                 <div className="muted" style={{ marginTop: 8, fontSize: 12 }}>
-                  * Postoje stavke u valuti koju trenutno ne znamo preračunati u
-                  BAM. One nisu uključene u budžet dok ne uvedemo kursnu tabelu.
+                  * {t("dealDetail.unsupportedFx")}
                 </div>
-              ) : totalEUR > 0 ? (
+              ) : totalEUR > 0 && !isEurPrimary ? (
                 <div className="muted" style={{ marginTop: 8, fontSize: 12 }}>
-                  * EUR se preračunava fiksno u BAM (1 EUR = {EUR_TO_BAM} BAM).
-                  Kasnije ćemo ovo formalizovati kroz kursnu tabelu kad dođe
-                  red.
+                  * {t("dealDetail.eurFxNote")}
                 </div>
               ) : null}
 
@@ -1746,10 +1772,10 @@ export default function InicijacijaDetailClient() {
                   }}
                 >
                   {/* Red 1: svi labeli */}
-                  <div className="label" style={{ fontSize: 15, fontWeight: 700, opacity: 0.85 }}>Stavka iz cjenovnika</div>
-                  <div className="label" style={{ fontSize: 15, fontWeight: 700, opacity: 0.85 }}>Količina</div>
-                  <div className="label" style={{ fontSize: 15, fontWeight: 700, opacity: 0.85 }}>Cijena</div>
-                  <div className="label" style={{ fontSize: 15, fontWeight: 700, opacity: 0.85 }}>Opis (opciono)</div>
+                  <div className="label" style={{ fontSize: 15, fontWeight: 700, opacity: 0.85 }}>{t("dealDetail.itemFromPriceList")}</div>
+                  <div className="label" style={{ fontSize: 15, fontWeight: 700, opacity: 0.85 }}>{t("dealDetail.quantity")}</div>
+                  <div className="label" style={{ fontSize: 15, fontWeight: 700, opacity: 0.85 }}>{t("dealDetail.price")}</div>
+                  <div className="label" style={{ fontSize: 15, fontWeight: 700, opacity: 0.85 }}>{t("dealDetail.descriptionOptional")}</div>
                   <div />
 
                   {/* Red 2: select + polja + dugme */}
@@ -1772,8 +1798,8 @@ export default function InicijacijaDetailClient() {
                     >
                       <option value="">
                         {pickerLoading
-                          ? "Učitavam cjenovnik..."
-                          : "— Izaberi stavku iz cjenovnika —"}
+                          ? t("dealDetail.loadingPriceList")
+                          : t("dealDetail.selectItem")}
                       </option>
                       {pickerItems.map((it) => (
                         <option key={it.stavka_id} value={String(it.stavka_id)}>
@@ -1786,7 +1812,7 @@ export default function InicijacijaDetailClient() {
                     <input
                       value={kolicina}
                       onChange={(e) => setKolicina(e.target.value)}
-                      placeholder="količina"
+                      placeholder={t("dealDetail.quantityPlaceholder")}
                       style={inputStyle}
                     />
                   </div>
@@ -1797,7 +1823,7 @@ export default function InicijacijaDetailClient() {
                       placeholder={
                         selected
                           ? normCcy(selected.valuta_default)
-                          : "cijena"
+                          : t("dealDetail.pricePlaceholder")
                       }
                       style={inputStyle}
                       inputMode="decimal"
@@ -1808,7 +1834,7 @@ export default function InicijacijaDetailClient() {
                     <input
                       value={opisStavke}
                       onChange={(e) => setOpisStavke(e.target.value)}
-                      placeholder="opis…"
+                      placeholder={t("dealDetail.descriptionPlaceholder")}
                       style={inputStyle}
                     />
                   </div>
@@ -1828,7 +1854,7 @@ export default function InicijacijaDetailClient() {
                         cursor: !selected || addingItem ? "not-allowed" : "pointer",
                       }}
                     >
-                      {addingItem ? "Dodajem..." : "+ Dodaj"}
+                      {addingItem ? t("dealDetail.adding") : t("dealDetail.add")}
                     </button>
                   </div>
 
@@ -1853,7 +1879,7 @@ export default function InicijacijaDetailClient() {
                 }}
               >
                 {stavke.length === 0 ? (
-                  <div className="muted">Nema stavki.</div>
+                  <div className="muted">{t("dealDetail.noItems")}</div>
                 ) : (
                   <div
                     style={{
@@ -1866,12 +1892,12 @@ export default function InicijacijaDetailClient() {
                       fontSize: 15,
                     }}
                   >
-                    <div>#</div>
-                    <div>Stavka</div>
-                    <div>Količina</div>
-                    <div>Cijena</div>
-                    <div>Total</div>
-                    <div>Akcije</div>
+                    <div>{t("dealDetail.colHash")}</div>
+                    <div>{t("dealDetail.item")}</div>
+                    <div>{t("dealDetail.quantity")}</div>
+                    <div>{t("dealDetail.price")}</div>
+                    <div>{t("dealDetail.total")}</div>
+                    <div>{t("dealDetail.actions")}</div>
                   </div>
                 )}
 
@@ -1904,7 +1930,7 @@ export default function InicijacijaDetailClient() {
                               </div>
                             ) : null}
                             <div className="muted" style={{ fontSize: 14 }}>
-                              jedinica: {s.jedinica_snapshot} • valuta:{" "}
+                              {t("dealDetail.unit")}: {s.jedinica_snapshot} • {t("dealDetail.currency")}:{" "}
                               {normCcy(s.valuta)}
                             </div>
                           </>
@@ -1934,7 +1960,7 @@ export default function InicijacijaDetailClient() {
                                 disabled={pickerLoading}
                               >
                                 <option value="">
-                                  — Zadrži trenutnu stavku —
+                                  {t("dealDetail.keepCurrentItem")}
                                 </option>
                                 {pickerItems.map((it) => (
                                   <option
@@ -1962,7 +1988,7 @@ export default function InicijacijaDetailClient() {
                               <input
                                 value={editOpis}
                                 onChange={(e) => setEditOpis(e.target.value)}
-                                placeholder="opis (opciono)"
+                                placeholder={t("dealDetail.descriptionOptional")}
                                 style={inputStyle}
                               />
                             </div>
@@ -2020,7 +2046,7 @@ export default function InicijacijaDetailClient() {
                               className="glassbtn btnSmall"
                               onClick={() => startEdit(s)}
                             >
-                              ✎ Promijeni
+                              ✎ {t("dealDetail.change")}
                             </button>
 
                             <button
@@ -2029,9 +2055,9 @@ export default function InicijacijaDetailClient() {
                               onClick={() =>
                                 stornoItem(s.inicijacija_stavka_id)
                               }
-                              title="Storniraj stavku (ne briše se; samo se sakrije i ne računa u zbir)"
+                              title={t("dealDetail.stornoItemTitle")}
                             >
-                              🧾 Storno
+                              🧾 {t("dealDetail.stornoItem")}
                             </button>
                           </>
                         ) : (
@@ -2043,7 +2069,7 @@ export default function InicijacijaDetailClient() {
                               disabled={savingEdit}
                               style={{ opacity: savingEdit ? 0.7 : 1 }}
                             >
-                              💾 {savingEdit ? "Snima..." : "Snimi promjene"}
+                              💾 {savingEdit ? t("dealDetail.saving") : t("dealDetail.saveChanges")}
                             </button>
 
                             <button
@@ -2052,7 +2078,7 @@ export default function InicijacijaDetailClient() {
                               onClick={cancelEdit}
                               style={{ opacity: 0.85 }}
                             >
-                              ✖ Otkaži
+                              ✖ {t("dealDetail.cancel")}
                             </button>
                           </>
                         )}
@@ -2070,7 +2096,7 @@ export default function InicijacijaDetailClient() {
                     }}
                   >
                     <div className="sumPill">
-                      Ukupno / budžet: <b>{fmtMoney(budgetKM)} BAM</b>
+                      {t("dealDetail.totalBudget")}: <b>{fmtMoney(budgetPrimaryValue, locale)} {budgetPrimaryCode}</b>
                     </div>
                   </div>
                 )}
@@ -2088,11 +2114,11 @@ export default function InicijacijaDetailClient() {
               }}
             >
               <div style={{ fontWeight: 750, fontSize: 16, marginBottom: 10 }}>
-                Status (Deal)
+                {t("dealDetail.statusDeal")}
               </div>
 
               <div className="grid2">
-                <div className="label">Radni naziv</div>
+                <div className="label">{t("dealDetail.radniNaziv")}</div>
                 <input
                   value={row.radni_naziv}
                   onChange={(e) =>
@@ -2101,7 +2127,7 @@ export default function InicijacijaDetailClient() {
                   style={inputStyle}
                 />
 
-                <div className="label">Napomene za produkciju</div>
+                <div className="label">{t("dealDetail.napomeneProdukcija")}</div>
                 <textarea
                   value={row.napomena ?? ""}
                   onChange={(e) => setRow({ ...row, napomena: e.target.value })}
@@ -2143,11 +2169,11 @@ export default function InicijacijaDetailClient() {
               }}
             >
               <div style={{ fontWeight: 750, fontSize: 16, marginBottom: 10 }}>
-                Podaci o klijentu / naručiocu
+                {t("dealDetail.clientSection")}
               </div>
 
               <div className="grid2">
-                <div className="label">Naručilac</div>
+                <div className="label">{t("dealDetail.narucilac")}</div>
                 <select
                   value={row.narucilac_id}
                   onChange={(e) =>
@@ -2157,7 +2183,7 @@ export default function InicijacijaDetailClient() {
                 >
                   {klijenti.length === 0 && (
                     <option value={row.narucilac_id}>
-                      Učitavam klijente...
+                      {t("dealDetail.loadingClients")}
                     </option>
                   )}
                   {klijenti.map((k) => (
@@ -2167,7 +2193,7 @@ export default function InicijacijaDetailClient() {
                   ))}
                 </select>
 
-                <div className="label">Krajnji klijent</div>
+                <div className="label">{t("dealDetail.krajnjiKlijent")}</div>
                 <select
                   value={row.krajnji_klijent_id ?? ""}
                   onChange={(e) =>
@@ -2180,7 +2206,7 @@ export default function InicijacijaDetailClient() {
                   }
                   style={inputStyle}
                 >
-                  <option value="">— isto kao naručilac —</option>
+                  <option value="">{t("dealDetail.sameAsNarucilac")}</option>
                   {klijenti.map((k) => (
                     <option key={k.klijent_id} value={k.klijent_id}>
                       {k.klijent_id} — {k.naziv_klijenta}
@@ -2188,7 +2214,7 @@ export default function InicijacijaDetailClient() {
                   ))}
                 </select>
 
-                <div className="label">Kontakt ime</div>
+                <div className="label">{t("dealDetail.kontaktIme")}</div>
                 <input
                   value={row.kontakt_ime ?? ""}
                   onChange={(e) =>
@@ -2197,7 +2223,7 @@ export default function InicijacijaDetailClient() {
                   style={inputStyle}
                 />
 
-                <div className="label">Kontakt tel</div>
+                <div className="label">{t("dealDetail.kontaktTel")}</div>
                 <input
                   value={row.kontakt_tel ?? ""}
                   onChange={(e) =>
@@ -2206,7 +2232,7 @@ export default function InicijacijaDetailClient() {
                   style={inputStyle}
                 />
 
-                <div className="label">Kontakt email</div>
+                <div className="label">{t("dealDetail.kontaktEmail")}</div>
                 <input
                   value={row.kontakt_email ?? ""}
                   onChange={(e) =>

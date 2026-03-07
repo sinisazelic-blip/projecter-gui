@@ -17,6 +17,8 @@
   "common": {
     "dashboard": "Dashboard",
     "save": "Save",
+    "themeSwitchToLight": "Switch to light mode",
+    "themeSwitchToDark": "Switch to dark mode",
     "cancel": "Cancel",
     "language": "Language",
     "regionalSettings": "Regional Settings",
@@ -25,6 +27,7 @@
     "other": "Other",
     "notImplemented": "Not implemented yet",
     "back": "Back",
+    "close": "Close",
     "loading": "Loading…",
     "error": "Error",
     "invalidProjectId": "Invalid project ID.",
@@ -100,8 +103,14 @@
     "fiskalLabelBaseUrl": "Device base URL (required for sending)",
     "fiskalPlaceholderBaseUrl": "http://192.168.x.x:3566/",
     "fiskalHintBaseUrl": "e.g. http://IP:3566/ — WiFi/LAN",
+    "fiskalLabelApiPath": "API path (optional)",
+    "fiskalPlaceholderApiPath": "/api/v3/invoices",
+    "fiskalHintApiPath": "Empty = request to root (/). For PU standard enter /api/v3/invoices.",
     "fiskalLabelApiKey": "API key (EsirKey)",
     "fiskalPlaceholderApiKey": "hex string, optional",
+    "fiskalLabelYid": "YID / Device ID (optional)",
+    "fiskalPlaceholderYid": "e.g. WHH3YDEB",
+    "fiskalHintYid": "If the device expects an identifier in the header; can be left empty.",
     "fiskalLabelPin": "PIN",
     "fiskalPlaceholderPin": "empty = manual entry on device",
     "fiskalUseExternalPrinter": "Use external printer",
@@ -122,7 +131,7 @@
     "en": "English"
   },
   "region": {
-    "sr": "BiH (Serbian)",
+    "sr": "BiH",
     "en": "EU (English)"
   },
   "nav": {
@@ -712,6 +721,7 @@
     "reports": "Reports",
     "charts": "Charts",
     "profit": "Profit",
+    "profitTitle": "Profit (monthly / yearly inside)",
     "profitMargin": "Margin",
     "mjesecni": "Monthly",
     "mjesecniTitle": "Margin by month",
@@ -761,8 +771,11 @@
     "allAboutUs": "All about us",
     "allAboutUsTitle": "Company identity",
     "licenceTitle": "Licence / Tenant (coming soon)",
+    "licenceLabel": "Licence",
     "versionTitle": "Fluxe version",
-    "moreTitle": "Purchase orders, Quotes, Cash flow, Loans",
+    "ownerAccess": "Owner access",
+    "ownerAccessTitle": "Enter owner password for Fluxa version and extra options",
+    "moreTitle": "Purchase orders, Quotes",
     "firmaSettings": "Company-Settings",
     "firmaSettingsTitle": "Company, settings, users and roles",
     "noAccess": "You don't have access to this page."
@@ -829,7 +842,7 @@
     "layoutNamePrompt": "Layout name:"
   },
   "finance": {
-    "title": "Finance",
+    "title": "Finance Tools",
     "subtitle": "Bank is canonical truth. Business tables are meaning and links.",
     "banka": "Bank (postings)",
     "bankaDesc": "Canonical ledger: what happened. Detail shows links to income, payments, costs and fixed.",
@@ -1427,6 +1440,56 @@
   "naplate": {
     "title": "Collections",
     "subtitle": "What's due and what's overdue"
+  },
+  "licenceBlock": {
+    "suspended": "Licence suspended",
+    "expired": "Licence expired",
+    "disabled": "Access disabled",
+    "contact": "Contact the Fluxa administrator to renew or activate your licence.",
+    "contactError": "If you believe this is an error, contact the Fluxa administrator."
+  },
+  "subscriptionExpired": {
+    "title": "Subscription expired",
+    "message": "Access is temporarily disabled. Renew your subscription to continue using Fluxa.",
+    "contact": "Contact the Fluxa administrator to renew your subscription or for support.",
+    "goToLicence": "Licence"
+  },
+  "studioLicence": {
+    "title": "Licences / Organisations",
+    "subtitle": "License customers (tenants) overview",
+    "colNaziv": "Name",
+    "colPlan": "Plan",
+    "colIstice": "Expires",
+    "colDana": "Days left",
+    "colStatus": "Status",
+    "colAkcije": "Actions",
+    "noTenants": "No tenants.",
+    "expired": "expired",
+    "extend": "Extend",
+    "changePlan": "Change plan",
+    "extendTitle": "Extend subscription",
+    "newEndDate": "New end date",
+    "changePlanTitle": "Change plan",
+    "plan": "Plan",
+    "newTenant": "New tenant",
+    "newTenantTitle": "Add new license customer (tenant)",
+    "labelNaziv": "Organisation name",
+    "placeholderNaziv": "e.g. Company Ltd",
+    "labelStart": "Subscription start",
+    "labelEnd": "Subscription end",
+    "suspend": "Revoke access",
+    "suspendAccess": "Suspend tenant – user loses access until reactivated",
+    "restoreAccess": "Restore access",
+    "colToken": "Token",
+    "tokenTooltip": "Licence token for client instance",
+    "noToken": "No token",
+    "tokenTitle": "Licence token",
+    "tokenHint": "In the client instance .env set LICENCE_TOKEN (this string) and LICENCE_CHECK_URL (master URL + /api/public/licence-check).",
+    "copyToken": "Copy token",
+    "regenerateToken": "Regenerate token",
+    "tokenMissing": "Token not set. Use „Regenerate token” or add licence_token column to DB.",
+    "newTenantTokenTitle": "Token for new instance",
+    "newTenantTokenHint": "Save this token. In client Fluxa .env add LICENCE_TOKEN=... and LICENCE_CHECK_URL=https://your-master/api/public/licence-check."
   },
   "studioKlijenti": {
     "title": "Clients",

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "@/components/LocaleProvider";
+import FluxaLogo from "@/components/FluxaLogo";
 
 function pad2(n: number) {
   return String(n).padStart(2, "0");
@@ -35,7 +36,27 @@ function ddmmyyyyToISO(ddmmyyyy: string): string | null {
 export default function InvoiceWizard() {
   const sp = useSearchParams();
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const isEu = locale === "en";
+
+  useEffect(() => {
+    if (isEu) setCurrency("EUR");
+  }, [isEu]);
+
+  useEffect(() => {
+    if (!isEu) return;
+    let alive = true;
+    fetch("/api/firma/active", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j: any) => {
+        if (!alive || !j?.ok) return;
+        const v = j.firma?.vat_rate_local;
+        const n = v != null ? Number(v) : null;
+        if (Number.isFinite(n) && n >= 0) setFirmaVatRate(n);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [isEu]);
 
   // ✅ čitamo ids (novo) + pid (fallback)
   const ids = useMemo(() => {
@@ -60,10 +81,7 @@ export default function InvoiceWizard() {
   const [vatMode, setVatMode] = useState<"BH_17" | "INO_0">("BH_17");
   const [isInoDetected, setIsInoDetected] = useState<boolean>(false);
 
-  // Fiskalni/PFR (editable, ostavljam)
-  const [pfrBroj, setPfrBroj] = useState<string>("");
-  // Koristi automatski sistem za fiskalizaciju (PU dropbox) — default NE
-  const [useFiskalizacijaDropbox, setUseFiskalizacijaDropbox] = useState<boolean>(false);
+  // Fiskalizacija: ako je uređaj konfiguriran u Studio → Firma, preview prikazuje Fiskalizuj (bez izbora ručno/automatski)
 
   // Popust prije PDV-a (KM) — prikaz samo kad postoji
   const [popustKm, setPopustKm] = useState<string>("");
@@ -79,6 +97,9 @@ export default function InvoiceWizard() {
   // ✅ Override nazivi projekata (projekat_id -> naziv_override)
   const [projectNameOverrides, setProjectNameOverrides] = useState<Record<number, string>>({});
   const [projectsData, setProjectsData] = useState<Array<{ projekat_id: number; radni_naziv: string | null }>>([]);
+
+  // ✅ EU: lokalna stopa PDV iz Company Settings (za label u dropdownu)
+  const [firmaVatRate, setFirmaVatRate] = useState<number | null>(null);
 
   // ✅ Opisne stavke po projektu (projekat_id -> { enabled, items: string[] })
   const [projectSubItems, setProjectSubItems] = useState<
@@ -113,10 +134,20 @@ export default function InvoiceWizard() {
         const res = await fetch(`/api/fakture/wizard/seed?${qs.toString()}`, {
           cache: "no-store",
         });
-        const j = await res.json();
+        const text = await res.text();
+        let j: Record<string, unknown>;
+        try {
+          j = text ? JSON.parse(text) : {};
+        } catch {
+          throw new Error(
+            res.ok
+              ? "Neispravan odgovor API-ja (očekivan JSON)."
+              : `API greška (${res.status}). Provjeri mrežu ili konzolu.`,
+          );
+        }
 
         if (!res.ok || j?.ok === false) {
-          throw new Error(j?.error ?? "Seed API error");
+          throw new Error((j?.error as string) ?? "Seed API error");
         }
 
         const p = String(j?.poziv_na_broj ?? "");
@@ -130,7 +161,17 @@ export default function InvoiceWizard() {
         const previewRes = await fetch(`/api/fakture/wizard/preview-data?${qs.toString()}`, {
           cache: "no-store",
         });
-        const previewData = await previewRes.json();
+        const previewText = await previewRes.text();
+        let previewData: Record<string, unknown>;
+        try {
+          previewData = previewText ? JSON.parse(previewText) : {};
+        } catch {
+          throw new Error(
+            previewRes.ok
+              ? "Neispravan odgovor API-ja (očekivan JSON)."
+              : `API greška (${previewRes.status}). Provjeri mrežu ili konzolu.`,
+          );
+        }
 
         if (previewData?.ok) {
           // Učitaj projekte
@@ -197,9 +238,6 @@ export default function InvoiceWizard() {
     qs.set("date", iso);
     qs.set("ccy", currency);
     qs.set("vat", vatMode);
-
-    if (pfrBroj.trim()) qs.set("pfr", pfrBroj.trim());
-    qs.set("fiskalizacija", useFiskalizacijaDropbox ? "1" : "0");
 
     // ✅ AUTO poziv na broj ide uvijek
     qs.set("pnb", pozivNaBroj);
@@ -271,17 +309,12 @@ export default function InvoiceWizard() {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
                   <div className="brandTitle">{t("wizard.fakturaWizardStep")}</div>
                   <div className="brandSub">
-                    Priprema elemenata prije preview-a
+                    {t("wizard.wizardStepSubtitle")}
                   </div>
                 </div>
               </div>
@@ -323,7 +356,7 @@ export default function InvoiceWizard() {
                       ? t("wizard.nemaSelekcije")
                       : pnbLoading
                         ? t("wizard.generisemPnb")
-                        : "Preview"
+                        : t("wizard.previewBtn")
                   }
                 >
                   ➜ {t("wizard.preview33")}
@@ -356,20 +389,30 @@ export default function InvoiceWizard() {
 
                 <div className="label">
                   {t("wizard.valutaPlacanja")}
-                  {isInoDetected && (
+                  {isInoDetected && !isEu && (
                     <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.8, fontWeight: 600, color: "rgba(59, 130, 246, 0.9)" }}>
                       {t("wizard.autoInoKlijent")}
                     </span>
                   )}
                 </div>
-                <select
-                  className="input"
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                >
-                  <option value="KM">KM (BAM)</option>
-                  <option value="EUR">EUR</option>
-                </select>
+                {isEu ? (
+                  <input
+                    className="input"
+                    value={t("wizard.valutaEurOnly")}
+                    readOnly
+                    disabled
+                    style={{ opacity: 0.9 }}
+                  />
+                ) : (
+                  <select
+                    className="input"
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                  >
+                    <option value="KM">KM (BAM)</option>
+                    <option value="EUR">EUR</option>
+                  </select>
+                )}
 
                 <div className="label">
                   {t("wizard.pdvRezim")}
@@ -389,34 +432,15 @@ export default function InvoiceWizard() {
                   value={vatMode}
                   onChange={(e) => setVatMode(e.target.value as any)}
                 >
-                  <option value="BH_17">{t("wizard.pdvBiH17")}</option>
-                  <option value="INO_0">{t("wizard.pdvIno0")}</option>
+                  <option value="BH_17">
+                    {isEu
+                      ? `${t("wizard.pdvDomesticEu")}${firmaVatRate != null ? ` (${firmaVatRate}%)` : ""}`
+                      : t("wizard.pdvBiH17")}
+                  </option>
+                  <option value="INO_0">
+                    {isEu ? t("wizard.pdvReverseChargeEu") : t("wizard.pdvIno0")}
+                  </option>
                 </select>
-
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", gridColumn: "1 / -1" }}>
-                  <div style={{ flex: "1 1 200px", minWidth: 140 }}>
-                    <div className="label">{t("wizard.pfrBroj")}</div>
-                    <input
-                      className="input"
-                      value={pfrBroj}
-                      onChange={(e) => setPfrBroj(e.target.value)}
-                      placeholder="—"
-                      style={{ width: "100%" }}
-                    />
-                  </div>
-                  <div style={{ flex: "1 1 200px", minWidth: 200 }}>
-                    <div className="label">{t("wizard.fiskalizacijaDropbox")}</div>
-                    <select
-                      className="input"
-                      value={useFiskalizacijaDropbox ? "1" : "0"}
-                      onChange={(e) => setUseFiskalizacijaDropbox(e.target.value === "1")}
-                      style={{ width: "100%" }}
-                    >
-                      <option value="0">{t("wizard.ne")}</option>
-                      <option value="1">{t("wizard.da")}</option>
-                    </select>
-                  </div>
-                </div>
 
                 <div className="label">{t("wizard.pozivNaBroj")}</div>
                 <input
@@ -427,7 +451,7 @@ export default function InvoiceWizard() {
                   style={{ opacity: 0.9 }}
                 />
 
-                <div className="label">{t("wizard.popustPrijePdv")}</div>
+                <div className="label">{isEu ? t("wizard.popustPrijePdvEur") : t("wizard.popustPrijePdv")}</div>
                 <input
                   type="number"
                   className="input"
@@ -619,6 +643,7 @@ export default function InvoiceWizard() {
                             />
                           </div>
                         </div>
+                        {!isEu && (
                         <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                           <label className="label" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
                             <input
@@ -637,7 +662,8 @@ export default function InvoiceWizard() {
                             {t("wizard.dodajOpisneStavke")}
                           </label>
                         </div>
-                        {subState.enabled && (
+                        )}
+                        {!isEu && subState.enabled && (
                           <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
                             <div style={{ fontSize: 11, opacity: 0.75 }}>{t("wizard.stavkeNaFakturi")}</div>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>

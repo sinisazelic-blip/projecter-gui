@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
+import FluxaLogo from "@/components/FluxaLogo";
 import GrafickiClient from "./GrafickiClient";
 
 export const dynamic = "force-dynamic";
@@ -19,12 +20,7 @@ export default async function GrafickiPage() {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
                   <div className="brandTitle">{t("izvjestajiGraficki.title")}</div>

@@ -1,14 +1,57 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginForm() {
   const router = useRouter();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    // Kad bude aktivan user management, ovdje: provjera credentials, session, itd.
-    router.push("/dashboard");
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username.trim(), password }),
+      });
+      let data = { ok: false, error: "" };
+      try {
+        data = await res.json();
+      } catch {
+        setError("Greška od servera (nije JSON). Provjeri terminal gdje radi npm run dev.");
+        return;
+      }
+
+      if (data.ok) {
+        router.push("/dashboard");
+        router.refresh();
+        return;
+      }
+
+      if (res.status === 401 && data.error === "INVALID_CREDENTIALS") {
+        setError("Pogrešno korisničko ime ili lozinka.");
+        return;
+      }
+      if (res.status === 500) {
+        if (data.error === "MISSING_AUTH_SECRET") {
+          setError("U .env.local dodaj: AUTH_SECRET=neka_tajna_duga_min_16_znakova pa restartuj server (Ctrl+C, npm run dev).");
+          return;
+        }
+        setError("Greška na serveru. Otvori terminal (npm run dev) i pogledaj poruku greške.");
+        return;
+      }
+      setError("Greška pri prijavi. Pokušaj ponovo.");
+    } catch {
+      setError("Greška u vezi (mreža ili server ne odgovara). Je li pokrenut npm run dev?");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -36,14 +79,16 @@ export default function LoginForm() {
             textAlign: "left",
           }}
         >
-          User
+          Korisničko ime
         </label>
         <input
           id="login-user"
           type="text"
-          name="user"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
           autoComplete="username"
-          placeholder="User"
+          placeholder="Korisničko ime"
+          disabled={loading}
           style={{
             width: "100%",
             padding: "10px 14px",
@@ -63,14 +108,16 @@ export default function LoginForm() {
             textAlign: "left",
           }}
         >
-          Password
+          Lozinka
         </label>
         <input
           id="login-password"
           type="password"
-          name="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
-          placeholder="Password"
+          placeholder="Lozinka"
+          disabled={loading}
           style={{
             width: "100%",
             padding: "10px 14px",
@@ -78,9 +125,17 @@ export default function LoginForm() {
           }}
         />
       </div>
+
+      {error && (
+        <p style={{ margin: 0, fontSize: 13, color: "var(--danger, #f87171)", width: "100%" }}>
+          {error}
+        </p>
+      )}
+
       <button
         type="submit"
         className="btn btn--active"
+        disabled={loading}
         style={{
           marginTop: 8,
           padding: "12px 28px",
@@ -90,7 +145,7 @@ export default function LoginForm() {
           maxWidth: 200,
         }}
       >
-        Enter
+        {loading ? "Prijava…" : "Prijava"}
       </button>
     </form>
   );

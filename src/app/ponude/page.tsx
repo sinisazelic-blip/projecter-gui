@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { downloadExcel } from "@/lib/exportExcel";
 import { useTranslation } from "@/components/LocaleProvider";
+import FluxaLogo from "@/components/FluxaLogo";
 
 function fmtDDMMYYYY(iso: string | null): string {
   if (!iso) return "—";
@@ -103,7 +104,7 @@ export default function PonudePage() {
             <div className="topRow" style={{ justifyContent: "space-between" }}>
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+                  <FluxaLogo />
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
@@ -122,7 +123,7 @@ export default function PonudePage() {
                 id="broj_ponude"
                 type="text"
                 defaultValue={brojPonudeFilter}
-                placeholder="P001/2026..."
+                placeholder={t("ponude.placeholderBroj")}
                 className="input small"
                 style={{ width: 150 }}
               />
@@ -140,7 +141,14 @@ export default function PonudePage() {
                   type="button"
                   className="btn"
                   onClick={() => {
-                    const headers = ["Broj ponude", "Datum izdavanja", "Važi do", "Naručioc", "Ukupno", "Valuta"];
+                    const headers = [
+                      t("ponude.colBrojPonude"),
+                      t("ponude.colDatumIzdavanja"),
+                      t("ponude.colVaziDo"),
+                      t("ponude.colNarucilac"),
+                      t("ponude.colUkupno"),
+                      t("ponude.colValuta"),
+                    ];
                     const rows = ponude.map((p) => [
                       p.broj_ponude ?? "",
                       fmtDDMMYYYY(p.datum_izdavanja),
@@ -149,7 +157,7 @@ export default function PonudePage() {
                       p.ukupno ?? "",
                       (p.valuta === "BAM" || p.valuta === "KM") ? "KM" : (p.valuta ?? ""),
                     ]);
-                    downloadExcel({ filename: "ponude_lista", sheetName: "Ponude", headers, rows });
+                    downloadExcel({ filename: "ponude_lista", sheetName: t("ponude.excelSheetName"), headers, rows });
                   }}
                   title={t("ponude.exportExcel")}
                 >
@@ -174,12 +182,12 @@ export default function PonudePage() {
               <table className="table">
                 <thead>
                   <tr>
-                    <th style={{ width: "120px" }}>Broj ponude</th>
-                    <th style={{ width: "120px" }}>Datum izdavanja</th>
-                    <th style={{ width: "120px" }}>Važi do</th>
-                    <th style={{ minWidth: "150px" }}>Naručioc</th>
-                    <th className="num" style={{ width: "120px" }}>Ukupno</th>
-                    <th style={{ width: "80px" }}>Valuta</th>
+                    <th style={{ width: "120px" }}>{t("ponude.colBrojPonude")}</th>
+                    <th style={{ width: "120px" }}>{t("ponude.colDatumIzdavanja")}</th>
+                    <th style={{ width: "120px" }}>{t("ponude.colVaziDo")}</th>
+                    <th style={{ minWidth: "150px" }}>{t("ponude.colNarucilac")}</th>
+                    <th className="num" style={{ width: "120px" }}>{t("ponude.colUkupno")}</th>
+                    <th style={{ width: "80px" }}>{t("ponude.colValuta")}</th>
                   </tr>
                 </thead>
                 <tbody>

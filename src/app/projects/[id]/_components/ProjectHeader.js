@@ -70,12 +70,12 @@ function semColor(daysDiff) {
   return "green";
 }
 
-function semLabel(daysDiff) {
-  if (daysDiff === null) return "rok nepoznat";
-  if (daysDiff < 0) return `kasni ${Math.abs(daysDiff)}d`;
-  if (daysDiff === 0) return "danas";
-  if (daysDiff === 1) return "sutra";
-  return `za ${daysDiff}d`;
+function getSemLabel(daysDiff, t) {
+  if (daysDiff === null) return t("projectsPage.deadlineUnknown");
+  if (daysDiff < 0) return t("projectsPage.deadlineLate").replace("{days}", Math.abs(daysDiff));
+  if (daysDiff === 0) return t("projectsPage.today");
+  if (daysDiff === 1) return t("projectsPage.tomorrow");
+  return t("projectsPage.deadlineIn").replace("{days}", daysDiff);
 }
 
 /**
@@ -91,31 +91,31 @@ function normalizeSignal(sigRaw) {
   return "NORMALNO";
 }
 
-function signalMeta(sig) {
+function signalMeta(sig, t) {
   if (sig === "STOP") {
     return {
-      label: "STOP",
+      label: t("projectDetail.signalStop"),
       bg: "rgba(255, 80, 80, .16)",
       border: "rgba(255, 80, 80, .40)",
       dot: "rgba(255, 80, 80, .95)",
-      title: "STOP — STANI / eskaliraj",
+      title: t("projectDetail.signalStopTitle"),
     };
   }
   if (sig === "PAZNJA") {
     return {
-      label: "PAŽNJA",
+      label: t("projectDetail.signalAttention"),
       bg: "rgba(255, 165, 0, .16)",
       border: "rgba(255, 165, 0, .40)",
       dot: "rgba(255, 165, 0, .95)",
-      title: "PAŽNJA — pripremi se",
+      title: t("projectDetail.signalAttentionTitle"),
     };
   }
   return {
-    label: "NORMALNO",
+    label: t("projectDetail.signalNormal"),
     bg: "rgba(80, 220, 140, .14)",
     border: "rgba(80, 220, 140, .38)",
     dot: "rgba(80, 220, 140, .95)",
-    title: "NORMALNO — sve ide po planu",
+    title: t("projectDetail.signalNormalTitle"),
   };
 }
 
@@ -149,13 +149,13 @@ function getReadOnlyStatusLabel(project) {
   return statusLabelFallbackById(project?.status_id);
 }
 
-export default function ProjectHeader({ project, hideTitle }) {
+export default function ProjectHeader({ project, hideTitle, statusName: statusNameProp, t }) {
   const dateOnly = parseToDateOnly(project?.rok_glavni);
   const rokText = fmtDDMMYYYY(dateOnly);
   const daysDiff = computeDaysDiff(dateOnly);
 
   const sem = semColor(daysDiff);
-  const label = semLabel(daysDiff);
+  const label = getSemLabel(daysDiff, t ?? (k => k));
 
   const dotBg =
     sem === "red"
@@ -167,9 +167,9 @@ export default function ProjectHeader({ project, hideTitle }) {
           : "rgba(180, 180, 180, .85)";
 
   const sig = normalizeSignal(project?.operativni_signal);
-  const sigM = signalMeta(sig);
+  const sigM = signalMeta(sig, t ?? (k => k));
 
-  const statusLabel = getReadOnlyStatusLabel(project);
+  const statusLabel = statusNameProp ?? getReadOnlyStatusLabel(project);
 
   return (
     <div
@@ -227,7 +227,7 @@ export default function ProjectHeader({ project, hideTitle }) {
           </span>
 
           <div
-            title="Prihvaćeni rok iz Deal-a"
+            title={t ? t("projectDetail.deadlineAcceptedTitle") : "Prihvaćeni rok iz Deal-a"}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -240,14 +240,14 @@ export default function ProjectHeader({ project, hideTitle }) {
             }}
           >
             <span className="muted" style={{ fontSize: 12 }}>
-              Rok:
+              {t ? t("projectDetail.deadlineLabel") : "Rok:"}
             </span>
 
             <span style={{ fontWeight: 650 }}>{rokText}</span>
 
             {/* ✅ SEMAFOR: uvijek prikazan (ako ne znamo diff -> sivo) */}
             <span
-              aria-label="Semafor roka"
+              aria-label={t ? t("projectDetail.semaforAria") : "Semafor roka"}
               title={label}
               style={{
                 width: 10,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "@/components/LocaleProvider";
 
 const inputStyle = {
   width: "100%",
@@ -43,7 +44,8 @@ function getTypeName(t) {
   return String(t?.name ?? t?.naziv ?? "").trim();
 }
 
-export default function CostTypeAndEntityPicker({ value, onChange }) {
+export default function CostTypeAndEntityPicker({ value, onChange, tipLabel: tipLabelProp }) {
+  const { t } = useTranslation();
   // value: { tip_id, entity_type, entity_id }
   const tipId = normInt(value?.tip_id);
   const entityType = value?.entity_type ?? null;
@@ -243,21 +245,21 @@ export default function CostTypeAndEntityPicker({ value, onChange }) {
           style={inputStyle}
           disabled={loadingTypes}
         >
-          <option value="">— izaberi tip —</option>
-          {types.map((t) => {
-            const id = getTypeId(t);
-            const name = getTypeName(t);
+          <option value="">{t("projectDetail.selectTypePlaceholder")}</option>
+          {types.map((typeRow) => {
+            const id = getTypeId(typeRow);
             if (!id) return null;
+            const label = tipLabelProp ? tipLabelProp(typeRow) : (getTypeName(typeRow) || (t(`projectDetail.costType${id}`) !== `projectDetail.costType${id}` ? t(`projectDetail.costType${id}`) : `Tip ${id}`));
             return (
               <option key={id} value={id}>
-                {name || `Tip ${id}`}
+                {label}
               </option>
             );
           })}
         </select>
         {loadingTypes && (
           <div className="muted" style={{ marginTop: 6 }}>
-            Učitavam tipove…
+            {t("projectDetail.loadingTypes")}
           </div>
         )}
       </div>
@@ -280,8 +282,8 @@ export default function CostTypeAndEntityPicker({ value, onChange }) {
           >
             <option value="">
               {requires === "talent"
-                ? "— izaberi talenta —"
-                : "— izaberi dobavljača —"}
+                ? t("projectDetail.selectTalentPlaceholder")
+                : t("projectDetail.selectVendorPlaceholder")}
             </option>
 
             {currentItems.map((x) => (
@@ -297,8 +299,8 @@ export default function CostTypeAndEntityPicker({ value, onChange }) {
             disabled={loadingEntities}
             title={
               requires === "talent"
-                ? "Dodaj novog talenta"
-                : "Dodaj novog dobavljača"
+                ? t("projectDetail.addTalentTitle")
+                : t("projectDetail.addVendorTitle")
             }
             style={{
               background: "linear-gradient(135deg, rgba(55, 214, 122, 0.18), rgba(34, 197, 94, 0.12))",
@@ -311,12 +313,12 @@ export default function CostTypeAndEntityPicker({ value, onChange }) {
               opacity: loadingEntities ? 0.6 : 1,
             }}
           >
-            + Dodaj
+            {t("projectDetail.addEntityButton")}
           </button>
 
           {loadingEntities && (
             <div className="muted" style={{ gridColumn: "1 / span 2" }}>
-              Učitavam {requires === "talent" ? "talente" : "dobavljače"}…
+              {requires === "talent" ? t("projectDetail.loadingTalents") : t("projectDetail.loadingVendors")}
             </div>
           )}
         </div>

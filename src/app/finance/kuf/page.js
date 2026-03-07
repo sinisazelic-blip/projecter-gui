@@ -5,6 +5,7 @@ import { getValidLocale } from "@/lib/i18n";
 import { query } from "@/lib/db";
 import KufImportForm from "./KufImportForm";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
+import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -23,13 +24,6 @@ const fmtDate = (d) => {
   const day = parts[2]?.padStart(2, "0") ?? "";
   if (!y || !m || !day) return String(d);
   return `${day}.${m}.${y}`;
-};
-
-const TIP_LABELS = {
-  PROJEKTNI_TROSAK: "Projektni",
-  FIKSNI_TROSAK: "Fiksni",
-  VANREDNI_TROSAK: "Vanredni",
-  INVESTICIJE: "Investicije",
 };
 
 export default async function KufPage({ searchParams }) {
@@ -130,6 +124,9 @@ export default async function KufPage({ searchParams }) {
   const partnerName = (r) =>
     r.dobavljac_naziv || r.klijent_naziv || r.partner_naziv || "—";
 
+  const getTipLabel = (tip) =>
+    ({ PROJEKTNI_TROSAK: t("kuf.tipProjektni"), FIKSNI_TROSAK: t("kuf.tipFiksni"), VANREDNI_TROSAK: t("kuf.tipVanredni"), INVESTICIJE: t("kuf.tipInvesticije") }[tip] ?? tip);
+
   return (
     <div className="container">
       <div className="pageWrap">
@@ -138,12 +135,7 @@ export default async function KufPage({ searchParams }) {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
                   <div className="brandTitle">{t("kuf.title")}</div>
@@ -152,9 +144,11 @@ export default async function KufPage({ searchParams }) {
               </div>
 
               <div className="actions">
-                <Link className="btn" href="/finance" title={t("finance.title")}>
-                  {t("finance.title")}
-                </Link>
+                {locale === "sr" && (
+                  <Link className="btn" href="/finance" title={t("finance.title")}>
+                    {t("finance.title")}
+                  </Link>
+                )}
                 <Link className="btn" href="/dashboard" title={t("common.dashboard")}>
                   🏠 {t("common.dashboard")}
                 </Link>
@@ -168,9 +162,9 @@ export default async function KufPage({ searchParams }) {
         <div className="bodyWrap">
           {tableMissing && (
             <div className="card" style={{ marginBottom: 12, borderLeft: "4px solid #f59e0b" }}>
-              <div className="cardTitle">Tabela još ne postoji</div>
+              <div className="cardTitle">{t("kuf.tableMissingTitle")}</div>
               <div className="cardSub" style={{ lineHeight: 1.6 }}>
-                Pokreni SQL skriptu:{" "}
+                {t("kuf.tableMissingRun")}{" "}
                 <code>mysql -u USER -p DATABASE &lt; scripts/create-kuf-ulazne-fakture.sql</code>
               </div>
             </div>
@@ -190,30 +184,30 @@ export default async function KufPage({ searchParams }) {
           <div className="card" style={{ marginTop: 12 }}>
             <form method="GET" className="filters" style={{ flexWrap: "wrap" }}>
               <div className="field">
-                <span className="label">Pretraga</span>
+                <span className="label">{t("kuf.filterSearch")}</span>
                 <input
                   className="input"
                   name="q"
                   defaultValue={q}
-                  placeholder="ID / broj / partner / opis"
+                  placeholder={t("kuf.filterSearchPlaceholder")}
                 />
               </div>
               <div className="field">
-                <span className="label">Tip</span>
+                <span className="label">{t("kuf.filterType")}</span>
                 <select className="input" name="tip" defaultValue={tip}>
-                  <option value="">Svi</option>
-                  <option value="PROJEKTNI_TROSAK">Projektni</option>
-                  <option value="FIKSNI_TROSAK">Fiksni</option>
-                  <option value="VANREDNI_TROSAK">Vanredni</option>
-                  <option value="INVESTICIJE">Investicije</option>
+                  <option value="">{t("kuf.filterAll")}</option>
+                  <option value="PROJEKTNI_TROSAK">{t("kuf.tipProjektni")}</option>
+                  <option value="FIKSNI_TROSAK">{t("kuf.tipFiksni")}</option>
+                  <option value="VANREDNI_TROSAK">{t("kuf.tipVanredni")}</option>
+                  <option value="INVESTICIJE">{t("kuf.tipInvesticije")}</option>
                 </select>
               </div>
               <div className="actions">
                 <button type="submit" className="btn btn--active">
-                  Primijeni
+                  {t("kuf.apply")}
                 </button>
                 <Link className="btn" href="/finance/kuf">
-                  Reset
+                  {t("kuf.reset")}
                 </Link>
               </div>
             </form>
@@ -222,13 +216,13 @@ export default async function KufPage({ searchParams }) {
           <div className="card" style={{ marginTop: 12 }}>
             <div className="cardHead">
               <div className="cardTitleRow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                <div className="cardTitle">Lista ulaznih faktura</div>
+                <div className="cardTitle">{t("kuf.listTitle")}</div>
                 <span style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                  <span className="muted">Prikazano: {list.length} (limit 200)</span>
+                  <span className="muted">{(t("kuf.shownCount") || "").replace("{{count}}", list.length)}</span>
                   <ExportExcelButton
                     filename="kuf_ulazne_fakture"
                     sheetName="KUF"
-                    headers={["ID", "Broj fakture", "Datum", "Dospijeće", "Partner", "Iznos", "Valuta", "Iznos (KM)", "Opis", "Tip rasknjižavanja", "Projekat", "Fiksni trošak"]}
+                    headers={[t("kuf.colId"), t("kuf.colBroj"), t("kuf.colDatum"), t("kuf.colDospijece"), t("kuf.colPartner"), t("kuf.colIznos"), t("kuf.colValuta"), t("kuf.colIznosKm"), t("kuf.colOpis"), t("kuf.colTip"), t("kuf.colProjekat"), t("kuf.colFiksni")]}
                     rows={list.map((r) => [
                       r.kuf_id ?? "",
                       r.broj_fakture ?? "",
@@ -252,15 +246,15 @@ export default async function KufPage({ searchParams }) {
               <table className="table">
                 <thead>
                   <tr>
-                    <th style={{ width: 70 }}>ID</th>
-                    <th style={{ width: 100 }}>Broj</th>
-                    <th style={{ width: 100 }}>Datum (dd.mm.yyyy)</th>
-                    <th style={{ width: 100 }}>Dospijeće</th>
-                    <th>Partner / dobavljač</th>
-                    <th className="num" style={{ width: 100 }}>Iznos</th>
-                    <th style={{ width: 120 }}>Opis</th>
-                    <th style={{ width: 100 }}>Rasknjižavanje</th>
-                    <th style={{ width: 120 }}>Veza</th>
+                    <th style={{ width: 70 }}>{t("kuf.colId")}</th>
+                    <th style={{ width: 100 }}>{t("kuf.tableColBroj")}</th>
+                    <th style={{ width: 100 }}>{t("kuf.tableColDatum")}</th>
+                    <th style={{ width: 100 }}>{t("kuf.tableColDospijece")}</th>
+                    <th>{t("kuf.tableColPartner")}</th>
+                    <th className="num" style={{ width: 100 }}>{t("kuf.colIznos")}</th>
+                    <th style={{ width: 120 }}>{t("kuf.tableColOpis")}</th>
+                    <th style={{ width: 100 }}>{t("kuf.tableColRasknj")}</th>
+                    <th style={{ width: 120 }}>{t("kuf.tableColVeza")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -278,7 +272,7 @@ export default async function KufPage({ searchParams }) {
                           </td>
                           <td>{r.opis ?? "—"}</td>
                           <td>
-                            {TIP_LABELS[r.tip_rasknjizavanja] ?? r.tip_rasknjizavanja}
+                            {getTipLabel(r.tip_rasknjizavanja)}
                             {r.vanredni_podtip && (
                               <span className="muted"> · {r.vanredni_podtip}</span>
                             )}
@@ -298,7 +292,7 @@ export default async function KufPage({ searchParams }) {
                                 className="btn"
                                 style={{ fontSize: 12 }}
                               >
-                                Fiksni #{r.fiksni_trosak_id}
+                                {t("kuf.fixedCostLink")} #{r.fiksni_trosak_id}
                               </Link>
                             ) : r.investicija_opis ? (
                               <span className="muted">{r.investicija_opis}</span>
@@ -311,7 +305,7 @@ export default async function KufPage({ searchParams }) {
                     : (
                         <tr>
                           <td colSpan={9} className="muted" style={{ padding: 16 }}>
-                            Nema unosa. Unesi prvu ulaznu fakturu gore.
+                            {t("kuf.noEntries")}
                           </td>
                         </tr>
                       )}

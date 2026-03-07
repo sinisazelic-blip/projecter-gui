@@ -1,4 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -8,10 +11,15 @@ export const viewport: Viewport = {
   themeColor: "#0a0a0a",
 };
 
-export const metadata: Metadata = {
-  title: "Fluxa Mobile | StrategicCore",
-  description: "Brzi budžet u pregovorima — pojednostavljena mobilna verzija",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) ?? "sr";
+  const t = getT(locale);
+  return {
+    title: t("mobile.metaTitle"),
+    description: t("mobile.metaDescription"),
+  };
+}
 
 export default function MobileLayout({
   children,

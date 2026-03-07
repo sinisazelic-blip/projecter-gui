@@ -1,13 +1,20 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslation } from "@/components/LocaleProvider";
 
-function fmtShortDate(d) {
+function getMonthKeys() {
+  return ["monthJan", "monthFeb", "monthMar", "monthApr", "monthMaj", "monthJun", "monthJul", "monthAug", "monthSep", "monthOkt", "monthNov", "monthDec"];
+}
+
+function fmtShortDate(d, t) {
   if (!d) return "";
   const s = String(d).slice(0, 10);
   const [y, m, day] = s.split("-");
-  const months = ["Jan", "Feb", "Mar", "Apr", "Maj", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"];
-  return day && m ? `${parseInt(day, 10)} ${months[parseInt(m, 10) - 1]}` : s;
+  const keys = getMonthKeys();
+  const months = t ? keys.map((k) => t(`fazePage.${k}`)) : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const mi = parseInt(m, 10) - 1;
+  return day && m && mi >= 0 && mi < 12 ? `${parseInt(day, 10)} ${months[mi]}` : s;
 }
 
 function parseDate(s) {
@@ -24,7 +31,10 @@ function toTs(d) {
  * Timeline Gantt – čist CSS, bez spoljnih biblioteka.
  * Prikazuje faze sa datum_pocetka i datum_kraja.
  */
-export default function FazeGantt({ faze }) {
+export default function FazeGantt({ faze, locale: localeProp }) {
+  const { t, locale: ctxLocale } = useTranslation();
+  const locale = localeProp ?? ctxLocale ?? "sr";
+
   const { phases, minTs, maxTs, rangeMs } = useMemo(() => {
     if (!Array.isArray(faze)) return { phases: [], minTs: 0, maxTs: 0, rangeMs: 1 };
     const valid = faze.filter((f) => {
@@ -59,17 +69,16 @@ export default function FazeGantt({ faze }) {
   if (phases.length === 0) {
     return (
       <div className="card" style={{ textAlign: "center", color: "var(--muted)" }}>
-        Nema faza sa datumima za timeline. Unesi datum početka i kraja u fazama.
+        {t("fazePage.noPhasesForTimeline")}
       </div>
     );
   }
 
   const toPct = (ts) => ((ts - minTs) / rangeMs) * 100;
   const monthLabels = [];
-  const step = rangeMs / 8;
   for (let i = 0; i <= 8; i++) {
     const ts = minTs + (rangeMs * i) / 8;
-    monthLabels.push({ ts, label: fmtShortDate(new Date(ts).toISOString().slice(0, 10)) });
+    monthLabels.push({ ts, label: fmtShortDate(new Date(ts).toISOString().slice(0, 10), t) });
   }
 
   return (
@@ -101,7 +110,7 @@ export default function FazeGantt({ faze }) {
                   <div
                     className="ganttBarProgress"
                     style={{ width: `${p.progress}%` }}
-                    title={`${p.progress}% izvršeno`}
+                    title={t("fazePage.progressTitle").replace("{p}", p.progress)}
                   />
                 </div>
               </div>

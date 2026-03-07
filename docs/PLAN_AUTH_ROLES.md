@@ -43,23 +43,25 @@
 | A2 | **Hash lozinke** | Lozinka je plain text! Dodati bcrypt (ili argon2) pri kreiranju/izmjeni |
 | A3 | **Migracija users** | Ako users nema role_id, aktivan, last_login_at – odraditi ALTER TABLE |
 
-### Faza B: Login i session
+### Faza B: Login i session ✅ (implementirano)
 
 | # | Zadatak | Opis |
 |---|---------|------|
-| B1 | **Login stranica** | `/login` – forma username + password |
-| B2 | **Session** | NextAuth.js ili vlastiti JWT + httpOnly cookie |
-| B3 | **Middleware** | Zaštita rutama – ako nema session → redirect na login |
-| B4 | **Logout** | Čišćenje session-a |
+| B1 | **Login stranica** | `/` – forma username + password (LoginForm), POST `/api/auth/login` |
+| B2 | **Session** | Signed cookie `fluxa_session` (payload + HMAC), trajanje 7 dana. **Env:** `AUTH_SECRET` ili `SESSION_SECRET` (min. 16 znakova). |
+| B3 | **Middleware** | `src/middleware.ts` – zaštićene rute zahtijevaju cookie, inače redirect na `/` |
+| B4 | **Logout** | POST `/api/auth/logout` briše cookie; dugme „Odjava” u dashboard topblocku |
 
-### Faza C: Nivoi pristupa (šta ko vidi)
+### Faza C: Nivoi pristupa (šta ko vidi) ✅ (iz Excela)
+
+**Izvor:** `docs/Fluxa prava pristupa i users.xlsx` (sheeti **Roles**, **Pages**, **Users**).
 
 | # | Zadatak | Opis |
 |---|---------|------|
-| C1 | **Definicija nivoa** | Mapirati nivo_ovlastenja (0, 1, 2...) na konkretna prava, npr.: 0=viewer, 1=operator, 2=manager, 3=admin |
-| C2 | **Permission matrix** | Tabela ili konfig: koja ruta / akcija zahteva koji nivo |
-| C3 | **UI skrivanje** | Dashboard/links – prikazati samo ono što korisnik smije |
-| C4 | **API zaštita** | Na serveru provjeriti nivo prije izvršavanja akcije |
+| C1 | **Definicija nivoa** | Uloge i nivoi iz sheeta **Roles**: Guest 1, Racunovodstvo 2, User 3, Account 5, Producer 6, SuperUser 8, Administrator 9, Owner 10. Seed: `scripts/seed-roles-from-excel.sql`. |
+| C2 | **Permission matrix** | Sheet **Pages**: za svaki modul i in-page vrijednost po ulozi (demo / hide / Read Only / Show / Use / Edit / all). Generirano u `src/lib/auth/permissions-matrix.ts` skriptom `node scripts/generate-permissions-from-excel.js`. |
+| C3 | **UI skrivanje** | Dashboard i topblock koriste `PermissionGate` i `useAuthUser().canSee(module, inPage)` prema matrici. Ostale stranice (Deals, PP, Projekat, Fakture, Šifarnici, itd.) treba isto povezati s odgovarajućim redovima iz **Pages**. |
+| C4 | **API zaštita** | Na serveru provjeriti nivo prije izvršavanja akcije (još nije ugrađeno u API rute). |
 
 ### Faza D: Dodatno (opciono)
 

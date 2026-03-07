@@ -1,16 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "@/components/LocaleProvider";
 import FazeGantt from "./FazeGantt";
 
-function fmtDate(v) {
+function fmtDate(v, locale) {
   if (!v) return "—";
   const s = String(v).slice(0, 10);
   const [y, m, d] = s.split("-");
-  return d && m && y ? `${d}.${m}.${y}` : s;
+  if (!d || !m || !y) return s;
+  const year = parseInt(y, 10);
+  const month = parseInt(m, 10) - 1;
+  const day = parseInt(d, 10);
+  if (locale === "en") {
+    return new Date(year, month, day).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+  return `${d}.${m}.${y}`;
 }
 
-export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, dobavljaci }) {
+export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, dobavljaci, locale: localeProp }) {
+  const { t, locale: ctxLocale } = useTranslation();
+  const locale = localeProp ?? ctxLocale ?? "sr";
   const [faze, setFaze] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -36,10 +46,10 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
     try {
       const res = await fetch(`/api/projects/${projekatId}/faze`, { cache: "no-store" });
       const j = await res.json();
-      if (!j?.ok) throw new Error(j?.error || "Greška");
+      if (!j?.ok) throw new Error(j?.error || t("fazePage.errorGeneric"));
       setFaze(j.faze || []);
     } catch (e) {
-      setErr(e?.message || "Greška");
+      setErr(e?.message || t("fazePage.errorGeneric"));
     } finally {
       setLoading(false);
     }
@@ -53,12 +63,13 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
     e.preventDefault();
     setErr("");
     if (rokGlavni) {
+      const dateStr = fmtDate(rokGlavni, locale);
       if (form.deadline && form.deadline > rokGlavni) {
-        setErr(`Deadline faze ne smije biti poslije deadline-a projekta (${fmtDate(rokGlavni)}).`);
+        setErr(t("fazePage.errDeadlineAfterProject").replace("{date}", dateStr));
         return;
       }
       if (form.datum_kraja && form.datum_kraja > rokGlavni) {
-        setErr(`Datum kraja faze ne smije biti poslije deadline-a projekta (${fmtDate(rokGlavni)}).`);
+        setErr(t("fazePage.errEndAfterProject").replace("{date}", dateStr));
         return;
       }
     }
@@ -79,11 +90,11 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
         }),
       });
       const j = await res.json();
-      if (!j?.ok) throw new Error(j?.error || "Greška");
+      if (!j?.ok) throw new Error(j?.error || t("fazePage.errorGeneric"));
       setForm({ faza_id: "", naziv: "", datum_pocetka: "", datum_kraja: "", deadline: "", procenat_izvrsenosti: 0, dobavljac_ids: [], radnik_ids: [] });
       await load();
     } catch (e) {
-      setErr(e?.message || "Greška");
+      setErr(e?.message || t("fazePage.errorGeneric"));
     } finally {
       setAdding(false);
     }
@@ -98,25 +109,25 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
         body: JSON.stringify(patch),
       });
       const j = await res.json();
-      if (!j?.ok) throw new Error(j?.error || "Greška");
+      if (!j?.ok) throw new Error(j?.error || t("fazePage.errorGeneric"));
       await load();
     } catch (e) {
-      setErr(e?.message || "Greška");
+      setErr(e?.message || t("fazePage.errorGeneric"));
     }
   }
 
   async function handleDelete(fazaId) {
-    if (!confirm("Obrisati ovu fazu?")) return;
+    if (!confirm(t("fazePage.confirmDeletePhase"))) return;
     setErr("");
     try {
       const res = await fetch(`/api/projects/${projekatId}/faze/${fazaId}`, {
         method: "DELETE",
       });
       const j = await res.json();
-      if (!j?.ok) throw new Error(j?.error || "Greška");
+      if (!j?.ok) throw new Error(j?.error || t("fazePage.errorGeneric"));
       await load();
     } catch (e) {
-      setErr(e?.message || "Greška");
+      setErr(e?.message || t("fazePage.errorGeneric"));
     }
   }
 
@@ -138,13 +149,13 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
     }));
   }
 
-  if (loading) return <div className="card">Učitavanje…</div>;
+  if (loading) return <div className="card">{t("fazePage.loading")}</div>;
 
   return (
     <div className="fazePage">
       {rokGlavni && (
         <div className="card subtle" style={{ marginBottom: 14 }}>
-          Master deadline projekta: <b>{fmtDate(rokGlavni)}</b> — faze bez posebnog deadline-a koriste ovaj datum.
+          {t("fazePage.masterDeadlineCard")} <b>{fmtDate(rokGlavni, locale)}</b> {t("fazePage.masterDeadlineHint")}
         </div>
       )}
 
@@ -155,16 +166,16 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
       )}
 
       <form onSubmit={handleAdd} className="card fazeForm">
-        <div className="fazeFormTitle">Dodaj fazu</div>
+        <div className="fazeFormTitle">{t("fazePage.addPhaseFormTitle")}</div>
         <div className="fazeFormGrid">
           <div className="field">
-            <label className="label">Tip faze (šifrarnik)</label>
+            <label className="label">{t("fazePage.labelPhaseType")}</label>
             <select
               value={form.faza_id}
               onChange={(e) => setForm((s) => ({ ...s, faza_id: e.target.value }))}
               className="input"
             >
-              <option value="">— izaberi —</option>
+              <option value="">{t("fazePage.selectOption")}</option>
               {radneFaze.map((rf) => (
                 <option key={rf.faza_id} value={rf.faza_id}>
                   {rf.naziv}
@@ -174,17 +185,17 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
           </div>
 
           <div className="field">
-            <label className="label">Naziv (override)</label>
+            <label className="label">{t("fazePage.labelNameOverride")}</label>
             <input
               className="input"
               value={form.naziv}
               onChange={(e) => setForm((s) => ({ ...s, naziv: e.target.value }))}
-              placeholder="npr. Mix 1"
+              placeholder={t("fazePage.namePlaceholder")}
             />
           </div>
 
           <div className="field">
-            <label className="label">Početak</label>
+            <label className="label">{t("fazePage.labelStart")}</label>
             <input
               type="date"
               className="input"
@@ -194,32 +205,32 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
           </div>
 
           <div className="field">
-            <label className="label">Kraj</label>
+            <label className="label">{t("fazePage.labelEnd")}</label>
             <input
               type="date"
               className="input"
               value={form.datum_kraja}
               onChange={(e) => setForm((s) => ({ ...s, datum_kraja: e.target.value }))}
               max={rokGlavni || undefined}
-              title={rokGlavni ? `Maks. ${fmtDate(rokGlavni)} (deadline projekta)` : undefined}
+              title={rokGlavni ? t("fazePage.maxDeadlineTitle").replace("{date}", fmtDate(rokGlavni, locale)) : undefined}
             />
           </div>
 
           <div className="field">
-            <label className="label">Deadline</label>
+            <label className="label">{t("fazePage.labelDeadline")}</label>
             <input
               type="date"
               className="input"
               value={form.deadline}
               onChange={(e) => setForm((s) => ({ ...s, deadline: e.target.value }))}
               max={rokGlavni || undefined}
-              placeholder={rokGlavni ? `Prazno = ${fmtDate(rokGlavni)}` : ""}
-              title={rokGlavni ? `Maks. ${fmtDate(rokGlavni)} (deadline projekta)` : undefined}
+              placeholder={rokGlavni ? t("fazePage.emptyEqualsDeadline").replace("{date}", fmtDate(rokGlavni, locale)) : ""}
+              title={rokGlavni ? t("fazePage.maxDeadlineTitle").replace("{date}", fmtDate(rokGlavni, locale)) : undefined}
             />
           </div>
 
           <div className="field">
-            <label className="label">% završetka</label>
+            <label className="label">{t("fazePage.labelPercentDone")}</label>
             <input
               type="number"
               min="0"
@@ -228,16 +239,16 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
               className="input"
               value={form.procenat_izvrsenosti}
               onChange={(e) => setForm((s) => ({ ...s, procenat_izvrsenosti: e.target.value }))}
-              placeholder="0–100"
+              placeholder={t("fazePage.percentPlaceholder")}
             />
           </div>
 
           <div className="field">
-            <label className="label">Dobavljači</label>
+            <label className="label">{t("fazePage.labelSuppliers")}</label>
             <input
               type="text"
               className="input"
-              placeholder="Pretraži dobavljače..."
+              placeholder={t("fazePage.searchSuppliers")}
               value={dobavljacFilter}
               onChange={(e) => setDobavljacFilter(e.target.value)}
               style={{ marginBottom: 8, fontSize: 13 }}
@@ -255,24 +266,26 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
                     {d.naziv}
                   </label>
                 ))}
-              {dobavljaci.length === 0 && <span className="muted">Nema dobavljača</span>}
+              {dobavljaci.length === 0 && <span className="muted">{t("fazePage.noSuppliers")}</span>}
               {dobavljacFilter && dobavljaci.filter((d) => d.naziv.toLowerCase().includes(dobavljacFilter.toLowerCase())).length === 0 && (
-                <span className="muted">Nema rezultata za "{dobavljacFilter}"</span>
+                <span className="muted">{t("fazePage.noResultsFor").replace("{q}", dobavljacFilter)}</span>
               )}
             </div>
             {form.dobavljac_ids.length > 0 && (
               <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
-                Izabrano: {form.dobavljac_ids.length} {form.dobavljac_ids.length === 1 ? "dobavljač" : "dobavljača"}
+                {t("fazePage.selectedCount")} {form.dobavljac_ids.length === 1
+                  ? t("fazePage.supplierCount_one").replace("{n}", form.dobavljac_ids.length)
+                  : t("fazePage.supplierCount_other").replace("{n}", form.dobavljac_ids.length)}
               </div>
             )}
           </div>
 
           <div className="field">
-            <label className="label">Radnici</label>
+            <label className="label">{t("fazePage.labelWorkers")}</label>
             <input
               type="text"
               className="input"
-              placeholder="Pretraži radnike..."
+              placeholder={t("fazePage.searchWorkers")}
               value={radnikFilter}
               onChange={(e) => setRadnikFilter(e.target.value)}
               style={{ marginBottom: 8, fontSize: 13 }}
@@ -294,27 +307,29 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
                     {r.ime} {r.prezime}
                   </label>
                 ))}
-              {radnici.length === 0 && <span className="muted">Nema radnika</span>}
+              {radnici.length === 0 && <span className="muted">{t("fazePage.noWorkers")}</span>}
               {radnikFilter && radnici.filter((r) => `${r.ime} ${r.prezime}`.toLowerCase().includes(radnikFilter.toLowerCase())).length === 0 && (
-                <span className="muted">Nema rezultata za "{radnikFilter}"</span>
+                <span className="muted">{t("fazePage.noResultsFor").replace("{q}", radnikFilter)}</span>
               )}
             </div>
             {form.radnik_ids.length > 0 && (
               <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
-                Izabrano: {form.radnik_ids.length} {form.radnik_ids.length === 1 ? "radnik" : "radnika"}
+                {t("fazePage.selectedCount")} {form.radnik_ids.length === 1
+                  ? t("fazePage.workerCount_one").replace("{n}", form.radnik_ids.length)
+                  : t("fazePage.workerCount_other").replace("{n}", form.radnik_ids.length)}
               </div>
             )}
           </div>
         </div>
 
         <button type="submit" className="btn" disabled={adding}>
-          {adding ? "Dodavanje…" : "Dodaj fazu"}
+          {adding ? t("fazePage.addingPhase") : t("fazePage.addPhaseBtn")}
         </button>
       </form>
 
       <div className="card" style={{ marginTop: 20 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
-          <div className="fazeFormTitle" style={{ marginBottom: 0 }}>Lista faza</div>
+          <div className="fazeFormTitle" style={{ marginBottom: 0 }}>{t("fazePage.phaseListTitle")}</div>
           <div style={{ display: "flex", gap: 4 }}>
             <button
               type="button"
@@ -322,7 +337,7 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
               style={{ fontSize: 13, padding: "6px 12px", opacity: viewTab === "tabela" ? 1 : 0.6 }}
               onClick={() => setViewTab("tabela")}
             >
-              Tabela
+              {t("fazePage.viewTable")}
             </button>
             <button
               type="button"
@@ -330,7 +345,7 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
               style={{ fontSize: 13, padding: "6px 12px", opacity: viewTab === "timeline" ? 1 : 0.6 }}
               onClick={() => setViewTab("timeline")}
             >
-              Timeline
+              {t("fazePage.viewTimeline")}
             </button>
           </div>
         </div>
@@ -340,13 +355,13 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
           <table className="fazeTable">
             <thead>
               <tr>
-                <th>Tip / Naziv</th>
-                <th>Početak</th>
-                <th>Kraj</th>
-                <th>Deadline</th>
-                <th>%</th>
-                <th>Dobavljači</th>
-                <th>Radnici</th>
+                <th>{t("fazePage.colTypeName")}</th>
+                <th>{t("fazePage.colStart")}</th>
+                <th>{t("fazePage.colEnd")}</th>
+                <th>{t("fazePage.colDeadline")}</th>
+                <th>{t("fazePage.colPercent")}</th>
+                <th>{t("fazePage.colSuppliers")}</th>
+                <th>{t("fazePage.colWorkers")}</th>
                 <th></th>
               </tr>
             </thead>
@@ -354,7 +369,7 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
               {faze.length === 0 && (
                 <tr>
                   <td colSpan={8} className="muted">
-                    Nema faza. Dodaj prvu fazu iznad.
+                    {t("fazePage.noPhases")}
                   </td>
                 </tr>
               )}
@@ -364,9 +379,9 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
                     {f.faza_naziv || f.naziv || "—"}
                     {f.naziv && f.faza_naziv && ` (${f.naziv})`}
                   </td>
-                  <td>{fmtDate(f.datum_pocetka)}</td>
-                  <td>{fmtDate(f.datum_kraja)}</td>
-                  <td>{fmtDate(f.deadline)}</td>
+                  <td>{fmtDate(f.datum_pocetka, locale)}</td>
+                  <td>{fmtDate(f.datum_kraja, locale)}</td>
+                  <td>{fmtDate(f.deadline, locale)}</td>
                   <td>
                     <input
                       type="number"
@@ -395,7 +410,7 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
                       className="btn"
                       style={{ fontSize: 12, padding: "4px 8px" }}
                       onClick={() => handleDelete(f.projekat_faza_id)}
-                      title="Obriši"
+                      title={t("fazePage.deletePhaseTitle")}
                     >
                       🗑
                     </button>
@@ -407,7 +422,7 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
         </div>
         )}
 
-        {viewTab === "timeline" && <FazeGantt faze={faze} />}
+        {viewTab === "timeline" && <FazeGantt faze={faze} locale={locale} />}
       </div>
     </div>
   );

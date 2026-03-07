@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useTranslation } from "@/components/LocaleProvider";
 import { useFluxaEdition } from "@/components/FluxaEditionProvider";
+import { useAuthUser } from "@/components/AuthUserProvider";
 import { useState, useRef, useEffect } from "react";
 import { FLUXA_EDITIONS } from "@/lib/fluxa-edition";
 
@@ -22,14 +23,22 @@ export default function DashboardTopActions() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const showLicence = isFeatureVisible(3);
+  const { canSee } = useAuthUser();
+  const tenantAdminEnabled = process.env.NEXT_PUBLIC_ENABLE_TENANT_ADMIN === "true";
+  const showLicenceLink = isFeatureVisible(3) && tenantAdminEnabled;
+  const showLicenceComingSoon = isFeatureVisible(3) && !tenantAdminEnabled;
   const showVerzijaDropdown = isOwner;
-  const showMobile = isFeatureVisible(5);
-  const showBlagajna = isFeatureVisible(6);
+  const showMobile = isFeatureVisible(5) && canSee("Mobile dashboard", "-");
+  const showBlagajna = isFeatureVisible(6) && canSee("Blagajna", "");
 
   return (
     <div className="actions" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-      {showLicence && (
+      {showLicenceLink && (
+        <Link href="/studio/licence" className="btn" title={t("dashboard.licenceTitle")}>
+          🔐 {t("dashboard.licenceLabel")}
+        </Link>
+      )}
+      {showLicenceComingSoon && (
         <span
           className="btn btn--disabled"
           style={{
@@ -40,7 +49,7 @@ export default function DashboardTopActions() {
           }}
           title={t("dashboard.licenceTitle")}
         >
-          🔐
+          🔐 {t("dashboard.licenceLabel")}
         </span>
       )}
 
@@ -99,6 +108,16 @@ export default function DashboardTopActions() {
         </div>
       )}
 
+      {!showVerzijaDropdown && (
+        <Link
+          href="/owner-login"
+          className="btn"
+          title={t("dashboard.ownerAccessTitle")}
+          style={{ opacity: 0.85, fontSize: 13 }}
+        >
+          🔐 {t("dashboard.ownerAccess")}
+        </Link>
+      )}
       {showMobile && (
         <Link href="/mobile" className="btn" title={t("nav.mobileTitle")}>
           📱 {t("nav.mobile")}
@@ -109,6 +128,18 @@ export default function DashboardTopActions() {
           💰 {t("nav.cash")}
         </Link>
       )}
+
+      <button
+        type="button"
+        className="btn"
+        title={t("common.logout")}
+        onClick={async () => {
+          await fetch("/api/auth/logout", { method: "POST" });
+          window.location.href = "/";
+        }}
+      >
+        {t("common.logout")}
+      </button>
     </div>
   );
 }

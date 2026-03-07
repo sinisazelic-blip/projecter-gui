@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState, useRef, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "@/components/LocaleProvider";
+import FluxaLogo from "@/components/FluxaLogo";
 
 type Row = {
   projekat_id: number;
@@ -78,8 +79,8 @@ function fmtKM(v: any): string {
 }
 
 export default function InvoicePickClient({
-  rows,
-  narucioci,
+  rows: initialRows,
+  narucioci: initialNarucioci,
   initial,
 }: {
   rows: Row[];
@@ -87,7 +88,37 @@ export default function InvoicePickClient({
   initial: { narucilac_id: string; od: string; do: string };
 }) {
   const router = useRouter();
-  const { t } = useTranslation();
+  const searchParams = useSearchParams();
+  const { t, locale } = useTranslation();
+  const showSaPdvColumn = locale !== "en";
+  const colSpan = showSaPdvColumn ? 8 : 7;
+
+  const [rows, setRows] = useState<Row[]>(initialRows);
+  const [narucioci, setNarucioci] = useState<Narucioc[]>(initialNarucioci);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    const nid = searchParams.get("narucilac_id");
+    const odParam = searchParams.get("od");
+    const doParam = searchParams.get("do");
+    if (nid) qs.set("narucilac_id", nid);
+    if (odParam) qs.set("od", odParam);
+    if (doParam) qs.set("do", doParam);
+    setLoading(true);
+    fetch(`/api/fakture/za-fakturisanje?${qs.toString()}`, { cache: "no-store" })
+      .then((r) => r.text())
+      .then((text) => {
+        try {
+          const json = text ? JSON.parse(text) : {};
+          if (json.ok && Array.isArray(json.items)) {
+            setRows(json.items);
+            setNarucioci(Array.isArray(json.narucioci) ? json.narucioci : []);
+          }
+        } catch (_) {}
+      })
+      .finally(() => setLoading(false));
+  }, [searchParams.toString()]);
 
   const [narucilacId, setNarucilacId] = useState<string>(
     initial.narucilac_id || "",
@@ -180,17 +211,12 @@ export default function InvoicePickClient({
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
                   <div className="brandTitle">{t("wizard.zaFakturisanje")}</div>
                   <div className="brandSub">
-                    Izvještaj-forma · samo projekti ZATVOREN (8)
+                    {t("wizard.zaPickSubtitle")}
                   </div>
                 </div>
               </div>
@@ -205,9 +231,9 @@ export default function InvoicePickClient({
                   type="button"
                   className="btn"
                   onClick={toggleAll}
-                  title="Označi sve / poništi sve"
+                  title={t("wizard.zaPickToggleAll")}
                 >
-                  {allChecked ? "☐ Poništi sve" : "☑ Označi sve"}
+                  {allChecked ? t("wizard.zaPickPonisti") : t("wizard.zaPickOznaci")}
                 </button>
 
                 <button
@@ -226,15 +252,15 @@ export default function InvoicePickClient({
                   }}
                   title={
                     pickedIds.length === 0
-                      ? "Prvo označi projekte"
-                      : "Nastavi u wizard"
+                      ? t("wizard.zaPickPrvoOznaci")
+                      : t("wizard.zaPickNastaviWizard")
                   }
                 >
-                  ➜ Dalje ({pickedIds.length})
+                  ➜ {t("wizard.zaPickDalje")} ({pickedIds.length})
                 </button>
 
-                <Link href="/projects" className="btn" title="Odustani">
-                  ✖ Odustani
+                <Link href="/projects" className="btn" title={t("wizard.zaPickOdustani")}>
+                  ✖ {t("wizard.zaPickOdustani")}
                 </Link>
               </div>
             </div>
@@ -243,13 +269,13 @@ export default function InvoicePickClient({
 
             <div className="filters">
               <div className="field">
-                <div className="label">Naručilac</div>
+                <div className="label">{t("wizard.zaPickNarucilac")}</div>
                 <select
                   className="input"
                   value={narucilacId}
                   onChange={(e) => setNarucilacId(e.target.value)}
                 >
-                  <option value="">— svi —</option>
+                  <option value="">{t("wizard.zaPickSvi")}</option>
                   {narucioci.map((k) => (
                     <option key={k.klijent_id} value={String(k.klijent_id)}>
                       {k.naziv_klijenta}
@@ -259,7 +285,7 @@ export default function InvoicePickClient({
               </div>
 
               <div className="field">
-                <div className="label">Od datuma</div>
+                <div className="label">{t("wizard.zaPickOd")}</div>
                 <div style={{ position: "relative" }}>
                   <input
                     className="input small"
@@ -320,7 +346,7 @@ export default function InvoicePickClient({
               </div>
 
               <div className="field">
-                <div className="label">Do datuma</div>
+                <div className="label">{t("wizard.zaPickDo")}</div>
                 <div style={{ position: "relative" }}>
                   <input
                     className="input small"
@@ -390,7 +416,7 @@ export default function InvoicePickClient({
               </button>
 
               <div className="muted">
-                * Filteri su GET. Checkbox selekcija je lokalna (ne dira bazu).
+                {t("wizard.zaPickFilterHint")}
               </div>
             </div>
           </div>
@@ -408,25 +434,33 @@ export default function InvoicePickClient({
                       onChange={toggleAll}
                     />
                   </th>
-                  <th style={{ width: 90 }}>Projekat ID</th>
-                  <th style={{ width: 240 }}>Naručilac</th>
-                  <th style={{ width: 240 }}>Klijent</th>
-                  <th>Naziv projekta</th>
-                  <th style={{ width: 160 }}>Datum zatvaranja</th>
+                  <th style={{ width: 90 }}>{t("wizard.zaPickProjektId")}</th>
+                  <th style={{ width: 240 }}>{t("wizard.zaPickNarucilacCol")}</th>
+                  <th style={{ width: 240 }}>{t("wizard.zaPickKlijentCol")}</th>
+                  <th>{t("wizard.zaPickNazivProjekta")}</th>
+                  <th style={{ width: 160 }}>{t("wizard.zaPickDatumZatvaranja")}</th>
                   <th className="num" style={{ width: 140 }}>
-                    Iznos (KM)
+                    {t("wizard.zaPickIznosKm")}
                   </th>
-                  <th className="num" style={{ width: 160 }}>
-                    Sa PDV-om
-                  </th>
+                  {showSaPdvColumn && (
+                    <th className="num" style={{ width: 160 }}>
+                      {t("wizard.zaPickSaPdv")}
+                    </th>
+                  )}
                 </tr>
               </thead>
 
               <tbody>
-                {rows.length === 0 ? (
+                {loading ? (
                   <tr>
-                    <td colSpan={8} style={{ opacity: 0.7, padding: 18 }}>
-                      Nema projekata spremnih za fakturisanje.
+                    <td colSpan={colSpan} style={{ opacity: 0.7, padding: 18 }}>
+                      {t("wizard.zaPickUcitavam")}
+                    </td>
+                  </tr>
+                ) : rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={colSpan} style={{ opacity: 0.7, padding: 18 }}>
+                      {t("wizard.zaPickNemaProjekata")}
                     </td>
                   </tr>
                 ) : (
@@ -456,7 +490,7 @@ export default function InvoicePickClient({
                           <Link
                             className="projectLink"
                             href={`/projects/${id}`}
-                            title="Otvori projekat u novoj ruti"
+                            title={t("wizard.zaPickOtvoriProjekat")}
                           >
                             {r.radni_naziv ?? "—"}
                           </Link>
@@ -467,11 +501,13 @@ export default function InvoicePickClient({
                         <td className="num nowrap">
                           {fmtKM(r.budzet_planirani)}
                         </td>
-                        <td className="num nowrap">
-                          {r.sa_pdv_km === null || r.sa_pdv_km === undefined
-                            ? "—"
-                            : fmtKM(r.sa_pdv_km)}
-                        </td>
+                        {showSaPdvColumn && (
+                          <td className="num nowrap">
+                            {r.sa_pdv_km === null || r.sa_pdv_km === undefined
+                              ? "—"
+                              : fmtKM(r.sa_pdv_km)}
+                          </td>
+                        )}
                       </tr>
                     );
                   })

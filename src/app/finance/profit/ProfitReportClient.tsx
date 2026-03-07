@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslation } from "@/components/LocaleProvider";
 import Link from "next/link";
@@ -15,7 +15,7 @@ import {
 } from "recharts";
 
 const MJESI_KEYS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-const MJESI_NAMES = ["Jan", "Feb", "Mar", "Apr", "Maj", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"];
+const MONTH_KEYS = ["monthJan", "monthFeb", "monthMar", "monthApr", "monthMaj", "monthJun", "monthJul", "monthAug", "monthSep", "monthOkt", "monthNov", "monthDec"] as const;
 
 const colGodBg = { background: "rgba(255, 235, 150, 0.22)" };
 const colMarginPctBg = { background: "rgba(150, 200, 255, 0.22)" };
@@ -51,10 +51,13 @@ export default function ProfitReportClient({ initialView }: { initialView: "mont
   const { t } = useTranslation();
   const searchParams = useSearchParams();
   const view = (searchParams?.get("view") === "yearly" ? "yearly" : "monthly") as "monthly" | "yearly";
+  const mjeseciNames = useMemo(
+    () => MONTH_KEYS.map((k) => t(`dashboard.${k}`)),
+    [t],
+  );
   const [data, setData] = useState<{
     tableData: YearRow[];
     chartYearly: { godina: string; margin: number }[];
-    mjeseciNames: string[];
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -95,13 +98,13 @@ export default function ProfitReportClient({ initialView }: { initialView: "mont
             godina: String(r.godina),
             margin: Math.round(r.avg_margin_pct * 10) / 10,
           }));
-          setData({ tableData, chartYearly, mjeseciNames: MJESI_NAMES });
+          setData({ tableData, chartYearly });
           if (selectedYears.length === 0) {
             const lastYear = tableData[tableData.length - 1]?.godina;
             if (lastYear) setSelectedYears([lastYear]);
           }
         } else if (j?.ok) {
-          setData({ tableData: [], chartYearly: [], mjeseciNames: MJESI_NAMES });
+          setData({ tableData: [], chartYearly: [] });
         } else {
           setError(j?.error || "Greška");
         }
@@ -121,7 +124,7 @@ export default function ProfitReportClient({ initialView }: { initialView: "mont
   if (error) return <div className="reportError">{error}</div>;
   if (!data?.tableData?.length) return <div className="reportNote">Nema podataka za prikaz.</div>;
 
-  const { tableData, chartYearly, mjeseciNames } = data;
+  const { tableData, chartYearly } = data;
   const allYears = tableData.map((r) => r.godina);
 
   const toggleYear = (y: number) => {
@@ -225,7 +228,7 @@ export default function ProfitReportClient({ initialView }: { initialView: "mont
               <thead>
                 <tr>
                   <th style={{ width: 60, ...colGodBg }}>God.</th>
-                  {MJESI_NAMES.map((m) => (
+                  {mjeseciNames.map((m) => (
                     <th key={m} className="num" style={{ width: 64 }}>{m}</th>
                   ))}
                   <th className="num bold" style={{ width: 90, ...colMarginPctBg }}>{t("dashboard.marginPctCol")}</th>

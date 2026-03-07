@@ -26,6 +26,28 @@
   --radius: 14px;
 }
 
+/* Light theme */
+[data-theme="light"] {
+  --bg: #f0f4f8;
+  --panel: #ffffff;
+  --panel-2: #e8eef4;
+
+  --text: #1a2332;
+  --muted: #5a6578;
+
+  --fg: var(--text);
+
+  --border: rgba(0, 0, 0, 0.1);
+  --border-2: rgba(0, 0, 0, 0.14);
+
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+
+  --accent: #0ea5e9;
+  --good: #16a34a;
+  --warn: #d97706;
+  --bad: #dc2626;
+}
+
 *,
 *::before,
 *::after {
@@ -47,6 +69,10 @@ html {
   background: var(--bg);
 }
 
+[data-theme="light"] html {
+  color-scheme: light;
+}
+
 body {
   margin: 0;
   background:
@@ -65,6 +91,20 @@ body {
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
     Arial, "Apple Color Emoji", "Segoe UI Emoji";
   line-height: 1.45;
+}
+
+[data-theme="light"] body {
+  background:
+    radial-gradient(
+      1200px 600px at 10% 0%,
+      rgba(14, 165, 233, 0.08),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 500px at 80% 20%,
+      rgba(22, 163, 74, 0.06),
+      transparent 60%
+    ), var(--bg);
 }
 
 a {
@@ -97,6 +137,13 @@ textarea {
   outline: none;
 }
 
+[data-theme="light"] input,
+[data-theme="light"] select,
+[data-theme="light"] textarea {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
 input::placeholder,
 textarea::placeholder {
   color: rgba(233, 238, 246, 0.45);
@@ -113,6 +160,11 @@ textarea:focus {
 option {
   background: var(--panel);
   color: var(--text);
+}
+
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: rgba(26, 35, 50, 0.5);
 }
 
 /* =========================
@@ -1081,4 +1133,33 @@ option {
 .fazeTable th {
   background: rgba(255,255,255,0.06);
   font-weight: 600;
+}
+
+/* Global tooltip (presreće native title) – veći font, help stil */
+.fluxa-global-tooltip {
+  position: fixed;
+  z-index: 99999;
+  padding: 12px 16px;
+  max-width: min(420px, 90vw);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+[data-theme="light"] .fluxa-global-tooltip {
+  background: var(--panel);
+  border-color: var(--border-2);
+}
+@media (min-width: 2560px) {
+  .fluxa-global-tooltip {
+    font-size: 18px;
+    padding: 14px 18px;
+    max-width: min(480px, 90vw);
+  }
 }

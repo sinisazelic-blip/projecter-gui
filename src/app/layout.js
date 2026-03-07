@@ -2,6 +2,12 @@ import "./globals.css";
 import "@/lib/ui/common-styles.css";
 import { LocaleProvider } from "@/components/LocaleProvider";
 import { FluxaEditionProvider } from "@/components/FluxaEditionProvider";
+import { AuthUserProvider } from "@/components/AuthUserProvider";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import SubscriptionGuard from "@/components/SubscriptionGuard";
+import LicenceCheckWrapper from "@/components/LicenceCheckWrapper";
+import PerformanceMeasurePatch from "@/components/PerformanceMeasurePatch";
+import { GlobalTooltip } from "@/components/GlobalTooltip";
 import { cookies } from "next/headers";
 import { getValidLocale } from "@/lib/i18n";
 
@@ -18,11 +24,28 @@ export default async function RootLayout({ children }) {
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value ?? "sr");
   const lang = locale === "en" ? "en" : "bs";
   return (
-    <html lang={lang} data-theme="dark" data-locale={locale}>
+    <html lang={lang} data-theme="dark" data-locale={locale} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var t=localStorage.getItem('fluxa_theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');})();`,
+          }}
+        />
+      </head>
       <body>
+        <PerformanceMeasurePatch />
+        <ThemeProvider>
         <LocaleProvider initialLocale={locale}>
-        <FluxaEditionProvider>{children}</FluxaEditionProvider>
+        <FluxaEditionProvider>
+          <LicenceCheckWrapper>
+          <AuthUserProvider>
+            <GlobalTooltip />
+            <SubscriptionGuard>{children}</SubscriptionGuard>
+          </AuthUserProvider>
+        </LicenceCheckWrapper>
+        </FluxaEditionProvider>
       </LocaleProvider>
+      </ThemeProvider>
       </body>
     </html>
   );

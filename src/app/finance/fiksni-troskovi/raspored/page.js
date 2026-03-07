@@ -1,5 +1,9 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 import { query } from "@/lib/db";
+import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +45,7 @@ function badge(text, kind = "neutral") {
   return <span className={cls}>{text}</span>;
 }
 
-function classifyDue(dueDate) {
+function classifyDue(t, dueDate) {
   if (!dueDate) return { text: "—", kind: "neutral" };
 
   const today = new Date();
@@ -62,13 +66,17 @@ function classifyDue(dueDate) {
   );
 
   if (diffDays < 0)
-    return { text: `Kasni (${Math.abs(diffDays)}d)`, kind: "bad" };
-  if (diffDays === 0) return { text: "Danas", kind: "bad" };
-  if (diffDays <= 7) return { text: `Uskoro (${diffDays}d)`, kind: "warn" };
-  return { text: `Za ${diffDays}d`, kind: "ok" };
+    return { text: (t("fiksniTroskovi.overdueDaysRaspored") || "").replace("{{days}}", Math.abs(diffDays)), kind: "bad" };
+  if (diffDays === 0) return { text: t("fiksniTroskovi.todayRaspored"), kind: "bad" };
+  if (diffDays <= 7) return { text: (t("fiksniTroskovi.soonRaspored") || "").replace("{{days}}", diffDays), kind: "warn" };
+  return { text: (t("fiksniTroskovi.inDaysRaspored") || "").replace("{{days}}", diffDays), kind: "ok" };
 }
 
 export default async function FiksniRasporedPage({ searchParams }) {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
+  const t = getT(locale);
+
   const sp = await Promise.resolve(searchParams);
 
   const q = (sp?.q ?? "").trim();
@@ -162,13 +170,12 @@ export default async function FiksniRasporedPage({ searchParams }) {
         <div className="topbar-left">
           <div className="brandWrap">
             <div className="brandLogoBlock">
-              <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
-              <span className="brandSlogan">Project & Finance Engine</span>
+              <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
             </div>
             <div>
-              <h1 className="h1" style={{ margin: 0 }}>Fiksni troškovi — raspored</h1>
+              <h1 className="h1" style={{ margin: 0 }}>{t("fiksniTroskovi.rasporedTitle")}</h1>
               <div className="subtle">
-                Read-only pregled iz <code>vw_fiksni_troskovi_raspored</code> +{" "}
+                {t("fiksniTroskovi.rasporedSubtitle")} <code>vw_fiksni_troskovi_raspored</code> +{" "}
                 <code>vw_fiksni_troskovi_status</code>
               </div>
             </div>
@@ -176,14 +183,14 @@ export default async function FiksniRasporedPage({ searchParams }) {
         </div>
 
         <div className="topbar-right">
-          <Link className="btn" href="/finance" title="Nazad na Finansije">
-            ← Nazad
+          <Link className="btn" href="/finance" title={t("fiksniTroskovi.backToFinanceTitle")}>
+            {t("fiksniTroskovi.backToFinance")}
           </Link>
-          <Link className="btn" href="/finance/fiksni-troskovi" title="Lista fiksnih troškova">
-            ☰ Lista
+          <Link className="btn" href="/finance/fiksni-troskovi" title={t("fiksniTroskovi.listLinkTitle")}>
+            {t("fiksniTroskovi.listLink")}
           </Link>
-          <Link className="btn" href="/dashboard" title="Dashboard">
-            🏠 Dashboard
+          <Link className="btn" href="/dashboard" title={t("common.dashboard")}>
+            🏠 {t("common.dashboard")}
           </Link>
         </div>
       </div>
@@ -194,16 +201,16 @@ export default async function FiksniRasporedPage({ searchParams }) {
           method="GET"
         >
           <div className="fiksni-filter-group">
-            <label className="label">Pretraga</label>
+            <label className="label">{t("fiksniTroskovi.search")}</label>
             <input
               className="input"
               name="q"
               defaultValue={q}
-              placeholder="naziv troška…"
+              placeholder={t("fiksniTroskovi.searchPlaceholderRaspored")}
             />
           </div>
           <div className="fiksni-filter-group">
-            <label className="label">Due od</label>
+            <label className="label">{t("fiksniTroskovi.dueFrom")}</label>
             <input
               className="input"
               name="due_from"
@@ -212,7 +219,7 @@ export default async function FiksniRasporedPage({ searchParams }) {
             />
           </div>
           <div className="fiksni-filter-group">
-            <label className="label">Due do</label>
+            <label className="label">{t("fiksniTroskovi.dueTo")}</label>
             <input
               className="input"
               name="due_to"
@@ -227,14 +234,14 @@ export default async function FiksniRasporedPage({ searchParams }) {
               value="1"
               defaultChecked={onlyDue}
             />
-            Samo dospjelo / uskoro (≤ 7 dana)
+            {t("fiksniTroskovi.onlyDueLabel")}
           </label>
           <div className="fiksni-filter-actions">
             <button className="btn btn--active" type="submit">
-              Primijeni
+              {t("fiksniTroskovi.apply")}
             </button>
             <Link className="btn" href="/finance/fiksni-troskovi/raspored">
-              Reset
+              {t("fiksniTroskovi.reset")}
             </Link>
           </div>
         </form>
@@ -243,9 +250,9 @@ export default async function FiksniRasporedPage({ searchParams }) {
       <div className="card">
         <div className="card-row" style={{ justifyContent: "space-between" }}>
           <div className="subtle">
-            Prikazano: {scheduleRows?.length ?? 0} (limit 200)
+            {(t("fiksniTroskovi.shownCount") || "").replace("{{count}}", scheduleRows?.length ?? 0)}
           </div>
-          <div className="subtle">Boje su signal (kasni / uskoro / ok).</div>
+          <div className="subtle">{t("fiksniTroskovi.signalHint")}</div>
         </div>
 
         <div className="table-wrap fiksni-raspored-table-wrap">
@@ -262,14 +269,14 @@ export default async function FiksniRasporedPage({ searchParams }) {
             </colgroup>
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Naziv</th>
-                <th>Frekv.</th>
-                <th>Dan</th>
-                <th>Dospijeće</th>
-                <th style={{ textAlign: "right" }}>Iznos</th>
-                <th>Zadnje plaćeno</th>
-                <th>Signal</th>
+                <th>{t("fiksniTroskovi.colId")}</th>
+                <th>{t("fiksniTroskovi.colName")}</th>
+                <th>{t("fiksniTroskovi.colFreqShort")}</th>
+                <th>{t("fiksniTroskovi.colDay")}</th>
+                <th>{t("fiksniTroskovi.colDue")}</th>
+                <th style={{ textAlign: "right" }}>{t("fiksniTroskovi.colAmount")}</th>
+                <th>{t("fiksniTroskovi.colLastPaid")}</th>
+                <th>{t("fiksniTroskovi.colSignal")}</th>
               </tr>
             </thead>
             <tbody>
@@ -277,7 +284,7 @@ export default async function FiksniRasporedPage({ searchParams }) {
                 ? scheduleRows.map((r, idx) => {
                     const id = Number(r.trosak_id);
                     const due = r.due_date ?? r.datum_dospijeca ?? null;
-                    const sig = classifyDue(due);
+                    const sig = classifyDue(t, due);
 
                     const iznos = r.amount_km ?? r.iznos_km ?? r.iznos ?? null;
 
@@ -310,7 +317,7 @@ export default async function FiksniRasporedPage({ searchParams }) {
                   })
                 : <tr>
                     <td colSpan={8} className="subtle" style={{ padding: 16 }}>
-                      Nema rezultata.
+                      {t("fiksniTroskovi.noResults")}
                     </td>
                   </tr>}
             </tbody>
@@ -319,22 +326,7 @@ export default async function FiksniRasporedPage({ searchParams }) {
 
         <div className="hr" />
         <div className="subtle">
-          Ovo je read-only raspored. Kasnije: kreiranje “plaćanja” iz dospjelih
-          fiksnih + link na bank posting.
-        </div>
-      </div>
-
-      {/* RAW STATUS VIEW (debug panel, read-only) */}
-      <div className="card">
-        <div className="h2" style={{ marginBottom: 10 }}>
-          Status (raw view preview)
-        </div>
-        <div className="subtle">
-          {statusRows?.length
-            ? <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                {JSON.stringify(statusRows.slice(0, 20), null, 2)}
-              </pre>
-            : "Nema redova (ili view nije dostupan)."}
+          {t("fiksniTroskovi.rasporedNote")}
         </div>
       </div>
     </div>

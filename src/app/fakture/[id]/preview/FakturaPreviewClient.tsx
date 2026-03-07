@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "@/components/LocaleProvider";
+import FluxaLogo from "@/components/FluxaLogo";
 
 function fmtDDMMYYYYFromISO(isoLike: string | null): string {
   if (!isoLike) return "—";
@@ -590,14 +591,32 @@ export default function FakturaPreviewClient() {
 
         .totalsRow{
           display:flex;
-          justify-content:flex-end;
+          align-items:flex-start;
           gap: 18px;
           margin-top: 8px;
+          width: 100%;
         }
+        .fiscalSlot{
+          width: 260px;
+          min-width: 260px;
+          flex-shrink: 0;
+        }
+        .fiscalBlock{
+          border: 1px solid #000 !important;
+          background: #fff !important;
+          padding: 10px 12px !important;
+          font-size: 11px !important;
+          color: #000 !important;
+        }
+        .fiscalBlock .fiscalTitle{ font-weight: 800 !important; margin-bottom: 6px !important; }
+        .fiscalBlock .fiscalLine{ margin: 4px 0 !important; }
+        .fiscalBlock .fiscalEnd{ font-weight: 700 !important; margin-top: 8px !important; }
 
         .totalsBox{
           width: 50%;
           max-width: 320px;
+          flex-shrink: 0;
+          margin-left: auto;
           border: 1px solid #000 !important;
           background: #F7F7F7 !important;
           padding: 10px 12px !important;
@@ -623,6 +642,7 @@ export default function FakturaPreviewClient() {
           line-height: 1.25 !important;
         }
 
+        /* Footer (linija + ikona + Made by Fluxa) uvijek ispod fiskalnog bloka i obračuna */
         .footer{
           margin-top: 18px;
           padding-top: 10px;
@@ -809,12 +829,7 @@ export default function FakturaPreviewClient() {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
                   <div className="brandTitle">📄 {t("fakture.previewTitle")} #{invoiceNumber}</div>
@@ -939,12 +954,14 @@ export default function FakturaPreviewClient() {
                       </div>
                       <div className="v">{(ccy === "BAM" || ccy === "KM") ? "KM" : ccy}</div>
                     </div>
-                    <div className="line">
-                      <div className="k">
-                        {lang === "EN" ? "PFR No." : "PFR broj"}
+                    {!fisk ? (
+                      <div className="line">
+                        <div className="k">
+                          {lang === "EN" ? "PFR No." : "PFR broj"}
+                        </div>
+                        <div className="v">—</div>
                       </div>
-                      <div className="v">{fisk ? fisk : "—"}</div>
-                    </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -1052,6 +1069,15 @@ export default function FakturaPreviewClient() {
               </div>
 
               <div className="totalsRow">
+                {fisk ? (
+                  <div className="fiscalSlot">
+                    <div className="fiscalBlock">
+                      <div className="fiscalTitle">FISKALNI RAČUN</div>
+                      <div className="fiscalLine">PFR br.rač: {fisk}</div>
+                      <div className="fiscalEnd">KRAJ FISKALNOG RAČUNA</div>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="totalsBox">
                   <div className="totLine">
                     <div className="k">

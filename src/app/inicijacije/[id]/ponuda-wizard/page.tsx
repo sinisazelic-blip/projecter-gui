@@ -4,6 +4,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslation } from "@/components/LocaleProvider";
+import FluxaLogo from "@/components/FluxaLogo";
 
 function pad2(n: number) {
   return String(n).padStart(2, "0");
@@ -42,6 +44,7 @@ type StavkaRow = {
 export default function PonudaWizardPage() {
   const params = useParams();
   const router = useRouter();
+  const { t } = useTranslation();
   const id = useMemo(() => {
     const v = params?.id;
     const n = Number(v);
@@ -59,7 +62,7 @@ export default function PonudaWizardPage() {
     d.setDate(d.getDate() + 30);
     return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
   });
-  const [valuta, setValuta] = useState<string>("KM");
+  const [valuta, setValuta] = useState<string>("EUR");
   const [popustKm, setPopustKm] = useState<string>("");
 
   const [nameOverrides, setNameOverrides] = useState<Record<number, string>>({});
@@ -73,7 +76,7 @@ export default function PonudaWizardPage() {
   useEffect(() => {
     if (!id) {
       setLoading(false);
-      setError("Neispravan ID deal-a.");
+      setError(t("ponudaWizard.invalidDealId"));
       return;
     }
     let alive = true;
@@ -84,16 +87,15 @@ export default function PonudaWizardPage() {
         const res = await fetch(`/api/ponude/wizard-data?inicijacija_id=${id}`, { cache: "no-store" });
         const data = await res.json();
         if (!res.ok || !data?.ok) {
-          throw new Error(data?.error ?? "Greška učitavanja.");
+          throw new Error(data?.error ?? t("ponudaWizard.loadError"));
         }
         if (alive) {
           setDeal(data.deal ?? null);
           setStavke(Array.isArray(data.stavke) ? data.stavke : []);
-          const ccy = data.deal?.valuta ?? "KM";
-          setValuta(ccy);
+          setValuta("EUR");
         }
       } catch (e: any) {
-        if (alive) setError(e?.message ?? "Greška");
+        if (alive) setError(e?.message ?? t("common.error"));
       } finally {
         if (alive) setLoading(false);
       }
@@ -101,7 +103,7 @@ export default function PonudaWizardPage() {
     return () => {
       alive = false;
     };
-  }, [id]);
+  }, [id, t]);
 
   const stavkeById = useMemo(() => {
     const m = new Map<number, StavkaRow>();
@@ -116,7 +118,7 @@ export default function PonudaWizardPage() {
   }, [projectGroups]);
 
   function buildFinalStavke(): Array<{ naziv_snapshot: string; jedinica_snapshot: string; kolicina: number; cijena_jedinicna: number; valuta: string; opis: string | null; line_total: number }> {
-    const ccy = valuta === "BAM" ? "KM" : (valuta || "KM").slice(0, 3);
+    const ccy = valuta === "BAM" ? "EUR" : (valuta || "EUR").slice(0, 3);
     const out: Array<{ naziv_snapshot: string; jedinica_snapshot: string; kolicina: number; cijena_jedinicna: number; valuta: string; opis: string | null; line_total: number }> = [];
 
     Object.values(projectGroups).forEach((g) => {
@@ -152,7 +154,7 @@ export default function PonudaWizardPage() {
       }
       const lineTotal = Number(s.line_total ?? 0);
       out.push({
-        naziv_snapshot: (naziv || "Stavka").slice(0, 500),
+        naziv_snapshot: (naziv || t("ponudaWizard.lineFallback")).slice(0, 500),
         jedinica_snapshot: String(s.jedinica_snapshot ?? "kom").slice(0, 50),
         kolicina: Number(s.kolicina ?? 0),
         cijena_jedinicna: Number(s.cijena_jedinicna ?? 0),
@@ -170,16 +172,16 @@ export default function PonudaWizardPage() {
     const isoIzdavanja = ddmmyyyyToISO(datumIzdavanjaDD);
     const isoVazenja = ddmmyyyyToISO(datumVazenjaDD);
     if (!isoIzdavanja) {
-      alert("Datum izdavanja mora biti dd.mm.yyyy");
+      alert(t("ponudaWizard.alertIssueDate"));
       return;
     }
     if (!isoVazenja) {
-      alert("Datum važenja mora biti dd.mm.yyyy");
+      alert(t("ponudaWizard.alertValidUntil"));
       return;
     }
     const finalStavke = buildFinalStavke();
     if (finalStavke.length === 0) {
-      alert("Nema stavki za ponudu.");
+      alert(t("ponudaWizard.alertNoItems"));
       return;
     }
     const popustNum = parseFloat(String(popustKm || "0").trim());
@@ -195,17 +197,17 @@ export default function PonudaWizardPage() {
           inicijacija_id: id,
           datum_izdavanja: isoIzdavanja,
           datum_vazenja: isoVazenja,
-          valuta: valuta === "BAM" ? "KM" : valuta,
+          valuta: valuta === "BAM" ? "EUR" : (valuta || "EUR"),
           popust_km: popust_km > 0 ? popust_km : undefined,
           stavke: finalStavke,
         }),
       });
       const data = await res.json();
-      if (!data?.ok) throw new Error(data?.error ?? "Greška pri snimanju ponude.");
+      if (!data?.ok) throw new Error(data?.error ?? t("ponudaWizard.saveError"));
       const ponudaId = data?.ponuda_id;
       if (ponudaId) router.push(`/ponuda/${ponudaId}/preview`);
     } catch (e: any) {
-      setError(e?.message ?? "Greška");
+      setError(e?.message ?? t("common.error"));
     } finally {
       setSaving(false);
     }
@@ -214,7 +216,7 @@ export default function PonudaWizardPage() {
   if (loading) {
     return (
       <div className="container">
-        <div style={{ padding: 40, textAlign: "center", opacity: 0.8 }}>Učitavanje…</div>
+        <div style={{ padding: 40, textAlign: "center", opacity: 0.8 }}>{t("ponude.loading")}</div>
       </div>
     );
   }
@@ -223,18 +225,18 @@ export default function PonudaWizardPage() {
     return (
       <div className="container">
         <div style={{ padding: 20, background: "rgba(255,80,80,.1)", borderRadius: 12, color: "#f88" }}>
-          {error ?? "Deal nije pronađen."}
+          {error ?? t("ponudaWizard.dealNotFound")}
         </div>
         <div style={{ marginTop: 16 }}>
           <Link href={`/inicijacije/${id}`} className="btn">
-            ← Nazad na Deal
+            {t("ponudaWizard.backToDeal")}
           </Link>
         </div>
       </div>
     );
   }
 
-  const displayCcy = valuta === "BAM" ? "KM" : valuta;
+  const displayCcy = valuta === "BAM" ? "EUR" : (valuta || "EUR");
 
   return (
     <div className="container">
@@ -252,18 +254,17 @@ export default function PonudaWizardPage() {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Ponuda — Priprema (wizard)</div>
+                  <div className="brandTitle">{t("ponudaWizard.title")}</div>
                   <div className="brandSub">
-                    Popust, nazivi stavki, grupisanje. Snimi ponudu i pregledaj.
+                    {t("ponudaWizard.subtitle")}
                   </div>
                 </div>
               </div>
-              <Link href={`/inicijacije/${id}`} className="btn" title="Nazad na deal">
-                ← Nazad
+              <Link href={`/inicijacije/${id}`} className="btn" title={t("ponudaWizard.backTitle")}>
+                {t("ponudaWizard.back")}
               </Link>
             </div>
             <div className="topRow" style={{ marginTop: 14 }}>
@@ -280,11 +281,11 @@ export default function PonudaWizardPage() {
                   borderColor: saving || stavke.length === 0 ? undefined : "rgba(59, 130, 246, 0.5)",
                 }}
               >
-                {saving ? "Snimanje…" : "Snimi ponudu i pregledaj"}
+                {saving ? t("ponudaWizard.saving") : t("ponudaWizard.save")}
               </button>
             </div>
             <div className="muted" style={{ marginTop: 10 }}>
-              Deal #{id} · Stavki: <b>{stavke.length}</b>
+              {(t("ponudaWizard.dealInfo") || "").replace("{{id}}", String(id))} <b>{stavke.length}</b>
             </div>
             <div className="divider" />
           </div>
@@ -293,37 +294,36 @@ export default function PonudaWizardPage() {
         <div className="scrollWrap">
           <div className="container">
             <div className="cardLike">
-              <div style={{ fontWeight: 850, fontSize: 16 }}>Osnovno</div>
+              <div style={{ fontWeight: 850, fontSize: 16 }}>{t("ponudaWizard.basic")}</div>
               <div className="grid2" style={{ marginTop: 10 }}>
-                <div className="label">Datum izdavanja (dd.mm.yyyy)</div>
+                <div className="label">{t("ponudaWizard.issueDate")}</div>
                 <input
                   className="input"
                   value={datumIzdavanjaDD}
                   onChange={(e) => setDatumIzdavanjaDD(e.target.value)}
-                  placeholder="dd.mm.yyyy"
+                  placeholder={t("ponudaWizard.placeholderDate")}
                 />
-                <div className="label">Važi do (dd.mm.yyyy)</div>
+                <div className="label">{t("ponudaWizard.validUntil")}</div>
                 <input
                   className="input"
                   value={datumVazenjaDD}
                   onChange={(e) => setDatumVazenjaDD(e.target.value)}
-                  placeholder="dd.mm.yyyy"
+                  placeholder={t("ponudaWizard.placeholderDate")}
                 />
-                <div className="label">Valuta</div>
+                <div className="label">{t("ponudaWizard.currency")}</div>
                 <select className="input" value={valuta} onChange={(e) => setValuta(e.target.value)}>
-                  <option value="KM">KM (BAM)</option>
-                  <option value="EUR">EUR</option>
+                  <option value="EUR">{t("ponudaWizard.currencyEur")}</option>
                 </select>
-                <div className="label">Popust prije PDV-a ({displayCcy})</div>
+                <div className="label">{(t("ponudaWizard.discountLabel") || "").replace("{{ccy}}", displayCcy)}</div>
                 <input
                   type="number"
                   className="input"
                   value={popustKm}
                   onChange={(e) => setPopustKm(e.target.value)}
-                  placeholder="0"
+                  placeholder={t("ponudaWizard.discountPlaceholder")}
                   min="0"
                   step="0.01"
-                  title="Opciono — umanjenje osnovice prije PDV-a"
+                  title={t("ponudaWizard.discountTitle")}
                 />
               </div>
             </div>
@@ -331,10 +331,10 @@ export default function PonudaWizardPage() {
             {stavke.length > 1 && (
               <div className="cardLike" style={{ marginTop: 16 }}>
                 <div style={{ fontWeight: 850, fontSize: 16, marginBottom: 10 }}>
-                  Kombinuj stavke u jednu liniju
+                  {t("ponudaWizard.combineTitle")}
                 </div>
                 <div style={{ opacity: 0.85, fontSize: 13, marginBottom: 12 }}>
-                  Označi stavke koje želiš objediniti u jednu stavku na ponudi (iznosi će se zbrojiti).
+                  {t("ponudaWizard.combineHint")}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
                   {stavke.map((s) => (
@@ -360,12 +360,12 @@ export default function PonudaWizardPage() {
                 </div>
                 {selectedForGrouping.size > 0 && (
                   <div style={{ marginTop: 12 }}>
-                    <div className="label" style={{ marginBottom: 6 }}>Zajednički naziv za kombinovane stavke:</div>
+                    <div className="label" style={{ marginBottom: 6 }}>{t("ponudaWizard.groupNameLabel")}</div>
                     <input
                       className="input"
                       value={groupName}
                       onChange={(e) => setGroupName(e.target.value)}
-                      placeholder="Npr. Komplet usluga"
+                      placeholder={t("ponudaWizard.groupNamePlaceholder")}
                       style={{ width: "100%" }}
                     />
                     <button
@@ -390,13 +390,13 @@ export default function PonudaWizardPage() {
                       disabled={!groupName.trim() || selectedForGrouping.size === 0}
                       style={{ marginTop: 8, opacity: !groupName.trim() || selectedForGrouping.size === 0 ? 0.5 : 1 }}
                     >
-                      Kreiraj grupu
+                      {t("ponudaWizard.createGroup")}
                     </button>
                   </div>
                 )}
                 {Object.keys(projectGroups).length > 0 && (
                   <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,.1)" }}>
-                    <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8 }}>Kreirane grupe:</div>
+                    <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8 }}>{t("ponudaWizard.createdGroups")}</div>
                     {Object.entries(projectGroups).map(([gid, g]) => (
                       <div
                         key={gid}
@@ -413,7 +413,7 @@ export default function PonudaWizardPage() {
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 13 }}>{g.name}</div>
                           <div style={{ fontSize: 11, opacity: 0.7 }}>
-                            Stavke: {g.stavkaIds.map((sid) => `#${sid}`).join(", ")}
+                            {t("ponudaWizard.itemsLabel")} {g.stavkaIds.map((sid) => `#${sid}`).join(", ")}
                           </div>
                         </div>
                         <button
@@ -436,7 +436,7 @@ export default function PonudaWizardPage() {
                             cursor: "pointer",
                           }}
                         >
-                          Ukloni
+                          {t("ponudaWizard.remove")}
                         </button>
                       </div>
                     ))}
@@ -448,10 +448,10 @@ export default function PonudaWizardPage() {
             {stavke.length > 0 && (
               <div className="cardLike" style={{ marginTop: 16 }}>
                 <div style={{ fontWeight: 850, fontSize: 16, marginBottom: 10 }}>
-                  Nazivi stavki na ponudi
+                  {t("ponudaWizard.namesTitle")}
                 </div>
                 <div style={{ opacity: 0.85, fontSize: 13, marginBottom: 12 }}>
-                  Možeš promijeniti naziv stavke samo za ovu ponudu. Dodaj opisne stavke (šta paket sadrži).
+                  {t("ponudaWizard.namesHint")}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {stavke.map((s) => {
@@ -472,13 +472,13 @@ export default function PonudaWizardPage() {
                           <div style={{ fontSize: 13, opacity: 0.8, fontWeight: 600 }}>#{sid}</div>
                           <div>
                             <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>
-                              Original: {s.naziv_snapshot || "—"}
+                              {t("ponudaWizard.original")} {s.naziv_snapshot || "—"}
                             </div>
                             <input
                               className="input"
                               value={nameOverrides[sid] ?? ""}
                               onChange={(e) => setNameOverrides((prev) => ({ ...prev, [sid]: e.target.value }))}
-                              placeholder={`Naziv na ponudi (prazno = "${(s.naziv_snapshot || "").slice(0, 40)}…")`}
+                              placeholder={(t("ponudaWizard.namePlaceholder") || "").replace("{{snippet}}", (s.naziv_snapshot || "").slice(0, 40))}
                               style={{ width: "100%" }}
                             />
                           </div>
@@ -498,12 +498,12 @@ export default function PonudaWizardPage() {
                                 }));
                               }}
                             />
-                            Dodaj opisne stavke (šta paket sadrži)
+                            {t("ponudaWizard.addSubItems")}
                           </label>
                         </div>
                         {subState.enabled && (
                           <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-                            <div style={{ fontSize: 11, opacity: 0.75 }}>Stavke koje će se prikazati (samo ne-prazne):</div>
+                            <div style={{ fontSize: 11, opacity: 0.75 }}>{t("ponudaWizard.subItemsHint")}</div>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                               {items.map((val, i) => (
                                 <input
@@ -518,7 +518,7 @@ export default function PonudaWizardPage() {
                                       [sid]: { enabled: true, items: next },
                                     }));
                                   }}
-                                  placeholder={`Stavka ${i + 1}`}
+                                  placeholder={(t("ponudaWizard.itemPlaceholder") || "").replace("{{n}}", String(i + 1))}
                                   style={{ flex: "1 1 180px", minWidth: 140 }}
                                 />
                               ))}

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "@/components/LocaleProvider";
+import { getCurrencyForLocale } from "@/lib/i18n";
 
 type Dashboard = {
   ok: boolean;
@@ -12,7 +14,10 @@ type Dashboard = {
   projectsInProgress?: { broj_projekata: number; budzet_ukupno_km: number };
 };
 
-const fmtKM = (v: number) => (Number.isFinite(v) ? v.toFixed(2).replace(".", ",") + " KM" : "—");
+function fmtAmount(v: number, locale: string) {
+  const curr = getCurrencyForLocale(locale);
+  return Number.isFinite(v) ? v.toFixed(2).replace(".", ",") + " " + curr : "—";
+}
 
 const cardBase: React.CSSProperties = {
   width: "100%",
@@ -28,6 +33,7 @@ function loadDashboard(): Promise<Dashboard> {
 }
 
 export default function MobileDashboardClient() {
+  const { t, locale } = useTranslation();
   const [data, setData] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -37,7 +43,7 @@ export default function MobileDashboardClient() {
     else setLoading(true);
     loadDashboard()
       .then((d) => setData(d))
-      .catch(() => setData({ ok: false, error: "Greška učitavanja" }))
+      .catch(() => setData({ ok: false, error: t("mobile.loadError") }))
       .finally(() => {
         setLoading(false);
         setRefreshing(false);
@@ -51,7 +57,7 @@ export default function MobileDashboardClient() {
   if (loading) {
     return (
       <div style={{ padding: "24px 20px", textAlign: "center", color: "var(--muted)", fontSize: 15 }}>
-        Učitavanje…
+        {t("common.loading")}
       </div>
     );
   }
@@ -59,7 +65,7 @@ export default function MobileDashboardClient() {
   if (!data?.ok) {
     return (
       <div style={{ padding: "24px 20px", textAlign: "center", color: "var(--muted)", fontSize: 14 }}>
-        {data?.error ?? "Nema podataka"}
+        {data?.error ?? t("mobile.noData")}
       </div>
     );
   }
@@ -100,11 +106,11 @@ export default function MobileDashboardClient() {
           }}
         >
           {refreshing ? (
-            "Osvježavanje…"
+            t("mobile.refreshing")
           ) : (
             <>
               <span aria-hidden>↻</span>
-              Osvježi
+              {t("mobile.refresh")}
             </>
           )}
         </button>
@@ -117,15 +123,15 @@ export default function MobileDashboardClient() {
           style={{ ...cardBase, textDecoration: "none", color: "inherit" }}
         >
           <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.8, marginBottom: 6 }}>
-            Dugovanja prekoračena
+            {t("mobile.overduePayables")}
           </div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "rgba(251, 146, 60, 0.95)" }}>
-            {fmtKM(pay.total_km)}
+            {fmtAmount(pay.total_km, locale)}
           </div>
           {pay.items.length > 0 && (
             <div style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
               {pay.items[0].title}
-              {pay.items[0].kasni_dana > 0 && ` · ${pay.items[0].kasni_dana} d. kašnjenja`}
+              {pay.items[0].kasni_dana > 0 && ` · ${pay.items[0].kasni_dana} ${t("mobile.daysLate")}`}
             </div>
           )}
         </Link>
@@ -138,15 +144,15 @@ export default function MobileDashboardClient() {
           style={{ ...cardBase, textDecoration: "none", color: "inherit" }}
         >
           <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.8, marginBottom: 6 }}>
-            Potraživanja prekoračena
+            {t("mobile.overdueReceivables")}
           </div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "rgba(251, 146, 60, 0.95)" }}>
-            {fmtKM(rec.total_km)}
+            {fmtAmount(rec.total_km, locale)}
           </div>
           {rec.items.length > 0 && (
             <div style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
               {rec.items[0].broj_fakture} · {rec.items[0].radni_naziv}
-              {rec.items[0].kasni_dana > 0 && ` · ${rec.items[0].kasni_dana} d.`}
+              {rec.items[0].kasni_dana > 0 && ` · ${rec.items[0].kasni_dana} ${t("mobile.daysShort")}`}
             </div>
           )}
         </Link>
@@ -156,16 +162,16 @@ export default function MobileDashboardClient() {
       {fin && (
         <div style={cardBase}>
           <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.8, marginBottom: 8 }}>
-            Finansije {fin.year}
+            {t("mobile.financeYear").replace("{year}", String(fin.year))}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 15 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ opacity: 0.85 }}>Fakturisano</span>
-              <span style={{ fontWeight: 700 }}>{fmtKM(fin.fakturisano_km)}</span>
+              <span style={{ opacity: 0.85 }}>{t("mobile.invoiced")}</span>
+              <span style={{ fontWeight: 700 }}>{fmtAmount(fin.fakturisano_km, locale)}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ opacity: 0.85 }}>Troškovi</span>
-              <span style={{ fontWeight: 700 }}>{fmtKM(fin.troskovi_km)}</span>
+              <span style={{ opacity: 0.85 }}>{t("mobile.costs")}</span>
+              <span style={{ fontWeight: 700 }}>{fmtAmount(fin.troskovi_km, locale)}</span>
             </div>
             <div
               style={{
@@ -179,8 +185,8 @@ export default function MobileDashboardClient() {
                 color: fin.dobit_km >= 0 ? "rgba(34, 197, 94, 0.95)" : "rgba(239, 68, 68, 0.95)",
               }}
             >
-              <span>Dobit</span>
-              <span>{fmtKM(fin.dobit_km)}</span>
+              <span>{t("mobile.profit")}</span>
+              <span>{fmtAmount(fin.dobit_km, locale)}</span>
             </div>
           </div>
           <Link
@@ -193,7 +199,7 @@ export default function MobileDashboardClient() {
               textDecoration: "none",
             }}
           >
-            Svi izvještaji →
+            {t("mobile.allReports")}
           </Link>
         </div>
       )}
@@ -205,13 +211,13 @@ export default function MobileDashboardClient() {
           style={{ ...cardBase, textDecoration: "none", color: "inherit" }}
         >
           <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.8, marginBottom: 6 }}>
-            Projekti u izradi
+            {t("mobile.projectsInProgress")}
           </div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "rgba(134, 239, 172, 0.95)" }}>
-            {fmtKM(proj.budzet_ukupno_km)}
+            {fmtAmount(proj.budzet_ukupno_km, locale)}
           </div>
           <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>
-            {proj.broj_projekata} projekata
+            {t("mobile.projectsCount").replace("{n}", String(proj.broj_projekata))}
           </div>
         </Link>
       )}

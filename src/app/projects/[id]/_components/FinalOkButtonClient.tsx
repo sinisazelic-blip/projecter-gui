@@ -3,8 +3,11 @@
 
 import * as React from "react";
 import { Flag } from "lucide-react";
+import { useTranslation } from "@/components/LocaleProvider";
+import { getCurrencyForLocale } from "@/lib/i18n";
 
 const USER_LABEL = "SiNY";
+const EUR_TO_BAM = 1.95583;
 
 type FinalOkCheck = {
   ok_to_final: boolean;
@@ -19,11 +22,22 @@ type FinalOkCheck = {
   };
 };
 
-function formatKM(n: number) {
-  return new Intl.NumberFormat("bs-BA", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
+function formatAmount(
+  amountKm: number,
+  locale: string,
+  t: (k: string) => string
+): string {
+  const n = Number(amountKm);
+  if (!Number.isFinite(n)) return "—";
+  const ccy = getCurrencyForLocale(locale);
+  const val = ccy === "EUR" ? n / EUR_TO_BAM : n;
+  const suffix =
+    ccy === "EUR"
+      ? ` ${t("finalOkModal.currencyEur")}`
+      : ` ${t("finalOkModal.currencyKm")}`;
+  const fixed = val.toFixed(2);
+  const formatted = locale === "en" ? fixed : fixed.replace(".", ",");
+  return formatted + suffix;
 }
 
 async function fetchJson(url: string, init?: RequestInit) {
@@ -46,6 +60,7 @@ export default function FinalOkButtonClient({
   projekatId: number;
   disabled?: boolean;
 }) {
+  const { t, locale } = useTranslation();
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -66,7 +81,7 @@ export default function FinalOkButtonClient({
       setData(j as any);
     } catch (e: any) {
       setData(null);
-      setErrorMsg(e?.message ?? "Greška pri provjeri.");
+      setErrorMsg(e?.message ?? t("finalOkModal.errCheck"));
     } finally {
       setLoading(false);
     }
@@ -93,11 +108,11 @@ export default function FinalOkButtonClient({
     } catch (e: any) {
       const payload = e?.payload;
       if (payload?.error === "FINAL_BLOCKED") {
-        setErrorMsg("Ne može se upisati FINAL OK. Provjeri blokade.");
+        setErrorMsg(t("finalOkModal.errBlocked"));
       } else if (payload?.error === "FINAL_NEEDS_CONFIRM") {
-        setErrorMsg("Potrebna je potvrda upozorenja (čekiraj).");
+        setErrorMsg(t("finalOkModal.errNeedsConfirm"));
       } else {
-        setErrorMsg(e?.message ?? "Greška pri FINAL OK.");
+        setErrorMsg(e?.message ?? t("finalOkModal.errGeneric"));
       }
 
       // osvježi check
@@ -122,8 +137,8 @@ export default function FinalOkButtonClient({
         className="glassbtn payBtn"
         title={
           disabled
-            ? "Projekat je read-only."
-            : "Produkcija završena → FINAL OK (status: Završen)"
+            ? t("finalOkModal.disabledTooltip")
+            : t("finalOkModal.btnTooltip")
         }
         onClick={() => setOpen(true)}
         disabled={disabled}
@@ -164,7 +179,7 @@ export default function FinalOkButtonClient({
         }}
       >
         <Flag size={18} />
-        FINAL OK
+        {t("finalOkModal.title")}
       </button>
 
       {open && (
@@ -201,32 +216,30 @@ export default function FinalOkButtonClient({
               }}
             >
               <Flag size={16} />
-              FINAL OK
+              {t("finalOkModal.title")}
             </div>
             <button
               type="button"
               className="btn"
               onClick={() => setOpen(false)}
               disabled={saving}
-              title="Zatvori"
+              title={t("finalOkModal.closeTitle")}
             >
               ✕
             </button>
           </div>
 
           <div style={{ marginTop: 8, opacity: 0.85, fontSize: 13 }}>
-            Ovo znači: produkcija je završena. Projekat prelazi u status{" "}
-            <b>Završen</b> (bez zaključavanja) i spreman je za komunikaciju s
-            klijentom.
+            {t("finalOkModal.intro")}
           </div>
 
           <div style={{ marginTop: 12 }}>
             {loading ? (
-              <div style={{ opacity: 0.85 }}>Učitavam provjeru…</div>
+              <div style={{ opacity: 0.85 }}>{t("finalOkModal.loadingCheck")}</div>
             ) : !data ? (
               <div style={{ opacity: 0.9 }}>
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>
-                  Nije moguće učitati provjeru
+                  {t("finalOkModal.cannotLoadCheck")}
                 </div>
                 <div style={{ opacity: 0.9 }}>{errorMsg ?? "—"}</div>
                 <div
@@ -243,7 +256,7 @@ export default function FinalOkButtonClient({
                     onClick={() => setOpen(false)}
                     disabled={saving}
                   >
-                    Zatvori
+                    {t("finalOkModal.closeTitle")}
                   </button>
                   <button
                     className="btn"
@@ -251,7 +264,7 @@ export default function FinalOkButtonClient({
                     onClick={load}
                     disabled={saving}
                   >
-                    Pokušaj ponovo
+                    {t("finalOkModal.tryAgain")}
                   </button>
                 </div>
               </div>
@@ -274,7 +287,7 @@ export default function FinalOkButtonClient({
                     }}
                   >
                     <div>
-                      Status sada:{" "}
+                      {t("finalOkModal.statusNow")}{" "}
                       <b>
                         {data.summary.status_name
                           ? data.summary.status_name
@@ -282,17 +295,25 @@ export default function FinalOkButtonClient({
                       </b>
                     </div>
                     <div>
-                      Budžet:{" "}
+                      {t("finalOkModal.budget")}{" "}
                       <b>
                         {data.summary.budzet_planirani == null
                           ? "—"
-                          : `${formatKM(Number(data.summary.budzet_planirani))} KM`}
+                          : formatAmount(
+                              Number(data.summary.budzet_planirani),
+                              locale,
+                              t
+                            )}
                       </b>
                     </div>
                     <div>
-                      Troškovi:{" "}
+                      {t("finalOkModal.costs")}{" "}
                       <b>
-                        {formatKM(Number(data.summary.troskovi_ukupno ?? 0))} KM
+                        {formatAmount(
+                          Number(data.summary.troskovi_ukupno ?? 0),
+                          locale,
+                          t
+                        )}
                       </b>
                     </div>
                   </div>
@@ -309,7 +330,7 @@ export default function FinalOkButtonClient({
                     }}
                   >
                     <div style={{ fontWeight: 800, marginBottom: 6 }}>
-                      Ne može se upisati FINAL OK
+                      {t("finalOkModal.cannotFinalOk")}
                     </div>
                     <ul
                       style={{
@@ -320,9 +341,15 @@ export default function FinalOkButtonClient({
                         fontSize: 13,
                       }}
                     >
-                      {data.hard_blocks.map((b) => (
-                        <li key={b.code}>{b.message}</li>
-                      ))}
+                      {data.hard_blocks.map((b) => {
+                        const key = `finalOkModal.block_${b.code}`;
+                        const msg = t(key);
+                        return (
+                          <li key={b.code}>
+                            {msg === key ? b.message : msg}
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 )}
@@ -338,7 +365,7 @@ export default function FinalOkButtonClient({
                     }}
                   >
                     <div style={{ fontWeight: 800, marginBottom: 6 }}>
-                      Upozorenja
+                      {t("finalOkModal.warningsTitle")}
                     </div>
                     <ul
                       style={{
@@ -349,9 +376,12 @@ export default function FinalOkButtonClient({
                         fontSize: 13,
                       }}
                     >
-                      {data.warnings.map((w) => (
-                        <li key={w.code}>
-                          {w.message}
+                      {data.warnings.map((w) => {
+                        const key = `finalOkModal.warning_${w.code}`;
+                        const msg = t(key);
+                        return (
+                          <li key={w.code}>
+                            {msg === key ? w.message : msg}
                           {w.code === "OVER_BUDGET" && w.value ? (
                             <div
                               style={{
@@ -360,14 +390,23 @@ export default function FinalOkButtonClient({
                                 marginTop: 3,
                               }}
                             >
-                              Budžet:{" "}
-                              {formatKM(Number(w.value.budzet_planirani))} KM ·
-                              Troškovi:{" "}
-                              {formatKM(Number(w.value.troskovi_ukupno))} KM
+                              {t("finalOkModal.budget")}{" "}
+                              {formatAmount(
+                                Number(w.value.budzet_planirani),
+                                locale,
+                                t
+                              )}{" "}
+                              · {t("finalOkModal.costs")}{" "}
+                              {formatAmount(
+                                Number(w.value.troskovi_ukupno),
+                                locale,
+                                t
+                              )}
                             </div>
                           ) : null}
-                        </li>
-                      ))}
+                          </li>
+                        );
+                      })}
                     </ul>
 
                     <label
@@ -385,7 +424,7 @@ export default function FinalOkButtonClient({
                         onChange={(e) => setConfirmWarnings(e.target.checked)}
                         disabled={saving}
                       />
-                      Razumijem i želim nastaviti
+                      {t("finalOkModal.understandContinue")}
                     </label>
                   </div>
                 )}
@@ -420,7 +459,7 @@ export default function FinalOkButtonClient({
                     onClick={() => setOpen(false)}
                     disabled={saving}
                   >
-                    Otkaži
+                    {t("finalOkModal.cancel")}
                   </button>
                   <button
                     className="btn"
@@ -431,9 +470,9 @@ export default function FinalOkButtonClient({
                       hasHardBlocks ||
                       (hasWarnings && !confirmWarnings)
                     }
-                    title="Upiši FINAL OK (status = Završen)"
+                    title={t("finalOkModal.submitTitle")}
                   >
-                    {saving ? "Snima…" : "Upiši FINAL OK"}
+                    {saving ? t("finalOkModal.saving") : t("finalOkModal.submitFinalOk")}
                   </button>
                 </div>
               </>

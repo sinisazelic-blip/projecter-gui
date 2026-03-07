@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslation } from "@/components/LocaleProvider";
 
 interface DealTableRowProps {
   deal: any;
@@ -23,6 +24,7 @@ export default function DealTableRow({
   sem,
   sig,
 }: DealTableRowProps) {
+  const { t } = useTranslation();
   const fmtDate = (iso: string) => {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "—";
@@ -104,7 +106,7 @@ export default function DealTableRow({
 
         {opened && (
           <div className="mutedSmall">
-            Projekat:{" "}
+            {t("deals.projectLabel")}{" "}
             <Link
               href={`/projects/${deal.projekat_id}`}
               className="project-link"

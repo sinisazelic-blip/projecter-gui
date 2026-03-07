@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useTranslation } from "@/components/LocaleProvider";
 
 type ImportResult = {
   ok: boolean;
@@ -22,6 +23,7 @@ export default function ImportSection({
   apiUrl,
   onSuccess,
 }: Props) {
+  const { t } = useTranslation();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -68,7 +70,7 @@ export default function ImportSection({
           color: "var(--muted)",
         }}
       >
-        Import iz XLSX
+        {t("importXlsx.title")}
       </div>
       <div
         style={{
@@ -84,7 +86,7 @@ export default function ImportSection({
           className="btn"
           style={{ textDecoration: "none" }}
         >
-          Preuzmi predložak
+          {t("importXlsx.downloadTemplate")}
         </a>
         <input
           ref={inputRef}
@@ -107,7 +109,7 @@ export default function ImportSection({
             cursor: !file || loading ? "not-allowed" : "pointer",
           }}
         >
-          {loading ? "Uvoz…" : "Uvezi"}
+          {loading ? t("importXlsx.importing") : t("importXlsx.importBtn")}
         </button>
       </div>
       {result && (
@@ -129,17 +131,25 @@ export default function ImportSection({
           )}
           {result.ok && result.imported !== undefined && (
             <div>
-              Uvezeno: <b>{result.imported}</b>
-              {result.total != null && ` od ${result.total}`} redova.
+              {result.total != null
+                ? (t("importXlsx.importedWithTotal") || "")
+                    .replace("{{imported}}", String(result.imported))
+                    .replace("{{total}}", String(result.total))
+                : (t("importXlsx.importedShort") || "")
+                    .replace("{{imported}}", String(result.imported))}
             </div>
           )}
           {result.errors && result.errors.length > 0 && (
             <div style={{ marginTop: 8 }}>
-              Greške po redu:
+              {t("importXlsx.errorsByRow")}
               <ul style={{ margin: "4px 0 0 16px", padding: 0 }}>
                 {result.errors.map((e) => (
                   <li key={e.row}>
-                    Red {e.row}: {e.message}
+                    {(t("importXlsx.rowLabel") || "").replace(
+                      "{{row}}",
+                      String(e.row),
+                    )}{" "}
+                    {e.message}
                   </li>
                 ))}
               </ul>

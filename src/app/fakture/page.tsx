@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { downloadExcel } from "@/lib/exportExcel";
 import { useTranslation } from "@/components/LocaleProvider";
+import FluxaLogo from "@/components/FluxaLogo";
 
 function fmtDDMMYYYY(iso: string | null): string {
   if (!iso) return "—";
@@ -19,6 +20,14 @@ function fmtMoney(n: number, ccy: string): string {
   const v = Number.isFinite(n) ? n : 0;
   const label = (ccy === "BAM" || ccy === "KM") ? "KM" : ccy;
   return `${v.toFixed(2)} ${label}`;
+}
+
+function statusLabel(status: string | null, t: (k: string) => string): string {
+  if (!status) return t("fakture.statusOther");
+  const s = status.toUpperCase();
+  if (s === "PLACENA" || s === "PAID") return t("fakture.statusPaid");
+  if (s === "FAKTURISAN" || s === "KREIRANA" || s === "CREATED") return t("fakture.statusCreated");
+  return t("fakture.statusOther");
 }
 
 type Faktura = {
@@ -70,7 +79,13 @@ export default function FakturePage() {
         const res = await fetch(`/api/fakture/list?${qs.toString()}`, {
           cache: "no-store",
         });
-        const data = await res.json();
+        const text = await res.text();
+        let data: { ok?: boolean; error?: string; fakture?: unknown[]; narucioci?: unknown[] };
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch {
+          throw new Error(res.ok ? t("common.error") : `API ${res.status}`);
+        }
 
         if (!res.ok || !data.ok) {
           throw new Error(data.error || t("fakture.loadError"));
@@ -132,11 +147,7 @@ export default function FakturePage() {
             <div className="topRow" style={{ justifyContent: "space-between" }}>
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
+                  <FluxaLogo />
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
@@ -161,7 +172,7 @@ export default function FakturePage() {
                 id="broj_fakture"
                 type="text"
                 defaultValue={brojFaktureFilter}
-                placeholder="001/2026..."
+                placeholder={t("fakture.placeholderBrojFakture")}
                 className="input small"
                 style={{ width: 150 }}
               />
@@ -190,7 +201,17 @@ export default function FakturePage() {
                   type="button"
                   className="btn"
                   onClick={() => {
-const headers = ["Broj fakture", "PFR", "Datum izdavanja", "Datum dospijeća", "Naručioc", "Iznos", "Valuta", "PDV", "Status"];
+const headers = [
+                        t("fakture.brojFakture"),
+                        t("fakture.colPfr"),
+                        t("fakture.colDatumIzdavanja"),
+                        t("fakture.colDatumDospijeca"),
+                        t("fakture.narucilac"),
+                        t("fakture.colIznos"),
+                        t("fakture.colValuta"),
+                        t("fakture.colPdv"),
+                        t("fakture.colStatus"),
+                      ];
                       const rows = fakture.map((f) => [
                         f.broj_fakture ?? "",
                         f.broj_fiskalni ?? "",
@@ -204,7 +225,7 @@ const headers = ["Broj fakture", "PFR", "Datum izdavanja", "Datum dospijeća", "
                     ]);
                     downloadExcel({
                       filename: "fakture_lista",
-                      sheetName: "Fakture",
+                      sheetName: t("fakture.excelSheetName"),
                       headers,
                       rows,
                     });
@@ -241,15 +262,15 @@ const headers = ["Broj fakture", "PFR", "Datum izdavanja", "Datum dospijeća", "
               <table className="table">
                 <thead>
                   <tr>
-                    <th style={{ width: "120px" }}>Broj fakture</th>
-                    <th style={{ width: "80px" }}>PFR</th>
-                    <th style={{ width: "120px" }}>Datum izdavanja</th>
-                    <th style={{ width: "120px" }}>Datum dospijeća</th>
-                    <th style={{ minWidth: "150px" }}>Naručioc</th>
-                    <th className="num" style={{ width: "120px" }}>Iznos</th>
-                    <th style={{ width: "80px" }}>Valuta</th>
-                    <th className="num" style={{ width: "100px" }}>PDV</th>
-                    <th style={{ width: "100px" }}>Status</th>
+                    <th style={{ width: "120px" }}>{t("fakture.brojFakture")}</th>
+                    <th style={{ width: "80px" }}>{t("fakture.colPfr")}</th>
+                    <th style={{ width: "120px" }}>{t("fakture.colDatumIzdavanja")}</th>
+                    <th style={{ width: "120px" }}>{t("fakture.colDatumDospijeca")}</th>
+                    <th style={{ minWidth: "150px" }}>{t("fakture.narucilac")}</th>
+                    <th className="num" style={{ width: "120px" }}>{t("fakture.colIznos")}</th>
+                    <th style={{ width: "80px" }}>{t("fakture.colValuta")}</th>
+                    <th className="num" style={{ width: "100px" }}>{t("fakture.colPdv")}</th>
+                    <th style={{ width: "100px" }}>{t("fakture.colStatus")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -269,7 +290,13 @@ const headers = ["Broj fakture", "PFR", "Datum izdavanja", "Datum dospijeća", "
                             const res = await fetch(`/api/fakture/${f.faktura_id}`, {
                               cache: "no-store",
                             });
-                            const data = await res.json();
+                            const raw = await res.text();
+                            let data: { ok?: boolean; faktura?: { projekti_ids?: number[]; datum_izdavanja?: string; datum_dospijeca?: string; valuta?: string; pdv_iznos?: number; broj_fiskalni?: string } };
+                            try {
+                              data = raw ? JSON.parse(raw) : {};
+                            } catch {
+                              return;
+                            }
                             if (data.ok && data.faktura?.projekti_ids?.length > 0) {
                               const qs = new URLSearchParams();
                               qs.set("ids", data.faktura.projekti_ids.join(","));
@@ -289,10 +316,10 @@ const headers = ["Broj fakture", "PFR", "Datum izdavanja", "Datum dospijeća", "
                               // Otvori novu preview stranicu umesto wizard preview-a
                               window.location.href = `/fakture/${f.faktura_id}/preview`;
                             } else {
-                              alert("Faktura nema povezanih projekata");
+                              alert(t("fakture.noProjectsAlert"));
                             }
                           } catch (err) {
-                            alert("Greška pri učitavanju fakture");
+                            alert(t("fakture.loadInvoiceError"));
                           }
                         }}
                         style={{ cursor: "pointer" }}
@@ -330,7 +357,7 @@ const headers = ["Broj fakture", "PFR", "Datum izdavanja", "Datum dospijeća", "
                                     : "rgba(255, 193, 7, 0.3)",
                             }}
                           >
-                            {f.status}
+                            {statusLabel(f.status, t)}
                           </span>
                         </td>
                       </tr>

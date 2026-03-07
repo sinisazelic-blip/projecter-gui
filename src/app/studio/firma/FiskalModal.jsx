@@ -17,7 +17,9 @@ const labelStyle = { fontSize: 14, opacity: 0.85, marginBottom: 8 };
 
 const defaultSettings = {
   base_url: "",
+  api_path: "",
   api_key: "",
+  yid: "",
   pin: "",
   use_external_printer: false,
   external_printer_name: "",
@@ -77,7 +79,9 @@ export default function FiskalModal() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           base_url: form.base_url.trim() || null,
+          api_path: form.api_path.trim() || null,
           api_key: form.api_key.trim() || null,
+          yid: form.yid.trim() || null,
           pin: form.pin.trim() || null,
           use_external_printer: form.use_external_printer,
           external_printer_name: form.external_printer_name.trim() || null,
@@ -185,6 +189,18 @@ export default function FiskalModal() {
                 </div>
 
                 <div style={{ marginBottom: 14 }}>
+                  <label style={labelStyle}>{t("firma.fiskalLabelApiPath")}</label>
+                  <input
+                    type="text"
+                    value={form.api_path}
+                    onChange={(e) => handleChange("api_path", e.target.value)}
+                    style={inputStyle}
+                    placeholder={t("firma.fiskalPlaceholderApiPath")}
+                  />
+                  <div className="hint">{t("firma.fiskalHintApiPath")}</div>
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
                   <label style={labelStyle}>{t("firma.fiskalLabelApiKey")}</label>
                   <input
                     type="text"
@@ -194,6 +210,19 @@ export default function FiskalModal() {
                     placeholder={t("firma.fiskalPlaceholderApiKey")}
                     autoComplete="off"
                   />
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <label style={labelStyle}>{t("firma.fiskalLabelYid")}</label>
+                  <input
+                    type="text"
+                    value={form.yid}
+                    onChange={(e) => handleChange("yid", e.target.value)}
+                    style={inputStyle}
+                    placeholder={t("firma.fiskalPlaceholderYid")}
+                    autoComplete="off"
+                  />
+                  <div className="hint">{t("firma.fiskalHintYid")}</div>
                 </div>
 
                 <div style={{ marginBottom: 14 }}>

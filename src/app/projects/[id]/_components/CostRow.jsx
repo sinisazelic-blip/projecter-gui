@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "@/components/LocaleProvider";
+import { getCurrencyForLocale } from "@/lib/i18n";
 import CostTypeAndEntityPicker from "./CostTypeAndEntityPicker";
+
+const EUR_TO_BAM = 1.95583;
 
 const toYMD = (v) => {
   if (!v) return "";
@@ -32,17 +36,21 @@ const toYMD = (v) => {
   return "";
 };
 
-const fmtKM = (v) => {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return n.toFixed(2) + " KM";
-};
-
 const fmtNum = (v, dec = 2) => {
   const n = Number(v);
   if (!Number.isFinite(n)) return "—";
   return n.toFixed(dec);
 };
+
+function fmtDisplay(amountKm, locale, t) {
+  const n = Number(amountKm);
+  if (!Number.isFinite(n)) return "—";
+  const ccy = getCurrencyForLocale(locale);
+  const loc = locale === "en" ? "en-GB" : "bs-BA";
+  const suffix = ccy === "EUR" ? ` ${t("projectDetail.currencyEur")}` : ` ${t("projectDetail.currencyKm")}`;
+  const val = ccy === "EUR" ? n / EUR_TO_BAM : n;
+  return val.toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + suffix;
+}
 
 const fmtDate = (d) => {
   if (!d) return "—";
@@ -64,18 +72,19 @@ const inputStyle = {
 
 const CURRENCIES = ["BAM", "EUR", "USD", "RSD"];
 
-function OneLineAmount({ c }) {
+function OneLineAmount({ c, t, locale }) {
   const km = Number(c?.iznos_km);
   const orig = Number(c?.iznos_original);
   const ccy = String(c?.valuta_original || "BAM").toUpperCase();
 
   if (!ccy || ccy === "BAM" || !Number.isFinite(orig) || !Number.isFinite(km)) {
-    return fmtKM(km);
+    return fmtDisplay(km, locale, t);
   }
-  return `${fmtNum(orig, 2)} ${ccy} (≈ ${fmtKM(km)})`;
+  return `${fmtNum(orig, 2)} ${ccy} (≈ ${fmtDisplay(km, locale, t)})`;
 }
 
 export default function CostRow({ c, project, actions, returnTo }) {
+  const { t, locale } = useTranslation();
   const safeReturnTo = returnTo || `/projects/${project?.projekat_id ?? ""}`;
 
   const ccy = String(c?.valuta_original || "BAM").toUpperCase();
@@ -159,7 +168,7 @@ export default function CostRow({ c, project, actions, returnTo }) {
             alignItems: "center",
           }}
         >
-          <div style={{ fontWeight: 700 }}>Uredi trošak</div>
+          <div style={{ fontWeight: 700 }}>{t("projectDetail.editCostTitle")}</div>
           <button type="button" onClick={() => setOpen(false)}>
             ✕
           </button>
@@ -259,12 +268,12 @@ export default function CostRow({ c, project, actions, returnTo }) {
             }}
           >
             <button type="submit" disabled={c.status === "STORNIRANO"}>
-              Snimi izmjene
+              {t("projectDetail.saveChanges")}
             </button>
             <button type="button" onClick={() => setOpen(false)}>
-              Otkaži
+              {t("projectDetail.cancel")}
             </button>
-            <span className="subtle">ID troška: {c.trosak_id}</span>
+            <span className="subtle">{t("projectDetail.costIdLabel")} {c.trosak_id}</span>
           </div>
         </form>
       </div>
@@ -302,13 +311,13 @@ export default function CostRow({ c, project, actions, returnTo }) {
                 overflow: "hidden",
                 textOverflow: "ellipsis",
               }}
-              title={`${c.entity_type === "talent" ? "Talenat" : "Dobavljač"}: ${c.entity_name}`}
+              title={`${c.entity_type === "talent" ? t("projectDetail.talentLabel") : t("projectDetail.vendorLabel")}: ${c.entity_name}`}
             >
               <span aria-hidden="true">
                 {c.entity_type === "talent" ? "🎤" : "🏢"}
               </span>
               <span style={{ fontWeight: 700 }}>
-                {c.entity_type === "talent" ? "Talenat" : "Dobavljač"}:
+                {c.entity_type === "talent" ? t("projectDetail.talentLabel") : t("projectDetail.vendorLabel")}:
               </span>
               <span style={{ opacity: 0.95 }}>{c.entity_name}</span>
             </span>
@@ -319,7 +328,7 @@ export default function CostRow({ c, project, actions, returnTo }) {
       </td>
 
       <td className="num" style={{ whiteSpace: "nowrap" }}>
-        <OneLineAmount c={c} />
+        <OneLineAmount c={c} t={t} locale={locale} />
       </td>
 
       <td>
@@ -342,7 +351,7 @@ export default function CostRow({ c, project, actions, returnTo }) {
             onClick={() => setOpen(true)}
             disabled={c.status === "STORNIRANO"}
           >
-            Uredi
+            {t("projectDetail.edit")}
           </button>
 
           <form
@@ -363,13 +372,13 @@ export default function CostRow({ c, project, actions, returnTo }) {
               disabled={c.status === "STORNIRANO"}
               style={inputStyle}
             >
-              <option value="PLANIRANO">PLANIRANO</option>
-              <option value="NASTALO">NASTALO</option>
-              <option value="PLACENO">PLACENO</option>
+              <option value="PLANIRANO">{t("projectDetail.statusPlanned")}</option>
+              <option value="NASTALO">{t("projectDetail.statusOccurred")}</option>
+              <option value="PLACENO">{t("projectDetail.statusPaid")}</option>
             </select>
 
             <button type="submit" disabled={c.status === "STORNIRANO"}>
-              Snimi
+              {t("projectDetail.save")}
             </button>
           </form>
 
@@ -381,7 +390,7 @@ export default function CostRow({ c, project, actions, returnTo }) {
                 display: "inline",
               }}
             >
-              Storniraj
+              {t("projectDetail.storno")}
             </summary>
 
             <div

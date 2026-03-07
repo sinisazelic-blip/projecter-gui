@@ -1,6 +1,10 @@
 // src/app/projects/page.js
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { query } from "@/lib/db";
+import { getValidLocale } from "@/lib/i18n";
+import { getT } from "@/lib/translations";
+import FluxaLogo from "@/components/FluxaLogo";
 import ProjectTableRow from "./ProjectTableRow";
 
 export const dynamic = "force-dynamic";
@@ -270,11 +274,17 @@ function sortProjects(rows, status_group) {
   return list;
 }
 
-async function apiGetNoStore(path) {
+const COOKIE_NAME = "fluxa_session";
+
+async function apiGetNoStore(path, sessionCookieValue) {
   const base = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const headers = { "cache-control": "no-store" };
+  if (sessionCookieValue) {
+    headers["Cookie"] = `${COOKIE_NAME}=${sessionCookieValue}`;
+  }
   const res = await fetch(`${base}${path}`, {
     cache: "no-store",
-    headers: { "cache-control": "no-store" },
+    headers,
   });
   const json = await res.json().catch(() => null);
   return json;
@@ -304,14 +314,13 @@ function parseStatusPick(status_pick_raw) {
    - prošli koraci: sivi
    - budući: neutral
    ========================= */
-const FLOW_STEPS = [
-  { k: "DEAL", label: "Deal" },
-  { k: "PROD", label: "Produkcija" },
-  { k: "DONE", label: "Završen" },
-  { k: "CLOSED", label: "Zatvoren" },
-  { k: "INVOICED", label: "Fakturisan" },
-  { k: "ARCH", label: "Arhiviran" },
-];
+const FLOW_KEYS = ["deal", "prod", "done", "closed", "invoiced", "arch"];
+function getFlowSteps(t) {
+  return FLOW_KEYS.map((key) => ({
+    k: key.toUpperCase(),
+    label: t(`statuses.flow.${key}`),
+  }));
+}
 
 function flowIndexForProjectStatusId(statusId) {
   const id = Number(statusId ?? 0);
@@ -385,7 +394,8 @@ function flowAccentByProjectStatusId(statusId) {
   };
 }
 
-function StatusFlowInline({ project }) {
+function StatusFlowInline({ project, flowSteps }) {
+  const steps = flowSteps ?? FLOW_KEYS.map((k) => ({ k: k.toUpperCase(), label: k }));
   const statusId = Number(project?.status_id ?? 0);
   const activeIdx = flowIndexForProjectStatusId(statusId);
   const acc = flowAccentByProjectStatusId(statusId);
@@ -398,17 +408,17 @@ function StatusFlowInline({ project }) {
         paddingTop: 10,
         borderTop: "1px solid rgba(255,255,255,.10)",
       }}
-      aria-label="Tok statusa"
+      aria-label={null}
     >
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `repeat(${FLOW_STEPS.length}, minmax(0, 1fr))`,
+          gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`,
           gap: 10,
           alignItems: "start",
         }}
       >
-        {FLOW_STEPS.map((s, idx) => {
+        {steps.map((s, idx) => {
           const isPast = idx < activeIdx;
           const isActive = idx === activeIdx;
 
@@ -515,11 +525,23 @@ export default async function Page({ searchParams }) {
     limit: String(limit),
   });
 
-  const json = await apiGetNoStore(`/api/projects${qs}`);
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get(COOKIE_NAME)?.value ?? null;
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value ?? "sr");
+  const t = getT(locale);
+  const json = await apiGetNoStore(`/api/projects${qs}`, sessionCookie);
   const projectsRaw = json?.rows ?? [];
   const total = Number(json?.total ?? 0);
 
-  const projects = sortProjects(projectsRaw, status_group);
+  let projects = sortProjects(projectsRaw, status_group);
+  projects = projects.map((p) => {
+    const key = `statuses.project.${p.status_id}`;
+    const translated = t(key);
+    return {
+      ...p,
+      statusDisplayName: translated !== key ? translated : p.status_name,
+    };
+  });
 
   const from = total === 0 ? 0 : (page - 1) * limit + 1;
   const to = Math.min(total, page * limit);
@@ -550,16 +572,11 @@ export default async function Page({ searchParams }) {
           <div className="topRow" style={{ justifyContent: "space-between", alignItems: "center" }}>
             <div className="brandWrap">
               <div className="brandLogoBlock">
-                <img
-                  src="/fluxa/logo-light.png"
-                  alt="FLUXA"
-                  className="brandLogo"
-                />
-                <span className="brandSlogan">Project & Finance Engine</span>
+                <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
               </div>
               <div>
-                <div className="brandTitle">📊 PP</div>
-                <div className="brandSub" style={{ fontSize: '10px', opacity: 0.7 }}>Pregled Projekata</div>
+                <div className="brandTitle">{t("projectsPage.pageTitle")}</div>
+                <div className="brandSub" style={{ fontSize: '10px', opacity: 0.7 }}>{t("projectsPage.pageSubtitle")}</div>
               </div>
             </div>
 
@@ -567,9 +584,9 @@ export default async function Page({ searchParams }) {
               href="/dashboard"
               className="btn"
               style={{ fontSize: 15, padding: "10px 18px", minWidth: 130, fontWeight: 700 }}
-              title="Povratak na Dashboard"
+              title={t("projectsPage.backToDashboard")}
             >
-              🏠 Dashboard
+              🏠 {t("projectsPage.dashboard")}
             </Link>
           </div>
 
@@ -579,33 +596,33 @@ export default async function Page({ searchParams }) {
                 href={`/projects?status_pick=${encodeURIComponent("group:active")}`}
                 className={`btn ${status_group === "active" && !status_id ? "btn--active" : ""}`}
                 style={{ fontSize: 13, padding: "6px 12px" }}
-                title="Filter: aktivni (1–7)"
+                title={t("projectsPage.optionActiveGroup")}
               >
-                ✅ Aktivni
+                {t("projectsPage.filterActive")}
               </Link>
               <Link
                 href={`/projects?status_pick=${encodeURIComponent("group:archive")}`}
                 className={`btn ${status_group === "archive" && !status_id ? "btn--active" : ""}`}
                 style={{ fontSize: 13, padding: "6px 12px" }}
-                title="Filter: arhiva (10, 11 — importovani)"
+                title={t("projectsPage.optionArchive")}
               >
-                📦 Arhiva
+                {t("projectsPage.filterArchive")}
               </Link>
               <Link
                 href={`/projects?status_pick=${encodeURIComponent("11")}`}
                 className={`btn ${status_id === 11 ? "btn--active" : ""}`}
                 style={{ fontSize: 13, padding: "6px 12px" }}
-                title="Samo importovani (status 11)"
+                title={t("projectsPage.filterArchiveImport")}
               >
-                📥 Arhiva (import)
+                {t("projectsPage.filterArchiveImport")}
               </Link>
               <Link
                 href={`/projects?status_pick=${encodeURIComponent("group:all")}`}
                 className={`btn ${status_group === "all" && !status_id ? "btn--active" : ""}`}
                 style={{ fontSize: 13, padding: "6px 12px" }}
-                title="Filter: svi statusi"
+                title={t("projectsPage.optionAllStatuses")}
               >
-                📋 Svi projekti
+                {t("projectsPage.filterAll")}
               </Link>
             </div>
 
@@ -616,63 +633,67 @@ export default async function Page({ searchParams }) {
               <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 13 }}>
                 {/* Status filter */}
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span className="label" style={{ fontSize: 12, minWidth: 100 }}>Status:</span>
+                  <span className="label" style={{ fontSize: 12, minWidth: 100 }}>{t("projectsPage.labelStatus")}</span>
                   <select
                     name="status_pick"
                     defaultValue={statusSelectValue}
                     className="input"
                     style={{ minWidth: 200, fontSize: 12, padding: "6px 10px" }}
                   >
-                    <option value="group:active">Aktivni (grupa 1–7)</option>
-                    <option value="group:archive">Arhiva (10 + 11)</option>
-                    <option value="group:storno">Storno (12)</option>
-                    <option value="group:all">Svi statusi (grupa)</option>
+                    <option value="group:active">{t("projectsPage.optionActiveGroup")}</option>
+                    <option value="group:archive">{t("projectsPage.optionArchive")}</option>
+                    <option value="group:storno">{t("projectsPage.optionStorno")}</option>
+                    <option value="group:all">{t("projectsPage.optionAllStatuses")}</option>
                     <option disabled value="__sep__">────────</option>
-                    {statuses.map((s) => (
+                    {statuses.map((s) => {
+                    const sk = `statuses.project.${s.status_id}`;
+                    const slabel = t(sk) !== sk ? t(sk) : s.naziv_statusa;
+                    return (
                       <option key={s.status_id} value={String(s.status_id)}>
-                        {s.status_id} — {s.naziv_statusa}
+                        {s.status_id} — {slabel}
                       </option>
-                    ))}
+                    );
+                  })}
                   </select>
                 </div>
 
                 {/* Finansijski filter */}
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span className="label" style={{ fontSize: 12, minWidth: 100 }}>Finansijski:</span>
+                  <span className="label" style={{ fontSize: 12, minWidth: 100 }}>{t("projectsPage.labelFinancial")}</span>
                   <select
                     name="fin_status"
                     defaultValue={String(finRaw)}
                     className="input"
                     style={{ minWidth: 200, fontSize: 12, padding: "6px 10px" }}
                   >
-                    <option value="">Svi</option>
-                    <option value="bez_budzeta">Bez budžeta</option>
-                    <option value="u_plusu">U plusu</option>
-                    <option value="u_minusu">U minusu</option>
+                    <option value="">{t("projectsPage.optionAll")}</option>
+                    <option value="bez_budzeta">{t("projectsPage.optionNoBudget")}</option>
+                    <option value="u_plusu">{t("projectsPage.optionInPlus")}</option>
+                    <option value="u_minusu">{t("projectsPage.optionInMinus")}</option>
                   </select>
                 </div>
 
                 {/* Traži filter */}
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <span className="label" style={{ fontSize: 12, minWidth: 100 }}>Traži:</span>
+                  <span className="label" style={{ fontSize: 12, minWidth: 100 }}>{t("projectsPage.labelSearch")}</span>
                   <input
                     name="q"
                     defaultValue={String(qRaw)}
-                    placeholder="ID ili naziv..."
+                    placeholder={t("projectsPage.searchPlaceholder")}
                     className="input"
                     style={{ minWidth: 200, fontSize: 12, padding: "6px 10px" }}
                   />
 
                   <label style={{ display: "inline-flex", alignItems: "center", gap: 6, opacity: 0.9, fontSize: 12 }}>
                     <input type="checkbox" name="show_done" value="1" defaultChecked={showDone} />
-                    Prikaži završene
+                    {t("projectsPage.showDone")}
                   </label>
 
                   <button type="submit" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}>
-                    🔎 Filtriraj
+                    {t("projectsPage.btnFilter")}
                   </button>
                   <Link href="/projects" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}>
-                    🔄 Reset
+                    {t("projectsPage.btnReset")}
                   </Link>
                 </div>
               </div>
@@ -684,8 +705,7 @@ export default async function Page({ searchParams }) {
           {/* ✅ pager info u headeru */}
           <div className="pagerBar" style={{ marginTop: 10 }}>
             <div className="pagerInfo">
-              Prikaz: <b>{from}</b>–<b>{to}</b> od <b>{total}</b> (strana {page}
-              )
+              {t("projectsPage.pagerShowing")} <b>{from}</b>–<b>{to}</b> {t("projectsPage.pagerOf")} <b>{total}</b> ({t("projectsPage.pagerPage")} {page})
             </div>
             <div className="pagerBtns">
             <Link
@@ -693,14 +713,14 @@ export default async function Page({ searchParams }) {
               href={hasPrev ? `/projects${pageLink(page - 1)}` : "#"}
               aria-disabled={!hasPrev}
             >
-              ⬅️ Prethodna
+              {t("projectsPage.prev")}
             </Link>
             <Link
               className={`btn ${hasNext ? "" : "btn--disabled"}`}
               href={hasNext ? `/projects${pageLink(page + 1)}` : "#"}
               aria-disabled={!hasNext}
             >
-              Sljedeća ➡️
+              {t("projectsPage.next")}
             </Link>
             </div>
           </div>
@@ -713,13 +733,13 @@ export default async function Page({ searchParams }) {
           <table className="table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Radni naziv</th>
-                <th>Rok</th>
-                <th className="num">Budžet</th>
-                <th className="num">Troškovi</th>
-                <th className="num">Zarada</th>
-                <th>Status</th>
+                <th>{t("projectsPage.thId")}</th>
+                <th>{t("projectsPage.thRadniNaziv")}</th>
+                <th>{t("projectsPage.thRok")}</th>
+                <th className="num">{t("projectsPage.thBudzet")}</th>
+                <th className="num">{t("projectsPage.thTroskovi")}</th>
+                <th className="num">{t("projectsPage.thZarada")}</th>
+                <th>{t("projectsPage.thStatus")}</th>
               </tr>
             </thead>
 
@@ -734,7 +754,7 @@ export default async function Page({ searchParams }) {
               {projects.length === 0 && (
                 <tr>
                   <td colSpan={7} style={{ opacity: 0.7, padding: 18 }}>
-                    Nema projekata za zadate filtere.
+                    {t("projectsPage.noProjects")}
                   </td>
                 </tr>
               )}
@@ -745,7 +765,7 @@ export default async function Page({ searchParams }) {
         {/* ✅ pager i na dnu */}
         <div className="pagerBar" style={{ paddingTop: 12 }}>
           <div className="pagerInfo">
-            Prikaz: <b>{from}</b>–<b>{to}</b> od <b>{total}</b> (strana {page})
+            {t("projectsPage.pagerShowing")} <b>{from}</b>–<b>{to}</b> {t("projectsPage.pagerOf")} <b>{total}</b> ({t("projectsPage.pagerPage")} {page})
           </div>
           <div className="pagerBtns">
             <Link
@@ -753,14 +773,14 @@ export default async function Page({ searchParams }) {
               href={hasPrev ? `/projects${pageLink(page - 1)}` : "#"}
               aria-disabled={!hasPrev}
             >
-              ⬅️ Prethodna
+              {t("projectsPage.prev")}
             </Link>
             <Link
               className={`btn ${hasNext ? "" : "btn--disabled"}`}
               href={hasNext ? `/projects${pageLink(page + 1)}` : "#"}
               aria-disabled={!hasNext}
             >
-              Sljedeća ➡️
+              {t("projectsPage.next")}
             </Link>
           </div>
         </div>

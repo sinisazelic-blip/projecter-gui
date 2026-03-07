@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useMemo } from "react";
+import { useTranslation } from "@/components/LocaleProvider";
 
 type Props = {
   hasProject: boolean;
@@ -6,14 +7,14 @@ type Props = {
   compact?: boolean;
 };
 
-const STEPS = [
-  { key: "deal", label: "Deal" },
-  { key: "prod", label: "Produkcija" },
-  { key: "done", label: "Završeno" },
-  { key: "closed", label: "Zatvoren" },
-  { key: "inv", label: "Fakturisan" },
-  { key: "arch", label: "Arhiviran" },
-] as const;
+const STEP_KEYS = [
+  { key: "deal" as const },
+  { key: "prod" as const },
+  { key: "done" as const },
+  { key: "closed" as const },
+  { key: "invoiced" as const },
+  { key: "arch" as const },
+];
 
 function stageIndex(hasProject: boolean, projectStatusId?: number | null) {
   if (!hasProject) return 0; // Deal
@@ -62,13 +63,21 @@ export default function StatusTimelineBar({
   projectStatusId,
   compact,
 }: Props) {
+  const { t } = useTranslation();
+  const STEPS = useMemo(
+    () =>
+      STEP_KEYS.map(({ key }) => ({
+        key,
+        label: t(`statuses.flow.${key}`),
+      })),
+    [t],
+  );
   const cur = stageIndex(hasProject, projectStatusId);
   const curCol = stageColorByIndex(cur);
 
   const dot = (i: number) => {
     const isPast = i < cur;
     const isCur = i === cur;
-    const isFuture = i > cur;
 
     const bg = isCur
       ? curCol.bg
@@ -133,7 +142,7 @@ export default function StatusTimelineBar({
         backdropFilter: "blur(10px)",
         WebkitBackdropFilter: "blur(10px)",
       }}
-      title="Deal → Produkcija → Završeno → Zatvoren → Fakturisan → Arhiviran"
+      title={STEPS.map((s) => s.label).join(" → ")}
     >
       <div
         style={{

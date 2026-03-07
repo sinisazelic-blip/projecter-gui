@@ -4,6 +4,7 @@ import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
 import DashboardTopActions from "./DashboardTopActions";
 import DashboardBody from "./DashboardBody";
+import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -128,6 +129,12 @@ export default async function Page() {
           background: rgba(180, 180, 180, 0.1);
         }
 
+        .groupPill--profitMargin {
+          border-color: rgba(167, 139, 250, 0.4);
+          background: rgba(167, 139, 250, 0.15);
+          color: rgba(216, 204, 255, 0.95);
+        }
+
         .groupSubtitle {
           font-size: 12px;
           opacity: 0.75;
@@ -143,7 +150,7 @@ export default async function Page() {
         .deskMainButtons {
           display: flex;
           gap: clamp(14px, 1.5vw, 22px);
-          align-items: center;
+          align-items: stretch;
           justify-content: center;
           margin-bottom: clamp(10px, 1.2vh, 16px);
           flex-wrap: wrap;
@@ -155,7 +162,7 @@ export default async function Page() {
           max-width: 380px;
           min-height: 100px;
           padding: clamp(10px, 1.2vh, 14px) clamp(14px, 1.5vw, 20px);
-          font-size: clamp(14px, 1.6vh, 16px);
+          font-size: clamp(16px, 1.9vh, 18px);
           font-weight: 750;
           border-radius: 16px;
           text-align: center;
@@ -175,22 +182,31 @@ export default async function Page() {
         }
 
         .deskMainBtn--blue {
-          background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(37, 99, 235, 0.05));
-          border-color: rgba(59, 130, 246, 0.25);
-          color: rgba(147, 197, 253, 0.95);
-          box-shadow: 0 4px 16px rgba(59, 130, 246, 0.1);
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.22), rgba(37, 99, 235, 0.14));
+          border-color: rgba(59, 130, 246, 0.4);
+          color: #ffffff;
+          box-shadow: 0 4px 16px rgba(59, 130, 246, 0.15);
+        }
+
+        .deskMainBtn--blue .deskMainBtnSubtitle {
+          color: #ffffff;
+          opacity: 1;
         }
 
         .deskMainBtn--green {
-          background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(22, 163, 74, 0.05));
-          border-color: rgba(34, 197, 94, 0.25);
-          color: rgba(134, 239, 172, 0.95);
-          box-shadow: 0 4px 16px rgba(34, 197, 94, 0.1);
+          background: linear-gradient(135deg, rgba(34, 197, 94, 0.22), rgba(22, 163, 74, 0.14));
+          border-color: rgba(34, 197, 94, 0.4);
+          color: #ffffff;
+          box-shadow: 0 4px 16px rgba(34, 197, 94, 0.15);
+        }
+
+        .deskMainBtn--green .deskMainBtnSubtitle {
+          color: #ffffff;
+          opacity: 1;
         }
 
         .deskMainBtnSubtitle {
-          font-size: 11px;
-          opacity: 0.85;
+          font-size: 12px;
           font-weight: 600;
         }
 
@@ -200,16 +216,21 @@ export default async function Page() {
           max-width: 88px;
           min-height: 100px;
           padding: clamp(10px, 1.2vh, 14px) 10px;
-          font-size: clamp(13px, 1.4vh, 15px);
-          border-color: rgba(251, 191, 36, 0.35);
-          background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(245, 158, 11, 0.06));
-          color: rgba(253, 230, 138, 0.95);
+          font-size: clamp(15px, 1.6vh, 17px);
+          border-color: rgba(251, 191, 36, 0.5);
+          background: linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(245, 158, 11, 0.14));
+          color: #ffffff;
+        }
+
+        .deskMainBtn--sc .deskMainBtnSubtitle {
+          color: #ffffff;
+          opacity: 1;
         }
 
         .deskMainBtn--sc:hover {
-          border-color: rgba(251, 191, 36, 0.5);
-          background: linear-gradient(135deg, rgba(251, 191, 36, 0.18), rgba(245, 158, 11, 0.1));
-          color: rgba(254, 243, 199, 1);
+          border-color: rgba(251, 191, 36, 0.6);
+          background: linear-gradient(135deg, rgba(251, 191, 36, 0.32), rgba(245, 158, 11, 0.18));
+          color: #ffffff;
         }
 
         .deskMainBtn--sc .deskMainBtnSubtitle {
@@ -450,11 +471,7 @@ export default async function Page() {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
+                  <FluxaLogo />
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>

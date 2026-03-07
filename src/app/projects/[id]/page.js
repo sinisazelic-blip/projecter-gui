@@ -1,8 +1,11 @@
 // src/app/projects/[id]/page.js
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { query } from "@/lib/db";
+import { getValidLocale, getCurrencyForLocale } from "@/lib/i18n";
+import { getT } from "@/lib/translations";
 
 //export const metadata = {
 //  title: "Lista projekata",
@@ -19,6 +22,7 @@ import FinalOkButtonClient from "./_components/FinalOkButtonClient";
 import ProjectStornoButton from "./_components/ProjectStornoButton";
 import ProBonoButton from "./_components/ProBonoButton";
 import { ReadOnlyGuard } from "@/components/ReadOnlyGuard";
+import FluxaLogo from "@/components/FluxaLogo";
 
 // ✅ NEW: Timeline indikator (read-only)
 import {
@@ -33,6 +37,24 @@ const VALID_ENTITY_TYPES = new Set(["talent", "vendor"]);
 
 // ✅ fiksni kurs za EUR->BAM (dok ne uvedemo dinamički FX po datumu)
 const EUR_TO_BAM = 1.95583;
+
+function formatProjectAmount(amountKm, locale, t) {
+  const n = Number(amountKm);
+  if (!Number.isFinite(n)) return { formatted: "—", suffix: "" };
+  const ccy = getCurrencyForLocale(locale);
+  const loc = locale === "en" ? "en-GB" : "bs-BA";
+  if (ccy === "EUR") {
+    const eur = n / EUR_TO_BAM;
+    return {
+      formatted: eur.toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      suffix: ` ${t("projectDetail.currencyEur")}`,
+    };
+  }
+  return {
+    formatted: n.toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    suffix: ` ${t("projectDetail.currencyKm")}`,
+  };
+}
 
 /**
  * Siguran upsert kursa direktno u DB (umjesto fetch("/api/fx/upsert") u server action).
@@ -462,6 +484,10 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
 
   if (!Number.isFinite(projekatId)) redirect("/projects");
 
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value ?? "sr");
+  const t = getT(locale);
+
   const sp = await Promise.resolve(searchParams);
   const showStornirano = String(sp?.stornirano || "0") === "1";
 
@@ -624,10 +650,10 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
   if (!project) {
     return (
       <div className="container">
-        <h1 style={{ fontSize: 22, marginBottom: 14 }}>Projekat</h1>
-        <p>Projekat nije pronađen.</p>
+        <h1 style={{ fontSize: 22, marginBottom: 14 }}>{t("projectDetail.pageTitle")}</h1>
+        <p>{t("projectDetail.notFound")}</p>
         <p>
-          <Link href="/projects">← Nazad na projekte</Link>
+          <Link href="/projects">{t("projectDetail.backToProjects")}</Link>
         </p>
       </div>
     );
@@ -636,7 +662,11 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
   const sig = signalMeta(project?.operativni_signal);
 
   const statusIdNum = Number(project?.status_id ?? 0);
-  const statusName = String(project?.naziv_statusa ?? `Status ${statusIdNum}`);
+  const statusKey = `statuses.project.${statusIdNum}`;
+  const statusName =
+    t(statusKey) !== statusKey
+      ? t(statusKey)
+      : String(project?.naziv_statusa ?? `Status ${statusIdNum}`);
 
   // ✅ SEF: read-only tek kad je fakturisan
   const isReadOnly = statusIdNum === 9;
@@ -826,26 +856,25 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
           <div className="topbar">
             <div className="topbarLeft">
               <div className="brandLogoBlock">
-                <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
-                <span className="brandSlogan">Project & Finance Engine</span>
+                <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
               </div>
               <div className="pageBrand">
-                <div className="projekatBrandTitle">Projekat</div>
-                <div className="projekatBrandSub">Detalji projekta</div>
+                <div className="projekatBrandTitle">{t("projectDetail.pageTitle")}</div>
+                <div className="projekatBrandSub">{t("projectDetail.pageSubtitle")}</div>
               </div>
             </div>
 
             <div className="navBtns">
               <Link
                 href="/projects"
-                aria-label="Povratak na PP"
-                title="Povratak na Pregled Projekata"
+                aria-label={t("projectDetail.backToPP")}
+                title={t("projectDetail.backToPPTitle")}
                 className="glassbtn actionBtn"
               >
-                📋 Povratak na PP
+                📋 {t("projectDetail.backToPP")}
               </Link>
-              <Link href="/dashboard" className="glassbtn actionBtn" title="Dashboard">
-                🏠 Dashboard
+              <Link href="/dashboard" className="glassbtn actionBtn" title={t("projectDetail.dashboard")}>
+                🏠 {t("projectDetail.dashboard")}
               </Link>
             </div>
           </div>
@@ -884,7 +913,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                   opacity: isReadOnly ? 0.55 : 1,
                   pointerEvents: isReadOnly ? "none" : "auto",
                 }}
-                title={isReadOnly ? "Projekat je fakturisan (read-only)." : "Owner: operativni signal"}
+                title={isReadOnly ? t("projectDetail.projectInvoicedReadOnly") : t("projectDetail.ownerSignalTitle")}
               >
                 <input type="hidden" name="projekat_id" value={project.projekat_id} />
                 <input type="hidden" name="return_to" value={returnTo} />
@@ -893,19 +922,19 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                   defaultValue={String(project?.operativni_signal ?? "NORMALNO")}
                   className="sigSelect"
                 >
-                  <option value="NORMALNO">NORMALNO</option>
-                  <option value="PAZNJA">PAŽNJA</option>
-                  <option value="STOP">STOP</option>
+                  <option value="NORMALNO">{t("projectDetail.signalNormal")}</option>
+                  <option value="PAZNJA">{t("projectDetail.signalAttention")}</option>
+                  <option value="STOP">{t("projectDetail.signalStop")}</option>
                 </select>
                 <input
                   name="note"
-                  placeholder="bilješka (opciono)…"
+                  placeholder={t("projectDetail.signalNotePlaceholder")}
                   className="sigNote"
                   maxLength={500}
-                  title="Bilješka (ide u log)"
+                  title={t("projectDetail.signalNoteTitle")}
                 />
-                <button type="submit" className="glassbtn payBtn" title="Snimi signal">
-                  <span style={{ fontSize: 16, lineHeight: 1 }}>✅</span> Snimi
+                <button type="submit" className="glassbtn payBtn" title={t("projectDetail.saveSignal")}>
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>✅</span> {t("projectDetail.save")}
                 </button>
               </form>
             </div>
@@ -932,11 +961,11 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                   opacity: isReadOnly ? 0.55 : 1,
                   pointerEvents: isReadOnly ? "none" : "auto",
                 }}
-                title={isReadOnly ? "Projekat je fakturisan (read-only)." : "Owner: procenat budžeta vidljiv radnicima"}
+                title={isReadOnly ? t("projectDetail.projectInvoicedReadOnly") : t("projectDetail.ownerBudgetTitle")}
               >
                 <input type="hidden" name="projekat_id" value={project.projekat_id} />
                 <input type="hidden" name="return_to" value={returnTo} />
-                <label className="label" style={{ whiteSpace: "nowrap" }}>Budžet za tim (%):</label>
+                <label className="label" style={{ whiteSpace: "nowrap" }}>{t("projectDetail.budgetForTeam")}</label>
                 <input
                   type="number"
                   name="budzet_procenat_za_tim"
@@ -954,8 +983,8 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                     fontSize: 13,
                   }}
                 />
-                <button type="submit" className="glassbtn payBtn" title="Snimi procenat">
-                  <span style={{ fontSize: 16, lineHeight: 1 }}>💾</span> Snimi %
+                <button type="submit" className="glassbtn payBtn" title={t("projectDetail.savePercentTitle")}>
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>💾</span> {t("projectDetail.savePercent")}
                 </button>
               </form>
             </div>
@@ -977,7 +1006,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                 gap: 6,
                 fontVariantNumeric: "tabular-nums",
               }}
-              title="Ostatak (studio profit od %) + zarada od razlike (budžet dozvoljen − troškovi) = zbir"
+              title={t("projectDetail.profitSignalTitle")}
             >
               {(() => {
                 const budzet = Number(project?.budzet_planirani) || 0;
@@ -987,17 +1016,19 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                 const ostatak = budzet * ((100 - procenat) / 100);
                 const zaradaRazlike = budzetZaTim - troskovi;
                 const zbir = ostatak + zaradaRazlike;
-                const fmt = (n) => (Number.isFinite(n) ? n.toLocaleString("bs-BA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—");
+                const o = formatProjectAmount(ostatak, locale, t);
+                const z = formatProjectAmount(Math.abs(zaradaRazlike), locale, t);
+                const tot = formatProjectAmount(zbir, locale, t);
                 return (
                   <>
-                    <span>{fmt(ostatak)}</span>
+                    <span>{o.formatted}{o.suffix}</span>
                     <span style={{ opacity: 0.7 }}>+</span>
                     <span style={{ color: zaradaRazlike >= 0 ? "var(--good)" : "var(--bad)" }}>
-                      {zaradaRazlike >= 0 ? "" : "−"} {fmt(Math.abs(zaradaRazlike))}
+                      {zaradaRazlike >= 0 ? "" : "−"} {z.formatted}{z.suffix}
                     </span>
                     <span style={{ opacity: 0.7 }}>=</span>
                     <span style={{ fontWeight: 700, color: zbir >= 0 ? "var(--good)" : "var(--bad)" }}>
-                      {fmt(zbir)} KM
+                      {tot.formatted}{tot.suffix}
                     </span>
                   </>
                 );
@@ -1020,9 +1051,9 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
             <Link
               href={`/projects/${projekatId}/faze`}
               className="btn btn-faze-important"
-              title="Faze projekta, radnici, deadline, %"
+              title={t("projectDetail.phasesTitle")}
             >
-              📋 FAZE
+              {t("projectDetail.phases")}
             </Link>
             <FinalOkButtonClient projekatId={project.projekat_id} disabled={isReadOnly} />
           </div>
@@ -1031,7 +1062,15 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
           <div style={{ marginTop: 4 }}>
             <FluxaTimeline
               phase={phaseFromProjectStatusId(project?.status_id)}
-              title="Status projekta"
+              title={t("projectDetail.statusProject")}
+              phaseLabels={[
+                t("statuses.flow.deal"),
+                t("statuses.flow.prod"),
+                t("statuses.flow.done"),
+                t("statuses.flow.closed"),
+                t("statuses.flow.invoiced"),
+                t("statuses.flow.arch"),
+              ]}
             />
           </div>
 
@@ -1070,22 +1109,21 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
               }}
             >
               <div style={{ fontWeight: 800, marginBottom: 4 }}>
-                🔒 Read-only
+                {t("projectDetail.readOnly")}
               </div>
               <div style={{ opacity: 0.9 }}>
-                Projekat je <b>fakturisan</b> (status: Fakturisan). Izmjene više
-                nisu dozvoljene.
+                {t("projectDetail.readOnlyMessage")}
               </div>
             </div>
           )}
 
-          <ProjectHeader project={project} hideTitle />
-          <ProjectSummaryCard project={project} />
+          <ProjectHeader project={project} statusName={statusName} hideTitle t={t} locale={locale} />
+          <ProjectSummaryCard project={project} locale={locale} />
 
           {!!project?.napomena && (
             <div className="noteBox">
               <div className="muted" style={{ marginBottom: 6 }}>
-                Napomena (Deal)
+                {t("projectDetail.noteDeal")}
               </div>
               {project.napomena}
             </div>
@@ -1093,7 +1131,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
 
           <ReadOnlyGuard
             isReadOnly={isReadOnly}
-            reason="Projekat je fakturisan (read-only). Akcije su onemogućene."
+            reason={t("projectDetail.readOnlyGuard")}
           >
             <CostsPanel
               project={project}

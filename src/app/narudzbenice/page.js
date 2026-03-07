@@ -1,7 +1,11 @@
 // src/app/narudzbenice/page.js
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 import { query } from "@/lib/db";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
+import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +37,10 @@ function buildQuery(paramsObj) {
 }
 
 export default async function Page({ searchParams }) {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
+  const t = getT(locale);
+
   const sp = await Promise.resolve(searchParams);
   const clientRaw = String(sp?.klijent_id ?? "").trim();
   const klijentId = clientRaw ? Number(clientRaw) : null;
@@ -182,17 +190,12 @@ export default async function Page({ searchParams }) {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Narudžbenice</div>
+                  <div className="brandTitle">{t("narudzbenice.title")}</div>
                   <div className="brandSub">
-                    Zatvoreni projekti (status 8) · email-only · {today}
+                    {(t("narudzbenice.subtitleWithDate") || "").replace("{{date}}", today)}
                   </div>
                 </div>
               </div>
@@ -205,11 +208,11 @@ export default async function Page({ searchParams }) {
                   flexWrap: "wrap",
                 }}
               >
-                <Link href="/dashboard" className="btn" title="Povratak na Dashboard">
-                  🏠 Dashboard
+                <Link href="/dashboard" className="btn" title={t("narudzbenice.backToDashboard")}>
+                  🏠 {t("common.dashboard")}
                 </Link>
                 <Link href="/projects" className="btn">
-                  Projekti
+                  {t("narudzbenice.projects")}
                 </Link>
               </div>
             </div>
@@ -233,13 +236,13 @@ export default async function Page({ searchParams }) {
                       flexWrap: "wrap",
                     }}
                   >
-                    <span className="muted">Klijent (naručilac):</span>
+                    <span className="muted">{t("narudzbenice.clientLabel")}</span>
                     <select
                       name="klijent_id"
                       defaultValue={klijentId ? String(klijentId) : ""}
                       style={inputStyle}
                     >
-                      <option value="">Svi</option>
+                      <option value="">{t("narudzbenice.filterAll")}</option>
                       {clients.map((c) => (
                         <option key={c.klijent_id} value={String(c.klijent_id)}>
                           {c.naziv_klijenta}
@@ -252,7 +255,7 @@ export default async function Page({ searchParams }) {
                       className="btn"
                       style={{ minWidth: 110 }}
                     >
-                      Filtriraj
+                      {t("narudzbenice.filterApply")}
                     </button>
                     <Link
                       href={`/narudzbenice${qsReset}`}
@@ -263,13 +266,13 @@ export default async function Page({ searchParams }) {
                         textAlign: "center",
                       }}
                     >
-                      Reset
+                      {t("narudzbenice.reset")}
                     </Link>
                   </div>
 
                   <div className="pill">
-                    <span style={{ opacity: 0.85 }}>Grupisanje:</span>
-                    <b>Klijent × Dobavljač</b>
+                    <span style={{ opacity: 0.85 }}>{t("narudzbenice.grouping")}</span>
+                    <b>{t("narudzbenice.groupingType")}</b>
                   </div>
                 </div>
               </form>
@@ -284,8 +287,8 @@ export default async function Page({ searchParams }) {
             <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", flexWrap: "wrap", gap: 8 }}>
               <ExportExcelButton
                 filename="narudzbenice"
-                sheetName="Narudžbenice"
-                headers={["Klijent", "Klijent ID", "Dobavljač", "Dobavljač ID", "Država", "Email", "Vrijednost (tekst)", "PO brojevi"]}
+                sheetName={t("narudzbenice.excelSheetName")}
+                headers={[t("narudzbenice.colClient"), t("narudzbenice.colClientId"), t("narudzbenice.colSupplier"), t("narudzbenice.colSupplierId"), t("narudzbenice.colCountry"), t("narudzbenice.colEmail"), t("narudzbenice.colValueText"), t("narudzbenice.colPONumbers")]}
                 rows={list.map((g) => [
                   g.klijent_naziv ?? "",
                   g.klijent_id ?? "",
@@ -301,12 +304,12 @@ export default async function Page({ searchParams }) {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Klijent</th>
-                  <th>Dobavljač</th>
-                  <th>Država</th>
-                  <th>Vrijednost</th>
-                  <th>PO brojevi</th>
-                  <th style={{ width: 160 }}>Akcija</th>
+                  <th>{t("narudzbenice.colClient")}</th>
+                  <th>{t("narudzbenice.colSupplier")}</th>
+                  <th>{t("narudzbenice.colCountry")}</th>
+                  <th>{t("narudzbenice.colValue")}</th>
+                  <th>{t("narudzbenice.colPONumbers")}</th>
+                  <th style={{ width: 160 }}>{t("narudzbenice.action")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -360,7 +363,7 @@ export default async function Page({ searchParams }) {
                           className="btn"
                           href={`/narudzbenice/preview${previewQs}`}
                         >
-                          Preview
+                          {t("narudzbenice.preview")}
                         </Link>
                       </td>
                     </tr>
@@ -370,9 +373,7 @@ export default async function Page({ searchParams }) {
                 {list.length === 0 && (
                   <tr>
                     <td colSpan={6} style={{ opacity: 0.7, padding: 18 }}>
-                      Nema narudžbenica za zadati filter. (Dobavljač trošak mora
-                      biti u projektni_troskovi: dobavljac_id ili
-                      entity_type='vendor' + entity_id.)
+                      {t("narudzbenice.emptyMessage")}
                     </td>
                   </tr>
                 )}
@@ -381,8 +382,7 @@ export default async function Page({ searchParams }) {
           </div>
 
           <div style={{ marginTop: 12, opacity: 0.75, fontSize: 12 }}>
-            Savjet: izaberi klijenta ako želiš objedinjenu narudžbenicu za više
-            projekata tog naručioca.
+            {t("narudzbenice.hint")}
           </div>
         </div>
       </div>

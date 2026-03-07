@@ -57,8 +57,7 @@ export default function BankaVsKnjigePage() {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
                   <div className="brandTitle">{t("bankaVsKnjige.title")}</div>

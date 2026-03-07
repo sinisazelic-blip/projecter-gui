@@ -204,9 +204,9 @@ export default function PonudaPreviewClient() {
   const buyerName = useMemo(
     () =>
       String(
-        klijent?.naziv_klijenta ?? (lang === "EN" ? "Buyer" : "Kupac"),
+        klijent?.naziv_klijenta ?? t("ponude.previewBuyerFallback"),
       ).trim(),
-    [klijent, lang],
+    [klijent, t],
   );
   const buyerAddr = useMemo(
     () =>
@@ -229,48 +229,32 @@ export default function PonudaPreviewClient() {
   }, [ponuda?.broj_ponude, buyerName]);
 
   const mailtoBody = useMemo(() => {
-    const isEn = lang === "EN";
+    const broj = ponuda?.broj_ponude ?? "";
+    const issueDate = fmtDDMMYYYYFromISO(ponuda?.datum_izdavanja ?? null);
+    const validUntil = fmtDDMMYYYYFromISO(ponuda?.datum_vazenja ?? null);
     const lines: string[] = [
-      isEn
-        ? `Quote ${ponuda?.broj_ponude ?? ""}`
-        : `Ponuda ${ponuda?.broj_ponude ?? ""}`,
-      isEn
-        ? `Issue date: ${fmtDDMMYYYYFromISO(ponuda?.datum_izdavanja ?? null)}`
-        : `Datum izdavanja: ${fmtDDMMYYYYFromISO(ponuda?.datum_izdavanja ?? null)}`,
-      isEn
-        ? `Valid until: ${fmtDDMMYYYYFromISO(ponuda?.datum_vazenja ?? null)}`
-        : `Važi do: ${fmtDDMMYYYYFromISO(ponuda?.datum_vazenja ?? null)}`,
+      (t("ponude.previewMailtoQuote") || "").replace("{{broj}}", broj),
+      (t("ponude.previewMailtoIssueDate") || "").replace("{{date}}", issueDate),
+      (t("ponude.previewMailtoValidUntil") || "").replace("{{date}}", validUntil),
       "",
-      isEn ? "Items:" : "Stavke:",
+      t("ponude.previewMailtoItems"),
       ...stavke.map(
         (s) =>
           `- ${s.naziv_snapshot}: ${s.kolicina} x ${s.cijena_jedinicna} ${displayCcy} = ${fmtMoney(Number(s.line_total), displayCcy)}`,
       ),
       "",
-      isEn
-        ? `Subtotal: ${fmtMoney(osnovica, displayCcy)}`
-        : `Osnovica: ${fmtMoney(osnovica, displayCcy)}`,
+      (t("ponude.previewMailtoSubtotal") || "").replace("{{amount}}", fmtMoney(osnovica, displayCcy)),
       ...(popustKm > 0
-        ? [
-            isEn
-              ? `Discount: −${fmtMoney(popustKm, displayCcy)}`
-              : `Popust: −${fmtMoney(popustKm, displayCcy)}`,
-          ]
+        ? [(t("ponude.previewMailtoDiscount") || "").replace("{{amount}}", fmtMoney(popustKm, displayCcy))]
         : []),
       ...(pdvRate > 0
-        ? [
-            isEn
-              ? `VAT (17%): ${fmtMoney(pdvIznos, displayCcy)}`
-              : `PDV (17%): ${fmtMoney(pdvIznos, displayCcy)}`,
-          ]
+        ? [(t("ponude.previewMailtoVat") || "").replace("{{amount}}", fmtMoney(pdvIznos, displayCcy))]
         : []),
-      isEn
-        ? `Total due: ${fmtMoney(ukupnoZaPlacanje, displayCcy)}`
-        : `Ukupno za plaćanje: ${fmtMoney(ukupnoZaPlacanje, displayCcy)}`,
+      (t("ponude.previewMailtoTotalDue") || "").replace("{{amount}}", fmtMoney(ukupnoZaPlacanje, displayCcy)),
     ];
     return encodeURIComponent(lines.join("\r\n"));
   }, [
-    lang,
+    t,
     ponuda,
     stavke,
     osnovica,
@@ -284,13 +268,15 @@ export default function PonudaPreviewClient() {
   const mailtoHref = useMemo(() => {
     const email = klijent?.email?.trim();
     if (!email) return null;
-    const subj = encodeURIComponent(`Ponuda ${ponuda?.broj_ponude ?? ""}`);
+    const subj = encodeURIComponent(
+      (t("ponude.previewMailtoSubject") || "").replace("{{broj}}", ponuda?.broj_ponude ?? ""),
+    );
     return `mailto:${email}?subject=${subj}&body=${mailtoBody}`;
-  }, [klijent?.email, ponuda?.broj_ponude, mailtoBody]);
+  }, [klijent?.email, ponuda?.broj_ponude, mailtoBody, t]);
 
   useEffect(() => {
     if (!Number.isFinite(id) || id <= 0) {
-      setError("Neispravan ID ponude");
+      setError(t("ponude.invalidId"));
       setLoading(false);
       return;
     }
@@ -301,20 +287,20 @@ export default function PonudaPreviewClient() {
         const res = await fetch(`/api/ponude/${id}`, { cache: "no-store" });
         const data = await res.json();
         if (!res.ok || !data?.ok) {
-          throw new Error(data?.error || "Greška pri učitavanju ponude");
+          throw new Error(data?.error || t("ponude.loadError"));
         }
         setPonuda(data.ponuda);
         setStavke(Array.isArray(data.stavke) ? data.stavke : []);
         setKlijent(data.klijent ?? null);
         setFirma(data.firma ?? null);
       } catch (err: any) {
-        setError(err?.message || "Greška");
+        setError(err?.message || t("common.error"));
       } finally {
         setLoading(false);
       }
     }
     load();
-  }, [id]);
+  }, [id, t]);
 
   function handlePrint() {
     const prevTitle = document.title;
@@ -347,10 +333,7 @@ export default function PonudaPreviewClient() {
         .save();
     } catch (err: any) {
       console.error("PDF greška:", err);
-      alert(
-        err?.message ||
-          "Greška pri generisanju PDF-a. Pokušaj Štampaj → Save as PDF.",
-      );
+      alert(err?.message || t("ponude.pdfError"));
     }
   }
 
@@ -358,7 +341,7 @@ export default function PonudaPreviewClient() {
     return (
       <div className="container">
         <div style={{ padding: 40, textAlign: "center", opacity: 0.7 }}>
-          Učitavanje...
+          {t("ponude.loading")}
         </div>
       </div>
     );
@@ -375,7 +358,7 @@ export default function PonudaPreviewClient() {
             color: "#ff3b30",
           }}
         >
-          ⚠️ {error || "Ponuda nije pronađena"}
+          ⚠️ {error || t("ponude.notFound")}
         </div>
         <div style={{ marginTop: 20 }}>
           <Link href="/inicijacije" className="btn">
@@ -539,7 +522,7 @@ export default function PonudaPreviewClient() {
                     borderColor: "rgba(168, 85, 247, 0.4)",
                     fontWeight: 600,
                   }}
-                  title={`Preuzmi PDF: ${pdfFilename}.pdf`}
+                  title={(t("ponude.downloadPdfTitle") || "").replace("{{filename}}", pdfFilename)}
                 >
                   💾 {t("ponude.saveAsPdf")}
                 </button>
@@ -580,35 +563,27 @@ export default function PonudaPreviewClient() {
                 </div>
                 <div>
                   <h1 className="docTitle">
-                    {lang === "EN" ? "QUOTE" : "PONUDA/PREDRAČUN"}
+                    {t("ponude.previewDocTitle")}
                   </h1>
                   <div className="meta">
                     <div className="line">
-                      <div className="k kStrong">
-                        {lang === "EN" ? "Quote No." : "Broj ponude"}
-                      </div>
+                      <div className="k kStrong">{t("ponude.previewQuoteNo")}</div>
                       <div className="v">{ponuda.broj_ponude}</div>
                     </div>
                     <div className="line">
-                      <div className="k">
-                        {lang === "EN" ? "Issue date" : "Datum izdavanja"}
-                      </div>
+                      <div className="k">{t("ponude.previewIssueDate")}</div>
                       <div className="v">
                         {fmtDDMMYYYYFromISO(ponuda.datum_izdavanja)}
                       </div>
                     </div>
                     <div className="line">
-                      <div className="k">
-                        {lang === "EN" ? "Valid until" : "Važi do"}
-                      </div>
+                      <div className="k">{t("ponude.previewValidUntil")}</div>
                       <div className="v">
                         {fmtDDMMYYYYFromISO(ponuda.datum_vazenja)}
                       </div>
                     </div>
                     <div className="line">
-                      <div className="k">
-                        {lang === "EN" ? "Currency" : "Valuta"}
-                      </div>
+                      <div className="k">{t("ponude.previewCurrency")}</div>
                       <div className="v">{displayCcy}</div>
                     </div>
                   </div>
@@ -620,18 +595,18 @@ export default function PonudaPreviewClient() {
               <div className="cols2">
                 <div>
                   <div className="blockTitle">
-                    {lang === "EN" ? "LEGAL ENTITY" : "PRAVNO LICE"}
+                    {t("ponude.previewLegalEntity")}
                   </div>
                   <div className="addr">
                     <div className="name">{sellerName}</div>
                     {sellerAddr && <div>{sellerAddr}</div>}
                     <div className="muted">
-                      {lang === "EN" ? "Tax ID:" : "PIB/JIB:"} {sellerTax}
+                      {t("ponude.previewTaxId")} {sellerTax}
                     </div>
                     {formattedBankAccounts.length > 0 && (
                       <div className="bankList">
                         <div style={{ fontWeight: 700, marginTop: 6 }}>
-                          {lang === "EN" ? "Bank accounts:" : "Bankovni računi:"}
+                          {t("ponude.previewBankAccounts")}
                         </div>
                         {formattedBankAccounts.map((line, i) => (
                           <div key={i} className="bankLine">
@@ -644,14 +619,14 @@ export default function PonudaPreviewClient() {
                 </div>
                 <div>
                   <div className="blockTitle">
-                    {lang === "EN" ? "CLIENT" : "KLIJENT/NARUČILAC"}
+                    {t("ponude.previewClient")}
                   </div>
                   <div className="addr">
                     <div className="name">{buyerName}</div>
                     {buyerAddr && <div>{buyerAddr}</div>}
                     {klijent?.porezni_id && (
                       <div className="muted">
-                        {lang === "EN" ? "Tax ID:" : "PIB"} {klijent.porezni_id}
+                        {t("ponude.previewTaxId")} {klijent.porezni_id}
                       </div>
                     )}
                   </div>
@@ -663,18 +638,10 @@ export default function PonudaPreviewClient() {
                   <thead>
                     <tr>
                       <th>#</th>
-                      <th>
-                        {lang === "EN"
-                          ? "SERVICE / PROJECT"
-                          : "USLUGA / PROJEKAT"}
-                      </th>
-                      <th className="num">{lang === "EN" ? "Qty" : "KOL."}</th>
-                      <th className="num">
-                        {lang === "EN" ? "Unit price" : "JED. CIJENA"}
-                      </th>
-                      <th className="num">
-                        {lang === "EN" ? "Total" : "UKUPNO"}
-                      </th>
+                      <th>{t("ponude.previewServiceProject")}</th>
+                      <th className="num">{t("ponude.previewQty")}</th>
+                      <th className="num">{t("ponude.previewUnitPrice")}</th>
+                      <th className="num">{t("ponude.previewTotal")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -703,24 +670,18 @@ export default function PonudaPreviewClient() {
               <div className="totalsRow">
                 <div className="totalsBox">
                   <div className="totLine">
-                    <span className="k">
-                      {lang === "EN" ? "Subtotal" : "Osnovica"}
-                    </span>
+                    <span className="k">{t("ponude.previewSubtotal")}</span>
                     <span className="v">{fmtMoney(osnovica, displayCcy)}</span>
                   </div>
                   {popustKm > 0 && (
                     <div className="totLine">
-                      <span className="k">
-                        {lang === "EN" ? "Discount" : "Popust"}
-                      </span>
+                      <span className="k">{t("ponude.previewDiscount")}</span>
                       <span className="v">−{fmtMoney(popustKm, displayCcy)}</span>
                     </div>
                   )}
                   <div className="totLine">
                     <span className="k">
-                      {lang === "EN"
-                        ? `VAT (${(pdvRate * 100).toFixed(0)}%)`
-                        : `PDV (${(pdvRate * 100).toFixed(0)}%)`}
+                      {(t("ponude.previewVatPct") || "").replace("{{pct}}", (pdvRate * 100).toFixed(0))}
                     </span>
                     <span className="v">
                       {pdvRate > 0
@@ -729,9 +690,7 @@ export default function PonudaPreviewClient() {
                     </span>
                   </div>
                   <div className="totLine total">
-                    <span className="k">
-                      {lang === "EN" ? "Total due" : "Ukupno za plaćanje"}
-                    </span>
+                    <span className="k">{t("ponude.previewTotalDue")}</span>
                     <span className="v">{fmtMoney(ukupnoZaPlacanje, displayCcy)}</span>
                   </div>
                 </div>
@@ -746,16 +705,13 @@ export default function PonudaPreviewClient() {
                     lineHeight: 1.25,
                   }}
                 >
-                  VAT exemption: In accordance with the VAT Law, this service
-                  is exempt from VAT pursuant to Article 27, paragraph 1.
+                  {t("ponude.previewVatExempt")}
                 </div>
               )}
 
               <div className="footer">
                 <div>
-                  {lang === "EN"
-                    ? "This quote was generated electronically and is valid without signature and stamp."
-                    : "Ponuda je generisana elektronskim putem i važeća je bez pečata i potpisa."}
+                  {t("ponude.previewFooterGenerated")}
                 </div>
                 <div className="fluxaSig">
                   <img src="/fluxa/Icon.png" alt="FLUXA" />

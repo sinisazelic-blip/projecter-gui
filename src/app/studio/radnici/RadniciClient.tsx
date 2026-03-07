@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { RadnikRow } from "./page";
 import { setRadnikActive } from "./actions";
+import { useTranslation } from "@/components/LocaleProvider";
 
 type ProjekatLink = { projekat_id: number; radni_naziv: string };
 
@@ -140,19 +141,13 @@ const tableScrollWrapStyle: React.CSSProperties = {
   borderRadius: 16,
 };
 
-const logoStyle: React.CSSProperties = {
-  width: 90,
-  height: 35,
-  objectFit: "contain",
-  opacity: 0.95,
-};
-
 export default function RadniciClient({
   initialItems,
 }: {
   initialItems: RadnikRow[];
 }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [isPending, startTransition] = useTransition();
 
   const [q, setQ] = useState("");
@@ -231,7 +226,7 @@ export default function RadniciClient({
   function badgeStatus(active: boolean) {
     return (
       <span className="badge" data-status={active ? "active" : "closed"}>
-        {active ? "Aktivno" : "Neaktivno"}
+        {active ? t("studioRadnici.active") : t("studioRadnici.inactive")}
       </span>
     );
   }
@@ -410,7 +405,6 @@ export default function RadniciClient({
       <div style={topbarStyle()}>
         <div style={{ minWidth: 280 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <img src="/fluxa/logo-light.png" alt="Fluxa" style={logoStyle} />
             <h1
               style={{
                 fontSize: 22,
@@ -419,15 +413,15 @@ export default function RadniciClient({
                 margin: 0,
               }}
             >
-              Radnici
+              {t("studioRadnici.title")}
             </h1>
           </div>
           <div style={{ marginTop: 6, color: "var(--muted)", fontSize: 14 }}>
-            Klikni red da ga označiš, pa koristi <b>Promijeni</b> /{" "}
-            <b>Obriši</b>.
+            {t("studioRadnici.hintClick")} <b>{t("studioRadnici.change")}</b> /{" "}
+            <b>{t("studioRadnici.hintChangeDelete")}</b>.
             <span style={{ opacity: 0.9 }}>
               {" "}
-              "Obriši" = deaktiviraj (istorija ostaje).
+              {t("studioRadnici.hintDeleteMeaning")}
             </span>
           </div>
         </div>
@@ -446,7 +440,7 @@ export default function RadniciClient({
             disabled={isPending}
             style={btnDisabled(isPending)}
           >
-            <span style={{ marginRight: 6 }}>➕</span> Novi
+            <span style={{ marginRight: 6 }}>➕</span> {t("studioRadnici.new")}
           </button>
 
           <button
@@ -454,9 +448,9 @@ export default function RadniciClient({
             onClick={openEdit}
             disabled={!selectedItem || isPending}
             style={btnDisabled(!selectedItem || isPending)}
-            title={!selectedItem ? "Prvo odaberi red" : "Promijeni"}
+            title={!selectedItem ? t("studioRadnici.selectFirst") : t("studioRadnici.change")}
           >
-            <span style={{ marginRight: 6 }}>✏️</span> Promijeni
+            <span style={{ marginRight: 6 }}>✏️</span> {t("studioRadnici.change")}
           </button>
 
           <button
@@ -466,20 +460,20 @@ export default function RadniciClient({
             style={btnDisabled(!selectedItem || isPending)}
             title={
               !selectedItem
-                ? "Prvo odaberi red"
+                ? t("studioRadnici.selectFirst")
                 : selectedIsActive
-                  ? "Deaktiviraj"
-                  : "Aktiviraj"
+                  ? t("studioRadnici.deactivate")
+                  : t("studioRadnici.activate")
             }
           >
             <span style={{ marginRight: 6 }}>
               {selectedIsActive ? "🗑️" : "✅"}
             </span>
-            {selectedIsActive ? "Obriši" : "Aktiviraj"}
+            {selectedIsActive ? t("studioRadnici.delete") : t("studioRadnici.activate")}
           </button>
 
           <button className="btn" onClick={onClosePage}>
-            <span style={{ marginRight: 6 }}>✖</span> Zatvori
+            <span style={{ marginRight: 6 }}>✖</span> {t("studioRadnici.close")}
           </button>
         </div>
       </div>
@@ -505,7 +499,7 @@ export default function RadniciClient({
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Traži (ime, prezime, email, telefon, JIB)…"
+              placeholder={t("studioRadnici.searchPlaceholder")}
               style={{ width: 420, maxWidth: "100%" }}
             />
 
@@ -524,19 +518,19 @@ export default function RadniciClient({
                 onChange={(e) => setShowInactive(e.target.checked)}
                 style={{ width: 16, height: 16 }}
               />
-              Prikaži deaktivirane
+              {t("studioRadnici.showInactive")}
             </label>
           </div>
 
           <div style={{ color: "var(--muted)", fontSize: 14 }}>
             {showInactive ? (
               <>
-                Aktivni: <b style={{ color: "var(--text)" }}>{counts.active}</b>{" "}
-                / Ukupno: <b style={{ color: "var(--text)" }}>{counts.total}</b>
+                {t("studioRadnici.activeCount")}: <b style={{ color: "var(--text)" }}>{counts.active}</b>{" "}
+                / {t("studioRadnici.totalCount")}: <b style={{ color: "var(--text)" }}>{counts.total}</b>
               </>
             ) : (
               <>
-                Aktivni: <b style={{ color: "var(--text)" }}>{counts.active}</b>
+                {t("studioRadnici.activeCount")}: <b style={{ color: "var(--text)" }}>{counts.active}</b>
               </>
             )}
           </div>
@@ -563,11 +557,11 @@ export default function RadniciClient({
         <table className="table">
           <thead>
             <tr>
-              <th>Ime i prezime</th>
-              <th>Kontakt</th>
-              <th>Datum rođenja</th>
-              <th>JIB</th>
-              <th>Status</th>
+              <th>{t("studioRadnici.colImePrezime")}</th>
+              <th>{t("studioRadnici.colKontakt")}</th>
+              <th>{t("studioRadnici.colDatumRodjenja")}</th>
+              <th>{t("studioRadnici.colJib")}</th>
+              <th>{t("studioRadnici.colStatus")}</th>
             </tr>
           </thead>
 
@@ -575,7 +569,7 @@ export default function RadniciClient({
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={5} style={{ color: "var(--muted)", padding: 16 }}>
-                  Nema radnika za prikaz.
+                  {t("studioRadnici.noWorkers")}
                 </td>
               </tr>
             ) : (
@@ -597,7 +591,7 @@ export default function RadniciClient({
                     onDoubleClick={() => openEditForItem(it)}
                     style={subtleRowStyle(isSelected)}
                     data-closed={isActive ? "0" : "1"}
-                    title="Klik za selekciju, dupli klik za promjenu"
+                    title={t("studioRadnici.rowTitle")}
                   >
                     <td className="cell-wrap">
                       <div
@@ -701,8 +695,8 @@ export default function RadniciClient({
                 <div>
                   <div style={{ fontSize: 20, fontWeight: 700 }}>
                     {modalMode === "new"
-                      ? "Novi radnik"
-                      : "Promijeni radnika"}
+                      ? t("studioRadnici.modalNew")
+                      : t("studioRadnici.modalEdit")}
                   </div>
                   <div
                     style={{
@@ -711,7 +705,7 @@ export default function RadniciClient({
                       fontSize: 15,
                     }}
                   >
-                    Šifrarnik radnika (bez brisanja — samo deaktivacija).
+                    {t("studioRadnici.modalSubtitle")}
                   </div>
                 </div>
               </div>
@@ -741,7 +735,7 @@ export default function RadniciClient({
                       marginBottom: 8,
                     }}
                   >
-                    Ime (obavezno)
+                    {t("studioRadnici.labelIme")}
                   </div>
                   <input
                     name="ime"
@@ -749,7 +743,7 @@ export default function RadniciClient({
                     onChange={(e) =>
                       setForm((s) => ({ ...s, ime: e.target.value }))
                     }
-                    placeholder="npr. Muhamed"
+                    placeholder={t("studioRadnici.placeholderIme")}
                     autoFocus
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
@@ -764,7 +758,7 @@ export default function RadniciClient({
                       marginBottom: 8,
                     }}
                   >
-                    Prezime (obavezno)
+                    {t("studioRadnici.labelPrezime")}
                   </div>
                   <input
                     name="prezime"
@@ -772,7 +766,7 @@ export default function RadniciClient({
                     onChange={(e) =>
                       setForm((s) => ({ ...s, prezime: e.target.value }))
                     }
-                    placeholder="npr. Bahonjić"
+                    placeholder={t("studioRadnici.placeholderPrezime")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -786,7 +780,7 @@ export default function RadniciClient({
                       marginBottom: 8,
                     }}
                   >
-                    Datum rođenja
+                    {t("studioRadnici.labelDatumRodjenja")}
                   </div>
                   <input
                     name="datum_rodjenja"
@@ -797,7 +791,7 @@ export default function RadniciClient({
                       datumRef.current = v;
                       setForm((s) => ({ ...s, datum_rodjenja: v }));
                     }}
-                    title="Datum rođenja"
+                    title={t("studioRadnici.labelDatumRodjenja")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -811,7 +805,7 @@ export default function RadniciClient({
                       marginBottom: 8,
                     }}
                   >
-                    Adresa
+                    {t("studioRadnici.labelAdresa")}
                   </div>
                   <input
                     name="adresa"
@@ -819,7 +813,7 @@ export default function RadniciClient({
                     onChange={(e) =>
                       setForm((s) => ({ ...s, adresa: e.target.value }))
                     }
-                    placeholder="Ulica i broj"
+                    placeholder={t("studioRadnici.placeholderAdresa")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -833,7 +827,7 @@ export default function RadniciClient({
                       marginBottom: 8,
                     }}
                   >
-                    Broj telefona
+                    {t("studioRadnici.labelBrojTelefona")}
                   </div>
                   <input
                     name="broj_telefona"
@@ -841,7 +835,7 @@ export default function RadniciClient({
                     onChange={(e) =>
                       setForm((s) => ({ ...s, broj_telefona: e.target.value }))
                     }
-                    placeholder="+387 ..."
+                    placeholder={t("studioRadnici.placeholderTelefon")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -855,7 +849,7 @@ export default function RadniciClient({
                       marginBottom: 8,
                     }}
                   >
-                    Email
+                    {t("studioRadnici.labelEmail")}
                   </div>
                   <input
                     name="email"
@@ -864,7 +858,7 @@ export default function RadniciClient({
                     onChange={(e) =>
                       setForm((s) => ({ ...s, email: e.target.value }))
                     }
-                    placeholder="email@domena.com"
+                    placeholder={t("studioRadnici.placeholderEmail")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -878,7 +872,7 @@ export default function RadniciClient({
                       marginBottom: 8,
                     }}
                   >
-                    JIB
+                    {t("studioRadnici.labelJib")}
                   </div>
                   <input
                     name="jib"
@@ -886,7 +880,7 @@ export default function RadniciClient({
                     onChange={(e) =>
                       setForm((s) => ({ ...s, jib: e.target.value }))
                     }
-                    placeholder="Jedinstveni identifikacioni broj"
+                    placeholder={t("studioRadnici.placeholderJib")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -909,7 +903,7 @@ export default function RadniciClient({
                       fontWeight: 700,
                     }}
                   >
-                    Aktivan
+                    {t("studioRadnici.labelAktivan")}
                   </span>
                 </div>
 
@@ -921,7 +915,7 @@ export default function RadniciClient({
                       marginBottom: 8,
                     }}
                   >
-                    Opis
+                    {t("studioRadnici.labelOpis")}
                   </div>
                   <textarea
                     name="opis"
@@ -929,7 +923,7 @@ export default function RadniciClient({
                     onChange={(e) =>
                       setForm((s) => ({ ...s, opis: e.target.value }))
                     }
-                    placeholder="Interna napomena"
+                    placeholder={t("studioRadnici.placeholderOpis")}
                     className="input"
                     style={{
                       width: "100%",
@@ -952,7 +946,7 @@ export default function RadniciClient({
                     marginBottom: 10,
                   }}
                 >
-                  Sistem
+                  {t("studioRadnici.system")}
                 </div>
                 <div
                   style={{
@@ -963,7 +957,7 @@ export default function RadniciClient({
                 >
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 14 }}>
-                      ID
+                      {t("studioRadnici.id")}
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.radnik_id ?? "—"}
@@ -971,7 +965,7 @@ export default function RadniciClient({
                   </div>
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 14 }}>
-                      Kreirano
+                      {t("studioRadnici.created")}
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.created_at ? fmtDateTime(form.created_at) : "—"}
@@ -979,7 +973,7 @@ export default function RadniciClient({
                   </div>
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 14 }}>
-                      Ažurirano
+                      {t("studioRadnici.updated")}
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>
                       {form.updated_at ? fmtDateTime(form.updated_at) : "—"}
@@ -998,12 +992,12 @@ export default function RadniciClient({
                       textTransform: "uppercase",
                     }}
                   >
-                    Projekti na kojima je angažovan
+                    {t("studioRadnici.projectsEngaged")}
                   </div>
                   <div style={{ marginTop: 10 }}>
                     {radnikProjekti.length === 0 ? (
                       <span style={{ color: "var(--muted)", fontSize: 14 }}>
-                        Nema dodijeljenih faza na projektima (faze → radnici).
+                        {t("studioRadnici.noProjectsAssigned")}
                       </span>
                     ) : (
                       <ul
@@ -1070,7 +1064,7 @@ export default function RadniciClient({
                     onClick={goPrev}
                     disabled={isPending || !canPrev}
                     style={btnDisabled(isPending || !canPrev)}
-                    title="Prethodni"
+                    title={t("studioRadnici.prev")}
                   >
                     ◀
                   </button>
@@ -1080,11 +1074,11 @@ export default function RadniciClient({
                     onClick={goNext}
                     disabled={isPending || !canNext}
                     style={btnDisabled(isPending || !canNext)}
-                    title="Naredni"
+                    title={t("studioRadnici.next")}
                   >
-                  ▶
-                </button>
-              </div>
+                    ▶
+                  </button>
+                </div>
               ) : null}
 
               <button
@@ -1094,7 +1088,7 @@ export default function RadniciClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                Otkaži
+                {t("studioRadnici.cancel")}
               </button>
               <button
                 type="submit"
@@ -1102,7 +1096,7 @@ export default function RadniciClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                {isPending ? "Snima..." : "Snimi"}
+                {isPending ? t("studioRadnici.saving") : t("studioRadnici.save")}
               </button>
             </div>
             </form>
@@ -1126,8 +1120,8 @@ export default function RadniciClient({
               <div>
                 <div style={{ fontSize: 18, fontWeight: 800 }}>
                   {selectedIsActive
-                    ? "Deaktivirati radnika?"
-                    : "Aktivirati radnika?"}
+                    ? t("studioRadnici.confirmDeactivateTitle")
+                    : t("studioRadnici.confirmActivateTitle")}
                 </div>
                 <div
                   style={{ marginTop: 4, color: "var(--muted)", fontSize: 14 }}
@@ -1151,8 +1145,8 @@ export default function RadniciClient({
               }}
             >
               {selectedIsActive
-                ? "Radnik će biti sakriven iz liste aktivnih. Možeš ga vratiti kasnije."
-                : "Radnik će opet biti vidljiv u listi aktivnih."}
+                ? t("studioRadnici.confirmDeactivateBody")
+                : t("studioRadnici.confirmActivateBody")}
             </div>
 
             <div
@@ -1170,7 +1164,7 @@ export default function RadniciClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                Otkaži
+                {t("studioRadnici.cancel")}
               </button>
               <button
                 className="btn btn--active"
@@ -1179,10 +1173,10 @@ export default function RadniciClient({
                 style={btnDisabled(isPending)}
               >
                 {isPending
-                  ? "Radi..."
+                  ? t("studioRadnici.working")
                   : selectedIsActive
-                    ? "Deaktiviraj"
-                    : "Aktiviraj"}
+                    ? t("studioRadnici.deactivate")
+                    : t("studioRadnici.activate")}
               </button>
             </div>
           </div>

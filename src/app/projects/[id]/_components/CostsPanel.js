@@ -3,14 +3,22 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/components/LocaleProvider";
+import { getCurrencyForLocale } from "@/lib/i18n";
 import CostTypeAndEntityPicker from "./CostTypeAndEntityPicker";
 import CostRow from "./CostRow";
 
-const fmtKM = (v) => {
-  const n = Number(v);
+const EUR_TO_BAM = 1.95583;
+
+function fmtDisplay(amountKm, locale, t) {
+  const n = Number(amountKm);
   if (!Number.isFinite(n)) return "—";
-  return n.toFixed(2) + " KM";
-};
+  const ccy = getCurrencyForLocale(locale);
+  const loc = locale === "en" ? "en-GB" : "bs-BA";
+  const suffix = ccy === "EUR" ? ` ${t("projectDetail.currencyEur")}` : ` ${t("projectDetail.currencyKm")}`;
+  const val = ccy === "EUR" ? n / EUR_TO_BAM : n;
+  return val.toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + suffix;
+}
 
 const inputStyle = {
   width: "100%",
@@ -97,6 +105,7 @@ export default function CostsPanel({
   returnTo,
 }) {
   const router = useRouter();
+  const { t, locale } = useTranslation();
 
   const formRef = useRef(null);
   const opisRef = useRef(null);
@@ -104,8 +113,8 @@ export default function CostsPanel({
   const pid = project?.projekat_id ?? "";
   const safeReturnTo = returnTo || `/projects/${pid}`;
 
-  // ADD COST STATE (auto kurs)
-  const [valuta, setValuta] = useState("BAM");
+  // ADD COST STATE (auto kurs) — default valuta po lokalu (sr → BAM, en → EUR)
+  const [valuta, setValuta] = useState(() => (getCurrencyForLocale(locale) === "EUR" ? "EUR" : "BAM"));
 
   // ✅ UI datum (dd.mm.yyyy) — po Fluxa standardu
   const [datumUI, setDatumUI] = useState(() => todayDDMMYYYY());
@@ -312,7 +321,7 @@ export default function CostsPanel({
   return (
     <>
       <h2 style={{ fontSize: 18, marginTop: 18, marginBottom: 10, fontWeight: 800 }}>
-        Dodaj trošak
+        {t("projectDetail.addCostSectionTitle")}
       </h2>
 
       <form
@@ -391,14 +400,18 @@ export default function CostsPanel({
           }}
         >
           <div className="fieldWrap spanFull" style={{ gridColumn: "1 / span 1", minWidth: 200 }}>
-            <label className="fieldLabel">Tip + entitet</label>
+            <label className="fieldLabel">{t("projectDetail.tipEntity")}</label>
             <CostTypeAndEntityPicker
               value={{
                 tip_id: Number(tipId) || null,
                 entity_type: entity.entity_type,
                 entity_id: entity.entity_id,
               }}
-              tipLabel={(t) => prettyTipName(t?.tip_id, t?.naziv)}
+              tipLabel={(typeRow) => {
+                const id = Number(typeRow?.tip_id ?? typeRow?.id);
+                if (id >= 1 && id <= 4) return t(`projectDetail.costType${id}`);
+                return typeRow?.naziv ?? typeRow?.name ?? prettyTipName(id, typeRow?.naziv);
+              }}
               onChange={(v) => {
                 const nextTip = v?.tip_id ? String(v.tip_id) : "";
                 if (nextTip && nextTip !== tipId) setTipId(nextTip);
@@ -412,7 +425,7 @@ export default function CostsPanel({
           </div>
 
           <div className="fieldWrap" style={{ position: "relative" }}>
-            <label className="fieldLabel">Datum</label>
+            <label className="fieldLabel">{t("projectDetail.colDate")}</label>
             <div style={{ position: "relative", display: "inline-block", width: "100%" }}>
               <input
                 type="text"
@@ -420,14 +433,14 @@ export default function CostsPanel({
                 name="datum_ui"
                 value={datumUI}
                 onChange={(e) => setDatumUI(e.target.value)}
-                placeholder="dd.mm.yyyy"
+                placeholder={t("projectDetail.dateFormat")}
                 required
                 style={{ ...inputStyle, paddingRight: 44, width: "100%" }}
-                title="Datum (dd.mm.yyyy)"
+                title={t("projectDetail.dateFormatTitle")}
               />
-              <div
-                title="Izaberi datum"
-                aria-hidden="true"
+            <div
+              title={t("projectDetail.pickDate")}
+              aria-hidden="true"
                 style={{
                   position: "absolute",
                   right: 6,
@@ -454,7 +467,7 @@ export default function CostsPanel({
                   const human = isoToDDMMYYYY(iso);
                   if (human) setDatumUI(human);
                 }}
-                aria-label="Izaberi datum"
+                aria-label={t("projectDetail.pickDate")}
                 style={{
                   position: "absolute",
                   right: 6,
@@ -472,19 +485,19 @@ export default function CostsPanel({
           </div>
 
           <div className="fieldWrap">
-            <label className="fieldLabel">Opis</label>
+            <label className="fieldLabel">{t("projectDetail.fieldOpis")}</label>
             <input
               ref={opisRef}
               type="text"
               name="opis"
-              placeholder="Opis troška"
+              placeholder={t("projectDetail.fieldOpisPlaceholder")}
               required
               style={inputStyle}
             />
           </div>
 
           <div className="fieldWrap">
-            <label className="fieldLabel">Valuta</label>
+            <label className="fieldLabel">{t("projectDetail.fieldValuta")}</label>
             <select
               name="valuta"
               value={valuta}
@@ -498,7 +511,7 @@ export default function CostsPanel({
           </div>
 
           <div className="fieldWrap">
-            <label className="fieldLabel">Iznos</label>
+            <label className="fieldLabel">{t("projectDetail.fieldIznos")}</label>
             <input
               type="number"
               step="0.01"
@@ -513,7 +526,7 @@ export default function CostsPanel({
           </div>
 
           <div className="fieldWrap">
-            <label className="fieldLabel">Kurs</label>
+            <label className="fieldLabel">{t("projectDetail.fieldKurs")}</label>
             <input
               type="number"
               step="0.000001"
@@ -527,23 +540,23 @@ export default function CostsPanel({
           </div>
 
           <div className="fieldWrap">
-            <label className="fieldLabel">Status</label>
+            <label className="fieldLabel">{t("projectDetail.fieldStatus")}</label>
             <select
               name="status"
               value={statusAdd}
               onChange={(e) => setStatusAdd(e.target.value)}
               style={inputStyle}
             >
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
+              <option value="PLANIRANO">{t("projectDetail.statusPlanned")}</option>
+              <option value="NASTALO">{t("projectDetail.statusOccurred")}</option>
+              <option value="PLACENO">{t("projectDetail.statusPaid")}</option>
             </select>
           </div>
         </div>
 
         {!datumISO && (
           <div style={{ marginTop: 8, fontSize: 12, color: "rgba(255,80,80,.95)" }}>
-            Neispravan datum. Format: <strong>dd.mm.yyyy</strong>
+            {t("projectDetail.invalidDate")} <strong>{t("projectDetail.dateFormat")}</strong>
           </div>
         )}
 
@@ -559,22 +572,22 @@ export default function CostsPanel({
         >
           <div style={{ fontSize: 13, opacity: 0.88 }}>
             <span>
-              ≈ <strong>{Number.isFinite(previewKM) ? fmtKM(previewKM) : "—"}</strong>
+              ≈ <strong>{Number.isFinite(previewKM) ? fmtDisplay(previewKM, locale, t) : "—"}</strong>
             </span>
             {loadingRate && valuta !== "BAM" && (
-              <span className="muted" style={{ marginLeft: 8 }}>Učitavam kurs…</span>
+              <span className="muted" style={{ marginLeft: 8 }}>{t("projectDetail.loadingRate")}</span>
             )}
             {kursSource === "manual" && valuta !== "BAM" && (
-              <span className="muted" style={{ marginLeft: 8 }}>Kurs ručni</span>
+              <span className="muted" style={{ marginLeft: 8 }}>{t("projectDetail.kursManual")}</span>
             )}
           </div>
           <button
             type="submit"
             className="addCostBtn"
             disabled={!datumISO}
-            title={!datumISO ? "Unesi validan datum (dd.mm.yyyy)" : "Dodaj trošak"}
+            title={!datumISO ? t("projectDetail.validDateTitle") : t("projectDetail.addCostTitle")}
           >
-            + Dodaj trošak
+            {t("projectDetail.addCost")}
           </button>
         </div>
       </form>
@@ -588,23 +601,23 @@ export default function CostsPanel({
         }}
       >
         <h2 style={{ fontSize: 18, marginTop: 18, marginBottom: 10 }}>
-          Troškovi (zadnjih 200)
+          {t("projectDetail.costsSectionTitle")}
         </h2>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <span className="muted">Stornirani:</span>
+          <span className="muted">{t("projectDetail.stornirani")}</span>
           {showStornirano
             ? <Link
                 href={`/projects/${project.projekat_id}`}
                 className="project-link"
               >
-                sakrij
+                {t("projectDetail.hideStornirani")}
               </Link>
             : <Link
                 href={`/projects/${project.projekat_id}?stornirano=1`}
                 className="project-link"
               >
-                prikaži
+                {t("projectDetail.showStornirani")}
               </Link>}
         </div>
       </div>
@@ -612,11 +625,11 @@ export default function CostsPanel({
       <table className="table">
         <thead>
           <tr>
-            <th>Datum</th>
-            <th>Opis</th>
-            <th className="num">Iznos</th>
-            <th>Status</th>
-            <th>Akcije</th>
+            <th>{t("projectDetail.colDate")}</th>
+            <th>{t("projectDetail.colOpis")}</th>
+            <th className="num">{t("projectDetail.colAmount")}</th>
+            <th>{t("projectDetail.colStatus")}</th>
+            <th>{t("projectDetail.colActions")}</th>
           </tr>
         </thead>
 
@@ -624,7 +637,7 @@ export default function CostsPanel({
           {costs.length === 0
             ? <tr>
                 <td colSpan={5} className="muted">
-                  Nema troškova za prikaz.
+                  {t("projectDetail.noCosts")}
                 </td>
               </tr>
             : costs.map((c) => (

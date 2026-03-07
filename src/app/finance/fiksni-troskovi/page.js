@@ -1,10 +1,18 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 import { query } from "@/lib/db";
-import { ExportExcelButton } from "@/components/ExportExcelButton";
+import FiksniTroskoviClient from "./FiksniTroskoviClient";
+import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
 
 export default async function FiksniTroskoviPage({ searchParams }) {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
+  const t = getT(locale);
+
   const sp = await Promise.resolve(searchParams);
   const q = (sp?.q ?? "").trim();
 
@@ -57,31 +65,28 @@ export default async function FiksniTroskoviPage({ searchParams }) {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Fiksni troškovi</div>
-                  <div className="brandSub">Finansije / Pretplate, zakupi, porezi</div>
+                  <div className="brandTitle">{t("fiksniTroskovi.title")}</div>
+                  <div className="brandSub">{t("fiksniTroskovi.subtitlePage")}</div>
                 </div>
               </div>
 
               <div className="actions">
-                <Link className="btn" href="/finance/cashflow" title="Hronologija plaćanja">
-                  CashFlow
+                <Link className="btn" href="/finance/cashflow" title={t("fiksniTroskovi.cashflowTitle")}>
+                  {t("cashflow.title")}
                 </Link>
                 <Link className="btn" href="/finance/fiksni-troskovi/raspored">
-                  Raspored
+                  {t("fiksniTroskovi.schedule")}
                 </Link>
-                <Link className="btn" href="/finance" title="Finansije">
-                  Finansije
-                </Link>
-                <Link className="btn" href="/dashboard" title="Dashboard">
-                  🏠 Dashboard
+                {locale === "sr" && (
+                  <Link className="btn" href="/finance" title={t("finance.title")}>
+                    {t("finance.title")}
+                  </Link>
+                )}
+                <Link className="btn" href="/dashboard" title={t("common.dashboard")}>
+                  🏠 {t("common.dashboard")}
                 </Link>
               </div>
             </div>
@@ -94,108 +99,35 @@ export default async function FiksniTroskoviPage({ searchParams }) {
       <div className="card tableCard" style={{ marginBottom: 14 }}>
         <form className="card-row" method="GET" style={{ gap: 12, padding: 16 }}>
           <div style={{ minWidth: 260 }}>
-            <div className="label">Pretraga</div>
+            <div className="label">{t("fiksniTroskovi.search")}</div>
             <input
               className="input"
               name="q"
               defaultValue={q}
-              placeholder="ID / naziv…"
+              placeholder={t("fiksniTroskovi.searchPlaceholder")}
             />
           </div>
           <div style={{ alignSelf: "flex-end", display: "flex", gap: 8 }}>
             <button className="btn btn--active" type="submit">
-              Primijeni
+              {t("fiksniTroskovi.apply")}
             </button>
             <Link className="btn" href="/finance/fiksni-troskovi">
-              Reset
+              {t("fiksniTroskovi.reset")}
             </Link>
           </div>
         </form>
       </div>
 
-      <div className="card tableCard">
-        <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <span style={{ fontWeight: 700, fontSize: 15 }}>Šifrarnik fiksnih troškova</span>
-          <span style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <span className="muted">Prikazano: {rows?.length ?? 0} (limit 200)</span>
-            <ExportExcelButton
-              filename="fiksni_troskovi"
-              sheetName="Fiksni troškovi"
-              headers={["ID", "Naziv", "Frekvencija", "Dan", "Datum dospijeća", "Iznos", "Valuta", "Zadnje plaćeno", "Aktivan"]}
-              rows={(rows ?? []).map((r) => [
-                r.trosak_id ?? "",
-                r.naziv_troska ?? "",
-                r.frekvencija ?? "",
-                r.dan_u_mjesecu ?? "",
-                r.datum_dospijeca ? String(r.datum_dospijeca).slice(0, 10) : "",
-                r.iznos ?? "",
-                r.valuta ?? "BAM",
-                r.zadnje_placeno ? String(r.zadnje_placeno).slice(0, 10) : "",
-                r.aktivan != null ? (r.aktivan ? "Da" : "Ne") : "",
-              ])}
-            />
-          </span>
-        </div>
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th style={{ width: 70 }}>ID</th>
-                <th>Naziv</th>
-                <th style={{ width: 100 }}>Frekvencija</th>
-                <th style={{ width: 70 }}>Dan</th>
-                <th style={{ width: 160 }}>Dospijeće</th>
-                <th style={{ width: 100 }} className="num">Iznos</th>
-                <th style={{ width: 130 }}>Zadnje plaćeno</th>
-                <th style={{ width: 70 }}>Aktivan</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows?.length
-                ? rows.map((r, idx) => (
-                    <tr key={r.trosak_id ?? idx}>
-                      <td>{r.trosak_id ?? "—"}</td>
-                      <td style={{ fontWeight: 700 }}>
-                        {r.naziv_troska ?? "—"}
-                      </td>
-                      <td>{r.frekvencija ?? "—"}</td>
-                      <td>{r.dan_u_mjesecu ?? "—"}</td>
-                      <td className="nowrap">
-                        {r.datum_dospijeca
-                          ? String(r.datum_dospijeca).slice(0, 10)
-                          : "—"}
-                      </td>
-                      <td className="num">
-                        {r.iznos != null
-                          ? `${Number(r.iznos).toFixed(2)} ${r.valuta ?? "BAM"}`
-                          : "—"}
-                      </td>
-                      <td className="nowrap">
-                        {r.zadnje_placeno
-                          ? String(r.zadnje_placeno).slice(0, 10)
-                          : "—"}
-                      </td>
-                      <td>{r.aktivan != null ? (r.aktivan ? "Da" : "—") : "—"}</td>
-                    </tr>
-                  ))
-                : <tr>
-                    <td colSpan={8} className="muted" style={{ padding: 16 }}>
-                      Nema rezultata.
-                    </td>
-                  </tr>}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <FiksniTroskoviClient initialRows={rows ?? []} />
 
       <div className="card" style={{ marginTop: 14 }}>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>Napomena</div>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{t("fiksniTroskovi.note")}</div>
         <div className="subtle" style={{ lineHeight: 1.6, fontSize: 13 }}>
-          Read-only prikaz. Raspored dospijeća je na{" "}
+          {t("fiksniTroskovi.noteReadOnly")}{" "}
           <Link href="/finance/fiksni-troskovi/raspored" className="btn" style={{ display: "inline-flex" }}>
-            Raspored
+            {t("fiksniTroskovi.scheduleLink")}
           </Link>
-          . Kasnije: CRUD + povezivanje plaćanja sa bank postinzima.
+          . {t("fiksniTroskovi.noteLater")}
         </div>
       </div>
         </div>

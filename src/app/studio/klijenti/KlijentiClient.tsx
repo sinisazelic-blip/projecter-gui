@@ -187,12 +187,13 @@ export default function KlijentiClient({
     : false;
 
   function badgeTip(tip: TipKlijenta) {
+    const label = tip === "agencija" ? t("studioKlijenti.tipAgencija") : t("studioKlijenti.tipDirektni");
     return (
       <span
         className="badge"
         data-status={tip === "agencija" ? "planned" : "draft"}
       >
-        {tip}
+        {label}
       </span>
     );
   }
@@ -200,7 +201,7 @@ export default function KlijentiClient({
   function badgeStatus(active: boolean) {
     return (
       <span className="badge" data-status={active ? "active" : "closed"}>
-        {active ? "Aktivno" : "Neaktivno"}
+        {active ? t("studioKlijenti.active") : t("studioKlijenti.inactive")}
       </span>
     );
   }
@@ -397,15 +398,15 @@ export default function KlijentiClient({
                 margin: 0,
               }}
             >
-              Klijenti
+              {t("studioKlijenti.title")}
             </h1>
           </div>
           <div style={{ marginTop: 6, color: "var(--muted)", fontSize: 14 }}>
-            Klikni red da ga označiš, pa koristi <b>Promijeni</b> /{" "}
-            <b>Obriši</b>.
+            {t("studioKlijenti.hintClick")} <b>{t("studioKlijenti.change")}</b> /{" "}
+            <b>{t("studioKlijenti.hintChangeDelete")}</b>.
             <span style={{ opacity: 0.9 }}>
               {" "}
-              “Obriši” = deaktiviraj (istorija ostaje).
+              {t("studioKlijenti.hintDeleteMeaning")}
             </span>
           </div>
         </div>
@@ -424,7 +425,7 @@ export default function KlijentiClient({
             disabled={isPending}
             style={btnDisabled(isPending)}
           >
-            <span style={{ marginRight: 6 }}>➕</span> Novi
+            <span style={{ marginRight: 6 }}>➕</span> {t("studioKlijenti.new")}
           </button>
 
           <button
@@ -432,9 +433,9 @@ export default function KlijentiClient({
             onClick={openEdit}
             disabled={!selectedItem || isPending}
             style={btnDisabled(!selectedItem || isPending)}
-            title={!selectedItem ? "Prvo odaberi red" : "Promijeni"}
+            title={!selectedItem ? t("studioKlijenti.selectFirst") : t("studioKlijenti.change")}
           >
-            <span style={{ marginRight: 6 }}>✏️</span> Promijeni
+            <span style={{ marginRight: 6 }}>✏️</span> {t("studioKlijenti.change")}
           </button>
 
           <button
@@ -444,20 +445,20 @@ export default function KlijentiClient({
             style={btnDisabled(!selectedItem || isPending)}
             title={
               !selectedItem
-                ? "Prvo odaberi red"
+                ? t("studioKlijenti.selectFirst")
                 : selectedIsActive
-                  ? "Deaktiviraj"
-                  : "Aktiviraj"
+                  ? t("studioKlijenti.deactivate")
+                  : t("studioKlijenti.activate")
             }
           >
             <span style={{ marginRight: 6 }}>
               {selectedIsActive ? "🗑️" : "✅"}
             </span>
-            {selectedIsActive ? "Obriši" : "Aktiviraj"}
+            {selectedIsActive ? t("studioKlijenti.delete") : t("studioKlijenti.activate")}
           </button>
 
           <button className="btn" onClick={onClosePage}>
-            <span style={{ marginRight: 6 }}>✖</span> Zatvori
+            <span style={{ marginRight: 6 }}>✖</span> {t("studioKlijenti.close")}
           </button>
         </div>
       </div>
@@ -489,7 +490,7 @@ export default function KlijentiClient({
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Traži (naziv, grad, email, porezni id, adresa)…"
+              placeholder={t("studioKlijenti.searchPlaceholder")}
               style={{ width: 420, maxWidth: "100%" }}
             />
 
@@ -508,19 +509,19 @@ export default function KlijentiClient({
                 onChange={(e) => setShowInactive(e.target.checked)}
                 style={{ width: 16, height: 16 }}
               />
-              Prikaži deaktivirane
+              {t("studioKlijenti.showInactive")}
             </label>
           </div>
 
           <div style={{ color: "var(--muted)", fontSize: 14 }}>
             {showInactive ? (
               <>
-                Aktivni: <b style={{ color: "var(--text)" }}>{counts.active}</b>{" "}
-                / Ukupno: <b style={{ color: "var(--text)" }}>{counts.total}</b>
+                {t("studioKlijenti.activeCount")}: <b style={{ color: "var(--text)" }}>{counts.active}</b>{" "}
+                / {t("studioKlijenti.totalCount")}: <b style={{ color: "var(--text)" }}>{counts.total}</b>
               </>
             ) : (
               <>
-                Aktivni: <b style={{ color: "var(--text)" }}>{counts.active}</b>
+                {t("studioKlijenti.activeCount")}: <b style={{ color: "var(--text)" }}>{counts.active}</b>
               </>
             )}
           </div>
@@ -556,13 +557,13 @@ export default function KlijentiClient({
           </colgroup>
           <thead>
             <tr>
-              <th>Naziv</th>
-              <th>Tip</th>
-              <th>Tržište</th>
-              <th>Grad / Država</th>
-              <th>Porezni ID</th>
-              <th className="num">Rok (dana)</th>
-              <th>Status</th>
+              <th>{t("studioKlijenti.colNaziv")}</th>
+              <th>{t("studioKlijenti.colTip")}</th>
+              <th>{t("studioKlijenti.colTrziste")}</th>
+              <th>{t("studioKlijenti.colGradDrzava")}</th>
+              <th>{t("studioKlijenti.colPorezniId")}</th>
+              <th className="num">{t("studioKlijenti.colRokDana")}</th>
+              <th>{t("studioKlijenti.colStatus")}</th>
             </tr>
           </thead>
 
@@ -570,7 +571,7 @@ export default function KlijentiClient({
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={7} style={{ color: "var(--muted)", padding: 16 }}>
-                  Nema klijenata za prikaz.
+                  {t("studioKlijenti.noClients")}
                 </td>
               </tr>
             ) : (
@@ -590,7 +591,7 @@ export default function KlijentiClient({
                     onDoubleClick={() => openEditForItem(it)}
                     style={subtleRowStyle(isSelected)}
                     data-closed={isActive ? "0" : "1"}
-                    title="Klikni za selekciju, dvoklik za izmjenu"
+                    title={t("studioKlijenti.rowTitle")}
                   >
                     <td className="cell-wrap">
                       <div
@@ -698,8 +699,8 @@ export default function KlijentiClient({
                 <div>
                   <div style={{ fontSize: 20, fontWeight: 700 }}>
                     {modalMode === "new"
-                      ? "Novi klijent"
-                      : "Promijeni klijenta"}
+                      ? t("studioKlijenti.modalNew")
+                      : t("studioKlijenti.modalEdit")}
                   </div>
                   <div
                     style={{
@@ -708,8 +709,7 @@ export default function KlijentiClient({
                       fontSize: 15,
                     }}
                   >
-                    Podaci za fakturisanje/organizaciju (bez brisanja — samo
-                    deaktivacija).
+                    {t("studioKlijenti.modalSubtitle")}
                   </div>
                 </div>
               </div>
@@ -731,14 +731,14 @@ export default function KlijentiClient({
                       marginBottom: 8,
                     }}
                   >
-                    Naziv (obavezno)
+                    {t("studioKlijenti.labelNaziv")}
                   </div>
                   <input
                     value={form.naziv_klijenta}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, naziv_klijenta: e.target.value }))
                     }
-                    placeholder="npr. A&V OPREMA doo SA"
+                    placeholder={t("studioKlijenti.placeholderNaziv")}
                     autoFocus
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
@@ -753,7 +753,7 @@ export default function KlijentiClient({
                       marginBottom: 8,
                     }}
                   >
-                    Tip klijenta
+                    {t("studioKlijenti.labelTip")}
                   </div>
                   <select
                     value={form.tip_klijenta}
@@ -766,8 +766,8 @@ export default function KlijentiClient({
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   >
-                    <option value="direktni">direktni</option>
-                    <option value="agencija">agencija</option>
+                    <option value="direktni">{t("studioKlijenti.tipDirektni")}</option>
+                    <option value="agencija">{t("studioKlijenti.tipAgencija")}</option>
                   </select>
                 </div>
 
@@ -779,14 +779,14 @@ export default function KlijentiClient({
                       marginBottom: 8,
                     }}
                   >
-                    Porezni ID
+                    {t("studioKlijenti.labelPorezniId")}
                   </div>
                   <input
                     value={form.porezni_id}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, porezni_id: e.target.value }))
                     }
-                    placeholder="JIB / PIB"
+                    placeholder={t("studioKlijenti.placeholderPorezniId")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -800,7 +800,7 @@ export default function KlijentiClient({
                       marginBottom: 8,
                     }}
                   >
-                    Rok plaćanja (dana)
+                    {t("studioKlijenti.labelRokPlacanja")}
                   </div>
                   <input
                     value={form.rok_placanja_dana}
@@ -824,14 +824,14 @@ export default function KlijentiClient({
                       marginBottom: 8,
                     }}
                   >
-                    Adresa
+                    {t("studioKlijenti.labelAdresa")}
                   </div>
                   <input
                     value={form.adresa}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, adresa: e.target.value }))
                     }
-                    placeholder="Ulica i broj"
+                    placeholder={t("studioKlijenti.placeholderAdresa")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -845,14 +845,14 @@ export default function KlijentiClient({
                       marginBottom: 8,
                     }}
                   >
-                    Grad
+                    {t("studioKlijenti.labelGrad")}
                   </div>
                   <input
                     value={form.grad}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, grad: e.target.value }))
                     }
-                    placeholder="Sarajevo"
+                    placeholder={t("studioKlijenti.placeholderGrad")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -866,14 +866,14 @@ export default function KlijentiClient({
                       marginBottom: 8,
                     }}
                   >
-                    Država
+                    {t("studioKlijenti.labelDrzava")}
                   </div>
                   <input
                     value={form.drzava}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, drzava: e.target.value }))
                     }
-                    placeholder="BiH"
+                    placeholder={t("studioKlijenti.placeholderDrzava")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -887,7 +887,7 @@ export default function KlijentiClient({
                       marginBottom: 8,
                     }}
                   >
-                    Email
+                    {t("studioKlijenti.labelEmail")}
                   </div>
                   <input
                     type="email"
@@ -895,7 +895,7 @@ export default function KlijentiClient({
                     onChange={(e) =>
                       setForm((s) => ({ ...s, email: e.target.value }))
                     }
-                    placeholder="npr. kontakt@firma.ba"
+                    placeholder={t("studioKlijenti.placeholderEmail")}
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -969,7 +969,7 @@ export default function KlijentiClient({
                           pdv_oslobodjen_napomena: e.target.value,
                         }))
                       }
-                      placeholder="npr. PDV nije obračunat jer je [naziv] oslobođeno po osnovu Zakona o PDV-u, član 24, a na osnovu dostavljene Potvrde o oslobađanju 1234/2024"
+                      placeholder={t("studioKlijenti.placeholderPdvNapomena")}
                       className="input"
                     style={{ width: "100%", minHeight: 70, resize: "vertical", padding: "12px 14px", fontSize: 15 }}
                     />
@@ -992,7 +992,7 @@ export default function KlijentiClient({
                       fontWeight: 600,
                     }}
                   >
-                    Aktivno
+                    {t("studioKlijenti.labelAktivno")}
                   </span>
                 </div>
 
@@ -1004,14 +1004,14 @@ export default function KlijentiClient({
                       marginBottom: 8,
                     }}
                   >
-                    Napomena
+                    {t("studioKlijenti.labelNapomena")}
                   </div>
                   <textarea
                     value={form.napomena}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, napomena: e.target.value }))
                     }
-                    placeholder="Interna napomena"
+                    placeholder={t("studioKlijenti.placeholderNapomena")}
                     className="input"
                     style={{ width: "100%", minHeight: 90, resize: "vertical", padding: "12px 14px", fontSize: 15 }}
                   />
@@ -1027,7 +1027,7 @@ export default function KlijentiClient({
                     textTransform: "uppercase",
                   }}
                 >
-                  Sistem
+                  {t("studioKlijenti.system")}
                 </div>
                 <div
                   style={{
@@ -1039,7 +1039,7 @@ export default function KlijentiClient({
                 >
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                      ID
+                      {t("studioKlijenti.id")}
                     </div>
                     <div style={{ fontWeight: 700 }}>
                       {form.klijent_id ?? "—"}
@@ -1047,7 +1047,7 @@ export default function KlijentiClient({
                   </div>
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                      Kreirano
+                      {t("studioKlijenti.created")}
                     </div>
                     <div style={{ fontWeight: 700 }}>
                       {form.created_at ? fmtDateTime(form.created_at) : "—"}
@@ -1055,7 +1055,7 @@ export default function KlijentiClient({
                   </div>
                   <div>
                     <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                      Updated
+                      {t("studioKlijenti.updated")}
                     </div>
                     <div style={{ fontWeight: 700 }}>
                       {form.updated_at ? fmtDateTime(form.updated_at) : "—"}
@@ -1088,7 +1088,7 @@ export default function KlijentiClient({
                     onClick={goPrev}
                     disabled={isPending || !canPrev}
                     style={btnDisabled(isPending || !canPrev)}
-                    title="Prethodni"
+                    title={t("studioKlijenti.prev")}
                   >
                     ◀
                   </button>
@@ -1097,7 +1097,7 @@ export default function KlijentiClient({
                     onClick={goNext}
                     disabled={isPending || !canNext}
                     style={btnDisabled(isPending || !canNext)}
-                    title="Naredni"
+                    title={t("studioKlijenti.next")}
                   >
                     ▶
                   </button>
@@ -1110,7 +1110,7 @@ export default function KlijentiClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                Otkaži
+                {t("studioKlijenti.cancel")}
               </button>
               <button
                 className="btn btn--active"
@@ -1118,7 +1118,7 @@ export default function KlijentiClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                {isPending ? "Snima..." : "Snimi"}
+                {isPending ? t("studioKlijenti.saving") : t("studioKlijenti.save")}
               </button>
             </div>
           </div>
@@ -1141,8 +1141,8 @@ export default function KlijentiClient({
               <div>
                 <div style={{ fontSize: 18, fontWeight: 800 }}>
                   {selectedIsActive
-                    ? "Deaktivirati klijenta?"
-                    : "Aktivirati klijenta?"}
+                    ? t("studioKlijenti.confirmDeactivateTitle")
+                    : t("studioKlijenti.confirmActivateTitle")}
                 </div>
                 <div
                   style={{ marginTop: 4, color: "var(--muted)", fontSize: 14 }}
@@ -1166,8 +1166,8 @@ export default function KlijentiClient({
               }}
             >
               {selectedIsActive
-                ? "Klijent će biti sakriven iz liste aktivnih. Možeš ga vratiti kasnije."
-                : "Klijent će opet biti vidljiv u listi aktivnih."}
+                ? t("studioKlijenti.confirmDeactivateBody")
+                : t("studioKlijenti.confirmActivateBody")}
             </div>
 
             <div
@@ -1185,7 +1185,7 @@ export default function KlijentiClient({
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >
-                Otkaži
+                {t("studioKlijenti.cancel")}
               </button>
               <button
                 className="btn btn--active"
@@ -1194,10 +1194,10 @@ export default function KlijentiClient({
                 style={btnDisabled(isPending)}
               >
                 {isPending
-                  ? "Radi..."
+                  ? t("studioKlijenti.working")
                   : selectedIsActive
-                    ? "Deaktiviraj"
-                    : "Aktiviraj"}
+                    ? t("studioKlijenti.deactivate")
+                    : t("studioKlijenti.activate")}
               </button>
             </div>
           </div>

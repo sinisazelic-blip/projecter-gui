@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useTranslation } from "@/components/LocaleProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import ThemeToggle from "@/components/ThemeToggle";
+import FluxaLogo from "@/components/FluxaLogo";
 
 export default function FirmaHeader() {
   const { t } = useTranslation();
@@ -11,11 +13,7 @@ export default function FirmaHeader() {
     <div className="topRow">
       <div className="brandWrap">
         <div className="brandLogoBlock">
-          <img
-            src="/fluxa/logo-light.png"
-            alt="FLUXA"
-            className="brandLogo"
-          />
+          <FluxaLogo />
           <span className="brandSlogan">Project & Finance Engine</span>
         </div>
         <div>
@@ -32,6 +30,7 @@ export default function FirmaHeader() {
           flexWrap: "wrap",
         }}
       >
+        <ThemeToggle />
         <LanguageSwitcher />
         <Link href="/studio/users" className="btn" title={t("dashboard.usersTitle")}>
           👤 {t("dashboard.users")}

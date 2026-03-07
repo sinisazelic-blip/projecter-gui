@@ -4,6 +4,7 @@
 CREATE TABLE IF NOT EXISTS firma_fiskal_settings (
   firma_id INT NOT NULL PRIMARY KEY,
   base_url VARCHAR(500) NULL COMMENT 'Base URL uređaja npr. http://192.168.x.x:3566/',
+  api_path VARCHAR(255) NULL COMMENT 'Putanja API-ja npr. /api/v3/invoices ili /invoice',
   api_key VARCHAR(255) NULL COMMENT 'EsirKey / API ključ (hex)',
   pin VARCHAR(100) NULL COMMENT 'PIN; prazno = ručni unos na uređaju',
   use_external_printer TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = koristi eksterni štampač',

@@ -5,6 +5,7 @@ import { query } from "@/lib/db";
 import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
 import LogoUpload from "./LogoUpload";
+import FiskalModal from "./FiskalModal";
 import BrojacFakturaCard from "./BrojacFakturaCard";
 import FirmaHeader from "./FirmaHeader";
 
@@ -358,19 +359,24 @@ export default async function Page({ searchParams }) {
 
               <div style={{ height: 10 }} />
 
-              <div>
-                <div style={labelStyle}>{t("firma.labelVatRateLocal")}</div>
-                <input
-                  type="number"
-                  name="vat_rate_local"
-                  min="0"
-                  max="30"
-                  step="0.01"
-                  defaultValue={f?.vat_rate_local != null ? String(f.vat_rate_local) : ""}
-                  style={inputStyle}
-                  placeholder={t("firma.placeholderVatRateLocal")}
-                />
-              </div>
+              {locale !== "sr" && (
+                <>
+                  <div>
+                    <div style={labelStyle}>{t("firma.labelVatRateLocal")}</div>
+                    <input
+                      type="number"
+                      name="vat_rate_local"
+                      min="0"
+                      max="30"
+                      step="0.01"
+                      defaultValue={f?.vat_rate_local != null ? String(f.vat_rate_local) : ""}
+                      style={inputStyle}
+                      placeholder={t("firma.placeholderVatRateLocal")}
+                    />
+                  </div>
+                  <div style={{ height: 10 }} />
+                </>
+              )}
 
               <div style={{ height: 18 }} />
 
@@ -465,6 +471,16 @@ export default async function Page({ searchParams }) {
                 {t("firma.saveHint")}
               </div>
             </form>
+
+            {locale === "sr" && (
+              <div className="btnRow">
+                <FiskalModal />
+                <span className="muted">
+                  {t("firma.activeId")}{" "}
+                  <span className="mono">{pick(f?.firma_id) || "—"}</span>
+                </span>
+              </div>
+            )}
 
             <BrojacFakturaCard />
           </div>

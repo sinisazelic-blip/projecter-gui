@@ -1,7 +1,9 @@
-import Link from "next/link";
-import MobileDashboardClient from "./MobileDashboardClient";
+"use client";
 
-export const dynamic = "force-dynamic";
+import Link from "next/link";
+import { useTranslation } from "@/components/LocaleProvider";
+import FluxaLogo from "@/components/FluxaLogo";
+import MobileDashboardClient from "./MobileDashboardClient";
 
 const BTN_STYLE: React.CSSProperties = {
   width: "100%",
@@ -10,10 +12,10 @@ const BTN_STYLE: React.CSSProperties = {
   fontSize: 20,
   fontWeight: 800,
   borderRadius: 20,
-  textAlign: "center" as const,
+  textAlign: "center",
   textDecoration: "none",
   display: "flex",
-  flexDirection: "column" as const,
+  flexDirection: "column",
   alignItems: "center",
   gap: 10,
   border: "2px solid",
@@ -21,6 +23,8 @@ const BTN_STYLE: React.CSSProperties = {
 };
 
 export default function MobilePage() {
+  const { t } = useTranslation();
+
   return (
     <div
       style={{
@@ -34,8 +38,7 @@ export default function MobilePage() {
       }}
     >
       <div style={{ textAlign: "center", marginBottom: 4 }}>
-        <img
-          src="/fluxa/logo-light.png"
+        <FluxaLogo
           alt="Fluxa"
           style={{ width: 80, height: 31, objectFit: "contain", opacity: 0.95 }}
         />
@@ -48,11 +51,10 @@ export default function MobilePage() {
             letterSpacing: "0.08em",
           }}
         >
-          Mobile
+          {t("nav.mobile")}
         </div>
       </div>
 
-      {/* Owner Dashboard – brzi pregled */}
       <div style={{ width: "100%", maxWidth: 400 }}>
         <div
           style={{
@@ -65,7 +67,7 @@ export default function MobilePage() {
             paddingLeft: 4,
           }}
         >
-          Pregled
+          {t("mobile.overview")}
         </div>
         <MobileDashboardClient />
       </div>
@@ -92,9 +94,9 @@ export default function MobilePage() {
         }}
       >
         <span style={{ fontSize: 36 }}>🎛️</span>
-        <span>StrategicCore</span>
+        <span>{t("dashboard.strategicCore")}</span>
         <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.85 }}>
-          Brzi budžet u pregovorima
+          {t("mobile.scSubtitle")}
         </span>
       </Link>
 
@@ -109,7 +111,7 @@ export default function MobilePage() {
           padding: "16px 24px",
         }}
       >
-        <span>🏠 Fluxa (puna verzija)</span>
+        <span>🏠 {t("mobile.fullVersion")}</span>
       </Link>
     </div>
   );

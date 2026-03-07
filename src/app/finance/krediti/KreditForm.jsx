@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/components/LocaleProvider";
 
 export default function KreditForm() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [form, setForm] = useState({
     naziv: "",
@@ -46,11 +48,11 @@ export default function KreditForm() {
       const json = await res.json();
 
       if (!json.ok) {
-        setMsg({ type: "error", text: json.error || "Greška" });
+        setMsg({ type: "error", text: json.error || t("krediti.errorGeneric") });
         return;
       }
 
-      setMsg({ type: "ok", text: `Dodano. Kredit ID: ${json.kredit_id}` });
+      setMsg({ type: "ok", text: (t("krediti.successAdded") || "").replace("{{id}}", json.kredit_id) });
       router.refresh();
       setForm({
         naziv: "",
@@ -64,7 +66,7 @@ export default function KreditForm() {
         napomena: "",
       });
     } catch (err) {
-      setMsg({ type: "error", text: err?.message || "Greška" });
+      setMsg({ type: "error", text: err?.message || t("krediti.errorGeneric") });
     } finally {
       setSaving(false);
     }
@@ -73,24 +75,24 @@ export default function KreditForm() {
   return (
     <form onSubmit={handleSubmit} className="card">
       <div className="cardHead">
-        <div className="cardTitle">Dodaj kredit</div>
+        <div className="cardTitle">{t("krediti.formTitle")}</div>
       </div>
 
       <div className="filters" style={{ flexWrap: "wrap", display: "flex", gap: 12 }}>
         <div className="field" style={{ minWidth: 200 }}>
-          <span className="label">Naziv *</span>
+          <span className="label">{t("krediti.labelNaziv")}</span>
           <input
             className="input"
             name="naziv"
             value={form.naziv}
             onChange={handleChange}
-            placeholder="npr. Auto kredit"
+            placeholder={t("krediti.placeholderNaziv")}
             required
           />
         </div>
 
         <div className="field">
-          <span className="label">Ukupan iznos *</span>
+          <span className="label">{t("krediti.labelUkupanIznos")}</span>
           <input
             className="input"
             type="number"
@@ -104,7 +106,7 @@ export default function KreditForm() {
         </div>
 
         <div className="field">
-          <span className="label">Valuta</span>
+          <span className="label">{t("krediti.labelValuta")}</span>
           <select
             className="input"
             name="valuta"
@@ -117,7 +119,7 @@ export default function KreditForm() {
         </div>
 
         <div className="field">
-          <span className="label">Broj rata *</span>
+          <span className="label">{t("krediti.labelBrojRata")}</span>
           <input
             className="input"
             type="number"
@@ -130,7 +132,7 @@ export default function KreditForm() {
         </div>
 
         <div className="field">
-          <span className="label">Uplaćeno rata</span>
+          <span className="label">{t("krediti.labelUplacenoRata")}</span>
           <input
             className="input"
             type="number"
@@ -142,7 +144,7 @@ export default function KreditForm() {
         </div>
 
         <div className="field">
-          <span className="label">Iznos rate (po rati)</span>
+          <span className="label">{t("krediti.labelIznosRate")}</span>
           <input
             className="input"
             type="number"
@@ -151,35 +153,35 @@ export default function KreditForm() {
             name="iznos_rate"
             value={form.iznos_rate}
             onChange={handleChange}
-            placeholder="Ako su jednake"
+            placeholder={t("krediti.placeholderIznosRate")}
           />
         </div>
 
         <div className="field">
-          <span className="label">Posljednja rata (dd.mm.yyyy)</span>
+          <span className="label">{t("krediti.labelPosljednjaRata")}</span>
           <input
             className="input"
             type="date"
             name="datum_posljednja_rata"
             value={form.datum_posljednja_rata}
             onChange={handleChange}
-            placeholder="Mjesec i godina"
+            placeholder={t("krediti.placeholderDatum")}
           />
         </div>
 
         <div className="field" style={{ minWidth: 180 }}>
-          <span className="label">Banka</span>
+          <span className="label">{t("krediti.labelBanka")}</span>
           <input
             className="input"
             name="banka_naziv"
             value={form.banka_naziv}
             onChange={handleChange}
-            placeholder="npr. NLB"
+            placeholder={t("krediti.placeholderBanka")}
           />
         </div>
 
         <div className="field" style={{ minWidth: 200 }}>
-          <span className="label">Napomena</span>
+          <span className="label">{t("krediti.labelNapomena")}</span>
           <input
             className="input"
             name="napomena"
@@ -205,7 +207,7 @@ export default function KreditForm() {
 
       <div className="actions" style={{ marginTop: 12 }}>
         <button type="submit" className="btn btn--active" disabled={saving}>
-          {saving ? "Unosim…" : "Dodaj kredit"}
+          {saving ? t("krediti.saving") : t("krediti.submitButton")}
         </button>
       </div>
     </form>

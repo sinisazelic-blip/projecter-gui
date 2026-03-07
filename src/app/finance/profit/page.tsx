@@ -3,6 +3,7 @@ import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
 import ProfitReportClient from "./ProfitReportClient";
 import ProfitTopActions from "./ProfitTopActions";
+import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,7 @@ export default async function ProfitPage({
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img src="/fluxa/logo-light.png" alt="FLUXA" className="brandLogo" />
+                  <FluxaLogo />
                   <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
@@ -77,7 +78,7 @@ export default async function ProfitPage({
           <ProfitReportClient initialView={view} />
         </div>
         <div className="printFooter">
-          <img src="/fluxa/logo-light.png" alt="Fluxa" style={{ height: 20, opacity: 0.9 }} />
+          <FluxaLogo alt="Fluxa" style={{ height: 20, opacity: 0.9 }} />
           <span>{t("dashboard.generatedBy")}</span>
         </div>
       </div>

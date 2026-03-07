@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "@/components/LocaleProvider";
 import {
   BarChart,
@@ -12,7 +12,10 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const MJESI_NAMES = ["Jan", "Feb", "Mar", "Apr", "Maj", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"];
+const MONTH_KEYS = ["monthJan", "monthFeb", "monthMar", "monthApr", "monthMaj", "monthJun", "monthJul", "monthAug", "monthSep", "monthOkt", "monthNov", "monthDec"] as const;
+
+const colGodBg = { background: "rgba(255, 235, 150, 0.22)" };
+const colAvgPctBg = { background: "rgba(150, 200, 255, 0.22)" };
 
 type MonthCell = {
   realized: number;
@@ -35,6 +38,10 @@ function fmtPct(v: number | null | undefined): string {
 
 export default function ProfitKlijentClient() {
   const { t } = useTranslation();
+  const mjeseciNames = useMemo(
+    () => MONTH_KEYS.map((k) => t(`dashboard.${k}`)),
+    [t],
+  );
   const [klijenti, setKlijenti] = useState<{ klijent_id: number; naziv_klijenta: string }[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [data, setData] = useState<{
@@ -46,10 +53,11 @@ export default function ProfitKlijentClient() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/klijenti", { cache: "no-store" })
+    // Lista iz izvještaja klijenata: imaju projekte, fakture ili arhivu (staging) — ista veza kao margin-by-klijent
+    fetch("/api/izvjestaji/klijenti", { cache: "no-store" })
       .then((res) => res.json())
       .then((j) => {
-        const list = j?.ok && Array.isArray(j.rows) ? j.rows : [];
+        const list = j?.ok && Array.isArray(j.items) ? j.items : [];
         setKlijenti(list.map((r: any) => ({ klijent_id: r.klijent_id ?? r.id, naziv_klijenta: r.naziv_klijenta ?? r.naziv ?? "—" })));
       })
       .catch(() => setKlijenti([]));
@@ -71,10 +79,10 @@ export default function ProfitKlijentClient() {
             chartYearly: j.chartYearly ?? [],
             klijent_naziv: j.klijent_naziv ?? "—",
           });
-        } else setError(j?.error ?? "Greška");
+        } else setError(j?.error ?? t("dashboard.marginClientError"));
       })
       .catch((e) => {
-        setError(e?.message ?? "Greška");
+        setError(e?.message ?? t("dashboard.marginClientError"));
         setData(null);
       })
       .finally(() => setLoading(false));
@@ -105,7 +113,7 @@ export default function ProfitKlijentClient() {
               minWidth: 220,
             }}
           >
-            <option value="">— Odaberi klijenta —</option>
+            <option value="">{t("dashboard.selectClientPlaceholder")}</option>
             {klijenti.map((k) => (
               <option key={k.klijent_id} value={k.klijent_id}>
                 {k.naziv_klijenta}
@@ -114,7 +122,7 @@ export default function ProfitKlijentClient() {
           </select>
         </div>
 
-        {loading && <div className="reportLoading">Učitavanje…</div>}
+        {loading && <div className="reportLoading">{t("dashboard.marginClientLoading")}</div>}
         {error && <div className="reportError">{error}</div>}
 
         {!loading && !error && data && data.tableData.length > 0 && (
@@ -123,13 +131,13 @@ export default function ProfitKlijentClient() {
               <table className="table" style={{ minWidth: 900 }}>
                 <thead>
                   <tr>
-                    <th style={{ width: 60 }}>God.</th>
-                    {MJESI_NAMES.map((m) => (
+                    <th style={{ width: 60, ...colGodBg }}>{t("dashboard.colYearShort")}</th>
+                    {mjeseciNames.map((m) => (
                       <th key={m} className="num" style={{ width: 64 }}>
                         {m}
                       </th>
                     ))}
-                    <th className="num bold" style={{ width: 90 }}>
+                    <th className="num bold" style={{ width: 90, ...colAvgPctBg }}>
                       {t("dashboard.avgMargin")}
                     </th>
                   </tr>
@@ -137,13 +145,13 @@ export default function ProfitKlijentClient() {
                 <tbody>
                   {data.tableData.map((r) => (
                     <tr key={r.godina}>
-                      <td>{r.godina}</td>
+                      <td style={colGodBg}>{r.godina}</td>
                       {r.mjeseci_arr.map((c, i) => (
                         <td key={i} className="num">
                           {fmtPct(c.margin_pct)}
                         </td>
                       ))}
-                      <td className="num bold">{fmtPct(r.avg_margin_pct)}</td>
+                      <td className="num bold" style={colAvgPctBg}>{fmtPct(r.avg_margin_pct)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -166,7 +174,7 @@ export default function ProfitKlijentClient() {
                         borderRadius: 10,
                       }}
                     />
-                    <Bar dataKey="margin" fill="rgba(251, 191, 36, 0.8)" name="Margin %" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="margin" fill="rgba(251, 191, 36, 0.8)" name={t("dashboard.marginPct")} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -175,11 +183,11 @@ export default function ProfitKlijentClient() {
         )}
 
         {!loading && !error && data && data.tableData.length === 0 && selectedId && (
-          <div className="reportNote">Nema podataka za izabranog klijenta.</div>
+          <div className="reportNote">{t("dashboard.noDataForClient")}</div>
         )}
 
         {!loading && !selectedId && (
-          <div className="reportNote">Odaberi klijenta za prikaz izvještaja.</div>
+          <div className="reportNote">{t("dashboard.selectClientHint")}</div>
         )}
       </div>
     </div>

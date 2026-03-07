@@ -118,8 +118,18 @@ export async function GET(req: Request) {
         }
       : null;
 
+    // Fiskalni uređaj: ako je base_url postavljen, wizard preview prikazuje Fiskalizuj (bez izbora ručno/automatski)
+    let fiskal_configured = false;
+    if (firma_profile?.firma_id) {
+      const fiskalRows = await query(
+        `SELECT base_url FROM firma_fiskal_settings WHERE firma_id = ? AND base_url IS NOT NULL AND TRIM(base_url) != ''`,
+        [firma_profile.firma_id],
+      );
+      fiskal_configured = Array.isArray(fiskalRows) && fiskalRows.length > 0;
+    }
+
     return NextResponse.json(
-      { ok: true, ids, projects, buyer, firma, narucioc_count },
+      { ok: true, ids, projects, buyer, firma, narucioc_count, fiskal_configured },
       { status: 200 },
     );
   } catch (err: any) {

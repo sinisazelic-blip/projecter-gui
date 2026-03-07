@@ -22,6 +22,9 @@ export const FLUXA_PHASES = [
   "Arhiviran",
 ];
 
+/** Default phase labels (sr) when phaseLabels prop not provided */
+const DEFAULT_PHASE_LABELS = FLUXA_PHASES;
+
 /**
  * Mapiranje kanonskih status_id (projekti) → phase index.
  * - 7 Završen  => 2
@@ -50,8 +53,9 @@ export function phaseForDeal({ hasProject, projectStatusId }) {
   return phaseFromProjectStatusId(projectStatusId);
 }
 
-export function FluxaTimeline({ phase = 0, title = "Faza" }) {
+export function FluxaTimeline({ phase = 0, title = "Faza", phaseLabels }) {
   const p = Math.max(0, Math.min(5, Number(phase) || 0));
+  const labels = Array.isArray(phaseLabels) && phaseLabels.length >= 6 ? phaseLabels : DEFAULT_PHASE_LABELS;
 
   // fluxa green (iz vašeg “signal” tona)
   const ACTIVE = "rgba(80, 220, 140, .95)";
@@ -74,7 +78,7 @@ export function FluxaTimeline({ phase = 0, title = "Faza" }) {
         flexWrap: "wrap",
       }}
       role="region"
-      aria-label="Fluxa timeline faza"
+      aria-label={title}
       title={title}
     >
       <span
@@ -96,13 +100,13 @@ export function FluxaTimeline({ phase = 0, title = "Faza" }) {
           flexWrap: "wrap",
         }}
       >
-        {FLUXA_PHASES.map((label, idx) => {
+        {labels.map((label, idx) => {
           const isActive = idx === p;
           const isPast = idx < p;
 
           return (
             <span
-              key={label}
+              key={idx}
               style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
             >
               <span
@@ -116,13 +120,15 @@ export function FluxaTimeline({ phase = 0, title = "Faza" }) {
                 {label}
               </span>
 
-              {idx < FLUXA_PHASES.length - 1
-                ? <span
+              {idx < labels.length - 1
+                ? (
+                <span
                     style={{ color: SEP, opacity: 0.9, fontWeight: 900 }}
                     aria-hidden="true"
                   >
                     →
                   </span>
+                )
                 : null}
             </span>
           );

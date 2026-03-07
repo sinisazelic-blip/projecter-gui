@@ -68,11 +68,51 @@ Dokument nastao nakon rada na postavkama fiskalnog uređaja i brojaču faktura. 
 
 ## 3. Naputke iz tehničke dokumentacije (L-PFR / Esir)
 
+- **Tačan API spec:** U `docs/fiskal/` nalaze se PDF dokumenti (npr. **Техничка-документација.pdf**, Тестирање.pdf) – tamo je definisano tačno šta uređaj očekuje u body-ju (nazivi polja, obavezna polja, formati). Kad dobiješ 400 bez detalja, treba iz tog PDF-a provjeriti format zahtjeva.
 - **Komunikacija:** HTTP na Base URL (WiFi/LAN). Za aplikaciju isto.
 - **Endpointi (iz konteksta):** npr. `POST /api/v3/invoices` (JSON: stavke, plaćanje, tip računa, …), `GET /api/v3/status`, `POST /api/v3/pin` ako treba.
 - **PaymentType (referenca):** Other=0, Cash=1, Card=2, Check=3, WireTransfer=4, Voucher=5, MobileMoney=6.
 - **Config polja (referentni nazivi):** EsirBase (Base URL), EsirKey (API ključ), EsirExt / EsirExtStampac / EsirExtSirina (eksterni štampač – mi ne koristimo).
+- **Ručni unos na PU (referenca):** Pri ručnom izdavanju računa na uređaju unosi se: ukupan iznos (sa PDV-om), broj komada, stopa (BH kupac = E / 17%, INO kupac = N / 0%), naziv kupca; u dodatna polja PIB ili JIB (ovisno da li je kupac PDV obveznik ili ne), a za INO kupca umjesto PIB unosi se 13 devetki (9999999999999). Zatim „Štampaj račun”. To sugerira da API možda očekuje i podatke o kupcu (naziv + identifikator).
 - **Testiranje:** Sutra s fiskalnim uređajem – učitati tačan format odgovora (QR, JIR, PFR broj, brojač) i uskladiti nazive polja u kodu.
+
+### 3.1 Sistem PU za provjeru fiskalnih računa (testiranje / inspekcija)
+
+Kad komunikacija sa fiskalnim uređajem prođe, račun se može provjeriti putem **SUF sistema za provjeru fiskalnih računa** (Poreska uprava BiH). Sistem vraća jednu od tri poruke:
+
+- **Račun je valjan**
+- **„Ovo nije fiskalni”** – dokument koji se provjerava ne zadovoljava kriterije fiskalnog računa (nije pravilno fiskaliziran kroz SUF ili nema podatke za validaciju)
+- **Servis nije dostupan**
+
+Provjera je moguća: putem linka za verifikaciju na računu, skeniranjem QR koda sa računa, ili unosom podataka (npr. bez QR-a). Prijava nefiskalnih / sumnjivih računa: [suf.poreskaupravars.org/verify](https://suf.poreskaupravars.org/verify/), za neizdane račune (bez PFR): [suf.poreskaupravars.org/CustomerReport/Complain](https://suf.poreskaupravars.org/CustomerReport/Complain). Izvor: dokumentacija PU / članak „Kupci mogu provjeriti fiskalne račune”, Banjaluka.net.
+
+### 3.2 Referenca: izgled fiskalnog bloka (Aero Centar Krila, januar 2026)
+
+Primjer fakture: **`docs/fiskal/AeroKrila faktura za januar 2026.pdf`**. Aero Krila naplaćuje korištenje i održavanje fiskalnog uređaja i u direktnoj je vezi sa PU – njihov izgled računa uzima se kao referenca za zakonski ispravan fiskalni blok.
+
+**Redoslijed elemenata u fiskalnom bloku (od vrha prema dnu):**
+
+1. **FISKALNI RAČUN** (naslov bloka)
+2. JIB izdavaoca (npr. 4401686560006)
+3. Naziv izdavaoca (npr. AERO CENTAR KRILA d.o.o. Banja Luka)
+4. Jedinstveni ID / oznaka (npr. 10024401686560001-AERO CENTAR KRILA d.o.o. Banja Luka)
+5. Adresa izdavaoca (Ulica, grad)
+6. **Kasir:** (vrijednost)
+7. **ID kupca:** (JIB/PIB kupca, npr. 4509750610000)
+8. **Esir broj:** (npr. 77/4.0 – verzija/firmware)
+9. **ПРОМЕТ ПРОДАЈА** (Promet prodaja)
+10. Tabela artikala: Šifra | Назив | Цијена | Количина | Укупно (stavke sa oznakom E/N za PDV)
+11. Porez po stopi: npr. E, ПДВ 17%, iznos poreza, promet
+12. **Укупан износ:** (ukupno sa PDV-om)
+13. **Пренос на рачун:** / način plaćanja (iznos)
+14. **Примљено средстава:** (iznos)
+15. **Разлика за поврат:** (0,00)
+16. Dvokolonski red: **ПФР вријеме:** dd.mm.yyyy HH:mm:ss | **Укупан износ без пореза:** (osnovica)
+17. **ПФР бр.рач:** (npr. V7DSSK8Y-V7DSSK8Y-81404) | **Укупан износ пореза:** (PDV)
+18. **Бројач рачуна:** (npr. 69693/81404ПП)
+19. **КРАЈ ФИСКАЛНОГ РАЧУНА**
+
+Mapiranje na odgovor uređaja (L-PFR API): `sdcDateTime` → PFR vrijeme; `invoiceNumber` ili sl. → PFR br.rač; `invoiceCounter` / `totalCounter` → Brojaч рачуна; `verificationQrCode` → QR za provjeru. Kasir i ID kupca šaljemo u zahtjevu; ukupan iznos bez/sa porezom imamo iz stavki fakture.
 
 ---
 

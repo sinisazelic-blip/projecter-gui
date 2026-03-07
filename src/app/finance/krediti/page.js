@@ -1,7 +1,11 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
 import { query } from "@/lib/db";
 import KreditForm from "./KreditForm";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
+import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +35,10 @@ function fmtMjesecGodina(d) {
 }
 
 export default async function KreditiPage({ searchParams }) {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
+  const t = getT(locale);
+
   const sp = await Promise.resolve(searchParams);
   const q = (sp?.q ?? "").trim();
 
@@ -120,27 +128,24 @@ export default async function KreditiPage({ searchParams }) {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Krediti</div>
+                  <div className="brandTitle">{t("krediti.title")}</div>
                   <div className="brandSub">
-                    Ukupan pregled kreditnih obaveza
+                    {t("krediti.subtitle")}
                   </div>
                 </div>
               </div>
 
               <div className="actions">
-                <Link className="btn" href="/finance" title="Finansije">
-                  Finansije
-                </Link>
-                <Link className="btn" href="/dashboard" title="Dashboard">
-                  🏠 Dashboard
+                {locale === "sr" && (
+                  <Link className="btn" href="/finance" title={t("finance.title")}>
+                    {t("krediti.financeLink")}
+                  </Link>
+                )}
+                <Link className="btn" href="/dashboard" title={t("common.dashboard")}>
+                  🏠 {t("common.dashboard")}
                 </Link>
               </div>
             </div>
@@ -152,10 +157,10 @@ export default async function KreditiPage({ searchParams }) {
         <div className="bodyWrap">
           {tableMissing && (
             <div className="card" style={{ marginBottom: 12, borderLeft: "4px solid #f59e0b" }}>
-              <div className="cardTitle">Tabela još ne postoji</div>
+              <div className="cardTitle">{t("krediti.tableMissingTitle")}</div>
               <div className="cardSub" style={{ lineHeight: 1.6 }}>
-                Pokreni SQL skriptu:{" "}
-                <code>mysql -u USER -p DATABASE &lt; scripts/create-krediti.sql</code>
+                {t("krediti.tableMissingHint")}{" "}
+                <code>{t("krediti.tableMissingCommand")}</code>
               </div>
             </div>
           )}
@@ -164,7 +169,7 @@ export default async function KreditiPage({ searchParams }) {
             <>
               <div className="card tableCard" style={{ marginBottom: 14 }}>
                 <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", marginBottom: 0 }}>
-                  <span style={{ fontWeight: 700, fontSize: 15 }}>Ukupno (aktivni krediti)</span>
+                  <span style={{ fontWeight: 700, fontSize: 15 }}>{t("krediti.totalActiveTitle")}</span>
                 </div>
                 <div
                   style={{
@@ -177,7 +182,7 @@ export default async function KreditiPage({ searchParams }) {
                 >
                   <div>
                     <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
-                      Ostatak duga
+                      {t("krediti.remainderDebt")}
                     </div>
                     <div style={{ fontSize: 24, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>
                       {fmtKM(ukupnoOstatak)}
@@ -185,7 +190,7 @@ export default async function KreditiPage({ searchParams }) {
                   </div>
                   <div>
                     <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
-                      Ostalo rata
+                      {t("krediti.remainingInstalments")}
                     </div>
                     <div style={{ fontSize: 24, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>
                       {ukupnoOstalihRata}
@@ -199,20 +204,20 @@ export default async function KreditiPage({ searchParams }) {
               <div className="card tableCard" style={{ marginTop: 14, marginBottom: 14 }}>
                 <form method="GET" className="filters" style={{ flexWrap: "wrap", padding: 16 }}>
                   <div className="field">
-                    <span className="label">Pretraga</span>
+                    <span className="label">{t("krediti.search")}</span>
                     <input
                       className="input"
                       name="q"
                       defaultValue={q}
-                      placeholder="Naziv / banka…"
+                      placeholder={t("krediti.searchPlaceholder")}
                     />
                   </div>
                   <div className="actions">
                     <button type="submit" className="btn btn--active">
-                      Primijeni
+                      {t("krediti.apply")}
                     </button>
                     <Link className="btn" href="/finance/krediti">
-                      Reset
+                      {t("krediti.reset")}
                     </Link>
                   </div>
                 </form>
@@ -220,13 +225,13 @@ export default async function KreditiPage({ searchParams }) {
 
               <div className="card tableCard" style={{ marginTop: 14 }}>
                 <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                  <span style={{ fontWeight: 700, fontSize: 15 }}>Lista kredita</span>
+                  <span style={{ fontWeight: 700, fontSize: 15 }}>{t("krediti.listTitle")}</span>
                   <span style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                    <span className="muted">Prikazano: {list.length}</span>
+                    <span className="muted">{(t("krediti.shownCount") || "").replace("{{count}}", list.length)}</span>
                     <ExportExcelButton
                       filename="krediti"
-                      sheetName="Krediti"
-                      headers={["ID", "Naziv", "Banka", "Ukupan iznos", "Valuta", "Broj rata", "Uplaćeno rata", "Ostatak duga", "Ostalo rata", "Posljednja rata", "Aktivan", "Napomena"]}
+                      sheetName={t("krediti.excelSheetName")}
+                      headers={[t("krediti.colId"), t("krediti.colName"), t("krediti.colBanka"), t("krediti.colUkupanIznos"), t("krediti.colValuta"), t("krediti.colBrojRata"), t("krediti.colUplacenoRata"), t("krediti.colOstatakDuga"), t("krediti.colOstaloRata"), t("krediti.colPosljednjaRata"), t("krediti.colActive"), t("krediti.labelNapomena")]}
                       rows={enriched.map((r) => [
                         r.kredit_id,
                         r.naziv ?? "",
@@ -238,7 +243,7 @@ export default async function KreditiPage({ searchParams }) {
                         r.ostatak_duga ?? "",
                         r.ostalo_rata ?? "",
                         fmtMjesecGodina(r.datum_posljednja_rata),
-                        r.aktivan ? "Da" : "Ne",
+                        r.aktivan ? t("krediti.yes") : t("krediti.no"),
                         r.napomena ?? "",
                       ])}
                     />
@@ -248,15 +253,15 @@ export default async function KreditiPage({ searchParams }) {
                   <table className="table">
                     <thead>
                       <tr>
-                        <th style={{ width: 70 }}>ID</th>
-                        <th>Naziv</th>
-                        <th>Banka</th>
-                        <th className="num" style={{ width: 110 }}>Ukupan iznos</th>
-                        <th className="num" style={{ width: 110 }}>Broj rata</th>
-                        <th className="num" style={{ width: 110 }}>Uplaćeno rata</th>
-                        <th className="num" style={{ width: 110 }}>Ostatak duga</th>
-                        <th style={{ width: 100 }}>Ostalo rata</th>
-                        <th style={{ width: 110 }}>Posljednja rata</th>
+                        <th style={{ width: 70 }}>{t("krediti.colId")}</th>
+                        <th>{t("krediti.colName")}</th>
+                        <th>{t("krediti.colBanka")}</th>
+                        <th className="num" style={{ width: 110 }}>{t("krediti.colUkupanIznos")}</th>
+                        <th className="num" style={{ width: 110 }}>{t("krediti.colBrojRata")}</th>
+                        <th className="num" style={{ width: 110 }}>{t("krediti.colUplacenoRata")}</th>
+                        <th className="num" style={{ width: 110 }}>{t("krediti.colOstatakDuga")}</th>
+                        <th style={{ width: 100 }}>{t("krediti.colOstaloRata")}</th>
+                        <th style={{ width: 110 }}>{t("krediti.colPosljednjaRata")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -281,7 +286,7 @@ export default async function KreditiPage({ searchParams }) {
                         : (
                             <tr>
                               <td colSpan={9} className="muted" style={{ padding: 16 }}>
-                                Nema kredita. Pokreni SQL skriptu za kreiranje tabele.
+                                {t("krediti.noResults")}
                               </td>
                             </tr>
                           )}

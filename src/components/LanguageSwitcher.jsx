@@ -3,15 +3,13 @@
 import { useTranslation } from "@/components/LocaleProvider";
 import { VALID_LOCALES } from "@/lib/i18n";
 
-const localeLabels = { sr: "Srpski", en: "English" };
-
 export default function LanguageSwitcher() {
   const { locale, setLocale, t } = useTranslation();
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
       <label htmlFor="locale-select" className="muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}>
-        {t("common.language")}:
+        {t("common.regionalSettings")}:
       </label>
       <select
         id="locale-select"
@@ -26,11 +24,11 @@ export default function LanguageSwitcher() {
           fontSize: 13,
           cursor: "pointer",
         }}
-        title={t("common.language")}
+        title={t("common.regionalSettings")}
       >
         {VALID_LOCALES.map((loc) => (
           <option key={loc} value={loc}>
-            {localeLabels[loc]}
+            {t(`region.${loc}`)}
           </option>
         ))}
       </select>

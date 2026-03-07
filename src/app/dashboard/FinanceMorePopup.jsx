@@ -7,8 +7,6 @@ import { useTranslation } from "@/components/LocaleProvider";
 const POPUP_ITEMS = [
   { key: "narudzbenice", href: "/narudzbenice" },
   { key: "ponude", href: "/ponude" },
-  { key: "cashflow", href: "/finance/cashflow" },
-  { key: "krediti", href: "/finance/krediti" },
 ];
 
 export default function FinanceMorePopup() {

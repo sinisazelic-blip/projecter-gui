@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslation } from "@/components/LocaleProvider";
+import FluxaLogo from "@/components/FluxaLogo";
 
 function fmtDDMMYYYYFromISO(isoLike: string | null): string {
   if (!isoLike) return "—";
@@ -29,19 +30,6 @@ function parseIds(idsRaw: string): number[] {
     .split(",")
     .map((x) => Number(String(x).trim()))
     .filter((n) => Number.isFinite(n) && n > 0);
-}
-
-function isBiH(drzava: any): boolean {
-  const s = String(drzava ?? "")
-    .trim()
-    .toLowerCase();
-  if (!s) return true; // prazno = domaći (BiH)
-  return (
-    s === "bih" ||
-    s === "ba" ||
-    s === "bosna i hercegovina" ||
-    s === "bosnia and herzegovina"
-  );
 }
 
 type Lang = "BH" | "EN";
@@ -88,6 +76,7 @@ type ApiFirma = {
   pib: string | null;
   pdv_broj: string | null;
   broj_rjesenja: string | null;
+  vat_rate_local?: number | null;
   bank_naziv: string | null;
   bank_racun: string | null;
   swift: string | null;
@@ -103,6 +92,7 @@ type PreviewData = {
   buyer: ApiBuyer | null;
   firma: ApiFirma | null;
   narucioc_count: number;
+  fiskal_configured?: boolean;
   error?: string;
 };
 
@@ -222,17 +212,16 @@ function formatBankAccounts(accounts: any[]): string[] {
 
 export default function Page() {
   const sp = useSearchParams();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   const ids = useMemo(() => parseIds(String(sp.get("ids") ?? "")), [sp]);
 
   const invoiceDateISO = sp.get("date") ?? "";
   const dueDateISO = sp.get("due") ?? "";
   const ccy = (sp.get("ccy") ?? "KM").toUpperCase();
-  const fisk = sp.get("pfr") ?? sp.get("fisk") ?? ""; // Podržavamo oba parametra za kompatibilnost
   const pnb = sp.get("pnb") ?? "";
-  const useFiskalizacijaDropbox = sp.get("fiskalizacija") === "1";
   const invoiceNumberFromUrl = sp.get("invoice_number") ?? ""; // Broj fakture iz URL-a (kada se učitava postojeća)
+  const vatModeParam = sp.get("vat") as string | null; // BH_17 | INO_0 iz wizarda 2/3
 
   // Popust prije PDV-a (KM)
   const popustKm = useMemo(() => {
@@ -314,6 +303,13 @@ export default function Page() {
   const [data, setData] = useState<PreviewData | null>(null);
   const [fiskalizujLoading, setFiskalizujLoading] = useState(false);
   const [fiskalizacijaDone, setFiskalizacijaDone] = useState(false);
+  const [fiskalniOdgovor, setFiskalniOdgovor] = useState<{
+    verificationQRCode?: string | null;
+    sdcDateTime?: string | null;
+    invoiceNumber?: string | null;
+    invoiceCounter?: string | null;
+    totalCounter?: number | null;
+  } | null>(null);
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -349,6 +345,7 @@ export default function Page() {
             buyer: null,
             firma: null,
             narucioc_count: 0,
+            fiskal_configured: false,
             error: e?.message ?? "Error",
           });
       }
@@ -361,35 +358,69 @@ export default function Page() {
   const buyer = data?.buyer ?? null;
   const firma = data?.firma ?? null;
   const projects = Array.isArray(data?.projects) ? data!.projects : [];
+  const useFiskalizacijaDropbox = data?.fiskal_configured === true;
 
-  // BH = bosanski, EN = engleski (samo za INO klijente)
-  const bh = useMemo(() => {
-    if (!buyer) return true;
-    if (buyer.is_ino === true || buyer.is_ino === 1) return false;
-    return isBiH(buyer.drzava);
-  }, [buyer]);
-  const lang: Lang = useMemo(() => (bh ? "BH" : "EN"), [bh]);
+  // Region sistema (BiH vs EU) određuje jezik fakture i zakonski okvir — ne zemlja kupca.
+  // locale "sr" = BiH (srpski, PFR kad je KM), locale "en" = EU (engleski, zakoni EU, bez PFR).
+  const isBiHContext = locale === "sr";
+  const lang: Lang = useMemo(() => (locale === "en" ? "EN" : "BH"), [locale]);
+  const docLang = locale === "en" ? "en" : "bh";
   const docTitle = useMemo(
-    () => (lang === "EN" ? "INVOICE" : "RAČUN"),
-    [lang],
+    () => t(`wizard.previewDoc.${docLang}.docTitle`),
+    [t, docLang],
+  );
+  const clientLabel = useMemo(
+    () => t(`wizard.previewDoc.${docLang}.clientLabel`),
+    [t, docLang],
   );
 
-  // Fiskalizuj — poziva PU dropbox sistem, dobija QR kod i ostale elemente
+  // Fiskalizuj — poziva fiskalni uređaj (L-PFR), dobija QR i ostale elemente
   async function handleFiskalizuj() {
     if (fiskalizujLoading || fiskalizacijaDone) return;
     setFiskalizujLoading(true);
     try {
-      // TODO: Integracija sa PU fiskalizacijom (dropbox sistem)
-      // 1. Pozovi PU API / dropbox
-      // 2. Dobij QR kod i ostale elemente za štampu
-      // 3. Osvježi preview sa tim podacima
-      // 4. Korisnik zatim klikne "Kreiraj račun"
-      alert(
-        "Fiskalizacija putem PU dropbox sistema će biti implementirana. " +
-        "Flow: 1) Fiskalizuj dobija od PU QR kod i elemente → 2) Preview se osvježi → 3) Kreiraj račun. " +
-        "Razdvojeno je jer PU može biti spor — Chrome ne bi trebao timeout-ovati."
-      );
+      const buyerTaxId = buyer
+        ? (buyer.is_ino
+          ? "9999999999999"
+          : (buyer.porezni_id
+            ? String(buyer.porezni_id).replace(/[^\d]/g, "").trim().slice(0, 20)
+            : undefined))
+        : undefined;
+      const payload = {
+        items: items.map((it) => ({
+          name: [it.title, it.sub].filter(Boolean).join(" – ").slice(0, 2048),
+          quantity: it.qty,
+          unitPrice: it.unit,
+          totalAmount: it.total,
+          vatRate: vatRate * 100,
+        })),
+        totalAmount,
+        discountNet: popustKm > 0 ? popustKm : 0,
+        dateISO: invoiceDateISO || undefined,
+        buyerName: buyer?.naziv_klijenta ? String(buyer.naziv_klijenta).trim().slice(0, 500) : undefined,
+        buyerTaxId: buyerTaxId || undefined,
+      };
+      const res = await fetch("/api/fakture/fiskalizuj", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.ok) {
+        const msg = result.error || "Fiskalizacija nije uspjela";
+        const urlLine = result.url ? `\nURL: ${result.url}` : "";
+        throw new Error(msg + urlLine);
+      }
+      setFiskalniOdgovor({
+        verificationQRCode: result.verificationQRCode,
+        sdcDateTime: result.sdcDateTime,
+        invoiceNumber: result.invoiceNumber,
+        invoiceCounter: result.invoiceCounter,
+        totalCounter: result.totalCounter,
+      });
       setFiskalizacijaDone(true);
+    } catch (err: any) {
+      alert(err?.message || "Greška pri fiskalizaciji");
     } finally {
       setFiskalizujLoading(false);
     }
@@ -403,6 +434,11 @@ export default function Page() {
     setCreateError(null);
 
     try {
+      const pfrZaCreate =
+        useFiskalizacijaDropbox && fiskalniOdgovor?.totalCounter != null
+          ? fiskalniOdgovor.totalCounter
+          : undefined;
+
       const res = await fetch("/api/fakture/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -410,8 +446,8 @@ export default function Page() {
           ids: ids.join(","),
           date: invoiceDateISO,
           ccy: ccy,
-          vat: bh && !Number(buyer?.pdv_oslobodjen ?? 0) ? "BH_17" : "INO_0",
-          pfr: fisk ? Number(fisk) : null,
+          vat: vatModeParam || (isBiHContext && !Number(buyer?.pdv_oslobodjen ?? 0) ? "BH_17" : "INO_0"),
+          pfr: pfrZaCreate,
           pnb: pnb,
           popust: popustKm > 0 ? popustKm : 0,
           project_names: Object.entries(projectNameOverrides)
@@ -428,7 +464,7 @@ export default function Page() {
       const result = await res.json();
 
       if (!res.ok || !result.ok) {
-        throw new Error(result.error || "Greška pri kreiranju fakture");
+        throw new Error(result.error || t("wizard.createError"));
       }
 
       setCreated(true);
@@ -447,7 +483,7 @@ export default function Page() {
         setCalculatedDueDate(dueDate.toISOString().slice(0, 10));
       }
     } catch (err: any) {
-      setCreateError(err?.message || "Greška pri kreiranju fakture");
+      setCreateError(err?.message || t("wizard.createError"));
     } finally {
       setCreating(false);
     }
@@ -456,7 +492,7 @@ export default function Page() {
   // Funkcija za kreiranje PDF-a i prikaz
   function handleCreatePDFAndShow() {
     if (!created) {
-      alert("Prvo kreirajte račun!");
+      alert(t("wizard.firstCreateInvoice"));
       return;
     }
     handlePrint();
@@ -465,7 +501,7 @@ export default function Page() {
   // Funkcija za PDF Save as — preuzima PDF sa predloženim imenom
   function handlePDFSaveAs() {
     if (!created) {
-      alert("Prvo kreirajte račun!");
+      alert(t("wizard.firstCreateInvoice"));
       return;
     }
     handleSaveAsPdf();
@@ -474,7 +510,7 @@ export default function Page() {
   // Funkcija za slanje mail-om — otvara email klijent s predpopunjenim podacima
   function handleSendEmail() {
     if (!created) {
-      alert("Prvo kreirajte račun!");
+      alert(t("wizard.firstCreateInvoice"));
       return;
     }
     const to = String(buyer?.email ?? "").trim();
@@ -512,7 +548,7 @@ export default function Page() {
         ? group.name
         : String(overrideNaziv || p.radni_naziv || `Projekat #${p.projekat_id}`).trim();
       
-      const sub = p.klijent_naziv ? `Klijent: ${p.klijent_naziv}` : "";
+      const sub = p.klijent_naziv ? `${clientLabel} ${p.klijent_naziv}` : "";
       const subItems = projectSubItems[p.projekat_id] ?? [];
       const qty = 1;
       const unit = Number(p.budzet_planirani ?? 0);
@@ -580,7 +616,7 @@ export default function Page() {
         closed_at: g.closed_at,
       };
     });
-  }, [projects, projectNameOverrides, projectSubItems, projectGroups, projectToGroup]);
+  }, [projects, projectNameOverrides, projectSubItems, projectGroups, projectToGroup, clientLabel]);
 
   const baseAmount = useMemo(
     () =>
@@ -593,10 +629,12 @@ export default function Page() {
   const popustAmount = popustKm;
   const baseAfterPopust = Math.max(0, baseAmount - popustAmount);
   const pdvOslobodjen = Number(buyer?.pdv_oslobodjen ?? 0) === 1;
-  const vatRate = useMemo(
-    () => (bh && !pdvOslobodjen ? 0.17 : 0),
-    [bh, pdvOslobodjen],
-  );
+  const vatRate = useMemo(() => {
+    if (vatModeParam === "INO_0") return 0;
+    if (vatModeParam === "BH_17" && isBiHContext) return 0.17;
+    if (vatModeParam === "BH_17" && !isBiHContext) return (Number(firma?.vat_rate_local) || 0) / 100;
+    return isBiHContext && !pdvOslobodjen ? 0.17 : 0;
+  }, [vatModeParam, isBiHContext, pdvOslobodjen, firma?.vat_rate_local]);
   const vatAmount = useMemo(() => Math.round(baseAfterPopust * vatRate * 100) / 100, [baseAfterPopust, vatRate]);
   const totalAmount = useMemo(
     () => baseAfterPopust + vatAmount,
@@ -636,7 +674,7 @@ export default function Page() {
   const formattedBankAccounts = formatBankAccounts(bankAccounts);
 
   const buyerName = String(
-    buyer?.naziv_klijenta ?? (lang === "EN" ? "Buyer" : "Kupac"),
+    buyer?.naziv_klijenta ?? t(`wizard.previewDoc.${docLang}.buyerFallback`),
   ).trim();
   const buyerAddr1 = String(buyer?.adresa ?? "—").trim();
   const buyerCityLine = safeLineJoin([buyer?.postanski_broj, buyer?.grad], " ");
@@ -672,7 +710,9 @@ export default function Page() {
   async function handleSaveAsPdf() {
     const el = paperRef.current;
     if (!el) return;
+    const origMinHeight = (el as HTMLElement).style.minHeight;
     try {
+      (el as HTMLElement).style.minHeight = "auto";
       const html2pdf = (await import("html2pdf.js")).default;
       await html2pdf()
         .set({
@@ -686,7 +726,9 @@ export default function Page() {
         .save();
     } catch (err: any) {
       console.error("PDF greška:", err);
-      alert(err?.message || "Greška pri generisanju PDF-a.");
+      alert(err?.message || t("wizard.createError"));
+    } finally {
+      (el as HTMLElement).style.minHeight = origMinHeight || "297mm";
     }
   }
 
@@ -827,14 +869,36 @@ export default function Page() {
 
         .totalsRow{
           display:flex;
-          justify-content:flex-end;
+          align-items:flex-start;
           gap: 18px;
           margin-top: 8px;
+          width: 100%;
         }
+        /* Rezervirano mjesto za PU (1/3 stranice); kad nema podataka ostaje prazno */
+        .fiscalSlot{
+          width: 260px;
+          min-width: 260px;
+          flex-shrink: 0;
+        }
+        .fiscalBlock{
+          border: 1px solid #000 !important;
+          background: #fff !important;
+          padding: 10px 12px !important;
+          font-size: 11px !important;
+          color: #000 !important;
+        }
+        .fiscalBlock .fiscalTitle{ font-weight: 800 !important; margin-bottom: 6px !important; }
+        .fiscalBlock .fiscalQrWrap{ margin: 8px 0; text-align: center; }
+        .fiscalBlock .fiscalQrWrap img{ width: 140px; height: 140px; max-width: 160px; max-height: 160px; object-fit: contain; display: block; margin: 0 auto; }
+        .fiscalBlock .fiscalLine{ margin: 4px 0 !important; }
+        .fiscalBlock .fiscalEnd{ font-weight: 700 !important; margin-top: 8px !important; }
 
+        /* Obračun (Osnovica / PDV / Ukupno) uvijek uz desnu marginu */
         .totalsBox{
           width: 50%;
           max-width: 320px;
+          flex-shrink: 0;
+          margin-left: auto;
           border: 1px solid #000 !important;
           background: #F7F7F7 !important;
           padding: 10px 12px !important;
@@ -861,6 +925,7 @@ export default function Page() {
           line-height: 1.25 !important;
         }
 
+        /* Footer (linija + Made by Fluxa) uvijek ispod fiskalnog bloka i obračuna */
         .footer{
           margin-top: 18px;
           padding-top: 10px;
@@ -953,7 +1018,7 @@ export default function Page() {
           
           .paper {
             width: 210mm !important;
-            min-height: 297mm !important;
+            min-height: auto !important;
             max-width: 210mm !important;
             box-sizing: border-box !important;
             overflow-x: hidden !important;
@@ -1048,12 +1113,7 @@ export default function Page() {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
                   <div className="brandTitle">
@@ -1135,22 +1195,18 @@ export default function Page() {
                       type="button"
                       className="btn"
                       onClick={handlePDFSaveAs}
-                      title={
-                        lang === "EN"
-                          ? "Save as PDF (in print dialog, choose 'Save as PDF' as destination)"
-                          : "Sačuvaj kao PDF (u print dialogu odaberi 'Sačuvaj kao PDF' kao destinaciju)"
-                      }
+                      title={t("wizard.pdfSaveAsTitle")}
                     >
-                      💾 {lang === "EN" ? "PDF Save as" : "PDF Sačuvaj"}
+                      💾 {t("wizard.pdfSaveAs")}
                     </button>
 
                     <button
                       type="button"
                       className="btn"
                       onClick={handleSendEmail}
-                      title={lang === "EN" ? "Send by email" : "Pošalji mail-om"}
+                      title={t("wizard.sendEmailTitle")}
                     >
-                      📧 {lang === "EN" ? "Send Email" : "Pošalji mail"}
+                      📧 {t("wizard.sendEmail")}
                     </button>
 
                     <button
@@ -1162,9 +1218,9 @@ export default function Page() {
                         borderColor: "rgba(59, 130, 246, 0.4)",
                         fontWeight: 700,
                       }}
-                      title={lang === "EN" ? "Close window" : "Zatvori prozor"}
+                      title={t("wizard.closeTitle")}
                     >
-                      ✕ {lang === "EN" ? "Close" : "Zatvori"}
+                      ✕ {t("wizard.close")}
                     </button>
                   </>
                 )}
@@ -1196,7 +1252,7 @@ export default function Page() {
                       fontWeight: 600,
                     }}
                   >
-                    ✅ Račun kreiran: {createdInvoice.broj_fakture}
+                    ✅ {t("wizard.invoiceCreated")}: {createdInvoice.broj_fakture}
                   </div>
                 )}
               </div>
@@ -1221,7 +1277,7 @@ export default function Page() {
                         return "/api/firma/logo";
                       })()
                     }
-                    alt="Company logo"
+                    alt={t(`wizard.previewDoc.${docLang}.companyLogoAlt`)}
                     className="companyLogo"
                   />
                 </div>
@@ -1231,7 +1287,7 @@ export default function Page() {
                   <div className="meta">
                     <div className="line">
                       <div className="k kStrong">
-                        {lang === "EN" ? "Invoice No." : "Broj računa"}
+                        {t(`wizard.previewDoc.${docLang}.invoiceNo`)}
                       </div>
                       <div className="v">
                         {invoiceNumber || invoiceNumberFromUrl || (createdInvoice?.broj_fakture) || "—"}
@@ -1239,7 +1295,7 @@ export default function Page() {
                     </div>
                     <div className="line">
                       <div className="k">
-                        {lang === "EN" ? "Invoice date" : "Datum računa"}
+                        {t(`wizard.previewDoc.${docLang}.invoiceDate`)}
                       </div>
                       <div className="v">
                         {fmtDDMMYYYYFromISO(invoiceDateISO)}
@@ -1247,7 +1303,7 @@ export default function Page() {
                     </div>
                     <div className="line">
                       <div className="k">
-                        {lang === "EN" ? "Due date" : "Datum dospijeća"}
+                        {t(`wizard.previewDoc.${docLang}.dueDate`)}
                       </div>
                       <div className="v">
                         {calculatedDueDate || createdInvoice?.datum_dospijeca || dueDateISO
@@ -1257,19 +1313,21 @@ export default function Page() {
                     </div>
                     <div className="line">
                       <div className="k">
-                        {lang === "EN" ? "Currency" : "Valuta"}
+                        {t(`wizard.previewDoc.${docLang}.currency`)}
                       </div>
                       <div className="v">{(ccy === "BAM" || ccy === "KM") ? "KM" : ccy}</div>
                     </div>
-                    <div className="line">
-                      <div className="k">
-                        {lang === "EN" ? "PFR No." : "PFR broj"}
+                    {isBiHContext && (ccy === "KM" || ccy === "BAM") && (
+                      <div className="line">
+                        <div className="k">
+                          {t(`wizard.previewDoc.${docLang}.pfrNo`)}
+                        </div>
+                        <div className="v">{createdInvoice?.broj_fiskalni ?? (fiskalniOdgovor?.totalCounter ?? "—")}</div>
                       </div>
-                      <div className="v">{createdInvoice?.broj_fiskalni ?? (fisk ? fisk : "—")}</div>
-                    </div>
+                    )}
                     <div className="line">
                       <div className="k">
-                        {lang === "EN" ? "Payment reference" : "Poziv na broj"}
+                        {t(`wizard.previewDoc.${docLang}.paymentRef`)}
                       </div>
                       <div className="v">{pnb ? pnb : "—"}</div>
                     </div>
@@ -1282,7 +1340,7 @@ export default function Page() {
               <div className="cols2">
                 <div>
                   <div className="blockTitle">
-                    {lang === "EN" ? "Legal entity" : "PRAVNO LICE"}
+                    {t(`wizard.previewDoc.${docLang}.legalEntity`)}
                   </div>
                   <div className="addr">
                     <div className="name">{sellerName}</div>
@@ -1291,12 +1349,12 @@ export default function Page() {
                       <div className="muted">{sellerCityLine}</div>
                     ) : null}
                     <div className="muted">{sellerCountry}</div>
-                    <div className="muted">PIB/JIB: {sellerTax}</div>
+                    <div className="muted">{t(`wizard.previewDoc.${docLang}.pibJib`)}: {sellerTax}</div>
 
                     {formattedBankAccounts.length > 0 ? (
                       <div className="bankList">
                         <div className="muted" style={{ marginTop: 8 }}>
-                          Bankovni računi:
+                          {t(`wizard.previewDoc.${docLang}.bankAccounts`)}
                         </div>
                         {formattedBankAccounts.map((formatted, i) => (
                           <div
@@ -1313,9 +1371,7 @@ export default function Page() {
 
                 <div>
                   <div className="blockTitle">
-                    {lang === "EN"
-                      ? "Client"
-                      : "KLIJENT/NARUČILAC"}
+                    {t(`wizard.previewDoc.${docLang}.client`)}
                   </div>
                   <div className="addr">
                     <div className="name">{buyerName}</div>
@@ -1324,7 +1380,7 @@ export default function Page() {
                       <div className="muted">{buyerCityLine}</div>
                     ) : null}
                     <div className="muted">{buyerCountry}</div>
-                    <div className="muted">PIB/JIB: {buyerTax}</div>
+                    <div className="muted">{t(`wizard.previewDoc.${docLang}.pibJib`)}: {buyerTax}</div>
                   </div>
                 </div>
               </div>
@@ -1335,18 +1391,16 @@ export default function Page() {
                     <tr>
                       <th style={{ width: 44 }}>#</th>
                       <th>
-                        {lang === "EN"
-                          ? "Service / Project"
-                          : "USLUGA / PROJEKAT"}
+                        {t(`wizard.previewDoc.${docLang}.serviceProject`)}
                       </th>
                       <th className="num" style={{ width: 72 }}>
-                        {lang === "EN" ? "Qty" : "KOL."}
+                        {t(`wizard.previewDoc.${docLang}.qty`)}
                       </th>
                       <th className="num" style={{ width: 120 }}>
-                        {lang === "EN" ? "Unit price" : "JED. CIJENA"}
+                        {t(`wizard.previewDoc.${docLang}.unitPrice`)}
                       </th>
                       <th className="num" style={{ width: 120 }}>
-                        {lang === "EN" ? "Total" : "UKUPNO"}
+                        {t(`wizard.previewDoc.${docLang}.total`)}
                       </th>
                     </tr>
                   </thead>
@@ -1355,9 +1409,7 @@ export default function Page() {
                     {items.length === 0 ? (
                       <tr>
                         <td colSpan={5} style={{ padding: 14, color: "#666" }}>
-                          {lang === "EN"
-                            ? "No selected projects."
-                            : "Nema izabranih projekata."}
+                          {t(`wizard.previewDoc.${docLang}.noProjects`)}
                         </td>
                       </tr>
                     ) : (
@@ -1396,10 +1448,45 @@ export default function Page() {
               </div>
 
               <div className="totalsRow">
+                {isBiHContext && (ccy === "KM" || ccy === "BAM") ? (
+                  <div className="fiscalSlot">
+                    {(fiskalniOdgovor || createdInvoice?.broj_fiskalni) ? (
+                      <div className="fiscalBlock">
+                        <div className="fiscalTitle">FISKALNI RAČUN</div>
+                        {fiskalniOdgovor?.verificationQRCode ? (
+                          <div className="fiscalQrWrap">
+                            <img
+                              src={
+                                fiskalniOdgovor.verificationQRCode.startsWith("data:")
+                                  ? fiskalniOdgovor.verificationQRCode
+                                  : fiskalniOdgovor.verificationQRCode
+                              }
+                              alt="QR za provjeru"
+                              width={140}
+                              height={140}
+                            />
+                          </div>
+                        ) : null}
+                        {fiskalniOdgovor?.sdcDateTime ? (
+                          <div className="fiscalLine">PFR vrijeme: {fiskalniOdgovor.sdcDateTime}</div>
+                        ) : null}
+                        {(fiskalniOdgovor?.invoiceNumber ?? createdInvoice?.broj_fiskalni ?? fiskalniOdgovor?.totalCounter) != null ? (
+                          <div className="fiscalLine">
+                            PFR br.rač: {String(fiskalniOdgovor?.invoiceNumber ?? createdInvoice?.broj_fiskalni ?? fiskalniOdgovor?.totalCounter ?? "")}
+                          </div>
+                        ) : null}
+                        {fiskalniOdgovor?.invoiceCounter ? (
+                          <div className="fiscalLine">Brojač računa: {fiskalniOdgovor.invoiceCounter}</div>
+                        ) : null}
+                        <div className="fiscalEnd">KRAJ FISKALNOG RAČUNA</div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
                 <div className="totalsBox">
                   <div className="totLine">
                     <div className="k">
-                      {lang === "EN" ? "Subtotal" : "Osnovica"}
+                      {t(`wizard.previewDoc.${docLang}.subtotal`)}
                     </div>
                     <div className="v">{fmtMoney(baseAmount, ccy)}</div>
                   </div>
@@ -1408,7 +1495,7 @@ export default function Page() {
                     <>
                       <div className="totLine">
                         <div className="k">
-                          {lang === "EN" ? "Discount" : "Popust"}
+                          {t(`wizard.previewDoc.${docLang}.discount`)}
                         </div>
                         <div className="v">
                           − {fmtMoney(popustAmount, ccy)}
@@ -1416,7 +1503,7 @@ export default function Page() {
                       </div>
                       <div className="totLine">
                         <div className="k">
-                          {lang === "EN" ? "Base after discount" : "Osnovica nakon popusta"}
+                          {t(`wizard.previewDoc.${docLang}.baseAfterDiscount`)}
                         </div>
                         <div className="v">{fmtMoney(baseAfterPopust, ccy)}</div>
                       </div>
@@ -1424,15 +1511,18 @@ export default function Page() {
                   )}
 
                   <div className="totLine">
-                    <div className="k">{lang === "EN" ? "VAT" : "PDV"}</div>
+                    <div className="k">
+                      {t(`wizard.previewDoc.${docLang}.vat`)}
+                      {vatRate > 0 ? ` (${Math.round(vatRate * 100)}%)` : ""}
+                    </div>
                     <div className="v">
-                      {bh ? fmtMoney(vatAmount, ccy) : "—"}
+                      {vatRate > 0 ? fmtMoney(vatAmount, ccy) : "—"}
                     </div>
                   </div>
 
                   <div className="totLine total">
                     <div className="k">
-                      {lang === "EN" ? "Total due" : "Ukupno za plaćanje"}
+                      {t(`wizard.previewDoc.${docLang}.totalDue`)}
                     </div>
                     <div className="v">{fmtMoney(totalAmount, ccy)}</div>
                   </div>
@@ -1440,11 +1530,11 @@ export default function Page() {
                   {/* ✅ Proj completion ovdje, da se “rupa” iznad obračuna zatvori */}
                   <div className="completedLine">
                     {lang === "EN"
-                      ? `Project completed: ${lastClosed ? fmtDDMMYYYYFromISO(lastClosed) : "—"}`
-                      : `Projekat je završen ${lastClosed ? fmtDDMMYYYYFromISO(lastClosed) : "—"}`}
+                      ? `${t("wizard.previewDoc.en.projectCompleted")} ${lastClosed ? fmtDDMMYYYYFromISO(lastClosed) : "—"}`
+                      : `${t("wizard.previewDoc.bh.projectCompleted")} ${lastClosed ? fmtDDMMYYYYFromISO(lastClosed) : "—"}`}
                   </div>
 
-                  {!bh ? (
+                  {!isBiHContext && vatModeParam === "INO_0" ? (
                     <div
                       style={{
                         marginTop: 6,
@@ -1453,7 +1543,18 @@ export default function Page() {
                         lineHeight: 1.25,
                       }}
                     >
-                      VAT exemption: In accordance with the VAT Law, this service is exempt from VAT pursuant to Article 27, paragraph 1.
+                      {t("wizard.previewDoc.en.reverseCharge")}
+                    </div>
+                  ) : !isBiHContext ? (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 10,
+                        color: "#555",
+                        lineHeight: 1.25,
+                      }}
+                    >
+                      {t("wizard.previewDoc.en.vatExemption")}
                     </div>
                   ) : pdvOslobodjen && buyer?.pdv_oslobodjen_napomena ? (
                     <div
@@ -1476,23 +1577,22 @@ export default function Page() {
                       lineHeight: 1.25,
                     }}
                   >
-                    {lang === "EN"
-                      ? "This invoice was generated electronically and is valid without signature and stamp."
-                      : "Račun je generisan elektronskim putem i važeći je bez pečata i potpisa."}
+                    {t(`wizard.previewDoc.${docLang}.generatedElectronically`)}
                   </div>
                 </div>
               </div>
 
+              {/* Linija i „Made by Fluxa” uvijek ispod svega (fiskalni blok + obračun); veći QR samo gura footer niže */}
               <div className="footer">
                 <div className="fluxaSig">
                   <img src="/fluxa/Icon.png" alt="FLUXA" />
-                  <span>Made by FLUXA Project &amp; Finance Engine</span>
+                  <span>{t(`wizard.previewDoc.${docLang}.madeByFluxa`)}</span>
                 </div>
               </div>
 
               {!data?.ok ? (
                 <div style={{ marginTop: 12, fontSize: 11, color: "#b00" }}>
-                  {data?.error ? `API error: ${data.error}` : "API not ready"}
+                  {data?.error ? `${t("wizard.apiError")}: ${data.error}` : t("wizard.apiNotReady")}
                 </div>
               ) : null}
             </div>

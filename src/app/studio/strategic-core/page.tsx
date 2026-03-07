@@ -1,9 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import StrategicCoreClient from "./StrategicCoreClient";
-
-export const dynamic = "force-dynamic";
+import { useTranslation } from "@/components/LocaleProvider";
+import FluxaLogo from "@/components/FluxaLogo";
 
 export default function StrategicCorePage() {
+  const { t } = useTranslation();
   return (
     <div className="container" style={{ minHeight: "100vh" }}>
       <div className="pageWrap">
@@ -12,28 +15,17 @@ export default function StrategicCorePage() {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <img
-                    src="/fluxa/logo-light.png"
-                    alt="FLUXA"
-                    className="brandLogo"
-                  />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">{t("scPage.brandSlogan")}</span>
                 </div>
                 <div>
-                  <div className="brandTitle">SC Strategic Core®</div>
-                  <div className="brandSub">Brzi budžet u pregovorima</div>
+                  <div className="brandTitle">{t("scPage.pageTitle")}</div>
+                  <div className="brandSub">{t("scPage.pageSubtitle")}</div>
                 </div>
               </div>
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <Link href="/studio/firma" className="btn" title="Studio">
-                  ⚙️ Studio
-                </Link>
-                <Link href="/mobile" className="btn" title="Mobile">
-                  📱 Mobile
-                </Link>
-                <Link href="/dashboard" className="btn" title="Dashboard">
-                  🏠 Dashboard
+                <Link href="/dashboard" className="btn" title={t("scPage.dashboard")}>
+                  🏠 {t("scPage.dashboard")}
                 </Link>
               </div>
             </div>

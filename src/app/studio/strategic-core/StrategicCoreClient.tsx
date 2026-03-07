@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslation } from "@/components/LocaleProvider";
+import { getCurrencyForLocale } from "@/lib/i18n";
 
 const COLS_NOVI = 4;
 const ROWS_NOVI = 1; // novi layout kreće od 4×1, redovi se dodaju dugmetom "Dodaj red"
@@ -101,6 +103,7 @@ const MODAL_STYLE: React.CSSProperties = {
 };
 
 export default function StrategicCoreClient() {
+  const { t, locale } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const paramInicijacijaId = searchParams.get("inicijacija_id");
@@ -113,7 +116,8 @@ export default function StrategicCoreClient() {
   const [cjenovnikItems, setCjenovnikItems] = useState<CjenovnikItem[]>([]);
 
   const [inicijacija_id, setInicijacija_id] = useState<number | null>(null);
-  const [valuta, setValuta] = useState<"BAM" | "EUR">("BAM");
+  const defaultValuta = getCurrencyForLocale(locale) === "EUR" ? "EUR" : "BAM";
+  const [valuta, setValuta] = useState<"BAM" | "EUR">(defaultValuta);
   const [editingLayoutId, setEditingLayoutId] = useState<number | null>(null);
   const [editingLayoutMeta, setEditingLayoutMeta] = useState<{ cols: number; rows: number } | null>(null);
   const [noviForm, setNoviForm] = useState({
@@ -147,9 +151,9 @@ export default function StrategicCoreClient() {
       const j = await res.json();
       if (j.ok) setLayouts(j.rows ?? []);
     } catch (e) {
-      setError("Greška pri učitavanju layouta.");
+      setError(t("scPage.errLoadLayouts"));
     }
-  }, []);
+  }, [t]);
 
   const loadKlijenti = useCallback(async () => {
     try {
@@ -157,9 +161,9 @@ export default function StrategicCoreClient() {
       const j = await res.json();
       if (j?.rows) setKlijenti(j.rows);
     } catch (e) {
-      setError("Greška pri učitavanju klijenata.");
+      setError(t("scPage.errLoadClients"));
     }
-  }, []);
+  }, [t]);
 
   const loadCjenovnik = useCallback(async () => {
     try {
@@ -167,9 +171,9 @@ export default function StrategicCoreClient() {
       const j = await res.json();
       if (j.ok) setCjenovnikItems(j.rows ?? []);
     } catch (e) {
-      setError("Greška pri učitavanju cjenovnika.");
+      setError(t("scPage.errLoadCjenovnik"));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadLayouts();
@@ -199,6 +203,12 @@ export default function StrategicCoreClient() {
     }
   }, [paramInicijacijaId]);
 
+  useEffect(() => {
+    if (!paramInicijacijaId) {
+      setValuta(getCurrencyForLocale(locale) === "EUR" ? "EUR" : "BAM");
+    }
+  }, [locale, paramInicijacijaId]);
+
   const handleNovi = () => {
     setScreen("novi_form");
     loadKlijenti();
@@ -209,7 +219,7 @@ export default function StrategicCoreClient() {
     const narucilac_id = Number(noviForm.narucilac_id);
     const radni_naziv = noviForm.radni_naziv.trim();
     if (!narucilac_id || !radni_naziv) {
-      setError("Naručilac i radni naziv su obavezni.");
+      setError(t("scPage.errRequired"));
       return;
     }
     setLoading(true);
@@ -231,7 +241,7 @@ export default function StrategicCoreClient() {
       loadLayouts();
       setScreen("izaberi_layout");
     } catch (e: any) {
-      setError(e?.message || "Greška pri kreiranju Deala.");
+      setError(e?.message || t("scPage.errCreateDeal"));
     } finally {
       setLoading(false);
     }
@@ -253,7 +263,7 @@ export default function StrategicCoreClient() {
       setEditMode(false);
       setScreen("chessboard");
     } catch (e: any) {
-      setError(e?.message || "Greška pri učitavanju layouta.");
+      setError(e?.message || t("scPage.errLoadLayouts"));
     } finally {
       setLoading(false);
     }
@@ -281,7 +291,7 @@ export default function StrategicCoreClient() {
         loadCjenovnik();
         setScreen("cjenovnik_picker");
         setCjenovnikSearch("");
-        setSelectedStavka(null);
+        setSelectedStavkaForColor(null);
       }
       return;
     }
@@ -328,11 +338,11 @@ export default function StrategicCoreClient() {
   const handlePrihvati = async () => {
     const items = stavkeList();
     if (items.length === 0) {
-      setError("Nema stavki za prenos.");
+      setError(t("scPage.errNoItems"));
       return;
     }
     if (!inicijacija_id) {
-      setError("Deal nije kreiran.");
+      setError(t("scPage.errNoDeal"));
       return;
     }
     setLoading(true);
@@ -360,7 +370,7 @@ export default function StrategicCoreClient() {
       if (!j.ok) throw new Error(j.error || "Greška");
       router.push(`/inicijacije/${inicijacija_id}`);
     } catch (e: any) {
-      setError(e?.message || "Greška pri prenosu stavki.");
+      setError(e?.message || t("scPage.errTransfer"));
     } finally {
       setLoading(false);
     }
@@ -403,7 +413,7 @@ export default function StrategicCoreClient() {
       loadCjenovnik();
       setScreen("layout_editor");
     } catch (e: any) {
-      setError(e?.message || "Greška pri učitavanju layouta.");
+      setError(e?.message || t("scPage.errLoadLayouts"));
     } finally {
       setLoading(false);
     }
@@ -459,7 +469,7 @@ export default function StrategicCoreClient() {
 
   const handleSaveLayout = async () => {
     const layout = editingLayoutId ? layouts.find((l) => l.sc_layout_id === editingLayoutId) : null;
-    const naziv = (editingLayoutId && layout?.naziv) ? layout.naziv : (window.prompt("Naziv layouta:") ?? "");
+    const naziv = (editingLayoutId && layout?.naziv) ? layout.naziv : (window.prompt(t("scPage.layoutNamePrompt")) ?? "");
     if (!naziv?.trim()) return;
     const cells: { col_index: number; row_index: number; stavka_id: number; boja: string }[] = [];
     for (const [key, v] of Object.entries(creatorCells)) {
@@ -485,7 +495,7 @@ export default function StrategicCoreClient() {
       setIzaberiLayoutSamoEdit(false);
       setScreen("izbor");
     } catch (e: any) {
-      setError(e?.message || "Greška pri snimanju layouta.");
+      setError(e?.message || t("scPage.errSaveLayout"));
     } finally {
       setLoading(false);
     }
@@ -570,18 +580,18 @@ export default function StrategicCoreClient() {
 
       {screen === "izbor" && (
         <div>
-          <h2 style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 800, marginBottom: 20 }}>Izbor</h2>
+          <h2 style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 800, marginBottom: 20 }}>{t("scPage.choice")}</h2>
           <button
             style={{ ...BTN_STYLE, border: "3px solid rgba(59,130,246,0.6)", background: "rgba(59,130,246,0.18)" }}
             onClick={handleNovi}
           >
-            📋 + Novi deal
+            {t("scPage.newDeal")}
           </button>
           <button
             style={{ ...BTN_STYLE, border: "3px solid rgba(34,197,94,0.6)", background: "rgba(34,197,94,0.18)" }}
             onClick={handleLayoutSC}
           >
-            🎛️ Kreiraj novi SC layout
+            {t("scPage.createLayout")}
           </button>
           <button
             style={{ ...BTN_STYLE, border: "2px solid rgba(148,163,184,0.5)", background: "rgba(148,163,184,0.12)", color: "var(--muted)" }}
@@ -591,16 +601,16 @@ export default function StrategicCoreClient() {
               setScreen("izaberi_layout");
             }}
           >
-            ✏️ Otvori / uredi postojeće SC layoute
+            {t("scPage.openEditLayouts")}
           </button>
         </div>
       )}
 
       {screen === "novi_form" && (
         <div>
-          <h2 style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 800, marginBottom: 16 }}>Novi Deal</h2>
+          <h2 style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 800, marginBottom: 16 }}>{t("scPage.newDealTitle")}</h2>
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4 }}>Valuta</label>
+            <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4 }}>{t("scPage.currency")}</label>
             <select
               value={valuta}
               onChange={(e) => setValuta(e.target.value as "BAM" | "EUR")}
@@ -613,7 +623,7 @@ export default function StrategicCoreClient() {
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4 }}>
-              Naručilac (obavezno)
+              {t("scPage.narucilacRequired")}
             </label>
             <select
               value={noviForm.narucilac_id}
@@ -621,7 +631,7 @@ export default function StrategicCoreClient() {
               className="input"
               style={{ width: "100%", padding: 12 }}
             >
-              <option value="">— izaberi —</option>
+              <option value="">{t("scPage.selectOption")}</option>
               {klijenti.map((k) => (
                 <option key={k.klijent_id} value={k.klijent_id}>{k.naziv_klijenta}</option>
               ))}
@@ -629,7 +639,7 @@ export default function StrategicCoreClient() {
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4 }}>
-              Krajnji klijent (opcionalno)
+              {t("scPage.krajnjiOptional")}
             </label>
             <select
               value={noviForm.krajnji_klijent_id}
@@ -637,7 +647,7 @@ export default function StrategicCoreClient() {
               className="input"
               style={{ width: "100%", padding: 12 }}
             >
-              <option value="">— nije izabrano</option>
+              <option value="">{t("scPage.notSelected")}</option>
               {klijenti.map((k) => (
                 <option key={k.klijent_id} value={k.klijent_id}>{k.naziv_klijenta}</option>
               ))}
@@ -645,19 +655,19 @@ export default function StrategicCoreClient() {
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4 }}>
-              Radni naziv (obavezno)
+              {t("scPage.radniRequired")}
             </label>
             <input
               value={noviForm.radni_naziv}
               onChange={(e) => setNoviForm((p) => ({ ...p, radni_naziv: e.target.value }))}
-              placeholder="Npr. Spot za X"
+              placeholder={t("scPage.radniPlaceholder")}
               className="input"
               style={{ width: "100%", padding: 12 }}
             />
           </div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4 }}>
-              Napomena
+              {t("scPage.note")}
             </label>
             <textarea
               value={noviForm.napomena}
@@ -669,10 +679,10 @@ export default function StrategicCoreClient() {
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button className="btn" onClick={() => setScreen("izbor")} style={BTN_STYLE}>
-              Odustani
+              {t("scPage.cancel")}
             </button>
             <button className="btn btn--active" onClick={handleCreateDeal} disabled={loading} style={BTN_STYLE}>
-              {loading ? "Radi..." : "Kreiraj → Izaberi layout"}
+              {loading ? t("scPage.working") : t("scPage.createAndSelectLayout")}
             </button>
           </div>
         </div>
@@ -682,13 +692,13 @@ export default function StrategicCoreClient() {
         <div>
           <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 16 }}>
             {izaberiLayoutSamoEdit
-              ? "Uredi postojeći SC layout"
+              ? t("scPage.editExistingLayout")
               : paramInicijacijaId
-                ? "Dodaj budžet u Deal – izaberi layout"
-                : "Izaberi layout"}
+                ? t("scPage.addBudgetToDeal")
+                : t("scPage.selectLayout")}
           </h2>
           {layouts.length === 0 ? (
-            <p style={{ color: "var(--muted)" }}>Nema layouta. Kreiraj layout u „Kreiraj novi SC layout”.</p>
+            <p style={{ color: "var(--muted)" }}>{t("scPage.noLayouts")}</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {layouts.map((l) => (
@@ -721,7 +731,7 @@ export default function StrategicCoreClient() {
                       onClick={(e) => { e.stopPropagation(); handleEditLayout(l.sc_layout_id); }}
                       className="btn"
                       style={{ padding: "10px 14px", fontSize: 13 }}
-                      title="Uredi layout"
+                      title={t("scPage.editLayout")}
                     >
                       ✏️
                     </button>
@@ -744,7 +754,7 @@ export default function StrategicCoreClient() {
             }}
             style={{ ...BTN_STYLE, marginTop: 16 }}
           >
-            ← {izaberiLayoutSamoEdit ? "Nazad na Izbor" : paramInicijacijaId ? "Nazad na Deal" : "Nazad"}
+            ← {izaberiLayoutSamoEdit ? t("scPage.backToChoice") : paramInicijacijaId ? t("scPage.backToDeal") : t("scPage.back")}
           </button>
         </div>
       )}
@@ -754,7 +764,7 @@ export default function StrategicCoreClient() {
           <h2 style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 800, marginBottom: 12 }}>{layoutDetail.layout?.naziv}</h2>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginBottom: 12 }}>
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "clamp(13px, 2.5vw, 15px)" }}>
-              <span style={{ opacity: 0.9 }}>Valuta:</span>
+              <span style={{ opacity: 0.9 }}>{t("scPage.currency")}:</span>
               <select
                 value={valuta}
                 onChange={(e) => setValuta(e.target.value as "BAM" | "EUR")}
@@ -767,7 +777,7 @@ export default function StrategicCoreClient() {
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "clamp(13px, 2.5vw, 15px)" }}>
               <input type="checkbox" checked={editMode} onChange={(e) => setEditMode(e.target.checked)} />
-              <span>Edit polje</span>
+              <span>{t("scPage.editField")}</span>
             </label>
           </div>
           <ChessboardGrid
@@ -826,10 +836,10 @@ export default function StrategicCoreClient() {
               {totalSum().toFixed(2)} {valuta}
             </button>
             <button className="btn btn--active" onClick={handlePrihvati} disabled={loading || stavkeList().length === 0} style={BTN_STYLE}>
-              {loading ? "Radi..." : "Prihvati"}
+              {loading ? t("scPage.working") : t("scPage.accept")}
             </button>
             <button className="btn" onClick={() => setClicks({})} style={BTN_STYLE}>
-              Reset
+              {t("scPage.reset")}
             </button>
           </div>
           <button
@@ -841,15 +851,15 @@ export default function StrategicCoreClient() {
             }
             style={BTN_STYLE}
           >
-            ← {paramInicijacijaId ? "Nazad na Deal" : "Nazad"}
+            ← {paramInicijacijaId ? t("scPage.backToDeal") : t("scPage.back")}
           </button>
         </div>
       )}
 
       {screen === "stavke_list" && (
         <div>
-          <h2 style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 800, marginBottom: 12 }}>Stavke</h2>
-          <p style={{ fontSize: "clamp(12px, 2.2vw, 14px)", opacity: 0.8, marginBottom: 8 }}>Dvoklik uklanja stavku</p>
+          <h2 style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 800, marginBottom: 12 }}>{t("scPage.items")}</h2>
+          <p style={{ fontSize: "clamp(12px, 2.2vw, 14px)", opacity: 0.8, marginBottom: 8 }}>{t("scPage.doubleClickRemove")}</p>
           <div style={{ marginBottom: 12 }}>
             {stavkeList().map((it) => (
               <div
@@ -876,9 +886,9 @@ export default function StrategicCoreClient() {
               </div>
             ))}
           </div>
-          <div style={{ fontWeight: 800, marginBottom: 12, fontSize: "clamp(16px, 3vw, 18px)" }}>Ukupno: {totalSum().toFixed(2)} {valuta}</div>
+          <div style={{ fontWeight: 800, marginBottom: 12, fontSize: "clamp(16px, 3vw, 18px)" }}>{t("scPage.total")} {totalSum().toFixed(2)} {valuta}</div>
           <button className="btn btn--active" onClick={() => setScreen("chessboard")} style={BTN_STYLE}>
-            OK
+            {t("scPage.ok")}
           </button>
         </div>
       )}
@@ -886,13 +896,13 @@ export default function StrategicCoreClient() {
       {(screen === "layout_creator" || screen === "layout_editor") && (
         <div>
           <h2 style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 800, marginBottom: 12 }}>
-            {editingLayoutId ? "Uredi layout" : "Novi layout (4×1, dodaj redove po potrebi)"}
+            {editingLayoutId ? t("scPage.editLayoutTitle") : t("scPage.newLayoutTitle")}
           </h2>
           <p style={{ fontSize: "clamp(12px, 2.2vw, 14px)", opacity: 0.8, marginBottom: 12 }}>
-            Klikni na polje → izaberi stavku → izaberi boju (npr. žuta=oprema, plava=audio, zelena=video).
+            {t("scPage.clickFieldHint")}
           </p>
           <div style={{ marginBottom: 8 }}>
-            <label style={{ fontSize: 12, opacity: 0.8 }}>Valuta: </label>
+            <label style={{ fontSize: 12, opacity: 0.8 }}>{t("scPage.currency")}: </label>
             <select value={valuta} onChange={(e) => setValuta(e.target.value as "BAM" | "EUR")} className="input" style={{ padding: 6, marginLeft: 8 }}>
               <option value="BAM">KM</option>
               <option value="EUR">EUR</option>
@@ -929,15 +939,15 @@ export default function StrategicCoreClient() {
               }
               style={{ ...BTN_STYLE, marginBottom: 16, background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.2)" }}
             >
-              ＋ Dodaj red
+              {t("scPage.addRow")}
             </button>
           )}
           <div style={{ display: "flex", gap: 10 }}>
             <button className="btn" onClick={() => { setScreen("izbor"); setEditingLayoutId(null); setEditingLayoutMeta(null); setCreatorRows(ROWS_NOVI); setIzaberiLayoutSamoEdit(false); }} style={BTN_STYLE}>
-              Odustani
+              {t("scPage.cancel")}
             </button>
             <button className="btn btn--active" onClick={handleSaveLayout} disabled={loading} style={BTN_STYLE}>
-              {loading ? "Snima..." : editingLayoutId ? "Spremi izmjene" : "Snimi layout"}
+              {loading ? t("scPage.saving") : editingLayoutId ? t("scPage.saveChanges") : t("scPage.saveLayout")}
             </button>
           </div>
         </div>
@@ -958,9 +968,9 @@ export default function StrategicCoreClient() {
           >
             {selectedStavkaForColor ? (
               <>
-                <h3 style={{ marginBottom: 8 }}>Izaberi boju za: {selectedStavkaForColor.naziv}</h3>
+                <h3 style={{ marginBottom: 8 }}>{t("scPage.pickColorFor")} {selectedStavkaForColor.naziv}</h3>
                 <p style={{ fontSize: 12, opacity: 0.8, marginBottom: 12 }}>
-                  Grupiši po karakteru (npr. žuta=oprema, plava=audio, zelena=video).
+                  {t("scPage.colorHint")}
                 </p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
                   {BOJA_PALETA.map((b) => (
@@ -990,16 +1000,16 @@ export default function StrategicCoreClient() {
                   onClick={() => setSelectedStavkaForColor(null)}
                   style={{ marginBottom: 8 }}
                 >
-                  ← Natrag na listu stavki
+                  {t("scPage.backToItemList")}
                 </button>
               </>
             ) : (
               <>
-                <h3 style={{ marginBottom: 12 }}>Izaberi stavku</h3>
+                <h3 style={{ marginBottom: 12 }}>{t("scPage.pickItem")}</h3>
                 <input
                   value={cjenovnikSearch}
                   onChange={(e) => setCjenovnikSearch(e.target.value)}
-                  placeholder="Traži..."
+                  placeholder={t("scPage.search")}
                   style={{ width: "100%", padding: 10, marginBottom: 12, borderRadius: 8 }}
                 />
                 <div style={{ maxHeight: 300, overflow: "auto" }}>
@@ -1031,7 +1041,7 @@ export default function StrategicCoreClient() {
                   setOverrideEditing(null);
                   setPendingEditContext(null);
                 }} style={{ marginTop: 12 }}>
-                  Odustani
+                  {t("scPage.cancel")}
                 </button>
               </>
             )}
