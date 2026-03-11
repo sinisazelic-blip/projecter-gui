@@ -21,10 +21,10 @@ function toDateOnlyString(val: unknown): string | null {
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const p = await params;
-    const fakturaId = Number(p.id);
+  const p = await params;
+  const fakturaId = Number(p.id);
 
+  try {
     if (!Number.isFinite(fakturaId) || fakturaId <= 0) {
       return NextResponse.json(
         { ok: false, error: "Neispravan ID fakture" },
