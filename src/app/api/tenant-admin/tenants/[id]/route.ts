@@ -36,7 +36,7 @@ export async function PATCH(
     status?: string;
     regenerate_licence_token?: boolean;
     max_users?: number;
-    monthly_price?: number | null;
+    monthly_price?: number | string | null;
     currency?: string | null;
   };
   try {
@@ -76,7 +76,8 @@ export async function PATCH(
   }
   if (body.monthly_price !== undefined) {
     updates.push("monthly_price = ?");
-    paramsList.push(body.monthly_price == null || body.monthly_price === "" ? null : Number(body.monthly_price));
+    const raw = body.monthly_price;
+    paramsList.push(raw == null || raw === "" ? null : Number(raw));
   }
   if (body.currency !== undefined) {
     updates.push("currency = ?");
