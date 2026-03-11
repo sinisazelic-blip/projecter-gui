@@ -208,11 +208,11 @@ export async function POST(req: NextRequest) {
       INSERT INTO projekti
         (projekat_id, id_po, status_id, radni_naziv,
          narucilac_id, krajnji_klijent_id,
-         tip_roka, rok_glavni, napomena)
+         tip_roka, rok_glavni, napomena, budzet_procenat_za_tim)
       VALUES
         (?, ?, ?, ?,
          ?, ?,
-         'deadline', ?, ?)
+         'deadline', ?, ?, ?)
       `,
       [
         nextId,
@@ -223,6 +223,7 @@ export async function POST(req: NextRequest) {
         inic.krajnji_klijent_id ?? null,
         meta.rok_glavni,
         meta.napomena,
+        100.00, // default 100% budžeta vidljivo timu
       ],
     );
 

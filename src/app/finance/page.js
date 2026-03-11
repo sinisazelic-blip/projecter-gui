@@ -3,8 +3,63 @@ import { cookies } from "next/headers";
 import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
 import FluxaLogo from "@/components/FluxaLogo";
+import FinanceToolsCard from "./FinanceToolsCard";
 
 export const dynamic = "force-dynamic";
+
+const FINANCE_MODULES = [
+  { type: "card", titleKey: "finance.banka", descKey: "finance.bankaDesc", href: "/finance/banka" },
+  { type: "card", titleKey: "finance.bankaVsKnjige", descKey: "finance.bankaVsKnjigeDesc", href: "/finance/banka-vs-knjige" },
+  { type: "card", titleKey: "finance.cashflow", descKey: "finance.cashflowDesc", href: "/finance/cashflow" },
+  { type: "card", titleKey: "finance.dugovanja", descKey: "finance.dugovanjaDesc", href: "/finance/dugovanja" },
+  { type: "tools", titleKey: "dashboard.financeTools", descKey: "finance.financeToolsDesc" },
+  { type: "card", titleKey: "finance.fiksniTroskovi", descKey: "finance.fiksniTroskoviDesc", href: "/finance/fiksni-troskovi", href2: "/finance/fiksni-troskovi/raspored", href2LabelKey: "finance.raspored" },
+  { type: "card", titleKey: "finance.krediti", descKey: "finance.kreditiDesc", href: "/finance/krediti" },
+  { type: "card", titleKey: "finance.kuf", descKey: "finance.kufDesc", href: "/finance/kuf" },
+  { type: "card", titleKey: "finance.naplate", descKey: "finance.naplateDesc", href: "/naplate" },
+  { type: "card", titleKey: "finance.pdvPrijava", descKey: "finance.pdvPrijavaDesc", href: "/finance/pdv" },
+  { type: "card", titleKey: "finance.placanja", descKey: "finance.placanjaDesc", href: "/finance/placanja" },
+  { type: "card", titleKey: "finance.pocetnaStanja", descKey: "finance.pocetnaStanjaDesc", href: "/finance/pocetna-stanja" },
+  { type: "card", titleKey: "finance.potrazivanja", descKey: "finance.potrazivanjaDesc", href: "/finance/potrazivanja" },
+  { type: "card", titleKey: "finance.prihodi", descKey: "finance.prihodiDesc", href: "/finance/prihodi" },
+];
+
+function FinanceModulesGrid({ t }) {
+  const sorted = [...FINANCE_MODULES].sort((a, b) => {
+    const titleA = t(a.titleKey);
+    const titleB = t(b.titleKey);
+    return (titleA || "").localeCompare(titleB || "", "hr");
+  });
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+        gap: 16,
+      }}
+    >
+      {sorted.map((m, i) => {
+        const title = t(m.titleKey);
+        const desc = t(m.descKey);
+        const openLabel = t("common.open");
+        if (m.type === "tools") {
+          return <FinanceToolsCard key={i} title={title} desc={desc} openLabel={openLabel} />;
+        }
+        return (
+          <CardLink
+            key={i}
+            title={title}
+            desc={desc}
+            href={m.href}
+            href2={m.href2 || null}
+            href2Label={m.href2LabelKey ? t(m.href2LabelKey) : undefined}
+            openLabel={openLabel}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 function CardLink({ title, desc, href, href2, href2Label, openLabel }) {
   return (
@@ -70,58 +125,7 @@ export default async function FinanceHomePage() {
         </div>
 
         <div className="bodyWrap">
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: 16,
-        }}
-      >
-        <CardLink
-          title={t("finance.banka")}
-          desc={t("finance.bankaDesc")}
-          href="/finance/banka"
-          openLabel={t("common.open")}
-        />
-
-        <CardLink title={t("finance.bankaVsKnjige")} desc={t("finance.bankaVsKnjigeDesc")} href="/finance/banka-vs-knjige" openLabel={t("common.open")} />
-        <CardLink title={t("finance.potrazivanja")} desc={t("finance.potrazivanjaDesc")} href="/finance/potrazivanja" openLabel={t("common.open")} />
-        <CardLink title={t("finance.naplate")} desc={t("finance.naplateDesc")} href="/naplate" openLabel={t("common.open")} />
-        <CardLink title={t("finance.pdvPrijava")} desc={t("finance.pdvPrijavaDesc")} href="/finance/pdv" openLabel={t("common.open")} />
-        <CardLink title={t("finance.kuf")} desc={t("finance.kufDesc")} href="/finance/kuf" openLabel={t("common.open")} />
-        <CardLink title={t("dashboard.financeTools")} desc={t("finance.financeToolsDesc")} href="/studio/finance-tools" openLabel={t("common.open")} />
-        <CardLink title={t("finance.pocetnaStanja")} desc={t("finance.pocetnaStanjaDesc")} href="/finance/pocetna-stanja" openLabel={t("common.open")} />
-        <CardLink title={t("finance.dugovanja")} desc={t("finance.dugovanjaDesc")} href="/finance/dugovanja" openLabel={t("common.open")} />
-        <CardLink title={t("finance.prihodi")} desc={t("finance.prihodiDesc")} href="/finance/prihodi" openLabel={t("common.open")} />
-        <CardLink title={t("finance.placanja")} desc={t("finance.placanjaDesc")} href="/finance/placanja" openLabel={t("common.open")} />
-        <CardLink title={t("finance.cashflow")} desc={t("finance.cashflowDesc")} href="/finance/cashflow" openLabel={t("common.open")} />
-        <CardLink title={t("finance.krediti")} desc={t("finance.kreditiDesc")} href="/finance/krediti" openLabel={t("common.open")} />
-        <CardLink
-          title={t("finance.fiksniTroskovi")}
-          desc={t("finance.fiksniTroskoviDesc")}
-          href="/finance/fiksni-troskovi"
-          href2="/finance/fiksni-troskovi/raspored"
-          href2Label={t("finance.raspored")}
-          openLabel={t("common.open")}
-        />
-      </div>
-
-      <div
-        className="card"
-        style={{
-          marginTop: 20,
-          gridColumn: "1 / -1",
-          border: "1px solid var(--border)",
-          borderRadius: 16,
-          background: "rgba(255,255,255,0.03)",
-          padding: 18,
-        }}
-      >
-        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>{t("finance.note")}</div>
-        <div className="subtle" style={{ lineHeight: 1.7, fontSize: 13 }}>
-          {t("finance.noteText")}
-        </div>
-      </div>
+      <FinanceModulesGrid t={t} />
         </div>
       </div>
     </div>

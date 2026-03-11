@@ -63,45 +63,47 @@ export async function POST(req: NextRequest) {
     const { batch, txs } = parseBamXmlV2(xmlText);
 
     const result = await withTransaction(async (conn) => {
-      // 1) batch upsert
-      const [batchRes]: any = await conn.execute(
-        `
-        INSERT INTO bank_import_batch
-          (account_id, source, upp_id, bank_account_no, tax_id, company_name,
-           statement_no, statement_date, currency,
-           opening_balance, closing_balance, total_debit, total_credit, file_hash)
-        VALUES
-          (?, 'BAM_XML_V2', ?, ?, ?, ?,
-           ?, ?, 'BAM',
-           ?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE
-          imported_at = CURRENT_TIMESTAMP
-        `,
-        [
-          account_id,
-          batch.uppId,
-          batch.accId,
-          batch.taxId,
-          batch.companyName,
-          batch.statementNo,
-          batch.statementDate,
-          batch.openingBalance,
-          batch.closingBalance,
-          batch.totalDebit,
-          batch.totalCredit,
-          file_hash,
-        ],
+      // 1) Isti fajl = isti file_hash → koristi postojeći batch (bez UNIQUE u bazi također radi)
+      const [existing]: any = await conn.execute(
+        `SELECT batch_id FROM bank_import_batch WHERE file_hash = ? LIMIT 1`,
+        [file_hash],
       );
+      let batch_id: number | null =
+        existing?.[0]?.batch_id != null ? Number(existing[0].batch_id) : null;
 
-      let batch_id: number | null = null;
-      if (batchRes?.insertId) {
-        batch_id = Number(batchRes.insertId);
-      } else {
-        const [rows]: any = await conn.execute(
-          `SELECT batch_id FROM bank_import_batch WHERE file_hash = ? LIMIT 1`,
-          [file_hash],
+      if (batch_id == null) {
+        const [batchRes]: any = await conn.execute(
+          `
+          INSERT INTO bank_import_batch
+            (account_id, source, upp_id, bank_account_no, tax_id, company_name,
+             statement_no, statement_date, currency,
+             opening_balance, closing_balance, total_debit, total_credit, file_hash)
+          VALUES
+            (?, 'BAM_XML_V2', ?, ?, ?, ?,
+             ?, ?, 'BAM',
+             ?, ?, ?, ?, ?)
+          `,
+          [
+            account_id,
+            batch.uppId,
+            batch.accId,
+            batch.taxId,
+            batch.companyName,
+            batch.statementNo,
+            batch.statementDate,
+            batch.openingBalance,
+            batch.closingBalance,
+            batch.totalDebit,
+            batch.totalCredit,
+            file_hash,
+          ],
         );
-        batch_id = rows?.[0]?.batch_id ? Number(rows[0].batch_id) : null;
+        batch_id = batchRes?.insertId ? Number(batchRes.insertId) : null;
+      } else {
+        await conn.execute(
+          `UPDATE bank_import_batch SET imported_at = CURRENT_TIMESTAMP WHERE batch_id = ?`,
+          [batch_id],
+        );
       }
       if (!batch_id) throw new Error("Ne mogu odrediti batch_id.");
 

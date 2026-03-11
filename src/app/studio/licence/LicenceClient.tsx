@@ -3,12 +3,17 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "@/components/LocaleProvider";
 
+const USER_LIMIT_OPTIONS = [1, 3, 5, 10, 50, 101] as const; // 101 = 100+
+const CURRENCY_OPTIONS = ["EUR", "KM"];
+
 type TenantRow = {
   tenant_id: number;
   naziv: string;
   plan_id: number;
   plan_naziv: string;
   max_users: number;
+  monthly_price?: number | null;
+  currency?: string | null;
   subscription_starts_at: string;
   subscription_ends_at: string;
   status: string;
@@ -29,12 +34,16 @@ export default function LicenceClient() {
   const [extendSaving, setExtendSaving] = useState(false);
   const [planModalTenantId, setPlanModalTenantId] = useState<number | null>(null);
   const [planId, setPlanId] = useState<number | null>(null);
+  const [planMaxUsers, setPlanMaxUsers] = useState<number>(5);
   const [planSaving, setPlanSaving] = useState(false);
   const [newTenantOpen, setNewTenantOpen] = useState(false);
   const [newTenantNaziv, setNewTenantNaziv] = useState("");
   const [newTenantPlanId, setNewTenantPlanId] = useState<number>(1);
+  const [newTenantMaxUsers, setNewTenantMaxUsers] = useState<number>(5);
   const [newTenantStart, setNewTenantStart] = useState("");
   const [newTenantEnd, setNewTenantEnd] = useState("");
+  const [newTenantPrice, setNewTenantPrice] = useState("");
+  const [newTenantCurrency, setNewTenantCurrency] = useState("EUR");
   const [newTenantSaving, setNewTenantSaving] = useState(false);
   const [statusSavingId, setStatusSavingId] = useState<number | null>(null);
   const [tokenModalRow, setTokenModalRow] = useState<TenantRow | null>(null);
@@ -50,7 +59,7 @@ export default function LicenceClient() {
         fetch("/api/tenant-admin/plans").then((r) => r.json()),
       ]);
       if (tr.ok) setTenants(tr.tenants ?? []);
-      else setError(tr.error ?? "Greška učitavanja tenanata");
+      else setError(tr.error ?? t("common.errorLoad"));
       if (pr.ok) setPlans(pr.plans ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -78,7 +87,7 @@ export default function LicenceClient() {
         setExtendDate("");
         await load();
       } else {
-        setError(data.error ?? "Greška");
+        setError(data.error ?? t("common.error"));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -94,7 +103,7 @@ export default function LicenceClient() {
       const res = await fetch(`/api/tenant-admin/tenants/${planModalTenantId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan_id: planId }),
+        body: JSON.stringify({ plan_id: planId, max_users: planMaxUsers }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -102,7 +111,7 @@ export default function LicenceClient() {
         setPlanId(null);
         await load();
       } else {
-        setError(data.error ?? "Greška");
+        setError(data.error ?? t("common.error"));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -112,8 +121,10 @@ export default function LicenceClient() {
   };
 
   const openPlanModal = (tenantId: number) => {
+    const row = tenants.find((t) => t.tenant_id === tenantId);
     setPlanModalTenantId(tenantId);
-    setPlanId(tenants.find((t) => t.tenant_id === tenantId)?.plan_id ?? null);
+    setPlanId(row?.plan_id ?? null);
+    setPlanMaxUsers(row?.max_users ?? 5);
   };
 
   const openExtendModal = (row: TenantRow) => {
@@ -137,7 +148,7 @@ export default function LicenceClient() {
       if (data.ok && data.licence_token) {
         setTokenModalRow((prev) => (prev ? { ...prev, licence_token: data.licence_token } : null));
         await load();
-      } else setError(data.error ?? "Greška");
+      } else setError(data.error ?? t("common.error"));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -155,7 +166,7 @@ export default function LicenceClient() {
       });
       const data = await res.json();
       if (data.ok) await load();
-      else setError(data.error ?? "Greška");
+      else setError(data.error ?? t("common.error"));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -173,8 +184,11 @@ export default function LicenceClient() {
         body: JSON.stringify({
           naziv: newTenantNaziv.trim(),
           plan_id: newTenantPlanId,
+          max_users: newTenantMaxUsers,
           subscription_starts_at: newTenantStart,
           subscription_ends_at: newTenantEnd,
+          monthly_price: newTenantPrice.trim() ? Number(newTenantPrice) : null,
+          currency: newTenantPrice.trim() ? newTenantCurrency : null,
         }),
       });
       const data = await res.json();
@@ -182,18 +196,28 @@ export default function LicenceClient() {
         setNewTenantOpen(false);
         setNewTenantNaziv("");
         setNewTenantPlanId(plans[0]?.plan_id ?? 1);
+        setNewTenantMaxUsers(5);
         setNewTenantStart("");
         setNewTenantEnd("");
+        setNewTenantPrice("");
+        setNewTenantCurrency("EUR");
         setNewTenantToken(data.licence_token ?? null);
         await load();
       } else {
-        setError(data.error ?? "Greška");
+        setError(data.error ?? t("common.error"));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setNewTenantSaving(false);
     }
+  };
+
+  const formatMaxUsers = (n: number) => (n >= 101 ? t("studioLicence.users100Plus") : String(n));
+  const formatPrice = (row: TenantRow) => {
+    if (row.monthly_price == null || row.monthly_price === "") return "—";
+    const curr = row.currency || "EUR";
+    return `${Number(row.monthly_price)} ${curr}`;
   };
 
   if (loading) {
@@ -234,6 +258,8 @@ export default function LicenceClient() {
             <tr>
               <th style={thTd}>{t("studioLicence.colNaziv")}</th>
               <th style={thTd}>{t("studioLicence.colPlan")}</th>
+              <th style={thTd}>{t("studioLicence.colKorisnici")}</th>
+              <th style={thTd}>{t("studioLicence.colCijena")}</th>
               <th style={thTd}>{t("studioLicence.colIstice")}</th>
               <th style={thTd}>{t("studioLicence.colDana")}</th>
               <th style={thTd}>{t("studioLicence.colStatus")}</th>
@@ -244,7 +270,7 @@ export default function LicenceClient() {
           <tbody>
             {tenants.length === 0 ? (
               <tr>
-                <td colSpan={7} style={thTd}>
+                <td colSpan={9} style={thTd}>
                   {t("studioLicence.noTenants")}
                 </td>
               </tr>
@@ -253,6 +279,8 @@ export default function LicenceClient() {
                 <tr key={row.tenant_id}>
                   <td style={thTd}>{row.naziv}</td>
                   <td style={thTd}>{row.plan_naziv}</td>
+                  <td style={thTd}>{formatMaxUsers(row.max_users)}</td>
+                  <td style={thTd}>{formatPrice(row)}</td>
                   <td style={thTd}>{row.subscription_ends_at}</td>
                   <td style={thTd}>
                     {row.days_until_end > 0
@@ -322,7 +350,7 @@ export default function LicenceClient() {
 
       {/* Modal Produži */}
       {extendId != null && (
-        <div style={overlayStyle()} onClick={() => !extendSaving && setExtendId(null)}>
+        <div className="studio-modal" style={overlayStyle()} onClick={() => !extendSaving && setExtendId(null)}>
           <div
             style={modalStyle(420)}
             onClick={(e) => e.stopPropagation()}
@@ -363,7 +391,7 @@ export default function LicenceClient() {
 
       {/* Modal Token (prikaz / kopiraj / regeneriši) */}
       {tokenModalRow && (
-        <div style={overlayStyle()} onClick={() => !tokenRegenerating && setTokenModalRow(null)}>
+        <div className="studio-modal" style={overlayStyle()} onClick={() => !tokenRegenerating && setTokenModalRow(null)}>
           <div style={modalStyle(480)} onClick={(e) => e.stopPropagation()}>
             <div style={{ padding: 24 }}>
               <h3 style={{ marginTop: 0 }}>{t("studioLicence.tokenTitle")} – {tokenModalRow.naziv}</h3>
@@ -410,7 +438,7 @@ export default function LicenceClient() {
 
       {/* Modal Novi tenant – prikaz tokena nakon kreiranja */}
       {newTenantToken && (
-        <div style={overlayStyle()} onClick={() => setNewTenantToken(null)}>
+        <div className="studio-modal" style={overlayStyle()} onClick={() => setNewTenantToken(null)}>
           <div style={modalStyle(520)} onClick={(e) => e.stopPropagation()}>
             <div style={{ padding: 24 }}>
               <h3 style={{ marginTop: 0 }}>{t("studioLicence.newTenantTokenTitle")}</h3>
@@ -431,7 +459,7 @@ export default function LicenceClient() {
 
       {/* Modal Novi tenant */}
       {newTenantOpen && (
-        <div style={overlayStyle()} onClick={() => !newTenantSaving && setNewTenantOpen(false)}>
+        <div className="studio-modal" style={overlayStyle()} onClick={() => !newTenantSaving && setNewTenantOpen(false)}>
           <div style={modalStyle(480)} onClick={(e) => e.stopPropagation()}>
             <div style={{ padding: 24 }}>
               <h3 style={{ marginTop: 0 }}>{t("studioLicence.newTenantTitle")}</h3>
@@ -443,7 +471,7 @@ export default function LicenceClient() {
                 placeholder={t("studioLicence.placeholderNaziv")}
                 style={{ padding: 8, marginBottom: 12, width: "100%", maxWidth: 320 }}
               />
-              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.plan")}</label>
+              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.verzijaFluxe")}</label>
               <select
                 value={newTenantPlanId}
                 onChange={(e) => setNewTenantPlanId(Number(e.target.value))}
@@ -451,7 +479,19 @@ export default function LicenceClient() {
               >
                 {plans.map((p) => (
                   <option key={p.plan_id} value={p.plan_id}>
-                    {p.naziv} (max {p.max_users})
+                    {p.naziv}
+                  </option>
+                ))}
+              </select>
+              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.brojKorisnika")}</label>
+              <select
+                value={newTenantMaxUsers}
+                onChange={(e) => setNewTenantMaxUsers(Number(e.target.value))}
+                style={{ padding: 8, marginBottom: 12, width: "100%", maxWidth: 200 }}
+              >
+                {USER_LIMIT_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    {n >= 101 ? t("studioLicence.users100Plus") : n}
                   </option>
                 ))}
               </select>
@@ -467,8 +507,29 @@ export default function LicenceClient() {
                 type="date"
                 value={newTenantEnd}
                 onChange={(e) => setNewTenantEnd(e.target.value)}
-                style={{ padding: 8, marginBottom: 16, width: "100%", maxWidth: 200 }}
+                style={{ padding: 8, marginBottom: 12, width: "100%", maxWidth: 200 }}
               />
+              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.cijenaMjesečno")}</label>
+              <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={newTenantPrice}
+                  onChange={(e) => setNewTenantPrice(e.target.value)}
+                  placeholder="—"
+                  style={{ padding: 8, width: 120 }}
+                />
+                <select
+                  value={newTenantCurrency}
+                  onChange={(e) => setNewTenantCurrency(e.target.value)}
+                  style={{ padding: 8 }}
+                >
+                  {CURRENCY_OPTIONS.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button
                   type="button"
@@ -490,6 +551,7 @@ export default function LicenceClient() {
       {/* Modal Promijeni plan */}
       {planModalTenantId != null && planId !== null && (
         <div
+          className="studio-modal"
           style={overlayStyle()}
           onClick={() => !planSaving && (setPlanModalTenantId(null), setPlanId(null))}
         >
@@ -499,17 +561,27 @@ export default function LicenceClient() {
           >
             <div style={{ padding: 24 }}>
               <h3 style={{ marginTop: 0 }}>{t("studioLicence.changePlanTitle")}</h3>
-              <label style={{ display: "block", marginBottom: 8 }}>
-                {t("studioLicence.plan")}
-              </label>
+              <label style={{ display: "block", marginBottom: 8 }}>{t("studioLicence.verzijaFluxe")}</label>
               <select
-                value={planId}
+                value={planId ?? ""}
                 onChange={(e) => setPlanId(Number(e.target.value))}
-                style={{ padding: 8, marginBottom: 16, width: "100%", maxWidth: 200 }}
+                style={{ padding: 8, marginBottom: 12, width: "100%", maxWidth: 200 }}
               >
                 {plans.map((p) => (
                   <option key={p.plan_id} value={p.plan_id}>
-                    {p.naziv} (max {p.max_users} korisnika)
+                    {p.naziv}
+                  </option>
+                ))}
+              </select>
+              <label style={{ display: "block", marginBottom: 8 }}>{t("studioLicence.brojKorisnika")}</label>
+              <select
+                value={planMaxUsers}
+                onChange={(e) => setPlanMaxUsers(Number(e.target.value))}
+                style={{ padding: 8, marginBottom: 16, width: "100%", maxWidth: 200 }}
+              >
+                {USER_LIMIT_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    {n >= 101 ? t("studioLicence.users100Plus") : n}
                   </option>
                 ))}
               </select>

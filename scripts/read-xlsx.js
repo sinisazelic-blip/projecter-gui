@@ -1,6 +1,6 @@
 const XLSX = require('xlsx');
 const path = require('path');
-const wb = XLSX.readFile(path.join(__dirname, '../docs/Fluxa Compact vs Light vs Core.xlsx'));
+const wb = XLSX.readFile(path.join(__dirname, '../docs/arhiva/Fluxa Compact vs Light vs Core.xlsx'));
 const sheetNames = wb.SheetNames;
 console.log('Sheet names:', sheetNames);
 for (const name of sheetNames) {

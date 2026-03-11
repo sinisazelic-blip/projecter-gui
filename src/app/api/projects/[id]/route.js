@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { query } from "@/lib/db";
+import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
 const EUR_TO_BAM = 1.95583;
+const SARADNIK_NIVO = 0;
 
 export async function GET(req, { params }) {
   try {
@@ -18,17 +21,51 @@ export async function GET(req, { params }) {
       );
     }
 
-    // ✅ view + kanonski budžet iz projekat_stavke (KM)
+    const cookieStore = await cookies();
+    const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
+    const session = token ? verifySessionToken(token) : null;
+    const nivo = session?.nivo ?? 1;
+    if (session && nivo === SARADNIK_NIVO) {
+      const userRows = await query(
+        "SELECT radnik_id FROM users WHERE user_id = ? LIMIT 1",
+        [session.user_id],
+      );
+      const radnikId = userRows?.[0]?.radnik_id != null ? Number(userRows[0].radnik_id) : null;
+      if (radnikId == null) {
+        return NextResponse.json(
+          { success: false, message: "Pristup nije dozvoljen", data: null },
+          { status: 403 },
+        );
+      }
+      const accessRows = await query(
+        `SELECT 1 FROM projekat_faze pf
+         INNER JOIN projekat_faza_radnici pfr ON pfr.projekat_faza_id = pf.projekat_faza_id
+         WHERE pf.projekat_id = ? AND pfr.radnik_id = ?
+         LIMIT 1`,
+        [id, radnikId],
+      );
+      if (!accessRows?.length) {
+        return NextResponse.json(
+          { success: false, message: "Pristup nije dozvoljen", data: null },
+          { status: 403 },
+        );
+      }
+    }
+
+    // ✅ view + kanonski budžet iz projekat_stavke (KM) + status za mobile
     const rows = await query(
       `
       SELECT
         v.projekat_id,
         v.radni_naziv,
 
+        p.status_id,
+        sp.naziv_statusa AS status_name,
+
         -- ✅ NOVO: operativni signal (owner -> tim)
         p.operativni_signal,
 
-        -- ✅ NOVO: procenat budžeta vidljiv radnicima (default 50.00)
+        -- ✅ NOVO: procenat budžeta vidljiv radnicima (default 100.00)
         COALESCE(p.budzet_procenat_za_tim, 100.00) AS budzet_procenat_za_tim,
 
         COALESCE(ps.budzet_km, v.budzet_planirani, 0) AS budzet_planirani,
@@ -44,6 +81,8 @@ export async function GET(req, { params }) {
       FROM vw_projekti_finansije v
       JOIN projekti p
         ON p.projekat_id = v.projekat_id
+      LEFT JOIN statusi_projekta sp
+        ON sp.status_id = p.status_id
       LEFT JOIN (
         SELECT
           projekat_id,

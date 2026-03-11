@@ -189,18 +189,20 @@ export default function MobileDashboardClient() {
               <span>{fmtAmount(fin.dobit_km, locale)}</span>
             </div>
           </div>
-          <Link
-            href="/izvjestaji/svi"
-            style={{
-              display: "block",
-              marginTop: 12,
-              fontSize: 13,
-              color: "rgba(255,255,255,0.7)",
-              textDecoration: "none",
-            }}
-          >
-            {t("mobile.allReports")}
-          </Link>
+          {locale !== "en" && (
+            <Link
+              href="/izvjestaji/svi"
+              style={{
+                display: "block",
+                marginTop: 12,
+                fontSize: 13,
+                color: "rgba(255,255,255,0.7)",
+                textDecoration: "none",
+              }}
+            >
+              {t("mobile.allReports")}
+            </Link>
+          )}
         </div>
       )}
 

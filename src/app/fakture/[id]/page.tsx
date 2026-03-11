@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslation } from "@/components/LocaleProvider";
 import FluxaLogo from "@/components/FluxaLogo";
 
 function fmtDDMMYYYYFromISO(iso: string | null): string {
@@ -40,6 +41,7 @@ type FakturaData = {
 export default function FakturaDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { t } = useTranslation();
   const fakturaId = Number(params.id);
 
   const [loading, setLoading] = useState(true);
@@ -93,7 +95,7 @@ export default function FakturaDetailPage() {
           }
         }
       } catch (err: any) {
-        setError(err?.message || "Greška");
+        setError(err?.message || t("common.error"));
       } finally {
         setLoading(false);
       }
@@ -106,7 +108,7 @@ export default function FakturaDetailPage() {
     return (
       <div className="container">
         <div style={{ padding: 40, textAlign: "center", opacity: 0.7 }}>
-          Učitavanje...
+          {t("common.loading")}
         </div>
       </div>
     );
@@ -123,11 +125,11 @@ export default function FakturaDetailPage() {
             color: "#ff3b30",
           }}
         >
-          ⚠️ {error || "Faktura nije pronađena"}
+          ⚠️ {error || t("fakture.loadInvoiceErrorShort")}
         </div>
         <div style={{ marginTop: 20 }}>
           <Link href="/fakture" className="btn">
-            ← Nazad na listu faktura
+            ← {t("fakture.nazadNaListuFaktura")}
           </Link>
         </div>
       </div>
@@ -138,7 +140,7 @@ export default function FakturaDetailPage() {
 
   async function handleStorno() {
     if (stornoLoading || isStorno) return;
-    if (!window.confirm("Da li ste sigurni da želite stornirati ovu fakturu? Kreiraće se storno račun (negativni iznosi), a projekti će se vratiti u status Zatvoren."))
+    if (!window.confirm(t("fakture.stornoConfirm")))
       return;
     setStornoLoading(true);
     try {
@@ -148,10 +150,10 @@ export default function FakturaDetailPage() {
         body: JSON.stringify({}),
       });
       const data = await res.json();
-      if (!data?.ok) throw new Error(data?.error || "Greška");
+      if (!data?.ok) throw new Error(data?.error || t("common.error"));
       window.location.href = `/fakture/${data.storno_faktura_id}`;
     } catch (e: any) {
-      alert(e?.message ?? "Greška pri storniranju");
+      alert(e?.message ?? t("fakture.stornoError"));
     } finally {
       setStornoLoading(false);
     }
@@ -160,7 +162,7 @@ export default function FakturaDetailPage() {
   // Redirect na preview sa podacima iz fakture
   const goToPreview = () => {
     if (!faktura.projekti_ids || faktura.projekti_ids.length === 0) {
-      alert(`Faktura nema povezanih projekata. Faktura ID: ${faktura.faktura_id}`);
+      alert(t("fakture.noProjectsMessage").replace("{{id}}", String(faktura.faktura_id)));
       console.error("Faktura bez projekata:", faktura);
       return;
     }

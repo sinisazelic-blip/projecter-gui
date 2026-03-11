@@ -14,6 +14,8 @@ type FormState = {
   naziv_klijenta: string;
   tip_klijenta: TipKlijenta;
   porezni_id: string;
+  jib: string;
+  pib: string;
   adresa: string;
   grad: string;
   drzava: string;
@@ -32,6 +34,8 @@ const emptyForm = (): FormState => ({
   naziv_klijenta: "",
   tip_klijenta: "direktni",
   porezni_id: "",
+  jib: "",
+  pib: "",
   adresa: "",
   grad: "",
   drzava: "",
@@ -122,10 +126,15 @@ const pageTitleRowStyle: React.CSSProperties = {
   gap: 10,
 };
 
+/** hasJib/hasPib su false za EU regional (locale en): tamo se prikazuje samo VAT No (porezni_id), ne JIB/PIB. */
 export default function KlijentiClient({
   initialItems,
+  hasJib = false,
+  hasPib = false,
 }: {
   initialItems: KlijentRow[];
+  hasJib?: boolean;
+  hasPib?: boolean;
 }) {
   const router = useRouter();
   const { t, locale } = useTranslation();
@@ -140,6 +149,7 @@ export default function KlijentiClient({
   const [form, setForm] = useState<FormState>(emptyForm());
 
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [saveWarning, setSaveWarning] = useState<{ message: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [items, setItems] = useState<KlijentRow[]>(initialItems ?? []);
@@ -221,6 +231,8 @@ export default function KlijentiClient({
       naziv_klijenta: it.naziv_klijenta ?? "",
       tip_klijenta: (it.tip_klijenta ?? "direktni") as TipKlijenta,
       porezni_id: it.porezni_id ?? "",
+      jib: it.jib ?? "",
+      pib: it.pib ?? "",
       adresa: it.adresa ?? "",
       grad: it.grad ?? "",
       drzava: it.drzava ?? "",
@@ -294,6 +306,7 @@ export default function KlijentiClient({
   function closeAllModals() {
     setModalOpen(false);
     setConfirmOpen(false);
+    setSaveWarning(null);
   }
 
   function onClosePage() {
@@ -308,10 +321,37 @@ export default function KlijentiClient({
   const btnDisabled = (cond: boolean) =>
     cond ? { opacity: 0.45, cursor: "not-allowed" as const } : {};
 
-  async function onSave() {
-    setError(null);
+  function runJibPibValidation(): string | null {
+    const jibDigits = (form.jib ?? "").trim().replace(/\D/g, "");
+    const pibDigits = (form.pib ?? "").trim().replace(/\D/g, "");
 
-    const payload = {
+    if (hasJib && !form.is_ino && jibDigits.length === 0) {
+      return t("studioKlijenti.jibPibWarningNoJib");
+    }
+    if (hasJib && jibDigits.length > 0 && jibDigits.length !== 13) {
+      return t("studioKlijenti.jibPibWarningJibFormat").replace("{{count}}", String(jibDigits.length));
+    }
+    if (hasPib && pibDigits.length > 0 && pibDigits.length !== 12) {
+      return t("studioKlijenti.jibPibWarningPibFormat").replace("{{count}}", String(pibDigits.length));
+    }
+    if (hasJib && hasPib && jibDigits.length === 13 && pibDigits.length === 12 && jibDigits !== "4" + pibDigits) {
+      return t("studioKlijenti.jibPibWarningMismatch");
+    }
+    return null;
+  }
+
+  async function onSave(forceSave?: boolean) {
+    setError(null);
+    if (!forceSave) {
+      const warning = runJibPibValidation();
+      if (warning) {
+        setSaveWarning({ message: warning });
+        return;
+      }
+    }
+    setSaveWarning(null);
+
+    const payload: Record<string, unknown> = {
       naziv_klijenta: form.naziv_klijenta,
       tip_klijenta: form.tip_klijenta,
       porezni_id: form.porezni_id || null,
@@ -326,6 +366,8 @@ export default function KlijentiClient({
       pdv_oslobodjen: !!form.pdv_oslobodjen,
       pdv_oslobodjen_napomena: form.pdv_oslobodjen_napomena || null,
     };
+    if (hasJib) payload.jib = form.jib || null;
+    if (hasPib) payload.pib = form.pib || null;
 
     startTransition(async () => {
       try {
@@ -561,7 +603,7 @@ export default function KlijentiClient({
               <th>{t("studioKlijenti.colTip")}</th>
               <th>{t("studioKlijenti.colTrziste")}</th>
               <th>{t("studioKlijenti.colGradDrzava")}</th>
-              <th>{t("studioKlijenti.colPorezniId")}</th>
+              <th>{hasJib ? "JIB" : t("studioKlijenti.colPorezniId")}</th>
               <th className="num">{t("studioKlijenti.colRokDana")}</th>
               <th>{t("studioKlijenti.colStatus")}</th>
             </tr>
@@ -647,10 +689,10 @@ export default function KlijentiClient({
 
                     <td
                       style={{
-                        color: it.porezni_id ? "var(--text)" : "var(--muted)",
+                        color: (hasJib ? it.jib : it.porezni_id) ? "var(--text)" : "var(--muted)",
                       }}
                     >
-                      {it.porezni_id || "—"}
+                      {hasJib ? (it.jib || "—") : (it.porezni_id || "—")}
                     </td>
 
                     <td
@@ -671,7 +713,7 @@ export default function KlijentiClient({
 
       {/* Modal: New/Edit */}
       {modalOpen ? (
-        <div style={overlayStyle()} role="dialog" aria-modal="true">
+        <div className="studio-modal" style={overlayStyle()} role="dialog" aria-modal="true">
           <div style={modalStyle(980)}>
             <div
               style={{
@@ -791,6 +833,54 @@ export default function KlijentiClient({
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
+
+                {hasJib && (
+                  <div>
+                    <div
+                      style={{
+                        color: "var(--muted)",
+                        fontSize: 16,
+                        marginBottom: 8,
+                      }}
+                    >
+                      {t("studioKlijenti.labelJib")}
+                    </div>
+                    <input
+                      value={form.jib}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, jib: e.target.value }))
+                      }
+                      placeholder={t("studioKlijenti.placeholderJib")}
+                      className="input"
+                      style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                      maxLength={20}
+                    />
+                  </div>
+                )}
+
+                {hasPib && (
+                  <div>
+                    <div
+                      style={{
+                        color: "var(--muted)",
+                        fontSize: 16,
+                        marginBottom: 8,
+                      }}
+                    >
+                      {t("studioKlijenti.labelPib")}
+                    </div>
+                    <input
+                      value={form.pib}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, pib: e.target.value }))
+                      }
+                      placeholder={t("studioKlijenti.placeholderPib")}
+                      className="input"
+                      style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                      maxLength={20}
+                    />
+                  </div>
+                )}
 
                 <div>
                   <div
@@ -1125,9 +1215,66 @@ export default function KlijentiClient({
         </div>
       ) : null}
 
+      {/* Upozorenje JIB/PIB: Koriguj ili Snimi svejedno */}
+      {saveWarning ? (
+        <div className="studio-modal" style={overlayStyle()} role="dialog" aria-modal="true">
+          <div style={modalStyle(520)}>
+            <div
+              style={{
+                padding: 16,
+                borderBottom: "1px solid var(--border)",
+                fontSize: 18,
+                fontWeight: 800,
+              }}
+            >
+              {t("studioKlijenti.correctBtn")} ili {t("studioKlijenti.saveAnywayBtn")}?
+            </div>
+            <div
+              style={{
+                padding: 16,
+                color: "var(--text)",
+                fontSize: 14,
+                lineHeight: 1.5,
+              }}
+            >
+              {saveWarning.message}
+            </div>
+            <div
+              style={{
+                padding: 16,
+                borderTop: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+              }}
+            >
+              <button
+                className="btn"
+                onClick={() => setSaveWarning(null)}
+                disabled={isPending}
+                style={btnDisabled(isPending)}
+              >
+                {t("studioKlijenti.correctBtn")}
+              </button>
+              <button
+                className="btn btn--active"
+                onClick={() => {
+                  setSaveWarning(null);
+                  onSave(true);
+                }}
+                disabled={isPending}
+                style={btnDisabled(isPending)}
+              >
+                {t("studioKlijenti.saveAnywayBtn")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Confirm: deactivate/activate */}
       {confirmOpen && selectedItem ? (
-        <div style={overlayStyle()} role="dialog" aria-modal="true">
+        <div className="studio-modal" style={overlayStyle()} role="dialog" aria-modal="true">
           <div style={modalStyle(640)}>
             <div
               style={{

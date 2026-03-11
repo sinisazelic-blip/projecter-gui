@@ -425,8 +425,13 @@ export async function PUT(req: NextRequest) {
         `SELECT valuta FROM inicijacija_stavke WHERE inicijacija_stavka_id = ? LIMIT 1`,
         [inicijacija_stavka_id],
       );
-      const valuta =
+      const existingValuta =
         Array.isArray(r1) && r1.length ? normCcy(r1[0]?.valuta) : "BAM";
+      const valutaFromBody =
+        body?.valuta != null && String(body.valuta).trim()
+          ? normCcy(body.valuta)
+          : null;
+      const valuta = valutaFromBody ?? existingValuta;
       const line_total = round2(k * cij);
 
       await pool.query(

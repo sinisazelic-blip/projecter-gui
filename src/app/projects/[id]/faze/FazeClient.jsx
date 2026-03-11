@@ -18,7 +18,7 @@ function fmtDate(v, locale) {
   return `${d}.${m}.${y}`;
 }
 
-export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, dobavljaci, locale: localeProp }) {
+export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, dobavljaci, locale: localeProp, readOnly = false }) {
   const { t, locale: ctxLocale } = useTranslation();
   const locale = localeProp ?? ctxLocale ?? "sr";
   const [faze, setFaze] = useState([]);
@@ -165,6 +165,7 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
         </div>
       )}
 
+      {!readOnly && (
       <form onSubmit={handleAdd} className="card fazeForm">
         <div className="fazeFormTitle">{t("fazePage.addPhaseFormTitle")}</div>
         <div className="fazeFormGrid">
@@ -326,6 +327,7 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
           {adding ? t("fazePage.addingPhase") : t("fazePage.addPhaseBtn")}
         </button>
       </form>
+      )}
 
       <div className="card" style={{ marginTop: 20 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
@@ -362,13 +364,13 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
                 <th>{t("fazePage.colPercent")}</th>
                 <th>{t("fazePage.colSuppliers")}</th>
                 <th>{t("fazePage.colWorkers")}</th>
-                <th></th>
+                {!readOnly && <th></th>}
               </tr>
             </thead>
             <tbody>
               {faze.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="muted">
+                  <td colSpan={readOnly ? 7 : 8} className="muted">
                     {t("fazePage.noPhases")}
                   </td>
                 </tr>
@@ -383,20 +385,24 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
                   <td>{fmtDate(f.datum_kraja, locale)}</td>
                   <td>{fmtDate(f.deadline, locale)}</td>
                   <td>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      defaultValue={f.procenat_izvrsenosti ?? 0}
-                      onBlur={(e) => {
-                        const v = Number(e.target.value);
-                        if (Number.isFinite(v) && v >= 0 && v <= 100)
-                          handleUpdate(f.projekat_faza_id, { procenat_izvrsenosti: v });
-                      }}
-                      className="fazeProcenatInput"
-                      style={{ padding: 6 }}
-                    />
+                    {readOnly ? (
+                      (f.procenat_izvrsenosti ?? 0)
+                    ) : (
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        defaultValue={f.procenat_izvrsenosti ?? 0}
+                        onBlur={(e) => {
+                          const v = Number(e.target.value);
+                          if (Number.isFinite(v) && v >= 0 && v <= 100)
+                            handleUpdate(f.projekat_faza_id, { procenat_izvrsenosti: v });
+                        }}
+                        className="fazeProcenatInput"
+                        style={{ padding: 6 }}
+                      />
+                    )}
                   </td>
                   <td>
                     {f.dobavljaci?.length ? f.dobavljaci.map((d) => d.naziv).join(", ") : "—"}
@@ -404,6 +410,7 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
                   <td>
                     {f.radnici?.length ? f.radnici.map((r) => `${r.ime} ${r.prezime}`).join(", ") : "—"}
                   </td>
+                  {!readOnly && (
                   <td>
                     <button
                       type="button"
@@ -415,6 +422,7 @@ export default function FazeClient({ projekatId, rokGlavni, radneFaze, radnici, 
                       🗑
                     </button>
                   </td>
+                  )}
                 </tr>
               ))}
             </tbody>

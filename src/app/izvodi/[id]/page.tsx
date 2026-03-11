@@ -206,11 +206,12 @@ export default function IzvodDetailPage() {
 
         .divider { height:1px; background: rgba(255,255,255,.12); margin: 12px 0 0; }
 
-        .body { flex:1; min-height:0; overflow:auto; padding: 18px 0 28px; }
+        .body { flex:1; min-height:0; overflow:auto; padding: 18px 0 28px; min-width: 0; }
 
-        .paperStage{ display:flex; justify-content:center; padding: 0 10px; }
+        .paperStage{ display:flex; justify-content:center; padding: 0 10px; min-width: 0; max-width: 100%; }
         .paper{
           width: 210mm;
+          max-width: 100%;
           min-height: 297mm;
           background: #ffffff;
           color: #000;
@@ -218,6 +219,8 @@ export default function IzvodDetailPage() {
           box-shadow: 0 18px 60px rgba(0,0,0,.35);
           border: 1px solid rgba(0,0,0,.08);
           padding: 18mm 16mm;
+          box-sizing: border-box;
+          overflow-x: hidden;
         }
         .paper .table,
         .paper .table thead th,
@@ -229,21 +232,29 @@ export default function IzvodDetailPage() {
         .paper .table .ref {
           color: #000 !important;
         }
+        .paper .table { font-size: 9px !important; }
+        .paper .table thead th,
+        .paper .table th { font-size: 8px !important; }
+        .paper .table tbody td,
+        .paper .table td { font-size: 9px !important; }
+        .paper .table .num,
+        .paper .table .desc,
+        .paper .table .ref { font-size: 9px !important; }
         @media (max-width: 980px){
           .paper{ width: min(100%, 210mm); padding: 16px; }
         }
 
         .izvodHeader{
-          margin-bottom: 20px;
+          margin-bottom: 14px;
           border-bottom: 2px solid rgba(0,0,0,.15);
-          padding-bottom: 16px;
+          padding-bottom: 12px;
         }
 
         .izvodTitle{
-          font-size: 20px;
+          font-size: 16px;
           font-weight: 900;
           text-align: center;
-          margin-bottom: 12px;
+          margin-bottom: 10px;
           letter-spacing: .5px;
           color: #000 !important;
         }
@@ -251,9 +262,9 @@ export default function IzvodDetailPage() {
         .izvodMeta{
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 12px;
-          font-size: 12px;
-          line-height: 1.6;
+          gap: 8px;
+          font-size: 10px;
+          line-height: 1.5;
         }
 
         .metaRow{
@@ -275,30 +286,28 @@ export default function IzvodDetailPage() {
         .tblWrap{
           border: 1px solid rgba(0,0,0,.10);
           border-radius: 10px;
-          overflow: visible;
-          margin-top: 20px;
-        }
-        .paper .tblWrap {
-          overflow: hidden !important;
+          margin-top: 16px;
+          width: 100%;
           max-width: 100%;
+          min-width: 0;
+          overflow: hidden;
         }
         .paper .table {
           table-layout: fixed;
           width: 100%;
-          overflow: visible !important;
         }
         .paper .table tbody tr {
           height: auto !important;
         }
         .paper .table tbody td {
           height: auto !important;
-          overflow: visible !important;
-          line-height: 1.35;
-          padding: 10px 8px;
+          overflow: hidden !important;
+          line-height: 1.3;
+          padding: 6px 5px;
         }
         .paper .table th.desc {
-          width: 38%;
-          max-width: 38%;
+          width: 28%;
+          max-width: 28%;
           box-sizing: border-box;
           white-space: normal !important;
           word-break: break-word !important;
@@ -307,62 +316,64 @@ export default function IzvodDetailPage() {
         }
         .paper .table td.desc,
         .paper .table .desc {
-          width: 38%;
-          max-width: 38%;
+          width: 28%;
+          max-width: 28%;
           box-sizing: border-box;
           overflow: hidden !important;
           word-break: break-word !important;
           overflow-wrap: break-word !important;
           white-space: normal !important;
-          line-height: 1.4;
+          line-height: 1.3;
           min-width: 0;
         }
-        table{ width:100%; border-collapse:collapse; color: #000; }
+        table{ width:100%; border-collapse:collapse; color: #000; font-size: 9px; }
         thead tr{ background: rgba(0,0,0,.06); }
         th{
-          padding: 10px 8px;
-          font-size: 10px;
+          padding: 6px 5px;
+          font-size: 8px;
           text-transform: uppercase;
-          letter-spacing: .3px;
+          letter-spacing: .2px;
           color: #000;
           text-align:left;
           border-bottom: 2px solid rgba(0,0,0,.12);
-          white-space: nowrap;
+          white-space: normal;
+          word-break: break-word;
           font-weight: 800;
         }
         td{
-          padding: 10px 8px;
-          font-size: 11px;
+          padding: 6px 5px;
+          font-size: 9px;
           border-top: 1px solid rgba(0,0,0,.08);
           vertical-align: top;
           color: #000;
-          line-height: 1.35;
-          overflow: visible;
+          line-height: 1.3;
+          overflow: hidden;
         }
-        .num{ text-align:right; white-space:nowrap; font-family: 'Courier New', monospace; color: #000; }
+        .num{ text-align:right; white-space:nowrap; font-family: 'Courier New', monospace; color: #000; font-size: 9px; }
         .desc{
           color: #000;
           white-space: normal;
           word-break: break-word;
           overflow-wrap: break-word;
-          overflow: visible;
+          overflow: hidden;
           min-width: 0;
           max-width: 100%;
-          line-height: 1.4;
+          line-height: 1.3;
+          font-size: 9px;
         }
-        .ref{ font-weight: 600; color: #000; }
+        .ref{ font-weight: 600; color: #000; font-size: 9px; }
 
         .izvodFooter{
-          margin-top: 20px;
-          padding-top: 16px;
+          margin-top: 14px;
+          padding-top: 12px;
           border-top: 2px solid rgba(0,0,0,.15);
         }
 
         .footerRow{
           display: flex;
           justify-content: space-between;
-          padding: 6px 0;
-          font-size: 12px;
+          padding: 4px 0;
+          font-size: 10px;
           border-top: 1px solid rgba(0,0,0,.06);
         }
 
@@ -389,7 +400,7 @@ export default function IzvodDetailPage() {
 
         .footerRow.total .footerLabel,
         .footerRow.total .footerValue{
-          font-size: 14px;
+          font-size: 11px;
           font-weight: 900;
         }
 
@@ -487,22 +498,20 @@ export default function IzvodDetailPage() {
             color: #000 !important;
           }
           .paper .tblWrap { overflow: hidden !important; max-width: 100%; }
-          .paper .table { overflow: visible !important; }
+          .paper .table { font-size: 9px !important; }
+          .paper .table th { font-size: 8px !important; padding: 6px 5px !important; }
+          .paper .table td { font-size: 9px !important; padding: 6px 5px !important; line-height: 1.3 !important; }
           .paper .table tbody tr { height: auto !important; }
-          .paper .table tbody td {
-            height: auto !important;
-            overflow: visible !important;
-            line-height: 1.35;
-          }
+          .paper .table tbody td { overflow: hidden !important; line-height: 1.3 !important; }
           .paper .table th.desc,
           .paper .table td.desc {
-            width: 38% !important;
-            max-width: 38% !important;
+            width: 28% !important;
+            max-width: 28% !important;
             overflow: hidden !important;
             word-break: break-word !important;
             overflow-wrap: break-word !important;
             white-space: normal !important;
-            line-height: 1.4;
+            line-height: 1.3 !important;
           }
         }
       `}</style>
@@ -521,18 +530,33 @@ export default function IzvodDetailPage() {
                 </div>
               </div>
 
-              <Link
-                href="/izvodi"
-                className="btn"
-                style={{
-                  background: "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1))",
-                  borderColor: "rgba(59, 130, 246, 0.4)",
-                  fontWeight: 700,
-                }}
-                title={t("izvodi.backToListTitle")}
-              >
-                ← {t("izvodi.back")}
-              </Link>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => window.print()}
+                  title={t("common.print")}
+                  style={{
+                    background: "linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.1))",
+                    borderColor: "rgba(34, 197, 94, 0.4)",
+                    fontWeight: 700,
+                  }}
+                >
+                  🖨️ {t("common.print")}
+                </button>
+                <Link
+                  href="/izvodi"
+                  className="btn"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1))",
+                    borderColor: "rgba(59, 130, 246, 0.4)",
+                    fontWeight: 700,
+                  }}
+                  title={t("izvodi.backToListTitle")}
+                >
+                  ← {t("izvodi.back")}
+                </Link>
+              </div>
             </div>
 
             <div className="divider" />
@@ -597,22 +621,22 @@ export default function IzvodDetailPage() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th style={{ width: "100px" }}>{t("izvodi.reference")}</th>
+                      <th style={{ width: "10%" }}>{t("izvodi.reference")}</th>
                       {isEUR ? (
                         <>
-                          <th style={{ width: "80px" }}>{t("izvodi.dateBook")}</th>
-                          <th style={{ width: "80px" }}>{t("izvodi.valueDate")}</th>
+                          <th style={{ width: "8%" }}>{t("izvodi.dateBook")}</th>
+                          <th style={{ width: "8%" }}>{t("izvodi.valueDate")}</th>
                         </>
                       ) : (
-                        <th style={{ width: "100px" }}>{t("izvodi.colDate")}</th>
+                        <th style={{ width: "12%" }}>{t("izvodi.colDate")}</th>
                       )}
                       <th className="desc">{t("izvodi.description")}</th>
-                      <th className="num" style={{ width: "120px" }}>{t("izvodi.debit")} ({valuta})</th>
-                      <th className="num" style={{ width: "120px" }}>{t("izvodi.credit")} ({valuta})</th>
+                      <th className="num" style={{ width: "11%" }}>{t("izvodi.debit")} ({valuta})</th>
+                      <th className="num" style={{ width: "11%" }}>{t("izvodi.credit")} ({valuta})</th>
                       {isEUR && (
                         <>
-                          <th className="num" style={{ width: "120px" }}>{t("izvodi.debit")} (BAM)</th>
-                          <th className="num" style={{ width: "120px" }}>{t("izvodi.credit")} (BAM)</th>
+                          <th className="num" style={{ width: "11%" }}>{t("izvodi.debit")} (BAM)</th>
+                          <th className="num" style={{ width: "11%" }}>{t("izvodi.credit")} (BAM)</th>
                         </>
                       )}
                     </tr>

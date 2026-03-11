@@ -32,6 +32,8 @@ export async function createKlijent(input: {
   naziv_klijenta: string;
   tip_klijenta: TipKlijenta;
   porezni_id?: string | null;
+  jib?: string | null;
+  pib?: string | null;
   adresa?: string | null;
   grad?: string | null;
   drzava?: string | null;
@@ -48,6 +50,8 @@ export async function createKlijent(input: {
 
   const tip = normalizeTip(input?.tip_klijenta);
   const porezni_id = cleanStr(input?.porezni_id);
+  const jib = cleanStr(input?.jib);
+  const pib = cleanStr(input?.pib);
   const adresa = cleanStr(input?.adresa);
   const grad = cleanStr(input?.grad);
   const drzava = cleanStr(input?.drzava);
@@ -59,10 +63,15 @@ export async function createKlijent(input: {
   const pdv_oslobodjen = toBit(input?.pdv_oslobodjen);
   const pdv_oslobodjen_napomena = cleanStr(input?.pdv_oslobodjen_napomena);
 
+  const hasJibPib = input.jib !== undefined || input.pib !== undefined;
+  const jibPibCols = hasJibPib ? ", jib, pib" : "";
+  const jibPibPlc = hasJibPib ? ", ?, ?" : "";
+  const jibPibVals = hasJibPib ? [jib ?? null, pib ?? null] : [];
+
   await query(
     `INSERT INTO klijenti
-      (naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava, email, rok_placanja_dana, napomena, aktivan, is_ino, pdv_oslobodjen, pdv_oslobodjen_napomena, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, NOW(), NOW())`,
+      (naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava, email, rok_placanja_dana, napomena, aktivan, is_ino, pdv_oslobodjen, pdv_oslobodjen_napomena${jibPibCols}, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?${jibPibPlc}, NOW(), NOW())`,
     [
       naziv,
       tip,
@@ -77,6 +86,7 @@ export async function createKlijent(input: {
       is_ino,
       pdv_oslobodjen,
       pdv_oslobodjen_napomena,
+      ...jibPibVals,
     ],
   );
 
@@ -89,6 +99,8 @@ export async function updateKlijent(input: {
   naziv_klijenta: string;
   tip_klijenta: TipKlijenta;
   porezni_id?: string | null;
+  jib?: string | null;
+  pib?: string | null;
   adresa?: string | null;
   grad?: string | null;
   drzava?: string | null;
@@ -109,6 +121,8 @@ export async function updateKlijent(input: {
 
   const tip = normalizeTip(input?.tip_klijenta);
   const porezni_id = cleanStr(input?.porezni_id);
+  const jib = cleanStr(input?.jib);
+  const pib = cleanStr(input?.pib);
   const adresa = cleanStr(input?.adresa);
   const grad = cleanStr(input?.grad);
   const drzava = cleanStr(input?.drzava);
@@ -119,6 +133,10 @@ export async function updateKlijent(input: {
   const is_ino = toBit(input?.is_ino);
   const pdv_oslobodjen = toBit(input?.pdv_oslobodjen);
   const pdv_oslobodjen_napomena = cleanStr(input?.pdv_oslobodjen_napomena);
+
+  const hasJibPib = input.jib !== undefined || input.pib !== undefined;
+  const jibPibSet = hasJibPib ? ", jib=?, pib=?" : "";
+  const jibPibVals = hasJibPib ? [jib ?? null, pib ?? null] : [];
 
   await query(
     `UPDATE klijenti
@@ -134,7 +152,7 @@ export async function updateKlijent(input: {
             aktivan=?,
             is_ino=?,
             pdv_oslobodjen=?,
-            pdv_oslobodjen_napomena=?,
+            pdv_oslobodjen_napomena=?${jibPibSet},
             updated_at=NOW()
       WHERE klijent_id=?`,
     [
@@ -151,6 +169,7 @@ export async function updateKlijent(input: {
       is_ino,
       pdv_oslobodjen,
       pdv_oslobodjen_napomena,
+      ...jibPibVals,
       id,
     ],
   );

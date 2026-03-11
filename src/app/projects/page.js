@@ -6,6 +6,7 @@ import { getValidLocale } from "@/lib/i18n";
 import { getT } from "@/lib/translations";
 import FluxaLogo from "@/components/FluxaLogo";
 import ProjectTableRow from "./ProjectTableRow";
+import ProjectsAutoRefreshOnShow from "./_components/ProjectsAutoRefreshOnShow";
 
 export const dynamic = "force-dynamic";
 
@@ -325,23 +326,15 @@ function getFlowSteps(t) {
 function flowIndexForProjectStatusId(statusId) {
   const id = Number(statusId ?? 0);
 
-  // 10/11/12 (arhiva/import/otkazan) => zadnji korak
-  if (id === 10 || id === 11 || id === 12) return 5;
-
-  // 9 = fakturisan
-  if (id === 9) return 4;
-
-  // 8 = zatvoren
-  if (id === 8) return 3;
-
-  // 7 = završen
+  // ✅ KANON (usklađeno sa src/lib/ui/fluxaTimeline.js):
+  // - Deal je samo kad nema projekta/statusa (0)
+  // - svaki status_id > 0 znači da je projekat otvoren → "Produkcija"
+  // - izuzeci: Završeno/Zatvoren/Fakturisan/Arhiviran
   if (id === 7) return 2;
-
-  // 4–6 = produkcija
-  if (id >= 4 && id <= 6) return 1;
-
-  // 1–3 = još smo u deal-u
-  if (id >= 1 && id <= 3) return 0;
+  if (id === 8) return 3;
+  if (id === 9) return 4;
+  if (id === 10 || id === 11 || id === 12) return 5;
+  if (id > 0) return 1;
 
   // fallback
   return 0;
@@ -566,6 +559,7 @@ export default async function Page({ searchParams }) {
 
   return (
     <div className="container">
+      <ProjectsAutoRefreshOnShow />
       <div className="pageWrap">
         <div className="topBlock">
         <div className="topInner">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "@/components/LocaleProvider";
 import { downloadExcel, reportFilename } from "@/lib/exportExcel";
 import { ColumnPicker } from "@/components/ColumnPicker";
 
@@ -39,6 +40,7 @@ function formatNum(x) {
 }
 
 export default function SviIzvjestajiClient() {
+  const { t } = useTranslation();
   const [tip, setTip] = useState("");
   const [datumOd, setDatumOd] = useState("");
   const [datumDo, setDatumDo] = useState("");
@@ -65,10 +67,10 @@ export default function SviIzvjestajiClient() {
       if (datumDo) params.set("date_to", datumDo);
       const res = await fetch(`${apiUrl}?${params.toString()}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Greška pri učitavanju");
+      if (!res.ok) throw new Error(json?.error || t("common.errorLoad"));
       setData(json);
     } catch (err) {
-      setError(err?.message || "Greška");
+      setError(err?.message || t("common.error"));
     } finally {
       setLoading(false);
     }

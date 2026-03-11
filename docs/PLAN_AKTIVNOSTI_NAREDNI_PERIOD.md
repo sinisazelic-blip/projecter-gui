@@ -14,12 +14,13 @@
 | **Backup baze** | ✅ Skripta `scripts/backup-studio-db.bat` + upute za Workbench; backup radi iz MySQL Workbencha. |
 | **Tenant / Licence sistem (1.2)** | ✅ Implementirano: tabele `plans` i `tenants` (s `licence_token`), modul Licence (Dashboard → 🔐 Licence), lista tenanata, Produži / Promijeni plan / Suspend / Vrati pristup, Novi tenant, token (kopiraj / regeneriši). **Licence check:** klijentska Fluxa šalje token prema master API-ju (`/api/public/licence-check`); ako `allowed: false` (suspendovano ili isteklo), prikazuje se blok stranica. Sve kontrolišete iz konzole. Docs: **MASTER_FLUXA_NOVI_KORISNICI.md**. |
 | **Tooltip (2.6)** | ✅ Završeno. Globalni custom tooltip presreće sve `title` atribute; veći font (15px / 18px na 4K), čitljiv na običnim i 4K displejima; tooltip služi kao svojevrsni help. Pojedinačne korekcije po potrebi. |
+| **User management + Saradnik (2.4)** | ✅ **Završeno.** Zaštita ruta (ono što je hide – nema pristupa ni ručnim linkom), Guest samo Dashboard, uloga Saradnik (nivo 0) – samo PP i svoji projekti, dodavanje troškova, faze read-only, limit saradnika pri dodavanju/izmjeni korisnika. U bazi pokrenuta uloga Saradnik (`scripts/add-role-saradnik.sql`). Ništa nije ostalo iz ove tačke. |
 
 **Na čekanju / sljedeće:**
 
 | Stavka | Napomena |
 |--------|----------|
-| **Fiskalni uređaj (2.1)** | **Čekamo dodatna pojašnjenja** (format zahtjeva, obavezna polja, poruka greške) od developera / servisera prije nastavka implementacije. |
+| **Fiskalni uređaj (2.1)** | ✅ **Spec primljen** (docs/json: JSON primjeri + PDF dokumenti). Implementacija usklađena: Request wrapper, string enum-i, buyerId „VP:…”, invoiceNumber, gtin 12 znakova; odgovor „Uređaj nije dostupan” i printer error (statusCode -2). V. **docs/json/FISKAL_API_SPEC.md**. |
 | **Ostalo iz plana** | V. sekciju „Šta nam je ostalo” na kraju dokumenta. |
 
 ---
@@ -71,8 +72,7 @@ Detaljniji koncepti: **PLAN_JEZICI_I_PRETPLATA.md**, **I18N_LOKAL_KAO_TRZISTE.md
 
 - **Cilj:** Fiskalni uređaj (L-PFR API) povezan s Fluxom; pri izboru „DA” za automatsku fiskalizaciju u wizardu – poziv prema uređaju, odgovor (QR, PFR broj, vrijeme, brojač) snimiti u fakturu i prikazati **fiskalni blok** na PDF-u.
 - **Detalji:** Vidi **FLUXA-V1-FISKAL-NAPOMENE.md** (poglavlja 2 i dalje).
-- **Status (23.02.2026):** Čekamo odgovor developera (OFS / serviser) na pitanja o formatu zahtjeva i poruci greške (400 Bad Request). **Implementacija planirana za ponedjeljak.** Fiskalni blok na PDF-u (layout) već pripremljen; API poziv treba uskladiti s odgovorom.
-- **Implementacija (kad stigne spec):** Koristiti postavke iz `firma_fiskal_settings`. Wizard: ako automatska fiskalizacija → poziv API-ja; u fakturu upisati PFR broj i ostale elemente; na PDF-u blok „FISKALNI RAČUN” (QR, PFR vrijeme, broj, brojač, KRAJ).
+- **Status:** ✅ Spec primljen (docs/json). Implementacija usklađena s primjerima: zahtjev u formatu `Request.invoiceRequest` + `print: true`, string enum-i (Normal, Sale, WireTransfer), buyerId „VP:”+PIB, invoiceNumber (broj u godini), gtin 12 znakova; odgovor: uspjeh, „Uređaj nije dostupan” (string), printer error (statusCode -2 → koristi se invoiceResponse). V. **docs/json/FISKAL_API_SPEC.md**, **Create-Invoice.pdf**, **Status-and-Error-Codes.pdf**. Fiskalni blok na PDF-u već postoji.
 
 ## 2.2 Čišćenje baze – testovi i arhiva
 
@@ -97,6 +97,7 @@ Detaljniji koncepti: **PLAN_JEZICI_I_PRETPLATA.md**, **I18N_LOKAL_KAO_TRZISTE.md
 
 - **Cilj:** Dokumentacija sistema i **user manual za nove korisnike** (kako koristiti Fluxu po modulima, šta je šta).
 - **Implementacija:** Strukturirati dokumente (npr. po modulima), napisati korak-po-korak upute, screenshoti gdje korisno. Moguće držati u `docs/` ili posebnom repozitoriju / wiki; format (Markdown, PDF, web) po želji.
+- **Status:** ✅ **Završeno.** Uputstvo u aplikaciji (`/uputstvo`, sr + en, content-sr/en, screenshoti u `public/uputstvo/`) pokriva korak-po-korak po modulima. Dodatno je implementiran **first-run Fluxa onboarding** (uvodna tura za nove korisnike) – bolje od prvobitno planiranog: highlight + popup, korak po korak kroz Desk, Deals, budžet, PP, Finansije; završetak u audit_log. Poseban PDF ili zaseban user manual u docs/ nije obavezan.
 
 ## 2.6 Tooltip (zamjena za help)
 
@@ -113,6 +114,7 @@ Detaljniji koncepti: **PLAN_JEZICI_I_PRETPLATA.md**, **I18N_LOKAL_KAO_TRZISTE.md
 
 - **Konstatacija:** Prodaja Fluxe ulazi u **poslovanje Studio TAF-a** (pravno lice, nosilac prava fakturisanja); prihod od licenci ide u prihod Studija. Troškovi zakupa (DO – serveri, baze, protok) definitivno se obračunavaju iz poslovanja Studija.
 - **Šta pripremiti:** Pravno i računovodstveno – kako se evidentira prihod od licenci, kako se troškovi DO alociraju. Eventualno **ranije** pripremiti (ugovori, cjenovnici, interne smjernice) da kad prva prodaja dođe sve bude usklađeno. Nije direktno zadatak u kodu, ali dio plana aktivnosti.
+- **Status:** ✅ **Odluke donesene (ožujak 2026).** Fluxa = autorsko djelo Siniše Zelića (obračun preko računovođe); marketing BiH ne gura u prvi plan, ali se ne skriva; za EU – potraga za agencijom/kompanijom u EU za licenciranje. Detalji u **arhiva/POSLOVANJE-FLUXA-LICENCE-ODLUKE.md**.
 
 ---
 
@@ -123,39 +125,41 @@ Predloženi redoslijed (ažurirano 23.02.2026):
 | Red | Zadatak | Status |
 |-----|---------|--------|
 | 1 | Čišćenje baze (2.2) | ✅ Završeno |
-| 2 | Automatski fiskalni račun (2.1) | ⏳ Čekamo odgovor developera; implementacija u ponedjeljak |
+| 2 | Automatski fiskalni račun (2.1) | ✅ Spec primljen, implementacija usklađena (docs/json) |
 | 3 | Export prazne SQL baze (2.7) | 📋 Ostalo |
 | 4 | Tenant + plan + subscription (1.2) | ✅ Završeno |
 | 5 | Admin modul + licence check (1.2) | ✅ Završeno |
-| 6 | User management + Saradnik (2.4) | 📋 Ostalo |
+| 6 | User management + Saradnik (2.4) | ✅ Implementirano (zaštita ruta, Guest, Saradnik nivo 0, limit) |
 | 7 | i18n lokalizacija (2.3) | ✅ Završeno (dvojezično, bira se na dugme) |
 | 8 | Tooltip (2.6) | ✅ Završeno |
-| 9 | Dokumentacija i User manual (2.5) | 📋 Ostalo |
-| – | Poslovanje Studio TAF (2.8) | Priprema po potrebi, paralelno |
-| – | Online plaćanje (PayPal, webhook) | Nakon prve prodaje |
+| 9 | Dokumentacija i User manual (2.5) | ✅ Završeno (uputstvo u app + Fluxa onboarding) |
+| – | Poslovanje Studio TAF (2.8) | ✅ Završeno (odluke: autorsko djelo S. Zelić, EU partner za licenciranje; v. arhiva) |
+| – | Povezivanje uplate s produženjem licence (portal → Master-Fluxa) | ✅ Završeno. Endpoint POST /api/public/licence-extend; portal (DO) zove Master-Fluxu nakon uplate. V. **PLAN_PAYMENT_EXTEND_LICENCE.md**. |
+| – | Promo/video, web portal Fluxe | Portal u izgradnji (iduća sedmica); promo/video u prezentaciji na portalu. |
 
 ---
 
 # 4. Šta nam je ostalo
 
-**Na čekanju (traže se pojašnjenja):**
+**Šta nam je ostalo:**
 
-- **Fiskalni uređaj (2.1)** – za nastavak implementacije potrebna su **dodatna pojašnjenja** (format zahtjeva, obavezna polja, poruka greške) od developera / servisera. Dok to ne stigne, ovaj zadatak ne krećemo.
+1. **Export prazne SQL baze (2.7)** – schema za nove tenant-e; verzionirati, ažurirati pri migracijama.
 
-**Šta još imamo raditi (osim fiskalnog uređaja):**
+**Fiskalni uređaj (2.1)** – ✅ Spec primljen (docs/json + PDF). Implementacija usklađena; preostalo je testiranje na stvarnom uređaju.
 
-1. **Export prazne SQL baze (2.7)** – schema-only export za novi tenant; spremno za prve klijente.
-2. **User management + Saradnik (2.4)** – uloge, prava po modulima, profil Saradnik, limit saradnika po tenantu.
-3. **Dokumentacija i User manual (2.5)** – korak-po-korak za nove korisnike.
+*(Sve ostalo iz plana završeno. Povezivanje uplate s produženjem licence: portal → Master-Fluxa preko POST /api/public/licence-extend.)*
 
-*(Tooltip (2.6) je završen.)*
+**Završeno (odluke, nije u kodu):**
 
-**Kasnije / po potrebi:**
+- **Poslovanje Studio TAF (2.8)** – ✅ Odluke donesene. Fluxa = autorsko djelo S. Zelića; računovođa; za EU – agencija/kompanija u EU za licenciranje. V. **arhiva/POSLOVANJE-FLUXA-LICENCE-ODLUKE.md**.
 
-- Poslovanje Studio TAF (2.8) – pravno/računovodstveno za licence i DO troškove.
-- Online plaćanje (webhook za produženje pretplate).
-- **Promo / video:** angažovan videograf – passthrough i video materijali za promo Fluxe kad aplikacija bude gotova.
-- **Web portal Fluxe** – javna stranica u Fluxa stilu (engleski, opušteno, umjetnički ton): informacije, cjenovnik, demo (link na app.studiotaf.xyz Demo/Guest), login za korisnike, samousluga licenci, podrška. V. **FLUXA_PORTAL_SPEC.md**.
+**Završeno (povezivanje uplate i licence):**
+
+- **Uplata → produženje licence** – ✅ Implementirano. Fluxa portal (DO) koristi PayPal; nakon uplate portal zove Master-Fluxu **POST /api/public/licence-extend**; svi zakupi/plaćanja tenanata idu preko portala. V. **PLAN_PAYMENT_EXTEND_LICENCE.md**.
+
+**Ostalo:** Export prazne SQL baze (2.7). Fiskalni uređaj (2.1) – implementacija završena prema spec-u; testirati na uređaju.
+
+*(Promo/video i web portal Fluxe – portal se gradi od iduće sedmice, sadržaj i prezentacija na njemu.)*
 
 ---
 

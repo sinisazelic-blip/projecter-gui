@@ -67,6 +67,7 @@ type ApiBuyer = {
   postanski_broj: string | null;
   drzava: string | null;
   porezni_id: string | null;
+  jib?: string | null;
   email: string | null;
   telefon: string | null;
   rok_placanja_dana: number | null;
@@ -187,7 +188,7 @@ function formatBankAccounts(accounts: any[]): string[] {
 
 export default function FakturaPreviewClient() {
   const params = useParams();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const fakturaId = Number(params.id);
 
   const [loading, setLoading] = useState(true);
@@ -195,17 +196,19 @@ export default function FakturaPreviewClient() {
   const [faktura, setFaktura] = useState<any>(null);
   const [data, setData] = useState<PreviewData | null>(null);
   const [stornoLoading, setStornoLoading] = useState(false);
+  const [markPaidLoading, setMarkPaidLoading] = useState(false);
 
   const buyer = data?.buyer ?? null;
   const firma = data?.firma ?? null;
   const projects = Array.isArray(data?.projects) ? data!.projects : [];
 
-  const bh = useMemo(() => {
-    if (!buyer) return true;
-    if (buyer.is_ino === true || buyer.is_ino === 1) return false;
-    return isBiH(buyer.drzava);
-  }, [buyer]);
-  const lang: Lang = useMemo(() => (bh ? "BH" : "EN"), [bh]);
+  // ✅ Pravilo: INO faktura uvijek mora biti na EN, ali BiH sistem (sr) i dalje pokazuje PFR i koristi BiH zakonsku napomenu.
+  const isInoInvoice = Boolean(buyer?.is_ino === true || buyer?.is_ino === 1);
+  const isBiHSystem = locale === "sr";
+  const lang: Lang = useMemo(
+    () => (isInoInvoice ? "EN" : isBiHSystem ? "BH" : "EN"),
+    [isInoInvoice, isBiHSystem],
+  );
   const isStornoFaktura = faktura?.status === "STORNIRAN" || Number(faktura?.iznos_sa_pdv ?? 0) < 0;
   const docTitle = useMemo(
     () =>
@@ -222,7 +225,8 @@ export default function FakturaPreviewClient() {
   const invoiceDateISO = faktura?.datum_izdavanja || "";
   const dueDateISO = faktura?.datum_dospijeca || "";
   const ccy = (faktura?.valuta || "KM").toUpperCase();
-  const fisk = faktura?.broj_fiskalni ? String(faktura.broj_fiskalni) : "";
+  const fiskNum = faktura?.broj_fiskalni != null ? Number(faktura.broj_fiskalni) : NaN;
+  const fisk = Number.isFinite(fiskNum) && fiskNum > 0 ? String(fiskNum) : "";
   const invoiceNumber = faktura?.broj_fakture || "—";
 
   const projectSubItems = useMemo(
@@ -240,10 +244,23 @@ export default function FakturaPreviewClient() {
     () =>
       projects.map((p) => {
         const overrideNaziv = projectNames[p.projekat_id];
-        const title = String(
+        const baseTitle = String(
           (overrideNaziv || p.radni_naziv) ?? `Projekat #${p.projekat_id}`,
         ).trim();
-        const sub = p.klijent_naziv ? `Klijent: ${p.klijent_naziv}` : "";
+
+        // ✅ Ako radimo za krajnjeg klijenta preko agencije, istakni ga u naslovu:
+        // "Xiaomi — Naziv projekta"
+        const hasEndClient =
+          p.krajnji_klijent_id != null &&
+          p.klijent_naziv &&
+          String(p.klijent_naziv).trim() !== "" &&
+          p.narucilac_id != null &&
+          Number(p.krajnji_klijent_id) !== Number(p.narucilac_id);
+        const endClientName = hasEndClient ? String(p.klijent_naziv).trim() : "";
+        const title = endClientName ? `${endClientName} — ${baseTitle}` : baseTitle;
+
+        // Ako je krajnji klijent već u naslovu, nema potrebe da ga dupliramo u podnaslovu.
+        const sub = endClientName ? "" : (p.klijent_naziv ? `Klijent: ${p.klijent_naziv}` : "");
         const subItems = projectSubItems[p.projekat_id] ?? [];
         const qty = 1;
         const unit = Number(p.budzet_planirani ?? 0) * stornoSign;
@@ -276,7 +293,7 @@ export default function FakturaPreviewClient() {
     }
     return fromItems;
   }, [items, fakturaOsnovica, fakturaUkupno]);
-  const vatRate = useMemo(() => (bh ? 0.17 : 0), [bh]);
+  const vatRate = useMemo(() => (isInoInvoice ? 0 : 0.17), [isInoInvoice]);
   const vatAmount = useMemo(() => {
     if (baseAmount === fakturaOsnovica && fakturaPdv !== 0) return fakturaPdv;
     return Math.round(baseAmount * vatRate * 100) / 100;
@@ -285,6 +302,12 @@ export default function FakturaPreviewClient() {
     if (baseAmount === fakturaOsnovica && fakturaUkupno !== 0) return fakturaUkupno;
     return baseAmount + vatAmount;
   }, [baseAmount, vatAmount, fakturaOsnovica, fakturaUkupno]);
+
+  const lastClosed = useMemo(() => {
+    const dates = items.map((it) => (it as { closed_at?: string | null }).closed_at).filter(Boolean) as string[];
+    if (dates.length === 0) return null;
+    return dates.sort().reverse()[0];
+  }, [items]);
 
   const sellerName = String(
     firma?.naziv || firma?.pravni_naziv || "Studio TAF",
@@ -295,11 +318,13 @@ export default function FakturaPreviewClient() {
     " ",
   );
   const sellerCountry = String(firma?.drzava ?? "BiH").trim();
-  const sellerTax =
-    String(firma?.pdv_broj ?? "").trim() ||
-    String(firma?.pib ?? "").trim() ||
-    String(firma?.jib ?? "").trim() ||
-    "—";
+  const isBhDoc = lang !== "EN";
+  const sellerTax = isBhDoc
+    ? (String(firma?.jib ?? "").trim() || "—")
+    : String(firma?.pdv_broj ?? "").trim() ||
+      String(firma?.pib ?? "").trim() ||
+      String(firma?.jib ?? "").trim() ||
+      "—";
 
   const bankAccounts = Array.isArray(firma?.bank_accounts)
     ? firma!.bank_accounts
@@ -312,7 +337,9 @@ export default function FakturaPreviewClient() {
   const buyerAddr1 = String(buyer?.adresa ?? "—").trim();
   const buyerCityLine = safeLineJoin([buyer?.postanski_broj, buyer?.grad], " ");
   const buyerCountry = String(buyer?.drzava ?? "—").trim();
-  const buyerTax = String(buyer?.porezni_id ?? "—").trim();
+  const buyerTax = isBhDoc
+    ? (String(buyer?.jib ?? "").trim() || "—")
+    : String(buyer?.porezni_id ?? "—").trim();
 
   const pdfFilename = useMemo(() => {
     const broj = String(invoiceNumber || "").replace(/\//g, "-").trim() || "faktura";
@@ -361,7 +388,7 @@ export default function FakturaPreviewClient() {
 
   async function handleStorno() {
     if (stornoLoading || isStornoFaktura) return;
-    if (!window.confirm("Da li ste sigurni da želite stornirati ovu fakturu? Kreiraće se storno račun (negativni iznosi), a projekti će se vratiti u status Zatvoren."))
+    if (!window.confirm(t("fakture.stornoConfirm")))
       return;
     setStornoLoading(true);
     try {
@@ -371,18 +398,49 @@ export default function FakturaPreviewClient() {
         body: JSON.stringify({}),
       });
       const data = await res.json();
-      if (!data?.ok) throw new Error(data?.error || "Greška");
+      if (!data?.ok) throw new Error(data?.error || t("common.error"));
       window.location.href = `/fakture/${data.storno_faktura_id}`;
     } catch (e: any) {
-      alert(e?.message ?? "Greška pri storniranju");
+      alert(e?.message ?? t("fakture.stornoError"));
     } finally {
       setStornoLoading(false);
     }
   }
 
+  async function handleMarkPaid() {
+    if (markPaidLoading || isStornoFaktura) return;
+    const status = String((faktura as any)?.status ?? "").toUpperCase();
+    if (status === "PLACENA" || status === "DJELIMICNO") return;
+    if (!window.confirm(t("fakture.markAsPaidConfirm"))) return;
+    setMarkPaidLoading(true);
+    try {
+      const res = await fetch(`/api/fakture/${fakturaId}/mark-paid`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const result = await res.json();
+      if (!result?.ok) throw new Error(result?.error || t("fakture.markAsPaidError"));
+      const fakturaRes = await fetch(`/api/fakture/${fakturaId}`, { cache: "no-store" });
+      const fakturaData = await fakturaRes.json();
+      if (fakturaRes.ok && fakturaData?.faktura) setFaktura(fakturaData.faktura);
+    } catch (e: any) {
+      alert(e?.message ?? t("fakture.markAsPaidError"));
+    } finally {
+      setMarkPaidLoading(false);
+    }
+  }
+
+  const canMarkAsPaid =
+    !isStornoFaktura &&
+    (() => {
+      const s = String((faktura as any)?.status ?? "").toUpperCase();
+      return s !== "PLACENA" && s !== "DJELIMICNO" && s !== "STORNIRAN" && s !== "ZAMIJENJEN";
+    })();
+
   useEffect(() => {
     if (!Number.isFinite(fakturaId) || fakturaId <= 0) {
-      setError("Neispravan ID fakture");
+      setError(t("fakture.invalidInvoiceId"));
       setLoading(false);
       return;
     }
@@ -417,7 +475,7 @@ export default function FakturaPreviewClient() {
           }
         }
       } catch (err: any) {
-        setError(err?.message || "Greška");
+        setError(err?.message || t("common.error"));
       } finally {
         setLoading(false);
       }
@@ -602,8 +660,8 @@ export default function FakturaPreviewClient() {
           flex-shrink: 0;
         }
         .fiscalBlock{
-          border: 1px solid #000 !important;
-          background: #fff !important;
+          border: none !important;
+          background: transparent !important;
           padding: 10px 12px !important;
           font-size: 11px !important;
           color: #000 !important;
@@ -642,7 +700,7 @@ export default function FakturaPreviewClient() {
           line-height: 1.25 !important;
         }
 
-        /* Footer (linija + ikona + Made by Fluxa) uvijek ispod fiskalnog bloka i obračuna */
+        /* Footer: samo Made by FLUXA, centrirano (kao na originalnim fakturama) */
         .footer{
           margin-top: 18px;
           padding-top: 10px;
@@ -651,9 +709,8 @@ export default function FakturaPreviewClient() {
           color: #666;
           display:flex;
           align-items:center;
-          justify-content:space-between;
+          justify-content:center;
           gap: 10px;
-          flex-wrap: wrap;
         }
         .fluxaSig{
           display:inline-flex;
@@ -876,26 +933,45 @@ export default function FakturaPreviewClient() {
                 >
                   💾 {t("fakture.saveAsPdf")}
                 </button>
-
-                {!isStornoFaktura && (
-                  <button
-                    className="btn"
-                    onClick={handleStorno}
-                    disabled={stornoLoading}
-                    style={{
-                      background: "#9ca3af",
-                      color: "#111827",
-                      border: "1px solid #6b7280",
-                      fontWeight: 700,
-                      opacity: stornoLoading ? 0.6 : 1,
-                    }}
-                    title="Storniraj fakturu"
-                  >
-                    {stornoLoading ? "…" : "STORNO"}
-                  </button>
-                )}
               </div>
             </div>
+
+            {!isStornoFaktura && (
+              <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {canMarkAsPaid && (
+                  <button
+                    className="btn"
+                    onClick={handleMarkPaid}
+                    disabled={markPaidLoading}
+                    style={{
+                      background: "linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(22, 163, 74, 0.15))",
+                      color: "#86efac",
+                      border: "1px solid rgba(34, 197, 94, 0.5)",
+                      fontWeight: 700,
+                      opacity: markPaidLoading ? 0.6 : 1,
+                    }}
+                    title={t("fakture.markAsPaid")}
+                  >
+                    {markPaidLoading ? "…" : "✓ " + t("fakture.markAsPaid")}
+                  </button>
+                )}
+                <button
+                  className="btn"
+                  onClick={handleStorno}
+                  disabled={stornoLoading}
+                  style={{
+                    background: "rgba(220, 38, 38, 0.2)",
+                    color: "#fca5a5",
+                    border: "1px solid rgba(220, 38, 38, 0.5)",
+                    fontWeight: 700,
+                    opacity: stornoLoading ? 0.6 : 1,
+                  }}
+                  title="Storniraj fakturu"
+                >
+                  {stornoLoading ? "…" : "STORNO"}
+                </button>
+              </div>
+            )}
 
             <div className="divider" />
           </div>
@@ -962,6 +1038,12 @@ export default function FakturaPreviewClient() {
                         <div className="v">—</div>
                       </div>
                     ) : null}
+                    <div className="line">
+                      <div className="k">
+                        {lang === "EN" ? "Payment ref." : "Poziv na broj"}
+                      </div>
+                      <div className="v">{faktura?.poziv_na_broj ?? "—"}</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -971,7 +1053,7 @@ export default function FakturaPreviewClient() {
               <div className="cols2">
                 <div>
                   <div className="blockTitle">
-                    {lang === "EN" ? "Seller" : "Prodavac"}
+                    {lang === "EN" ? "Legal entity" : "Pravno lice"}
                   </div>
                   <div className="addr">
                     <div className="name">{sellerName}</div>
@@ -979,7 +1061,7 @@ export default function FakturaPreviewClient() {
                     {sellerCityLine && <div>{sellerCityLine}</div>}
                     {sellerCountry && <div>{sellerCountry}</div>}
                     <div className="muted">
-                      {lang === "EN" ? "Tax ID:" : "PIB:"} {sellerTax}
+                      {lang === "EN" ? "Tax ID:" : "JIB:"} {sellerTax}
                     </div>
                     {formattedBankAccounts.length > 0 && (
                       <div className="bankList">
@@ -995,7 +1077,7 @@ export default function FakturaPreviewClient() {
 
                 <div>
                   <div className="blockTitle">
-                    {lang === "EN" ? "Buyer" : "Kupac"}
+                    {lang === "EN" ? "Client/Orderer" : "Klijent/Naručilac"}
                   </div>
                   <div className="addr">
                     <div className="name">{buyerName}</div>
@@ -1006,7 +1088,7 @@ export default function FakturaPreviewClient() {
                     )}
                     {buyerTax && buyerTax !== "—" && (
                       <div className="muted">
-                        {lang === "EN" ? "Tax ID:" : "PIB:"} {buyerTax}
+                        {lang === "EN" ? "Tax ID:" : "JIB:"} {buyerTax}
                       </div>
                     )}
                   </div>
@@ -1072,9 +1154,12 @@ export default function FakturaPreviewClient() {
                 {fisk ? (
                   <div className="fiscalSlot">
                     <div className="fiscalBlock">
-                      <div className="fiscalTitle">FISKALNI RAČUN</div>
+                      <div className="fiscalTitle">
+                        {String((faktura as any)?.status ?? "").toUpperCase() === "DODIJELJEN"
+                          ? "FISKALNI RAČUN JE U PRILOGU"
+                          : "FISKALNI RAČUN"}
+                      </div>
                       <div className="fiscalLine">PFR br.rač: {fisk}</div>
-                      <div className="fiscalEnd">KRAJ FISKALNOG RAČUNA</div>
                     </div>
                   </div>
                 ) : null}
@@ -1099,22 +1184,63 @@ export default function FakturaPreviewClient() {
                   )}
                   <div className="totLine total">
                     <div className="k">
-                      {lang === "EN" ? "Total" : "Ukupno"}
+                      {lang === "EN"
+                        ? t("wizard.previewDoc.en.totalDue")
+                        : t("wizard.previewDoc.bh.totalDue")}
                     </div>
                     <div className="v">{fmtMoney(totalAmount, ccy)}</div>
+                  </div>
+
+                  <div className="completedLine">
+                    {lang === "EN"
+                      ? `${t("wizard.previewDoc.en.projectCompleted")} ${lastClosed ? fmtDDMMYYYYFromISO(lastClosed) : "—"}`
+                      : `${t("wizard.previewDoc.bh.projectCompleted")} ${lastClosed ? fmtDDMMYYYYFromISO(lastClosed) : "—"}`}
+                  </div>
+
+                  {/* INO fakture BiH: obavezna rečenica o oslobođenju PDV-a */}
+                  {lang === "EN" && isBiHSystem && (vatRate === 0 || isInoInvoice) ? (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 10,
+                        color: "#555",
+                        lineHeight: 1.25,
+                      }}
+                    >
+                      {t("wizard.previewDoc.en.vatExemptionBiH")}
+                    </div>
+                  ) : lang === "EN" && vatRate === 0 ? (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 10,
+                        color: "#555",
+                        lineHeight: 1.25,
+                      }}
+                    >
+                      {t("wizard.previewDoc.en.vatExemption")}
+                    </div>
+                  ) : null}
+
+                  <div
+                    style={{
+                      marginTop: 6,
+                      fontSize: 10,
+                      color: "#555",
+                      lineHeight: 1.25,
+                    }}
+                  >
+                    {lang === "EN"
+                      ? t("wizard.previewDoc.en.generatedElectronically")
+                      : t("wizard.previewDoc.bh.generatedElectronically")}
                   </div>
                 </div>
               </div>
 
               <div className="footer">
-                <div>
-                  {lang === "EN"
-                    ? "Thank you for your business!"
-                    : "Hvala na saradnji!"}
-                </div>
                 <div className="fluxaSig">
                   <img src="/fluxa/Icon.png" alt="FLUXA" />
-                  <span>FLUXA</span>
+                  <span>{t(`wizard.previewDoc.${lang === "EN" ? "en" : "bh"}.madeByFluxa`)}</span>
                 </div>
               </div>
             </div>

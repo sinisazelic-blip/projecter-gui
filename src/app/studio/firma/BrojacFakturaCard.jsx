@@ -6,9 +6,6 @@ import { useTranslation } from "@/components/LocaleProvider";
 const inputStyle = {
   padding: "10px 12px",
   borderRadius: 12,
-  border: "1px solid rgba(255,255,255,.18)",
-  background: "rgba(255,255,255,.06)",
-  color: "inherit",
   outline: "none",
   width: "100%",
   maxWidth: 120,
@@ -26,6 +23,7 @@ export default function BrojacFakturaCard() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [okMsg, setOkMsg] = useState("");
+  const [force, setForce] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,7 +65,7 @@ export default function BrojacFakturaCard() {
       const res = await fetch("/api/firma/brojac-faktura", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ godina: g, zadnji_broj_u_godini: z }),
+        body: JSON.stringify({ godina: g, zadnji_broj_u_godini: z, force: force ? true : undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || t("firma.brojacErrorSave"));
@@ -91,7 +89,7 @@ export default function BrojacFakturaCard() {
   }
 
   return (
-    <div style={{ marginTop: 24 }}>
+    <div style={{ marginTop: 0 }}>
       <div className="sectionTitle">{t("firma.brojacTitle")}</div>
       <div className="hint" style={{ marginBottom: 12 }}>
         {t("firma.brojacHint")}
@@ -134,6 +132,19 @@ export default function BrojacFakturaCard() {
           {saving ? t("firma.brojacSaving") : t("firma.brojacSubmit")}
         </button>
       </form>
+
+      <div className="hint" style={{ marginTop: 10 }}>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={force}
+            onChange={(e) => setForce(Boolean(e.target.checked))}
+          />
+          <span>
+            Force (dozvoli reset/smanjenje brojača) — koristi samo kad si obrisao testne fakture i želiš da sljedeći broj ponovo bude npr. 001/{trenutnaGodina}.
+          </span>
+        </label>
+      </div>
 
       {items.length > 0 ? (
         <div className="hint" style={{ marginTop: 14 }}>

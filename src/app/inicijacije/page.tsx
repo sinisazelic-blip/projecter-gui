@@ -481,6 +481,7 @@ export default async function DealsPage({ searchParams }: any) {
                   href="/inicijacije/novo"
                   className="glassbtn btnNovi"
                   title={t("deals.newDeal")}
+                  data-onboarding="new-deal"
                 >
                   ➕ {t("deals.newDealBtn")}
                 </Link>

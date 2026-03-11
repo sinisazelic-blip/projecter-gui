@@ -47,13 +47,14 @@ export async function POST(req: NextRequest) {
     // 2) Kreiraj projekat
     const insertResult = await conn.query(
       `INSERT INTO projekti
-        (narucilac_id, krajnji_klijent_id, radni_naziv, status_id)
-       VALUES (?, ?, ?, ?)`,
+        (narucilac_id, krajnji_klijent_id, radni_naziv, status_id, budzet_procenat_za_tim)
+       VALUES (?, ?, ?, ?, ?)`,
       [
         inic.narucilac_id,
         inic.krajnji_klijent_id ?? null,
         inic.radni_naziv,
         1, // default status
+        100.00, // default 100% budžeta vidljivo timu
       ],
     );
 

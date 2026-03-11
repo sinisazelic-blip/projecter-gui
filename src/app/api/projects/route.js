@@ -1,8 +1,12 @@
 // src/app/api/projects/route.js
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { query } from "@/lib/db";
+import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
+
+const SARADNIK_NIVO = 0;
 
 // ✅ DEFAULT: aktivna grupa (1–7)
 const DEFAULT_STATUS_GROUP = "active";
@@ -21,6 +25,18 @@ function decOrNull(v) {
 export async function GET(req) {
   try {
     const url = new URL(req.url);
+    const cookieStore = await cookies();
+    const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
+    const session = token ? verifySessionToken(token) : null;
+    const nivo = session?.nivo ?? 1;
+    let radnikId = null;
+    if (session && nivo === SARADNIK_NIVO) {
+      const userRows = await query(
+        "SELECT radnik_id FROM users WHERE user_id = ? LIMIT 1",
+        [session.user_id],
+      );
+      radnikId = userRows?.[0]?.radnik_id != null ? Number(userRows[0].radnik_id) : null;
+    }
 
     // filters
     const q = (url.searchParams.get("q") || "").trim();
@@ -60,11 +76,11 @@ export async function GET(req) {
         : "DESC";
 
     /**
-     * ✅ Budžet source-of-truth (po MC):
-     * vf (kanonski iz view-a) → legacy (p.budzet_planirani)
-     * (ps snapshot join ostaje ako ga želiš kasnije uključiti — sada ne diramo)
+     * ✅ Budžet: prvo staging (projekat_stavke – sync iz Deala), pa view, pa legacy
+     * (ista logika kao na stranici detalja projekta)
      */
-    const budgetExpr = "COALESCE(vf.budzet_planirani, p.budzet_planirani, 0)";
+    const budgetExpr =
+      "COALESCE(ps.budzet_km, vf.budzet_planirani, p.budzet_planirani, 0)";
     const costsExpr = "COALESCE(vf.troskovi_ukupno, tc.troskovi_ukupno, 0)";
 
     const where = [];
@@ -135,6 +151,17 @@ export async function GET(req) {
       }
     }
 
+    if (nivo === SARADNIK_NIVO) {
+      if (radnikId == null) {
+        where.push("1 = 0");
+      } else {
+        where.push(
+          "p.projekat_id IN (SELECT DISTINCT pf.projekat_id FROM projekat_faze pf INNER JOIN projekat_faza_radnici pfr ON pfr.projekat_faza_id = pf.projekat_faza_id WHERE pfr.radnik_id = ?)",
+        );
+        params.push(radnikId);
+      }
+    }
+
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
     // MASTER DEFAULT ORDER (ako user nije eksplicitno sortirao)
@@ -170,12 +197,36 @@ export async function GET(req) {
       orderClause = `ORDER BY ${orderBy} ${dir}`;
     }
 
+    // Staging join (projekat_stavke, latest snapshot, EUR→BAM) — za budžet u listi
+    const EUR_TO_BAM = 1.95583;
+    const stagingJoin = `
+      LEFT JOIN (
+        SELECT ps1.projekat_id,
+          ROUND(SUM(
+            CASE
+              WHEN UPPER(COALESCE(ps1.valuta, 'BAM')) IN ('BAM','KM') THEN COALESCE(ps1.line_total, 0)
+              WHEN UPPER(COALESCE(ps1.valuta, '')) = 'EUR' THEN COALESCE(ps1.line_total, 0) * ${EUR_TO_BAM}
+              ELSE 0
+            END
+          ), 2) AS budzet_km
+        FROM projekat_stavke ps1
+        LEFT JOIN (
+          SELECT projekat_id, MAX(IFNULL(snapshot_id, 0)) AS snapshot_id
+          FROM projekat_stavke
+          GROUP BY projekat_id
+        ) ls ON ls.projekat_id = ps1.projekat_id
+        WHERE IFNULL(ps1.snapshot_id, 0) = COALESCE(ls.snapshot_id, 0)
+        GROUP BY ps1.projekat_id
+      ) ps ON ps.projekat_id = p.projekat_id
+    `;
+
     // COUNT
     const countRows = await query(
       `
       SELECT COUNT(*) AS total
       FROM projekti p
       LEFT JOIN vw_projekti_finansije vf ON vf.projekat_id = p.projekat_id
+      ${stagingJoin}
       LEFT JOIN (
         SELECT projekat_id, ROUND(SUM(iznos_km), 2) AS troskovi_ukupno
         FROM projektni_troskovi
@@ -210,7 +261,7 @@ export async function GET(req) {
 
         p.operativni_signal,
 
-        -- ✅ NOVO: procenat budžeta vidljiv radnicima (default 50.00)
+        -- ✅ NOVO: procenat budžeta vidljiv radnicima (default 100.00)
         COALESCE(p.budzet_procenat_za_tim, 100.00) AS budzet_procenat_za_tim,
 
         -- ✅ Rok kao STRING (timezone safe)
@@ -240,6 +291,7 @@ export async function GET(req) {
 
       FROM projekti p
       LEFT JOIN vw_projekti_finansije vf ON vf.projekat_id = p.projekat_id
+      ${stagingJoin}
       LEFT JOIN (
         SELECT projekat_id, ROUND(SUM(iznos_km), 2) AS troskovi_ukupno
         FROM projektni_troskovi

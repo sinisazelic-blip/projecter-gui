@@ -4,6 +4,22 @@ import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+/** Vraća datum kao YYYY-MM-DD da izbjegnemo timezone pomak pri JSON serijalizaciji (MySQL DATE → JS Date → UTC može dati dan ranije). */
+function toDateOnlyString(val: unknown): string | null {
+  if (val == null) return null;
+  if (typeof val === "string") {
+    const match = val.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return match ? `${match[1]}-${match[2]}-${match[3]}` : null;
+  }
+  if (val instanceof Date) {
+    const y = val.getFullYear(),
+      m = val.getMonth() + 1,
+      d = val.getDate();
+    return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  }
+  return null;
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const p = await params;
@@ -35,6 +51,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           f.valuta,
           f.fiskalni_status AS status,
           f.tip,
+          f.poziv_na_broj,
           f.created_at
         FROM fakture f
         LEFT JOIN klijenti k ON k.klijent_id = f.bill_to_klijent_id
@@ -58,6 +75,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const faktura = fakturaRows[0];
 
+    // Datum izdavanja: uvijek kao YYYY-MM-DD (bez vremena) da klijent vidi isti dan kao u wizardu
+    const datumIzdavanjaStr = toDateOnlyString(faktura.datum_izdavanja);
+    faktura.datum_izdavanja = datumIzdavanjaStr;
+
     // Formatiraj broj fakture ako je potrebno (npr. "6/2026" -> "006/2026")
     let brojFaktureFormatiran = faktura.broj_fakture;
     if (faktura.broj_fakture && typeof faktura.broj_fakture === "string") {
@@ -71,10 +92,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       }
     }
 
-    // Izračunaj datum dospijeća (datum_izdavanja + rok_placanja_dana)
-    let datumDospijeca = null;
-    if (faktura.datum_izdavanja && faktura.rok_placanja_dana) {
-      const datum = new Date(faktura.datum_izdavanja);
+    // Izračunaj datum dospijeća (datum_izdavanja + rok_placanja_dana) — koristi noon da izbjegnemo DST/timezone
+    let datumDospijeca: string | null = null;
+    if (datumIzdavanjaStr && faktura.rok_placanja_dana) {
+      const datum = new Date(datumIzdavanjaStr + "T12:00:00");
       datum.setDate(datum.getDate() + Number(faktura.rok_placanja_dana));
       datumDospijeca = datum.toISOString().slice(0, 10);
     }

@@ -87,10 +87,10 @@ export default function MobilePage() {
         style={{
           ...BTN_STYLE,
           background:
-            "linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.08))",
-          borderColor: "rgba(34, 197, 94, 0.4)",
-          color: "rgba(134, 239, 172, 0.98)",
-          boxShadow: "0 8px 32px rgba(34, 197, 94, 0.15)",
+            "linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(202, 138, 4, 0.12))",
+          borderColor: "rgba(234, 179, 8, 0.5)",
+          color: "rgba(253, 224, 71, 0.98)",
+          boxShadow: "0 8px 32px rgba(234, 179, 8, 0.2)",
         }}
       >
         <span style={{ fontSize: 36 }}>🎛️</span>
@@ -99,6 +99,52 @@ export default function MobilePage() {
           {t("mobile.scSubtitle")}
         </span>
       </Link>
+
+      <Link
+        href="/mobile/deals"
+        style={{
+          ...BTN_STYLE,
+          background:
+            "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.08))",
+          borderColor: "rgba(59, 130, 246, 0.4)",
+          color: "rgba(147, 197, 253, 0.98)",
+          boxShadow: "0 8px 32px rgba(59, 130, 246, 0.15)",
+        }}
+      >
+        <span style={{ fontSize: 36 }}>📋</span>
+        <span>{t("mobile.dealsList")}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.85 }}>
+          {t("mobile.dealsListSubtitle")}
+        </span>
+      </Link>
+
+      <Link
+        href="/mobile/pp"
+        style={{
+          ...BTN_STYLE,
+          background:
+            "linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(126, 34, 206, 0.08))",
+          borderColor: "rgba(168, 85, 247, 0.4)",
+          color: "rgba(216, 180, 254, 0.98)",
+          boxShadow: "0 8px 32px rgba(168, 85, 247, 0.15)",
+        }}
+      >
+        <span style={{ fontSize: 36 }}>📊</span>
+        <span>{t("mobile.ppList")}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.85 }}>
+          {t("mobile.ppListSubtitle")}
+        </span>
+      </Link>
+
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 360,
+          height: 1,
+          background: "rgba(255,255,255,0.08)",
+          margin: "8px 0",
+        }}
+      />
 
       <Link
         href="/dashboard"

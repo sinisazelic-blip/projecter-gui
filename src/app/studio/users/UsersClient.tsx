@@ -271,7 +271,18 @@ export default function UsersClient({
         setSelectedId(null);
         router.refresh();
       } catch (e: any) {
-        setError(e?.message || t("studioUsers.errorSave"));
+        const msg = e?.message;
+        if (typeof msg === "string" && msg.startsWith("SARADNIK_LIMIT:")) {
+          const parts = msg.split(":");
+          const max = parts[1] ?? "";
+          const current = parts[2] ?? "";
+          setError(t("studioUsers.saradnikLimitReached").replace("{max}", max).replace("{current}", current));
+        } else if (typeof msg === "string" && msg.startsWith("SARADNIK_LIMIT_UPDATE:")) {
+          const max = msg.split(":")[1] ?? "";
+          setError(t("studioUsers.saradnikLimitReachedUpdate").replace("{max}", max));
+        } else {
+          setError(msg || t("studioUsers.errorSave"));
+        }
       }
     });
   }
@@ -531,7 +542,7 @@ export default function UsersClient({
 
       {/* Modal: New/Edit */}
       {modalOpen ? (
-        <div style={overlayStyle()} role="dialog" aria-modal="true">
+        <div className="studio-modal" style={overlayStyle()} role="dialog" aria-modal="true">
           <div style={modalStyle(640)}>
             <div
               style={{
@@ -827,7 +838,7 @@ export default function UsersClient({
 
       {/* Confirm: deactivate/activate */}
       {confirmOpen && selectedItem ? (
-        <div style={overlayStyle()} role="dialog" aria-modal="true">
+        <div className="studio-modal" style={overlayStyle()} role="dialog" aria-modal="true">
           <div style={modalStyle(640)}>
             <div
               style={{

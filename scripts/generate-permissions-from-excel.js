@@ -1,12 +1,12 @@
 /**
- * Čita docs/Fluxa prava pristupa i users.xlsx, sheet "Pages",
+ * Čita docs/Fluxa_docs/Fluxa prava pristupa i users.xlsx, sheet "Pages",
  * i generira src/lib/auth/permissions-matrix.ts
  */
 const XLSX = require("xlsx");
 const path = require("path");
 const fs = require("fs");
 
-const excelPath = path.join(__dirname, "../docs/Fluxa prava pristupa i users.xlsx");
+const excelPath = path.join(__dirname, "../docs/Fluxa_docs/Fluxa prava pristupa i users.xlsx");
 const outPath = path.join(__dirname, "../src/lib/auth/permissions-matrix.ts");
 
 const wb = XLSX.readFile(excelPath);
@@ -36,7 +36,7 @@ for (let i = 1; i < rows.length; i++) {
 }
 
 const tsContent = `/**
- * Matrica prava pristupa – generirano iz docs/Fluxa prava pristupa i users.xlsx (sheet Pages).
+ * Matrica prava pristupa – generirano iz docs/Fluxa_docs/Fluxa prava pristupa i users.xlsx (sheet Pages).
  * Ne uređuj ručno; ponovo pokreni: node scripts/generate-permissions-from-excel.js
  */
 

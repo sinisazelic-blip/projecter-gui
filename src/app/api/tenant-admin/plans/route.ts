@@ -23,7 +23,7 @@ export async function GET() {
 
   try {
     const rows = await query<{ plan_id: number; naziv: string; max_users: number }>(
-      `SELECT plan_id, naziv, max_users FROM plans ORDER BY plan_id ASC`
+      `SELECT plan_id, naziv, max_users FROM plans ORDER BY FIELD(naziv, 'Full', 'Compact', 'Light', 'Core'), plan_id ASC`
     );
     return NextResponse.json({ ok: true, plans: rows ?? [] });
   } catch (e: unknown) {

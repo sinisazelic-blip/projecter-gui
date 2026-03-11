@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import FluxaLogo from "@/components/FluxaLogo";
 import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
 import { getLastMonthRange, getPdvPrijavaData } from "@/lib/pdv-prijava";

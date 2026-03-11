@@ -9,10 +9,18 @@ const fmt = (v) => {
   return n.toFixed(2);
 };
 
+const MJESECI = [
+  "Januar", "Februar", "Mart", "April", "Maj", "Jun",
+  "Jul", "Avgust", "Septembar", "Oktobar", "Novembar", "Decembar",
+];
+
 export default function FinanceToolsClient() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [bankCostsOpen, setBankCostsOpen] = useState(false);
+  const [bankCosts, setBankCosts] = useState({ byMonth: [], byYear: {} });
+  const [bankCostsLoading, setBankCostsLoading] = useState(false);
 
   // Quick actions inputs
   const [defaultProjectId, setDefaultProjectId] = useState("1"); // overhead by default
@@ -56,7 +64,7 @@ export default function FinanceToolsClient() {
       const body = {
         posting_id: Number(posting.posting_id),
         amount_km: amountAbs,
-        datum: String(posting.value_date),
+        datum: String(posting.value_date || "").slice(0, 10),
         napomena: note || `Payment link for posting ${posting.posting_id}`,
         referenca: `posting_id=${posting.posting_id}`,
       };
@@ -85,7 +93,7 @@ export default function FinanceToolsClient() {
       const body = {
         posting_id: Number(posting.posting_id),
         amount_km: Number(posting.amount),
-        datum: String(posting.value_date),
+        datum: String(posting.value_date || "").slice(0, 10),
         projekat_id: pid,
         opis: note || `Income link for posting ${posting.posting_id}`,
       };
@@ -101,6 +109,21 @@ export default function FinanceToolsClient() {
       await refresh();
     } catch (e) {
       setErr(e?.message ?? "Error");
+    }
+  }
+
+  async function openBankCosts() {
+    setBankCostsOpen(true);
+    setBankCostsLoading(true);
+    try {
+      const res = await fetch("/api/finance/bank-costs", { cache: "no-store" });
+      const j = await res.json();
+      if (!j?.ok) throw new Error(j?.error || "Greška učitavanja");
+      setBankCosts({ byMonth: j.byMonth || [], byYear: j.byYear || {} });
+    } catch (e) {
+      setErr(e?.message ?? "Greška");
+    } finally {
+      setBankCostsLoading(false);
     }
   }
 
@@ -128,6 +151,104 @@ export default function FinanceToolsClient() {
 
   return (
     <>
+      <div className="card" style={{ marginTop: 12 }}>
+        <div className="card-title">Troškovi banke</div>
+        <div className="card-subtitle">
+          Zbroj naknada (provizije, vođenje računa, prebacivanja) po mjesecima i godinama.
+        </div>
+        <button
+          type="button"
+          className="btn"
+          style={{ marginTop: 10 }}
+          onClick={openBankCosts}
+        >
+          Otvori pregled troškova banke
+        </button>
+      </div>
+
+      {bankCostsOpen && (
+        <div
+          className="card"
+          style={{
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            zIndex: 100,
+            minWidth: 360,
+            maxWidth: "90vw",
+            maxHeight: "85vh",
+            overflow: "auto",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div className="card-title" style={{ margin: 0 }}>Troškovi banke (KM)</div>
+            <button type="button" className="btn" onClick={() => setBankCostsOpen(false)}>Zatvori</button>
+          </div>
+          {bankCostsLoading ? (
+            <p style={{ opacity: 0.8 }}>Učitavanje...</p>
+          ) : (
+            <>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Mjesec</th>
+                    <th>Godina</th>
+                    <th style={{ textAlign: "right" }}>Iznos (KM)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bankCosts.byMonth.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} style={{ opacity: 0.8 }}>
+                        Nema transakcija koje odgovaraju kriteriju (provizije, naknade, vođenje računa).
+                        <br />
+                        <span style={{ fontSize: 12 }}>Provjeri da li su izvodi uvezeni i knjiženi; ako banka u opisu koristi druge riječi, možemo ih dodati.</span>
+                      </td>
+                    </tr>
+                  ) : (
+                    bankCosts.byMonth.map((r, i) => (
+                      <tr key={i}>
+                        <td>{MJESECI[Number(r.month) - 1] ?? r.month}</td>
+                        <td>{r.year}</td>
+                        <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmt(r.total_km)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+              {Object.keys(bankCosts.byYear).length > 0 && (
+                <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.12)" }}>
+                  <div className="card-subtitle" style={{ marginBottom: 8 }}>Ukupno po godini</div>
+                  {Object.entries(bankCosts.byYear)
+                    .sort((a, b) => Number(b[0]) - Number(a[0]))
+                    .map(([year, total]) => (
+                      <div key={year} style={{ display: "flex", justifyContent: "space-between", gap: 24, fontWeight: 700 }}>
+                        <span>{year}</span>
+                        <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmt(total)} KM</span>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {bankCostsOpen && (
+        <div
+          onClick={() => setBankCostsOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            zIndex: 99,
+          }}
+          aria-hidden="true"
+        />
+      )}
+
       <div className="card" style={{ marginTop: 12 }}>
         <div
           style={{

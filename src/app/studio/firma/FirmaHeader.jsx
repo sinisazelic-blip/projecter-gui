@@ -1,13 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslation } from "@/components/LocaleProvider";
+import { useAuthUser } from "@/components/AuthUserProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeToggle from "@/components/ThemeToggle";
 import FluxaLogo from "@/components/FluxaLogo";
 
 export default function FirmaHeader() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const { requestTourOnce } = useAuthUser();
+
+  const handleStartTour = () => {
+    requestTourOnce();
+    router.push("/dashboard");
+  };
 
   return (
     <div className="topRow">
@@ -32,6 +41,14 @@ export default function FirmaHeader() {
       >
         <ThemeToggle />
         <LanguageSwitcher />
+        <button
+          type="button"
+          className="btn"
+          onClick={handleStartTour}
+          title={t("firma.startTourTitle")}
+        >
+          🎯 {t("firma.startTour")}
+        </button>
         <Link href="/studio/users" className="btn" title={t("dashboard.usersTitle")}>
           👤 {t("dashboard.users")}
         </Link>

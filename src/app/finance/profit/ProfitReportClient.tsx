@@ -65,36 +65,31 @@ export default function ProfitReportClient({ initialView }: { initialView: "mont
   const [chartYear, setChartYear] = useState<number | null>(null);
 
   useEffect(() => {
-    // Isti izvor kao Charts (stg-master) — 20 godina unazad iz stg_master_finansije + live od 2026
-    fetch("/api/izvjestaji/stg-master", { cache: "no-store" })
+    // Obračun profita koristi margin API: realized, troskovi, vat (PDV), profit — sve u KM (EUR preračunat)
+    fetch("/api/izvjestaji/margin", { cache: "no-store" })
       .then((res) => res.json())
       .then((j) => {
         if (j?.ok && j?.tableData?.length) {
-          const tableData = j.tableData.map((row: { godina: number; mjeseci_arr: { promet: number; troskovi: number; zarada: number }[] }) => {
-            const mjeseci_arr: MonthCell[] = (row.mjeseci_arr || []).map((c: { promet: number; troskovi: number; zarada: number }) => {
-              const promet = Number(c.promet ?? 0);
-              const troskovi = Number(c.troskovi ?? 0);
-              const zarada = Number(c.zarada ?? 0);
-              return {
-                realized: promet,
-                troskovi,
-                vat: 0,
-                profit: zarada,
-                margin_pct: troskovi > 0 ? (zarada / troskovi) * 100 : 0,
-              };
-            });
+          const tableData = (j.tableData as YearRow[]).map((row) => {
+            const mjeseci_arr: MonthCell[] = (row.mjeseci_arr || []).map((c) => ({
+              realized: Number(c?.realized ?? 0),
+              troskovi: Number(c?.troskovi ?? 0),
+              vat: Number(c?.vat ?? 0),
+              profit: Number(c?.profit ?? 0),
+              margin_pct: Number(c?.margin_pct ?? 0),
+            }));
             const cellsWithActivity = mjeseci_arr.filter((c) => c.troskovi > 0 || c.realized > 0);
             const sumProfit = cellsWithActivity.reduce((s, c) => s + c.profit, 0);
             const sumCosts = cellsWithActivity.reduce((s, c) => s + c.troskovi, 0);
-            const avg_margin_pct = sumCosts > 0 ? (sumProfit / sumCosts) * 100 : 0;
+            const avg_margin_pct = sumCosts > 0 ? (sumProfit / sumCosts) * 100 : (row.avg_margin_pct ?? 0);
             return {
               godina: row.godina,
-              mjeseci: {} as Record<number, MonthCell>,
+              mjeseci: row.mjeseci ?? {},
               mjeseci_arr,
               avg_margin_pct,
             };
           });
-          const chartYearly = tableData.map((r: YearRow) => ({
+          const chartYearly = tableData.map((r) => ({
             godina: String(r.godina),
             margin: Math.round(r.avg_margin_pct * 10) / 10,
           }));
@@ -290,7 +285,8 @@ export default function ProfitReportClient({ initialView }: { initialView: "mont
       </div>
 
       <div className="reportNote no-print" style={{ marginTop: 24 }}>
-        Profit = Realizovano (sa VAT) − Troškovi − VAT. Margin % = Profit / Troškovi × 100. Izvor: fakture i projektni_troskovi (od 2026), stg_master (arhiva).
+        Profit = Realizovano (sa VAT) − Troškovi − VAT. Margin % = Profit / Troškovi × 100. Izvor: fakture i projektni_troskovi (od 2026).{" "}
+        <Link href="/finance/profit/arhiva" className="link">Arhiva (staging)</Link>: po mjesecu po godini vrijednost − troškovi (stg_master_finansije).
       </div>
     </div>
   );

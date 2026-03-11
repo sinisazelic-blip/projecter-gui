@@ -15,10 +15,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ user: null }, { status: 200 });
   }
 
+  let onboardingCompleted = false;
+  try {
+    const onboardingRows = await query<{ n: number }>(
+      `SELECT 1 AS n FROM onboarding_completed WHERE user_id = ? LIMIT 1`,
+      [session.user_id]
+    );
+    onboardingCompleted = (onboardingRows?.length ?? 0) > 0;
+  } catch {
+    // onboarding_completed tabela možda ne postoji – pokreni scripts/create-onboarding-completed.sql
+  }
+
   const payload: {
     user: { user_id: number; username: string; role_id: number | null; nivo: number };
     subscription_ends_at?: string;
     subscription_expired?: boolean;
+    onboarding_completed?: boolean;
   } = {
     user: {
       user_id: session.user_id,
@@ -26,6 +38,7 @@ export async function GET(req: NextRequest) {
       role_id: session.role_id,
       nivo: session.nivo,
     },
+    onboarding_completed: onboardingCompleted,
   };
 
   if (process.env.ENABLE_TENANT_ADMIN === "true") {

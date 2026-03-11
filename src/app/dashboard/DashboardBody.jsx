@@ -35,9 +35,9 @@ function setStoredOpen(updater) {
   return next;
 }
 
-function CollapsibleSection({ id, title, pill, open, onToggle, children, className = "" }) {
+function CollapsibleSection({ id, title, pill, open, onToggle, children, className = "", ...rest }) {
   return (
-    <div className={`dashboardGroup ${className}`.trim()}>
+    <div className={`dashboardGroup ${className}`.trim()} {...rest}>
       <button
         type="button"
         onClick={() => onToggle(id)}
@@ -123,7 +123,7 @@ export default function DashboardBody() {
 
   return (
     <>
-      <div className="dashboardGroup deskGroup">
+      <div className="dashboardGroup deskGroup" data-onboarding="desk">
         <div className="groupHeader">
           <div className="groupTitle">{t("dashboard.desk")}</div>
         </div>
@@ -134,6 +134,7 @@ export default function DashboardBody() {
                 href="/inicijacije"
                     className="deskMainBtn deskMainBtn--blue"
                     title={t("dashboard.dealsTitle")}
+                    data-onboarding="deals"
                   >
                     <span style={{ fontSize: 28 }}>📋</span>
                     <span>{t("dashboard.deals")}</span>
@@ -157,9 +158,10 @@ export default function DashboardBody() {
           <PermissionGate module="PP" inPage="-">
             <FluxaFeature id={8}>
               <Link
-                href="/projects"
+                    href="/projects"
                     className="deskMainBtn deskMainBtn--green"
                     title={t("dashboard.ppTitle")}
+                    data-onboarding="pp"
                   >
                     <span style={{ fontSize: 28 }}>📊</span>
                     <span>{t("dashboard.pp")}</span>
@@ -216,6 +218,7 @@ export default function DashboardBody() {
             pill=""
             open={open.profitAnalysis}
             onToggle={toggle}
+            data-onboarding="profit"
           >
             <div className="finansijeSidebar" style={{ marginTop: 0 }}>
               <PermissionGate module="Izvještaji" inPage="">

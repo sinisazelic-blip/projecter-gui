@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "@/components/LocaleProvider";
 import {
   BarChart,
   Bar,
@@ -97,6 +98,7 @@ function TableBlock({ title, tableData, field }) {
 }
 
 export default function GrafickiClient() {
+  const { t } = useTranslation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -106,16 +108,16 @@ export default function GrafickiClient() {
       .then((res) => res.json())
       .then((j) => {
         if (j?.ok) setData(j);
-        else setErr(j?.error || "Greška učitavanja");
+        else setErr(j?.error || t("common.errorLoad"));
       })
-      .catch((e) => setErr(e?.message || "Greška"))
+      .catch((e) => setErr(e?.message || t("common.error")))
       .finally(() => setLoading(false));
-  }, []);
+  }, [t]);
 
   if (loading) {
     return (
       <div className="reportLoading">
-        Učitavanje…
+        {t("common.loading")}
       </div>
     );
   }

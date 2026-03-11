@@ -68,7 +68,7 @@ Dokument nastao nakon rada na postavkama fiskalnog uređaja i brojaču faktura. 
 
 ## 3. Naputke iz tehničke dokumentacije (L-PFR / Esir)
 
-- **Tačan API spec:** U `docs/fiskal/` nalaze se PDF dokumenti (npr. **Техничка-документација.pdf**, Тестирање.pdf) – tamo je definisano tačno šta uređaj očekuje u body-ju (nazivi polja, obavezna polja, formati). Kad dobiješ 400 bez detalja, treba iz tog PDF-a provjeriti format zahtjeva.
+- **Tačan API spec:** U folderu **fiskal/** (u ovom Fluxa_docs folderu) nalaze se PDF dokumenti (npr. **Техничка-документација.pdf**, Тестирање.pdf) – tamo je definisano tačno šta uređaj očekuje u body-ju (nazivi polja, obavezna polja, formati). Kad dobiješ 400 bez detalja, treba iz tog PDF-a provjeriti format zahtjeva.
 - **Komunikacija:** HTTP na Base URL (WiFi/LAN). Za aplikaciju isto.
 - **Endpointi (iz konteksta):** npr. `POST /api/v3/invoices` (JSON: stavke, plaćanje, tip računa, …), `GET /api/v3/status`, `POST /api/v3/pin` ako treba.
 - **PaymentType (referenca):** Other=0, Cash=1, Card=2, Check=3, WireTransfer=4, Voucher=5, MobileMoney=6.
@@ -88,7 +88,7 @@ Provjera je moguća: putem linka za verifikaciju na računu, skeniranjem QR koda
 
 ### 3.2 Referenca: izgled fiskalnog bloka (Aero Centar Krila, januar 2026)
 
-Primjer fakture: **`docs/fiskal/AeroKrila faktura za januar 2026.pdf`**. Aero Krila naplaćuje korištenje i održavanje fiskalnog uređaja i u direktnoj je vezi sa PU – njihov izgled računa uzima se kao referenca za zakonski ispravan fiskalni blok.
+Primjer fakture: **fiskal/AeroKrila faktura za januar 2026.pdf** (u ovom folderu). Aero Krila naplaćuje korištenje i održavanje fiskalnog uređaja i u direktnoj je vezi sa PU – njihov izgled računa uzima se kao referenca za zakonski ispravan fiskalni blok.
 
 **Redoslijed elemenata u fiskalnom bloku (od vrha prema dnu):**
 

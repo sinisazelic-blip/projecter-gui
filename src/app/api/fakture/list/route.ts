@@ -4,6 +4,22 @@ import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+/** Vraća datum kao YYYY-MM-DD da izbjegnemo timezone pomak pri JSON serijalizaciji. */
+function toDateOnlyString(val: unknown): string | null {
+  if (val == null) return null;
+  if (typeof val === "string") {
+    const match = val.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return match ? `${match[1]}-${match[2]}-${match[3]}` : null;
+  }
+  if (val instanceof Date) {
+    const y = val.getFullYear(),
+      m = val.getMonth() + 1,
+      d = val.getDate();
+    return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  }
+  return null;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
@@ -11,6 +27,7 @@ export async function GET(req: NextRequest) {
     const narucilacId = url.searchParams.get("narucilac_id")
       ? Number(url.searchParams.get("narucilac_id"))
       : null;
+    const neplacene = url.searchParams.get("neplacene") === "1";
 
     const params: any[] = [];
     const whereClauses: string[] = [];
@@ -21,6 +38,9 @@ export async function GET(req: NextRequest) {
     if (narucilacId && Number.isFinite(narucilacId)) {
       whereClauses.push("f.bill_to_klijent_id = ?");
       params.push(narucilacId);
+    }
+    if (neplacene) {
+      whereClauses.push("(f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('PLACENA','STORNIRAN','ZAMIJENJEN'))");
     }
     const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
@@ -52,13 +72,14 @@ export async function GET(req: NextRequest) {
 
     // Izračunaj datum dospijeća za svaku fakturu i formatiraj broj fakture
     const faktureSaDatumom = (Array.isArray(fakture) ? fakture : []).map((f: any) => {
-      let datumDospijeca = null;
-      if (f.datum_izdavanja && f.rok_placanja_dana) {
-        const datum = new Date(f.datum_izdavanja);
+      const datumIzdavanjaStr = toDateOnlyString(f.datum_izdavanja);
+      let datumDospijeca: string | null = null;
+      if (datumIzdavanjaStr && f.rok_placanja_dana) {
+        const datum = new Date(datumIzdavanjaStr + "T12:00:00");
         datum.setDate(datum.getDate() + Number(f.rok_placanja_dana));
         datumDospijeca = datum.toISOString().slice(0, 10);
       }
-      
+
       // Formatiraj broj fakture ako je potrebno (npr. "5/2026" -> "005/2026")
       let brojFaktureFormatiran = f.broj_fakture;
       if (f.broj_fakture && typeof f.broj_fakture === "string") {
@@ -74,6 +95,7 @@ export async function GET(req: NextRequest) {
       
       return {
         ...f,
+        datum_izdavanja: datumIzdavanjaStr,
         broj_fakture: brojFaktureFormatiran,
         datum_dospijeca: datumDospijeca,
         status: f.status === "DODIJELJEN" ? "Fakturisan" : f.status,

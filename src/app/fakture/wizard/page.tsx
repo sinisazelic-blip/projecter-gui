@@ -81,7 +81,9 @@ export default function InvoiceWizard() {
   const [vatMode, setVatMode] = useState<"BH_17" | "INO_0">("BH_17");
   const [isInoDetected, setIsInoDetected] = useState<boolean>(false);
 
-  // Fiskalizacija: ako je uređaj konfiguriran u Studio → Firma, preview prikazuje Fiskalizuj (bez izbora ručno/automatski)
+  // Fiskalizacija: ručni PFR ili automatski (Fiskalizuj). Podrazumijevano ručno dok automatski ne radi.
+  const [lastPfrNumber, setLastPfrNumber] = useState<string>("");
+  const [useAutoFiscal, setUseAutoFiscal] = useState<boolean>(false);
 
   // Popust prije PDV-a (KM) — prikaz samo kad postoji
   const [popustKm, setPopustKm] = useState<string>("");
@@ -224,12 +226,12 @@ export default function InvoiceWizard() {
 
     const iso = ddmmyyyyToISO(invoiceDateDD);
     if (!iso) {
-      alert("Datum fakture mora biti u formatu dd.mm.yyyy");
+      alert(t("fakture.invoiceDateInvalid"));
       return;
     }
 
     if (!/^\d{8}$/.test(pozivNaBroj)) {
-      alert("Poziv na broj nije generisan ili nije validan.");
+      alert(t("fakture.pozivNaBrojInvalid"));
       return;
     }
 
@@ -278,6 +280,13 @@ export default function InvoiceWizard() {
     const popustNum = parseFloat(String(popustKm || "0").trim());
     if (Number.isFinite(popustNum) && popustNum > 0) {
       qs.set("popust", String(popustNum));
+    }
+
+    // Ručni PFR i automatska fiskalizacija samo za BiH (sr). Van BiH (en) ne šaljemo.
+    if (!isEu) {
+      const pfrLastTrim = String(lastPfrNumber || "").trim();
+      if (pfrLastTrim) qs.set("pfr_last", pfrLastTrim);
+      qs.set("auto_fiscal", useAutoFiscal ? "1" : "0");
     }
 
     router.push(`/fakture/wizard/preview?${qs.toString()}`);
@@ -462,7 +471,39 @@ export default function InvoiceWizard() {
                   step="0.01"
                   title={t("wizard.popustTitle")}
                 />
+
+                {!isEu && (
+                  <>
+                    <div className="label">{t("wizard.lastPfrBroj")}</div>
+                    <input
+                      type="number"
+                      className="input"
+                      value={lastPfrNumber}
+                      onChange={(e) => setLastPfrNumber(e.target.value)}
+                      placeholder={t("wizard.lastPfrPlaceholder")}
+                      min="0"
+                      step="1"
+                      title={t("wizard.lastPfrTitle")}
+                    />
+                    <div className="label">{t("wizard.fiskalizacijaDropbox")}</div>
+                    <select
+                      className="input"
+                      value={useAutoFiscal ? "1" : "0"}
+                      onChange={(e) => setUseAutoFiscal(e.target.value === "1")}
+                      title={t("wizard.fiskalizacijaDropboxTitle")}
+                    >
+                      <option value="0">{t("wizard.ne")}</option>
+                      <option value="1">{t("wizard.da")}</option>
+                    </select>
+                  </>
+                )}
               </div>
+
+              {!isEu && (
+                <div style={{ marginTop: 10, opacity: 0.8, fontSize: 12 }}>
+                  {t("wizard.lastPfrHint")}
+                </div>
+              )}
 
               {pnbErr ? <div className="err">{pnbErr}</div> : null}
 

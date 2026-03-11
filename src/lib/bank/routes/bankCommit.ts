@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withTransaction } from "@/lib/db";
+import { findFakturaFromText } from "@/lib/bank/matchInvoiceFromText";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -102,11 +103,74 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
         [batch_id],
       );
 
+      // 4) Auto-uparivanje uplata na fakture: iz teksta (poziv na broj ili broj fakture 001/2026)
+      let matched_invoices = 0;
+      try {
+        const [postings]: any = await conn.execute(
+          `
+          SELECT p.posting_id, p.description, p.amount, p.value_date
+          FROM bank_tx_posting p
+          LEFT JOIN bank_tx_posting_prihod_link l ON l.posting_id = p.posting_id AND l.aktivan = 1
+          WHERE p.batch_id = ? AND p.amount > 0 AND l.link_id IS NULL
+          `,
+          [batch_id],
+        );
+        const list = Array.isArray(postings) ? postings : [];
+        for (const row of list) {
+          const description = row?.description ?? "";
+          const amount = Number(row?.amount);
+          const valueDate = row?.value_date;
+          const postingId = row?.posting_id;
+          if (!Number.isFinite(amount) || amount <= 0 || !postingId) continue;
+
+          const fakturaMatch = await findFakturaFromText(conn, description, null);
+          if (!fakturaMatch || fakturaMatch.projekat_id <= 0) continue;
+
+          const datum = valueDate ? String(valueDate).slice(0, 10) : null;
+          if (!datum || !/^\d{4}-\d{2}-\d{2}$/.test(datum)) continue;
+
+          const amountKm = Math.round(amount * 100) / 100;
+          let prihodId: number | null = null;
+          try {
+            const [ins]: any = await conn.execute(
+              `INSERT INTO projektni_prihodi (projekat_id, faktura_id, datum, iznos_km, opis, status)
+               VALUES (?, ?, ?, ?, ?, 'NASTALO')`,
+              [fakturaMatch.projekat_id, fakturaMatch.faktura_id, datum, amountKm, (description || "Uplata po izvodu").slice(0, 255)],
+            );
+            prihodId = ins?.insertId ?? null;
+          } catch {
+            try {
+              const [ins2]: any = await conn.execute(
+                `INSERT INTO projektni_prihodi (projekat_id, datum, iznos_km, opis) VALUES (?, ?, ?, ?)`,
+                [fakturaMatch.projekat_id, datum, amountKm, description.slice(0, 255) || "Uplata po izvodu"],
+              );
+              prihodId = ins2?.insertId ?? null;
+            } catch {
+              continue;
+            }
+          }
+          if (!prihodId) continue;
+
+          await conn.execute(
+            `INSERT INTO bank_tx_posting_prihod_link (posting_id, prihod_id, amount_km, aktivan, created_at) VALUES (?, ?, ?, 1, NOW())`,
+            [postingId, prihodId, amountKm],
+          );
+          await conn.execute(
+            `UPDATE fakture SET fiskalni_status = 'PLACENA' WHERE faktura_id = ?`,
+            [fakturaMatch.faktura_id],
+          );
+          matched_invoices += 1;
+        }
+      } catch (autoMatchErr: any) {
+        console.warn("[bankCommit] auto-match invoices:", autoMatchErr?.message);
+      }
+
       return {
         ok: true,
         batch_id,
         account_id,
         affected_rows,
+        matched_invoices,
         status: "posted",
         marker: "COMMIT_V2_UPSERT",
       };

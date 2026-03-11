@@ -302,6 +302,7 @@ export default function InicijacijaDetailClient() {
   const [editSelected, setEditSelected] = useState<CjenHit | null>(null);
   const [editKolicina, setEditKolicina] = useState("");
   const [editCijena, setEditCijena] = useState("");
+  const [editValuta, setEditValuta] = useState<string>("BAM");
   const [editOpis, setEditOpis] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
@@ -444,7 +445,7 @@ export default function InicijacijaDetailClient() {
         { cache: "no-store" },
       );
       const data = await res.json();
-      if (!data?.ok) throw new Error(data?.error || "Greška (timeline)");
+      if (!data?.ok) throw new Error(data?.error || t("common.error"));
       const tr = (data.row ?? null) as TimelineRow | null;
       setTimeline(tr);
       setTAccepted(toHumanInput(tr?.accepted_deadline ?? null));
@@ -521,7 +522,7 @@ export default function InicijacijaDetailClient() {
         cache: "no-store",
       });
       const data = await res.json();
-      if (!data?.ok) throw new Error(data?.error || "Greška");
+      if (!data?.ok) throw new Error(data?.error || t("common.error"));
       const r = data.row as Row;
       setRow(r);
 
@@ -535,7 +536,7 @@ export default function InicijacijaDetailClient() {
         setCloseData(null);
       }
     } catch (e: any) {
-      setError(e?.message ?? "Greška");
+      setError(e?.message ?? t("common.error"));
       setRow(null);
       setTimeline(null);
       setStavke([]);
@@ -579,11 +580,11 @@ export default function InicijacijaDetailClient() {
         }),
       });
       const data = await res.json();
-      if (!data?.ok) throw new Error(data?.error || "Greška");
+      if (!data?.ok) throw new Error(data?.error || t("common.error"));
       setMsg(t("dealDetail.dealStorned"));
       await load();
     } catch (e: any) {
-      setError(e?.message ?? "Greška");
+      setError(e?.message ?? t("common.error"));
     } finally {
       setSaving(false);
     }
@@ -613,11 +614,11 @@ export default function InicijacijaDetailClient() {
       });
 
       const data = await res.json();
-      if (!data?.ok) throw new Error(data?.error || "Greška");
+      if (!data?.ok) throw new Error(data?.error || t("common.error"));
       setMsg(t("dealDetail.saved"));
       await load();
     } catch (e: any) {
-      setError(e?.message ?? "Greška");
+      setError(e?.message ?? t("common.error"));
     } finally {
       setSaving(false);
     }
@@ -654,12 +655,12 @@ export default function InicijacijaDetailClient() {
       });
 
       const data = await res.json();
-      if (!data?.ok) throw new Error(data?.error || "Greška (timeline)");
+      if (!data?.ok) throw new Error(data?.error || t("common.error"));
 
       setMsg(t("dealDetail.timelineSaved"));
       await loadTimeline();
     } catch (e: any) {
-      setError(e?.message ?? "Greška");
+      setError(e?.message ?? t("common.error"));
     } finally {
       setSavingTimeline(false);
     }
@@ -707,7 +708,7 @@ export default function InicijacijaDetailClient() {
       });
 
       const data = await res.json();
-      if (!data?.ok) throw new Error(data?.error || "Greška (stavke)");
+      if (!data?.ok) throw new Error(data?.error || t("common.error"));
 
       setSelected(null);
       setKolicina("1");
@@ -716,7 +717,7 @@ export default function InicijacijaDetailClient() {
       setMsg(t("dealDetail.itemAdded"));
       await loadStavke();
     } catch (e: any) {
-      setError(e?.message ?? "Greška");
+      setError(e?.message ?? t("common.error"));
     } finally {
       setAddingItem(false);
     }
@@ -739,12 +740,12 @@ export default function InicijacijaDetailClient() {
       });
 
       const data = await res.json();
-      if (!data?.ok) throw new Error(data?.error || "Greška (storno)");
+      if (!data?.ok) throw new Error(data?.error || t("common.error"));
 
       setMsg(t("dealDetail.itemStorned"));
       await loadStavke();
     } catch (e: any) {
-      setError(e?.message ?? "Greška");
+      setError(e?.message ?? t("common.error"));
     }
   }
 
@@ -754,6 +755,7 @@ export default function InicijacijaDetailClient() {
     setEditSelected(null);
     setEditKolicina(String(s.kolicina ?? ""));
     setEditCijena(String(s.cijena_jedinicna ?? ""));
+    setEditValuta(normCcy(s.valuta) || "BAM");
     setEditOpis(String(s.opis ?? ""));
   }
 
@@ -762,6 +764,7 @@ export default function InicijacijaDetailClient() {
     setEditSelected(null);
     setEditKolicina("");
     setEditCijena("");
+    setEditValuta("BAM");
     setEditOpis("");
     setSavingEdit(false);
   }
@@ -795,18 +798,19 @@ export default function InicijacijaDetailClient() {
           stavka_id: editSelected?.stavka_id ?? undefined,
           kolicina: k,
           cijena_jedinicna: cij,
+          valuta: editValuta || undefined,
           opis: editOpis || null,
         }),
       });
 
       const data = await res.json();
-      if (!data?.ok) throw new Error(data?.error || "Greška (snimi promjene)");
+      if (!data?.ok) throw new Error(data?.error || t("common.error"));
 
       setMsg(t("dealDetail.changesSaved"));
       cancelEdit();
       await loadStavke();
     } catch (e: any) {
-      setError(e?.message ?? "Greška");
+      setError(e?.message ?? t("common.error"));
       setSavingEdit(false);
     }
   }
@@ -823,7 +827,7 @@ export default function InicijacijaDetailClient() {
       });
 
       const data = await res.json();
-      if (!data?.ok) throw new Error(data?.error || "Greška");
+      if (!data?.ok) throw new Error(data?.error || t("common.error"));
 
       const pid = data?.projekat_id as number | null;
       setMsg(pid ? t("dealDetail.projectOpenedWithId").replace("#{id}", String(pid)) : t("dealDetail.projectOpened"));
@@ -831,7 +835,7 @@ export default function InicijacijaDetailClient() {
 
       if (pid) router.push(`/projects/${pid}`);
     } catch (e: any) {
-      setError(e?.message ?? "Greška");
+      setError(e?.message ?? t("common.error"));
     } finally {
       setOpeningProject(false);
     }
@@ -1638,8 +1642,8 @@ onClick={() => setCloseOpen(false)}
                   }}
                   title={
                     dealReadOnly
-                      ? "Deal je read-only (status projekta zaključava)."
-                      : "Snima novi timeline zapis (stari se ne briše)."
+                      ? t("dealDetail.dealReadOnlyTooltip")
+                      : t("dealDetail.saveTimelineTooltip")
                   }
                 >
                   {savingTimeline ? t("dealDetail.saving") : t("dealDetail.saveTimeline")}
@@ -1652,6 +1656,7 @@ onClick={() => setCloseOpen(false)}
           {!loading && (
             <div
               className="cardLike"
+              data-onboarding="deal-stavke"
               style={{
                 opacity: dealReadOnly ? 0.65 : 1,
                 pointerEvents: dealReadOnly ? "none" : "auto",
@@ -2015,12 +2020,23 @@ onClick={() => setCloseOpen(false)}
                             {normCcy(s.valuta)}
                           </div>
                         ) : (
-                          <input
-                            value={editCijena}
-                            onChange={(e) => setEditCijena(e.target.value)}
-                            style={inputStyle}
-                            inputMode="decimal"
-                          />
+                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <input
+                              value={editCijena}
+                              onChange={(e) => setEditCijena(e.target.value)}
+                              style={{ ...inputStyle, flex: 1, minWidth: 0 }}
+                              inputMode="decimal"
+                            />
+                            <select
+                              value={editValuta}
+                              onChange={(e) => setEditValuta(e.target.value)}
+                              style={{ ...inputStyle, width: 56, padding: "8px 6px" }}
+                              title={t("dealDetail.valutaTitle")}
+                            >
+                              <option value="BAM">KM</option>
+                              <option value="EUR">EUR</option>
+                            </select>
+                          </div>
                         )}
                       </div>
 
@@ -2153,7 +2169,7 @@ onClick={() => setCloseOpen(false)}
                   type="button"
                   style={{ opacity: saving ? 0.7 : 1 }}
                 >
-                  {saving ? "Snima..." : "Sačuvaj"}
+                  {saving ? t("dealDetail.saving") : t("dealDetail.save")}
                 </button>
               </div>
             </div>
@@ -2256,7 +2272,7 @@ onClick={() => setCloseOpen(false)}
                   type="button"
                   style={{ opacity: saving ? 0.7 : 1 }}
                 >
-                  {saving ? "Snima..." : "Sačuvaj"}
+                  {saving ? t("dealDetail.saving") : t("dealDetail.save")}
                 </button>
               </div>
             </div>

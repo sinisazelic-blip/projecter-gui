@@ -6,9 +6,6 @@ import { useTranslation } from "@/components/LocaleProvider";
 const inputStyle = {
   padding: "12px 14px",
   borderRadius: 12,
-  border: "1px solid rgba(255,255,255,.18)",
-  background: "rgba(255,255,255,.06)",
-  color: "inherit",
   outline: "none",
   width: "100%",
   fontSize: "1rem",
@@ -118,7 +115,7 @@ export default function FiskalModal() {
 
       {open && (
         <div
-          className="fiskalOverlay"
+          className="fiskalOverlay studio-modal"
           role="dialog"
           aria-modal="true"
           aria-labelledby="fiskal-title"

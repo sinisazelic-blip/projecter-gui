@@ -19,6 +19,8 @@ export default function SubscriptionGuard({ children }) {
   useEffect(() => {
     if (loading) return;
     if (!user || !subscriptionExpired) return;
+    const isOwner = user.user_id === 0 || user.username === "Owner";
+    if (isOwner) return;
     if (isAllowed(pathname)) return;
     router.replace("/subscription-expired");
   }, [loading, user, subscriptionExpired, pathname, router]);

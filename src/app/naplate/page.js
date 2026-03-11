@@ -1,7 +1,10 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { apiGet } from "@/lib/api";
 import { query } from "@/lib/db";
 import { getPocetnaStanja } from "@/lib/pocetna-stanja";
+import { getValidLocale } from "@/lib/i18n";
+import { getT } from "@/lib/translations";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
 import FluxaLogo from "@/components/FluxaLogo";
 
@@ -50,6 +53,9 @@ function daysCell(r) {
 }
 
 export default async function Page({ searchParams }) {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value ?? "sr");
+  const t = getT(locale);
   const sp = await Promise.resolve(searchParams);
 
   let pocetnaStanja = { klijenti: [], dobavljaci: [], talenti: [] };
@@ -102,15 +108,15 @@ export default async function Page({ searchParams }) {
   // period ispod naslova
   let periodText = "";
   if (onlyLate) {
-    periodText = "Samo stavke van valute";
+    periodText = t("naplatePage.onlyLatePeriod");
   } else if (dueFrom || dueTo) {
     const fromTxt = dueFrom ? fmtDateDMY(dueFrom) : "—";
     const toTxt = dueTo ? fmtDateDMY(dueTo) : "—";
-    periodText = `od ${fromTxt} do ${toTxt}`;
+    periodText = t("naplatePage.periodFromTo").replace("{{from}}", fromTxt).replace("{{to}}", toTxt);
   } else {
     const today = new Date();
     const to = addDays(today, Number(upcomingDays || 14));
-    periodText = `od ${fmtDateDMY(today)} do ${fmtDateDMY(to)}`;
+    periodText = t("naplatePage.periodFromTo").replace("{{from}}", fmtDateDMY(today)).replace("{{to}}", fmtDateDMY(to));
   }
 
   return (
@@ -124,10 +130,10 @@ export default async function Page({ searchParams }) {
                   <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Naplate</div>
+                  <div className="brandTitle">{t("naplatePage.title")}</div>
                   <div className="brandSub">
                     {periodText}
-                    {projekatId ? ` · Projekat #${projekatId}` : ""}
+                    {projekatId ? ` · ${t("naplatePage.projectHash")}${projekatId}` : ""}
                   </div>
                 </div>
               </div>
@@ -137,16 +143,16 @@ export default async function Page({ searchParams }) {
                   <Link
                     href={`/projects/${encodeURIComponent(projekatId)}`}
                     className="btn"
-                    title={`Projekat #${projekatId}`}
+                    title={`${t("naplatePage.projectHash")}${projekatId}`}
                   >
-                    Projekat #{projekatId}
+                    {t("naplatePage.projectHash")}{projekatId}
                   </Link>
                 )}
-                <Link href="/finance" className="btn" title="Finansije">
-                  Finansije
+                <Link href="/finance" className="btn" title={t("naplatePage.finance")}>
+                  {t("naplatePage.finance")}
                 </Link>
-                <Link href="/dashboard" className="btn" title="Dashboard">
-                  🏠 Dashboard
+                <Link href="/dashboard" className="btn" title={t("naplatePage.dashboard")}>
+                  🏠 {t("naplatePage.dashboard")}
                 </Link>
               </div>
             </div>
@@ -205,41 +211,41 @@ export default async function Page({ searchParams }) {
                   value="1"
                   defaultChecked={onlyLate}
                 />
-                Samo van valute
+                {t("naplatePage.onlyLate")}
               </label>
 
               {!onlyLate && (
                 <>
-                  <span style={{ opacity: 0.75 }}>U narednih:</span>
+                  <span style={{ opacity: 0.75 }}>{t("naplatePage.upcomingLabel")}</span>
                   <select
                     name="upcoming_days"
                     defaultValue={String(upcomingDays)}
                     style={inputStyle}
                   >
-                    <option value="7">7 dana</option>
-                    <option value="14">14 dana</option>
-                    <option value="30">30 dana</option>
+                    <option value="7">{t("naplatePage.days7")}</option>
+                    <option value="14">{t("naplatePage.days14")}</option>
+                    <option value="30">{t("naplatePage.days30")}</option>
                   </select>
                 </>
               )}
 
-              <span style={{ opacity: 0.75 }}>Fakturisano:</span>
+              <span style={{ opacity: 0.75 }}>{t("naplatePage.invoicedLabel")}</span>
               <select
                 name="fakturisano"
                 defaultValue={String(fakt)}
                 style={inputStyle}
               >
-                <option value="">Svi</option>
-                <option value="1">DA</option>
+                <option value="">{t("naplatePage.all")}</option>
+                <option value="1">{t("naplatePage.yes")}</option>
               </select>
 
-              <span style={{ opacity: 0.75 }}>Naručilac:</span>
+              <span style={{ opacity: 0.75 }}>{t("naplatePage.narucilacLabel")}</span>
               <select
                 name="narucilac_id"
                 defaultValue={String(narId)}
                 style={{ ...inputStyle, minWidth: 220 }}
               >
-                <option value="">Svi</option>
+                <option value="">{t("naplatePage.all")}</option>
                 {narucioci.map((k) => (
                   <option key={k.klijent_id} value={k.klijent_id}>
                     {k.naziv_klijenta}
@@ -258,7 +264,7 @@ export default async function Page({ searchParams }) {
               }}
             >
               <span style={{ opacity: 0.75 }}>
-                Valuta: <span style={{ opacity: 0.9 }}>dd.mm.yyyy</span> do{" "}
+                {t("naplatePage.currencyLabel")} <span style={{ opacity: 0.9 }}>dd.mm.yyyy</span> {t("naplatePage.to")}{" "}
                 <span style={{ opacity: 0.9 }}>dd.mm.yyyy</span>
               </span>
 
@@ -269,7 +275,7 @@ export default async function Page({ searchParams }) {
                 className="input"
                 style={{ width: "auto" }}
               />
-              <span style={{ opacity: 0.65 }}>do</span>
+              <span style={{ opacity: 0.65 }}>{t("naplatePage.to")}</span>
               <input
                 type="date"
                 name="due_to"
@@ -279,8 +285,7 @@ export default async function Page({ searchParams }) {
               />
 
               <span style={{ opacity: 0.55, fontSize: 12 }}>
-                (Browser prikazuje svoj format u polju, ali sistem koristi
-                dd.mm.yyyy u prikazu.)
+                {t("naplatePage.dateFormatHint")}
               </span>
             </div>
           </div>
@@ -295,7 +300,7 @@ export default async function Page({ searchParams }) {
             }}
           >
             <button type="submit" className="btn" style={{ minWidth: 110 }}>
-              Filtriraj
+              {t("naplatePage.filterBtn")}
             </button>
             <Link
               href={resetHref}
@@ -306,7 +311,7 @@ export default async function Page({ searchParams }) {
                 textAlign: "center",
               }}
             >
-              Reset
+              {t("naplatePage.resetBtn")}
             </Link>
           </div>
         </div>
@@ -317,9 +322,9 @@ export default async function Page({ searchParams }) {
       {pocetnaStanja.klijenti?.length > 0 && (
         <div className="card" style={{ marginTop: 12, marginBottom: 12 }}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <span style={{ fontWeight: 700, fontSize: 15 }}>Početna stanja (31.12.) — potraživanja od klijenata</span>
+            <span style={{ fontWeight: 700, fontSize: 15 }}>{t("naplatePage.pocetnaStanjaTitle")}</span>
             <Link href="/finance/pocetna-stanja" className="btn" style={{ fontSize: 13 }}>
-              Evidencija početnih stanja →
+              {t("naplatePage.pocetnaStanjaLink")}
             </Link>
           </div>
           <div style={{ padding: "10px 16px" }}>
@@ -327,21 +332,21 @@ export default async function Page({ searchParams }) {
               <table className="table" style={{ width: "100%" }}>
                 <thead>
                   <tr>
-                    <th style={{ textAlign: "left", padding: "6px 10px" }}>Klijent</th>
-                    <th style={{ textAlign: "right", padding: "6px 10px" }}>Iznos (KM)</th>
+                    <th style={{ textAlign: "left", padding: "6px 10px" }}>{t("naplatePage.client")}</th>
+                    <th style={{ textAlign: "right", padding: "6px 10px" }}>{t("naplatePage.amountKm")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pocetnaStanja.klijenti.map((r) => (
                     <tr key={r.klijent_id} style={r.otpisano ? { opacity: 0.6 } : undefined}>
-                      <td style={{ padding: "6px 10px" }}>{r.naziv}{r.otpisano ? " (otpisano)" : ""}</td>
+                      <td style={{ padding: "6px 10px" }}>{r.naziv}{r.otpisano ? ` ${t("naplatePage.writtenOff")}` : ""}</td>
                       <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 600 }}>{fmtMoney(r.iznos_km, "KM")}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr style={{ borderTop: "1px solid var(--border)", fontWeight: 700 }}>
-                    <td style={{ padding: "8px 10px" }}>Ukupno (aktivna)</td>
+                    <td style={{ padding: "8px 10px" }}>{t("naplatePage.totalActive")}</td>
                     <td style={{ padding: "8px 10px", textAlign: "right" }}>
                       {fmtMoney(pocetnaStanja.klijenti.filter((x) => !x.otpisano).reduce((s, x) => s + x.iznos_km, 0), "KM")}
                     </td>
@@ -355,11 +360,11 @@ export default async function Page({ searchParams }) {
 
       <div className="card" style={{ marginTop: 12 }}>
       <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-        <span className="muted">Prikazano: {rows.length} stavki</span>
+        <span className="muted">{t("naplatePage.shownCount").replace("{{count}}", String(rows.length))}</span>
         <ExportExcelButton
           filename="naplate"
-          sheetName="Naplate"
-          headers={["Projekat ID", "Projekat", "Naručilac", "Krajnji klijent", "Iznos", "Valuta", "Datum valute", "Dani", "Status"]}
+          sheetName={t("naplatePage.title")}
+          headers={[t("naplatePage.projectId"), t("naplatePage.project"), t("naplatePage.narucilac"), t("naplatePage.krajnjiKlijent"), t("naplatePage.amount"), t("naplatePage.currency"), t("naplatePage.dueDate"), t("naplatePage.days"), t("naplatePage.status")]}
           rows={rows.map((r) => [
             r.projekat_id ?? "",
             r.radni_naziv ?? "",
@@ -377,13 +382,13 @@ export default async function Page({ searchParams }) {
       <table className="table">
         <thead>
           <tr>
-            <th>Projekat</th>
-            <th>Naručilac</th>
-            <th>Krajnji klijent</th>
-            <th className="num">Iznos</th>
-            <th>Valuta</th>
-            <th className="num">Dani</th>
-            <th>Status</th>
+            <th>{t("naplatePage.project")}</th>
+            <th>{t("naplatePage.narucilac")}</th>
+            <th>{t("naplatePage.krajnjiKlijent")}</th>
+            <th className="num">{t("naplatePage.amount")}</th>
+            <th>{t("naplatePage.currency")}</th>
+            <th className="num">{t("naplatePage.days")}</th>
+            <th>{t("naplatePage.status")}</th>
           </tr>
         </thead>
 
@@ -412,7 +417,7 @@ export default async function Page({ searchParams }) {
 
       {rows.length === 0 && (
         <div className="muted" style={{ marginTop: 12, padding: 12 }}>
-          Nema stavki za prikaz (po trenutnim filterima).
+          {t("naplatePage.noItems")}
         </div>
       )}
       </div>

@@ -18,12 +18,13 @@ type VrstaTalenta =
   | "reziser"
   | "organizator"
   | "account"
-  | "developer";
+  | "developer"
+  | "vidograf";
 
 const VRSTA_VALUES: Set<string> = new Set([
   "spiker", "glumac", "pjevac", "dijete", "muzicar", "ostalo",
   "snimatelj", "kompozitor", "copywriter", "producent", "montazer",
-  "reziser", "organizator", "account", "developer",
+  "reziser", "organizator", "account", "developer", "vidograf",
 ]);
 
 function cleanStr(v: any) {

@@ -33,6 +33,8 @@ export async function GET() {
       plan_id: number;
       plan_naziv: string;
       max_users: number;
+      monthly_price: number | null;
+      currency: string | null;
       subscription_starts_at: string;
       subscription_ends_at: string;
       status: string;
@@ -44,7 +46,9 @@ export async function GET() {
         t.naziv,
         t.plan_id,
         p.naziv AS plan_naziv,
-        p.max_users,
+        COALESCE(t.max_users, p.max_users) AS max_users,
+        t.monthly_price,
+        t.currency,
         DATE_FORMAT(t.subscription_starts_at, '%Y-%m-%d') AS subscription_starts_at,
         DATE_FORMAT(t.subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
         t.status,
@@ -62,13 +66,23 @@ export async function GET() {
   }
 }
 
-/** Novi tenant (organizacija / kupac licence). Body: naziv, plan_id, subscription_starts_at, subscription_ends_at. */
+const MAX_USER_OPTIONS = [1, 3, 5, 10, 50, 101] as const; // 101 = 100+
+
+/** Novi tenant (organizacija / kupac licence). Body: naziv, plan_id, max_users, subscription_starts_at, subscription_ends_at, monthly_price?, currency?. */
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
   const auth = requireTenantAdmin(cookieStore);
   if (auth.error) return auth.error;
 
-  let body: { naziv?: string; plan_id?: number; subscription_starts_at?: string; subscription_ends_at?: string };
+  let body: {
+    naziv?: string;
+    plan_id?: number;
+    max_users?: number;
+    subscription_starts_at?: string;
+    subscription_ends_at?: string;
+    monthly_price?: number | null;
+    currency?: string | null;
+  };
   try {
     body = await req.json();
   } catch {
@@ -85,20 +99,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "PLAN_ID_REQUIRED" }, { status: 400 });
   }
 
+  const maxUsers = body?.max_users != null ? Number(body.max_users) : 5;
+  if (!MAX_USER_OPTIONS.includes(maxUsers as (typeof MAX_USER_OPTIONS)[number])) {
+    const valid = MAX_USER_OPTIONS.join(", ");
+    return NextResponse.json({ ok: false, error: "MAX_USERS_INVALID", valid }, { status: 400 });
+  }
+
   const startRaw = String(body?.subscription_starts_at ?? "").trim().slice(0, 10);
   const endRaw = String(body?.subscription_ends_at ?? "").trim().slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startRaw) || !/^\d{4}-\d{2}-\d{2}$/.test(endRaw)) {
     return NextResponse.json({ ok: false, error: "DATES_REQUIRED" }, { status: 400 });
   }
 
+  const monthlyPrice = body?.monthly_price != null && body.monthly_price !== "" ? Number(body.monthly_price) : null;
+  const currency = typeof body?.currency === "string" ? body.currency.trim().slice(0, 3) || null : null;
+
   const crypto = await import("crypto");
   const licenceToken = crypto.randomBytes(24).toString("hex");
 
   try {
     const res = await query(
-      `INSERT INTO tenants (naziv, plan_id, subscription_starts_at, subscription_ends_at, status, licence_token)
-       VALUES (?, ?, ?, ?, 'AKTIVAN', ?)`,
-      [naziv, planId, startRaw, endRaw, licenceToken]
+      `INSERT INTO tenants (naziv, plan_id, max_users, subscription_starts_at, subscription_ends_at, status, licence_token, monthly_price, currency)
+       VALUES (?, ?, ?, ?, ?, 'AKTIVAN', ?, ?, ?)`,
+      [naziv, planId, maxUsers, startRaw, endRaw, licenceToken, monthlyPrice ?? null, currency]
     );
     const header = Array.isArray(res) ? res[0] : res;
     const insertId = (header as { insertId?: number })?.insertId;

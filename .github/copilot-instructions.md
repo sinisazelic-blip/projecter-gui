@@ -7,7 +7,7 @@ This is a Next.js 16 application managing project finances for Studio TAF. It co
 - `src/app/api/` - API routes (GET/POST handlers)
 - `src/lib/db.ts` - Database connection pool and query helpers
 - `src/components/` - Reusable UI components
-- `docs/` - API contracts, DB schema, and state documentation
+- `docs/Fluxa_docs/` - API contracts, DB schema, and state documentation
 
 ## API Patterns
 - **Response format:** `{ok: true, ...data}` for success, `{ok: false, error: "..."}` for errors
@@ -62,9 +62,9 @@ async function addCost(formData) {
 - **Compatibility:** Some routes return multiple response formats (`rows`, `projects`, `data`) for legacy frontend support
 
 ## Key Files to Reference
-- `docs/API_CONTRACTS.md` - API endpoint specifications
-- `docs/DB_MAP.md` - Database schema and relationships
-- `docs/STATE.md` - App modules and state management
+- `docs/Fluxa_docs/API_CONTRACTS.md` - API endpoint specifications
+- `docs/Fluxa_docs/DB_MAP.md` - Database schema and relationships
+- `docs/Fluxa_docs/STATE.md` - App modules and state management
 - `src/lib/db.ts` - Database utilities
 - `src/lib/api/response.ts` - Response helpers</content>
 <parameter name="filePath">c:\Users\Studio TAF\OneDrive\Desktop\projecter-gui\.github\copilot-instructions.md

@@ -1,6 +1,7 @@
 // GET: da li je owner konfigurisan + dužina (za debug, ne otkriva šifru)
-// POST: provjera owner tokena (šifra iz .env FLUXA_OWNER_TOKEN)
+// POST: provjera owner tokena (šifra iz .env FLUXA_OWNER_TOKEN); pri uspjehu postavlja session cookie (sintetički Owner, nivo 10) da pristup Fluxi radi
 import { NextRequest, NextResponse } from "next/server";
+import { createSessionToken, getSessionCookieAttributes } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -78,7 +79,26 @@ export async function POST(req: NextRequest) {
   const ok = tokenNorm === expectedNorm;
 
   if (ok) {
-    return NextResponse.json({ ok: true });
+    const res = NextResponse.json({ ok: true });
+    try {
+      const ownerSession = createSessionToken({
+        user_id: 0,
+        username: "Owner",
+        role_id: null,
+        nivo: 10,
+      });
+      const attrs = getSessionCookieAttributes();
+      res.cookies.set(attrs.name, ownerSession, {
+        maxAge: attrs.maxAge,
+        httpOnly: attrs.httpOnly,
+        secure: attrs.secure,
+        sameSite: attrs.sameSite,
+        path: "/",
+      });
+    } catch {
+      // AUTH_SECRET missing – cookie ne postavljamo, owner i dalje u localStorage
+    }
+    return res;
   }
 
   const diff = findFirstDiff(expectedNorm, tokenNorm);

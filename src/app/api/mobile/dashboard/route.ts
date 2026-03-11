@@ -76,7 +76,7 @@ export async function GET() {
       // view možda ne postoji
     }
 
-    // --- 2) Potraživanja prekoračena (fakturisane fakture, datum dospijeća prošao) ---
+    // --- 2) Potraživanja prekoračena (samo NENAPLAĆENE fakture, datum dospijeća prošao, jedna po fakturi) ---
     let overdueReceivables: { broj_fakture: string; radni_naziv: string; iznos_km: number; kasni_dana: number }[] = [];
     let overdueReceivablesTotal = 0;
 
@@ -84,17 +84,21 @@ export async function GET() {
       const recRows = (await query(
         `
         SELECT
-          fp.projekat_id,
-          p.radni_naziv,
           f.faktura_id,
           COALESCE(f.broj_fakture_puni, CONCAT(LPAD(f.broj_u_godini, 3, '0'), '/', f.godina)) AS broj_fakture,
           f.iznos_ukupno_km AS iznos,
-          DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(kn.rok_placanja_dana, 30) DAY) AS datum_dospijeca
-        FROM faktura_projekti fp
-        JOIN projekti p ON p.projekat_id = fp.projekat_id
-        JOIN fakture f ON f.faktura_id = fp.faktura_id
+          DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(kn.rok_placanja_dana, 30) DAY) AS datum_dospijeca,
+          (SELECT p.radni_naziv
+           FROM faktura_projekti fp2
+           JOIN projekti p ON p.projekat_id = fp2.projekat_id
+           WHERE fp2.faktura_id = f.faktura_id
+           ORDER BY p.projekat_id ASC
+           LIMIT 1) AS radni_naziv
+        FROM fakture f
         LEFT JOIN klijenti kn ON kn.klijent_id = f.bill_to_klijent_id
-        WHERE p.status_id = 9
+        WHERE (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('PLACENA', 'DJELIMICNO', 'STORNIRAN', 'ZAMIJENJEN'))
+          AND f.datum_izdavanja IS NOT NULL
+          AND DATE(f.datum_izdavanja) >= '2000-01-01'
           AND DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(kn.rok_placanja_dana, 30) DAY) < CURDATE()
         ORDER BY DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(kn.rok_placanja_dana, 30) DAY) ASC
         LIMIT 50

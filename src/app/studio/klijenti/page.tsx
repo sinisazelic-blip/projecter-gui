@@ -13,6 +13,8 @@ export type KlijentRow = {
   naziv_klijenta: string;
   tip_klijenta: "direktni" | "agencija";
   porezni_id: string | null;
+  jib?: string | null; // JIB 13 cifara – za fiskalni uređaj
+  pib?: string | null; // PIB 12 cifara – ne šalje se na PU
   adresa: string | null;
   grad: string | null;
   drzava: string | null;
@@ -37,20 +39,26 @@ export default async function KlijentiPage() {
        FROM INFORMATION_SCHEMA.COLUMNS
       WHERE TABLE_SCHEMA = DATABASE()
         AND LOWER(TABLE_NAME) = 'klijenti'
-        AND LOWER(COLUMN_NAME) IN ('created_at', 'updated_at', 'pdv_oslobodjen', 'email')`,
+        AND LOWER(COLUMN_NAME) IN ('created_at', 'updated_at', 'pdv_oslobodjen', 'email', 'jib', 'pib')`,
   )) as any[];
 
   const colSet = new Set((cols ?? []).map((r) => String(r.COLUMN_NAME).toLowerCase()));
   const hasPdvOslobodjen = colSet.has("pdv_oslobodjen");
   const hasEmail = colSet.has("email");
+  // EU regional (i18n en): Firma i Klijenti nemaju JIB/PIB, samo VAT No (porezni_id). BiH ima JIB (13) i PIB (12).
+  const isEuRegion = locale === "en";
+  const hasJib = !isEuRegion && colSet.has("jib");
+  const hasPib = !isEuRegion && colSet.has("pib");
 
   const pdvCols = hasPdvOslobodjen
     ? `, COALESCE(pdv_oslobodjen, 0) AS pdv_oslobodjen, pdv_oslobodjen_napomena`
     : ", 0 AS pdv_oslobodjen, NULL AS pdv_oslobodjen_napomena";
   const emailCol = hasEmail ? ", email" : ", NULL AS email";
+  const jibPibCols = [hasJib && "jib", hasPib && "pib"].filter(Boolean).join(", ");
+  const jibPibSelect = jibPibCols ? `, ${jibPibCols}` : ", NULL AS jib, NULL AS pib";
 
   const rows = await query(
-    `SELECT klijent_id, naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava${emailCol},
+    `SELECT klijent_id, naziv_klijenta, tip_klijenta, porezni_id${jibPibSelect}, adresa, grad, drzava${emailCol},
             rok_placanja_dana, napomena, aktivan, is_ino${pdvCols},
             DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
             DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
@@ -85,7 +93,7 @@ export default async function KlijentiPage() {
         </div>
 
         <div className="bodyWrap">
-          <KlijentiClient initialItems={(rows ?? []) as KlijentRow[]} />
+          <KlijentiClient initialItems={(rows ?? []) as KlijentRow[]} hasJib={hasJib} hasPib={hasPib} />
         </div>
       </div>
     </div>

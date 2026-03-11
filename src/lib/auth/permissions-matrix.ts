@@ -1,9 +1,9 @@
 /**
- * Matrica prava pristupa – generirano iz docs/Fluxa prava pristupa i users.xlsx (sheet Pages).
+ * Matrica prava pristupa – generirano iz docs/Fluxa_docs/Fluxa prava pristupa i users.xlsx (sheet Pages).
  * Ne uređuj ručno; ponovo pokreni: node scripts/generate-permissions-from-excel.js
  */
 
-export const LEVELS = [1, 2, 3, 5, 6, 8, 9, 10] as const;
+export const LEVELS = [0, 1, 2, 3, 5, 6, 8, 9, 10] as const;
 export type Level = (typeof LEVELS)[number];
 
 export type Permission = "demo" | "hide" | "Read Only" | "Show" | "Use" | "Edit" | "all";
@@ -11,7 +11,8 @@ export type Permission = "demo" | "hide" | "Read Only" | "Show" | "Use" | "Edit"
 export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Level, Permission>>>> = {
   "Dashboard": {
     "": {
-      "1": "demo",
+      "0": "Show",
+      "1": "Show",
       "2": "Show",
       "3": "Show",
       "5": "Show",
@@ -23,7 +24,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Mobile dashboard": {
     "-": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "hide",
@@ -33,7 +34,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Finansiki pregled": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "hide",
@@ -45,7 +46,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Deals": {
     "-": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "Read Only",
       "5": "Show",
@@ -55,7 +56,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "filteri": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Use",
@@ -67,7 +68,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Deal": {
     "-": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "Read Only",
       "5": "Use",
@@ -77,7 +78,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "storno": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Use",
@@ -87,7 +88,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Timeline (Deal)": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Use",
@@ -97,7 +98,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Stavke - oređivanje budžeta": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Use",
@@ -107,7 +108,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Ukupno/budžet:": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Use",
@@ -117,7 +118,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Strategic Core": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Use",
@@ -127,7 +128,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Status (Deal)": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Use",
@@ -137,7 +138,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Podaci o klijentu/naručiocu": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Use",
@@ -149,7 +150,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Strategic Core": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Use",
@@ -161,7 +162,8 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "PP": {
     "-": {
-      "1": "demo",
+      "0": "Show",
+      "1": "hide",
       "2": "hide",
       "3": "Read Only",
       "5": "Show",
@@ -171,7 +173,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "filteri": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "Show",
       "5": "Show",
@@ -181,7 +183,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Rok": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "Show",
       "5": "Show",
@@ -191,7 +193,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Budžet-Troškovi-Zarada": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "Show",
       "5": "Show",
@@ -201,7 +203,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Budžet - pravo stanje u opisu": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Show",
@@ -211,7 +213,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Status": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "Show",
       "5": "Show",
@@ -223,7 +225,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Projekat": {
     "-": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "Show",
       "5": "Show",
@@ -233,7 +235,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Basics (ime, timeline status, semafor, rok)": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "Show",
       "5": "Show",
@@ -243,7 +245,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "owner semafor": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "hide",
@@ -253,7 +255,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "budžet limit show": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "hide",
@@ -263,7 +265,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "ProBono": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "hide",
@@ -273,7 +275,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Owner obračun zarade": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Show",
@@ -283,7 +285,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Faze Show/Edit": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "Show",
       "5": "Edit",
@@ -293,7 +295,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Final OK": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Use",
@@ -303,7 +305,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Storno": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "hide",
@@ -313,7 +315,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Grupa Finansije": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "Show",
       "5": "Show",
@@ -323,7 +325,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Budžet - info stvarnog iznosa": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "hide",
@@ -333,7 +335,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Napomenta": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "Show",
       "5": "Show",
@@ -343,7 +345,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Dodaj trošak": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "Edit",
       "5": "Edit",
@@ -353,7 +355,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Troškovi stavke": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Show",
@@ -363,7 +365,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Troškovi stavke/edit": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "Show",
       "5": "Show",
@@ -373,7 +375,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Troškovi stavke/edit/finansije": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "Show",
       "5": "Show",
@@ -383,7 +385,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "10": "all"
     },
     "Troškovi stavke/storno prikaži": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "Show",
       "5": "Show",
@@ -395,7 +397,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Fakture": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "all",
@@ -407,7 +409,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Naplate": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "all",
@@ -419,7 +421,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Finansije - Potraživanja": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "all",
@@ -431,7 +433,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Finansije - Dugovanja": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "all",
@@ -443,7 +445,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Finansije - Banka": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "Read Only",
       "3": "hide",
       "5": "Read Only",
@@ -455,7 +457,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Finansije - Početno stanje": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "hide",
@@ -467,7 +469,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Finansije - Otpis": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "hide",
@@ -479,7 +481,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Blagajna": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "hide",
@@ -491,7 +493,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Šifarnici - Klijenti": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Edit",
@@ -503,7 +505,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Šifarnici - Dobavljači": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Edit",
@@ -515,7 +517,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Šifarnici - Talenti": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Show",
@@ -527,7 +529,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Šifarnici - Radnici": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Show",
@@ -539,7 +541,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Šifarnici - Cjenovnik": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Edit",
@@ -551,7 +553,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Šifarnici - Faze": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "Show",
@@ -563,7 +565,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Šifarnici - Users": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "hide",
@@ -575,7 +577,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Šifarnici - Roles": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "hide",
@@ -587,7 +589,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Firma (postavke, logo)": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "hide",
       "3": "hide",
       "5": "hide",
@@ -599,7 +601,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
   },
   "Izvještaji": {
     "": {
-      "1": "demo",
+      "1": "hide",
       "2": "Read Only",
       "3": "hide",
       "5": "Show",

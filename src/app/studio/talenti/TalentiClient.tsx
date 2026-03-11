@@ -22,7 +22,8 @@ type VrstaTalenta =
   | "reziser"
   | "organizator"
   | "account"
-  | "developer";
+  | "developer"
+  | "vidograf";
 
 type FormState = {
   talent_id?: number;
@@ -138,6 +139,7 @@ const VRSTA_KEYS: Record<VrstaTalenta, string> = {
   organizator: "vrstaOrganizator",
   account: "vrstaAccount",
   developer: "vrstaDeveloper",
+  vidograf: "vrstaVidograf",
 };
 
 const VRSTA_LIST: VrstaTalenta[] = [
@@ -156,6 +158,7 @@ const VRSTA_LIST: VrstaTalenta[] = [
   "reziser",
   "snimatelj",
   "spiker",
+  "vidograf",
 ];
 
 export default function TalentiClient({

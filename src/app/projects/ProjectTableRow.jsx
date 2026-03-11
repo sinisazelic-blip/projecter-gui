@@ -215,12 +215,14 @@ const FLOW_STEPS = FLOW_KEYS.map((k) => ({ k: k.toUpperCase(), label: k }));
 
 function flowIndexForProjectStatusId(statusId) {
   const id = Number(statusId ?? 0);
-  if (id === 10 || id === 11 || id === 12) return 5;
-  if (id === 9) return 4;
-  if (id === 8) return 3;
+  // ✅ KANON (usklađeno sa src/lib/ui/fluxaTimeline.js):
+  // Deal je samo kad nema projekta/statusa (0). Svaki status_id > 0 znači "Produkcija",
+  // osim: 7/8/9/10… koji mapiraju na kasnije faze.
   if (id === 7) return 2;
-  if (id >= 4 && id <= 6) return 1;
-  if (id >= 1 && id <= 3) return 0;
+  if (id === 8) return 3;
+  if (id === 9) return 4;
+  if (id === 10 || id === 11 || id === 12) return 5;
+  if (id > 0) return 1;
   return 0;
 }
 
@@ -461,15 +463,12 @@ export default function ProjectTableRow({ project }) {
 
       <td className="num">
         {(() => {
-          // ✅ Izračunaj budžet vidljiv radnicima (procenat od punog budžeta)
+          // ✅ Prikaz u kompletnom iznosu (pun budžet)
           const punBudzet = Number(project.budzet_planirani) || 0;
           const procenatZaTim = Number(project.budzet_procenat_za_tim) || 100.00;
-          const budzetZaTim = punBudzet * (procenatZaTim / 100);
-          
           return (
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span>{fmt(budzetZaTim)}</span>
-              {/* ✅ Procenat vidljiv samo owneru */}
+              <span>{fmt(punBudzet)}</span>
               {isOwner && procenatZaTim !== 100 && punBudzet > 0 && (
                 <span
                   style={{
@@ -477,7 +476,7 @@ export default function ProjectTableRow({ project }) {
                     opacity: 0.6,
                     fontStyle: "italic",
                   }}
-                  title={`${t("projectsPage.fullBudgetTitle")} ${fmt(punBudzet)}`}
+                  title={t("projectDetail.budgetForTeam")}
                 >
                   ({procenatZaTim.toFixed(0)}%)
                 </span>
@@ -489,15 +488,11 @@ export default function ProjectTableRow({ project }) {
       <td className="num">{fmt(project.troskovi_ukupno)}</td>
       <td className="num">
         {(() => {
-          // ✅ Izračunaj planiranu zaradu na osnovu budžeta za tim
+          // ✅ Planirana zarada = pun budžet − troškovi (prikaz u kompletnom iznosu)
           const punBudzet = Number(project.budzet_planirani) || 0;
-          const procenatZaTim = Number(project.budzet_procenat_za_tim) || 100.00;
-          const budzetZaTim = punBudzet * (procenatZaTim / 100);
-          const planiranaZaradaZaTim = budzetZaTim - (Number(project.troskovi_ukupno) || 0);
-          
-          // ✅ Crvena boja ako je zarada negativna (u minusu)
-          const isNegative = planiranaZaradaZaTim < 0;
-          
+          const troskovi = Number(project.troskovi_ukupno) || 0;
+          const planiranaZarada = punBudzet - troskovi;
+          const isNegative = planiranaZarada < 0;
           return (
             <span
               style={{
@@ -505,7 +500,7 @@ export default function ProjectTableRow({ project }) {
                 fontWeight: isNegative ? 700 : "inherit",
               }}
             >
-              {fmt(planiranaZaradaZaTim)}
+              {fmt(planiranaZarada)}
             </span>
           );
         })()}

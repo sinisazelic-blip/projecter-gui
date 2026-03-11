@@ -36,22 +36,41 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "BAD_ID" }, { status: 400 });
   }
 
-  // Uzimamo: status + (opciono naziv statusa) + kanonski budžet/troškove preko view-a
+  // Budžet: prvo staging (projekat_stavke), pa view (ista logika kao detalj i lista)
+  const EUR_TO_BAM = 1.95583;
   const rows = await query(
     `
     SELECT
       p.projekat_id,
       p.status_id,
       s.naziv_statusa,
-      v.budzet_planirani,
-      v.troskovi_ukupno
+      COALESCE(ps.budzet_km, v.budzet_planirani, 0) AS budzet_planirani,
+      COALESCE(v.troskovi_ukupno, 0) AS troskovi_ukupno
     FROM projekti p
     LEFT JOIN statusi_projekta s ON s.status_id = p.status_id
     LEFT JOIN vw_projekti_finansije v ON v.projekat_id = p.projekat_id
+    LEFT JOIN (
+      SELECT ps1.projekat_id,
+        ROUND(SUM(
+          CASE
+            WHEN UPPER(COALESCE(ps1.valuta, 'BAM')) IN ('BAM','KM') THEN COALESCE(ps1.line_total, 0)
+            WHEN UPPER(COALESCE(ps1.valuta, '')) = 'EUR' THEN COALESCE(ps1.line_total, 0) * ?
+            ELSE 0
+          END
+        ), 2) AS budzet_km
+      FROM projekat_stavke ps1
+      LEFT JOIN (
+        SELECT projekat_id, MAX(IFNULL(snapshot_id, 0)) AS snapshot_id
+        FROM projekat_stavke
+        GROUP BY projekat_id
+      ) ls ON ls.projekat_id = ps1.projekat_id
+      WHERE IFNULL(ps1.snapshot_id, 0) = COALESCE(ls.snapshot_id, 0)
+      GROUP BY ps1.projekat_id
+    ) ps ON ps.projekat_id = p.projekat_id
     WHERE p.projekat_id = ?
     LIMIT 1
     `,
-    [projekatId],
+    [EUR_TO_BAM, projekatId],
   );
 
   const p = rows?.[0];

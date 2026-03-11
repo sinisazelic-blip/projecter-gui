@@ -29,7 +29,16 @@ export async function PATCH(
     return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
   }
 
-  let body: { subscription_ends_at?: string; plan_id?: number; status?: string; regenerate_licence_token?: boolean };
+  const MAX_USER_OPTIONS = [1, 3, 5, 10, 50, 101];
+  let body: {
+    subscription_ends_at?: string;
+    plan_id?: number;
+    status?: string;
+    regenerate_licence_token?: boolean;
+    max_users?: number;
+    monthly_price?: number | null;
+    currency?: string | null;
+  };
   try {
     body = await req.json();
   } catch {
@@ -37,7 +46,7 @@ export async function PATCH(
   }
 
   const updates: string[] = [];
-  const paramsList: (string | number)[] = [];
+  const paramsList: (string | number | null)[] = [];
   let newLicenceToken: string | undefined;
 
   if (body.regenerate_licence_token === true) {
@@ -60,6 +69,18 @@ export async function PATCH(
       updates.push("plan_id = ?");
       paramsList.push(planId);
     }
+  }
+  if (body.max_users != null && MAX_USER_OPTIONS.includes(Number(body.max_users))) {
+    updates.push("max_users = ?");
+    paramsList.push(Number(body.max_users));
+  }
+  if (body.monthly_price !== undefined) {
+    updates.push("monthly_price = ?");
+    paramsList.push(body.monthly_price == null || body.monthly_price === "" ? null : Number(body.monthly_price));
+  }
+  if (body.currency !== undefined) {
+    updates.push("currency = ?");
+    paramsList.push(typeof body.currency === "string" ? body.currency.trim().slice(0, 3) || null : null);
   }
   if (body.status != null) {
     const s = String(body.status).trim().toUpperCase();

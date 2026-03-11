@@ -25,8 +25,9 @@ export default function ProjectSummaryCard({ project, locale: localeProp }) {
 
   const punBudzet = Number(project.budzet_planirani) || 0;
   const procenatZaTim = Number(project.budzet_procenat_za_tim) || 100.00;
-  const budzetZaTim = punBudzet * (procenatZaTim / 100);
-  const planiranaZaradaZaTim = budzetZaTim - (Number(project.troskovi_ukupno) || 0);
+  const troskovi = Number(project.troskovi_ukupno) || 0;
+  // Prikaz u kompletnom iznosu (pun budžet); planirana zarada = pun budžet − troškovi
+  const planiranaZarada = punBudzet - troskovi;
 
   const currencyLabel = getCurrencyForLocale(locale) === "EUR"
     ? t("projectDetail.currencyEur")
@@ -45,7 +46,7 @@ export default function ProjectSummaryCard({ project, locale: localeProp }) {
             )}
           </div>
           <div style={{ fontSize: 18, fontWeight: 600 }}>
-            {formatAmount(budzetZaTim, locale, t)}
+            {formatAmount(punBudzet, locale, t)}
           </div>
           {procenatZaTim !== 100 && punBudzet > 0 && (
             <div
@@ -55,9 +56,8 @@ export default function ProjectSummaryCard({ project, locale: localeProp }) {
                 marginTop: 2,
                 fontStyle: "italic",
               }}
-              title={`${t("projectDetail.budgetFull")} ${formatAmount(punBudzet, locale, t)}`}
             >
-              ({t("projectDetail.budgetFullShort")} {formatAmount(punBudzet, locale, t)})
+              ({procenatZaTim.toFixed(0)}% {t("projectDetail.budgetForTeam")})
             </div>
           )}
         </div>
@@ -75,10 +75,10 @@ export default function ProjectSummaryCard({ project, locale: localeProp }) {
             style={{
               fontSize: 18,
               fontWeight: 600,
-              color: planiranaZaradaZaTim < 0 ? "rgba(255, 80, 80, 0.95)" : "inherit",
+              color: planiranaZarada < 0 ? "rgba(255, 80, 80, 0.95)" : "inherit",
             }}
           >
-            {formatAmount(planiranaZaradaZaTim, locale, t)}
+            {formatAmount(planiranaZarada, locale, t)}
           </div>
         </div>
       </div>

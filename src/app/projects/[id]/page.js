@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { query } from "@/lib/db";
+import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
 import { getValidLocale, getCurrencyForLocale } from "@/lib/i18n";
 import { getT } from "@/lib/translations";
 
@@ -402,7 +403,7 @@ async function setOperativniSignal(formData) {
 /**
  * ✅ OWNER: postavljanje procenta budžeta vidljivog radnicima
  * - projekti.budzet_procenat_za_tim je procenat (default 100.00)
- * - Ako nije postavljeno, koristi se default 50%
+ * - Ako nije postavljeno, koristi se default 100%
  */
 async function setBudzetProcenatZaTim(formData) {
   "use server";
@@ -487,6 +488,26 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
   const cookieStore = await cookies();
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value ?? "sr");
   const t = getT(locale);
+  const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
+  const session = token ? verifySessionToken(token) : null;
+  const nivo = session?.nivo ?? 1;
+  const isSaradnik = nivo === 0;
+  if (isSaradnik) {
+    const userRows = await query(
+      "SELECT radnik_id FROM users WHERE user_id = ? LIMIT 1",
+      [session.user_id],
+    );
+    const radnikId = userRows?.[0]?.radnik_id != null ? Number(userRows[0].radnik_id) : null;
+    if (radnikId == null) redirect("/projects");
+    const accessRows = await query(
+      `SELECT 1 FROM projekat_faze pf
+       INNER JOIN projekat_faza_radnici pfr ON pfr.projekat_faza_id = pf.projekat_faza_id
+       WHERE pf.projekat_id = ? AND pfr.radnik_id = ?
+       LIMIT 1`,
+      [projekatId, radnikId],
+    );
+    if (!accessRows?.length) redirect("/projects");
+  }
 
   const sp = await Promise.resolve(searchParams);
   const showStornirano = String(sp?.stornirano || "0") === "1";
@@ -517,8 +538,8 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
       p.tip_roka,
       p.napomena,
 
-      -- ✅ BUDŽET (KANONSKI U KM):
-      COALESCE(v.budzet_planirani, ps.budzet_km, 0) AS budzet_planirani,
+      -- ✅ BUDŽET (KANONSKI U KM): prvo staging (projekat_stavke – sync iz Deala), pa view (legacy)
+      COALESCE(ps.budzet_km, v.budzet_planirani, 0) AS budzet_planirani,
 
       -- (opciono) pomoćna polja
       COALESCE(ps.budzet_bam, 0) AS budzet_bam,
@@ -532,10 +553,10 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
 
       COALESCE(v.legacy_flag, 0) AS legacy_flag,
 
-      -- zarada (kanonski: view prvo)
+      -- zarada (budžet iz staginga ili viewa, minus troškovi)
       COALESCE(
         v.planirana_zarada,
-        (COALESCE(v.budzet_planirani, ps.budzet_km, 0) - COALESCE(v.troskovi_ukupno, ct.troskovi_ukupno, 0))
+        (COALESCE(ps.budzet_km, v.budzet_planirani, 0) - COALESCE(v.troskovi_ukupno, ct.troskovi_ukupno, 0))
       ) AS planirana_zarada,
 
       COALESCE(v.finansijski_status, NULL) AS finansijski_status
@@ -668,8 +689,9 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
       ? t(statusKey)
       : String(project?.naziv_statusa ?? `Status ${statusIdNum}`);
 
-  // ✅ SEF: read-only tek kad je fakturisan
+  // ✅ SEF: read-only tek kad je fakturisan; Saradnik ne mijenja owner signal / budžet / Final OK / Storno
   const isReadOnly = statusIdNum === 9;
+  const isReadOnlyOwner = isReadOnly || isSaradnik;
 
   return (
     <div
@@ -910,10 +932,10 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                   alignItems: "center",
                   gap: 8,
                   flexWrap: "wrap",
-                  opacity: isReadOnly ? 0.55 : 1,
-                  pointerEvents: isReadOnly ? "none" : "auto",
+                  opacity: isReadOnlyOwner ? 0.55 : 1,
+                  pointerEvents: isReadOnlyOwner ? "none" : "auto",
                 }}
-                title={isReadOnly ? t("projectDetail.projectInvoicedReadOnly") : t("projectDetail.ownerSignalTitle")}
+                title={isReadOnlyOwner ? t("projectDetail.projectInvoicedReadOnly") : t("projectDetail.ownerSignalTitle")}
               >
                 <input type="hidden" name="projekat_id" value={project.projekat_id} />
                 <input type="hidden" name="return_to" value={returnTo} />
@@ -958,10 +980,10 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                   alignItems: "center",
                   gap: 8,
                   flexWrap: "wrap",
-                  opacity: isReadOnly ? 0.55 : 1,
-                  pointerEvents: isReadOnly ? "none" : "auto",
+                  opacity: isReadOnlyOwner ? 0.55 : 1,
+                  pointerEvents: isReadOnlyOwner ? "none" : "auto",
                 }}
-                title={isReadOnly ? t("projectDetail.projectInvoicedReadOnly") : t("projectDetail.ownerBudgetTitle")}
+                title={isReadOnlyOwner ? t("projectDetail.projectInvoicedReadOnly") : t("projectDetail.ownerBudgetTitle")}
               >
                 <input type="hidden" name="projekat_id" value={project.projekat_id} />
                 <input type="hidden" name="return_to" value={returnTo} />
@@ -990,10 +1012,12 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
             </div>
 
             {/* ProBono: samo owner — dugme, upozorenje, zatim arhiva */}
+            {!isSaradnik && (
             <ProBonoButton
               projekatId={project.projekat_id}
-              disabled={isReadOnly || statusIdNum === 10 || statusIdNum === 11 || statusIdNum === 12 || Number(project?.pro_bono ?? 0) === 1}
+              disabled={isReadOnlyOwner || statusIdNum === 10 || statusIdNum === 11 || statusIdNum === 12 || Number(project?.pro_bono ?? 0) === 1}
             />
+            )}
 
             {/* Profit signal - desno: ostatak + zarada_razlike = zbir (bez teksta) */}
             <div
@@ -1055,7 +1079,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
             >
               {t("projectDetail.phases")}
             </Link>
-            <FinalOkButtonClient projekatId={project.projekat_id} disabled={isReadOnly} />
+            {!isSaradnik && <FinalOkButtonClient projekatId={project.projekat_id} disabled={isReadOnly} />}
           </div>
 
           {/* Row 4: Timeline Status projekta */}
@@ -1089,7 +1113,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
             <h1 style={{ fontSize: 22, margin: 0, fontWeight: 800 }}>
               #{project.projekat_id} — {project.radni_naziv}
             </h1>
-            {!isReadOnly && statusIdNum !== 10 && statusIdNum !== 11 && statusIdNum !== 12 ? (
+            {!isSaradnik && !isReadOnly && statusIdNum !== 10 && statusIdNum !== 11 && statusIdNum !== 12 ? (
               <ProjectStornoButton projekatId={project.projekat_id} disabled={false} />
             ) : null}
           </div>

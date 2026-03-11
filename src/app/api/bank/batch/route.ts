@@ -59,8 +59,23 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, batch: batchRows[0], txs });
   }
 
-  // lista
+  // lista računa (za tabove): distinct bank_account_no + currency
+  const accountsOnly = req.nextUrl.searchParams.get("accounts_only") === "1";
+  if (accountsOnly) {
+    const accounts: any[] = await query(
+      `
+      SELECT DISTINCT bank_account_no, currency
+      FROM bank_import_batch
+      WHERE bank_account_no IS NOT NULL AND bank_account_no != ''
+      ORDER BY bank_account_no, currency
+      `,
+    );
+    return NextResponse.json({ ok: true, accounts: accounts || [] });
+  }
+
+  // lista izvoda
   const account = req.nextUrl.searchParams.get("account")?.trim() || "";
+  const currency = req.nextUrl.searchParams.get("currency")?.trim() || "";
   const dateFrom = req.nextUrl.searchParams.get("date_from")?.trim() || "";
   const dateTo = req.nextUrl.searchParams.get("date_to")?.trim() || "";
 
@@ -68,15 +83,17 @@ export async function GET(req: NextRequest) {
   const params: any[] = [];
 
   if (account) {
-    where.push("bank_account_no LIKE ?");
-    params.push(`%${account}%`);
+    where.push("bank_account_no = ?");
+    params.push(account);
   }
-
+  if (currency) {
+    where.push("currency = ?");
+    params.push(currency);
+  }
   if (dateFrom) {
     where.push("statement_date >= ?");
     params.push(dateFrom);
   }
-
   if (dateTo) {
     where.push("statement_date <= ?");
     params.push(dateTo);
@@ -94,7 +111,7 @@ export async function GET(req: NextRequest) {
       DATE_FORMAT(imported_at, '%Y-%m-%d') AS imported_at
     FROM bank_import_batch
     ${whereSql}
-    ORDER BY batch_id DESC
+    ORDER BY statement_date DESC, batch_id DESC
     LIMIT 100
     `,
     params,

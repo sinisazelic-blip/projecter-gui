@@ -181,13 +181,16 @@ export async function POST(req: NextRequest) {
     // Format će biti: broj_u_godini/godina (npr. 001/2026)
 
     // 4) Generiši PFR broj (ako nije dat)
-    let pfrBroj = pfr ? Number(pfr) : null;
-    if (!pfrBroj) {
+    let pfrBroj = pfr != null ? Number(pfr) : null;
+    if (!Number.isFinite(pfrBroj as any) || (pfrBroj as any) <= 0) {
       try {
         const [pfrRows]: any = await conn.query(
-          `SELECT MAX(broj_fiskalni) AS max_pfr FROM fakture WHERE broj_fiskalni IS NOT NULL`,
+          `SELECT COALESCE(MAX(broj_fiskalni), 0) AS max_pfr
+           FROM fakture
+           WHERE broj_fiskalni IS NOT NULL AND broj_fiskalni > 0`,
         );
-        const maxPfr = Number(pfrRows?.[0]?.max_pfr ?? 0);
+        const maxPfrRaw = Number(pfrRows?.[0]?.max_pfr ?? 0);
+        const maxPfr = Number.isFinite(maxPfrRaw) && maxPfrRaw >= 0 ? maxPfrRaw : 0;
         pfrBroj = maxPfr + 1;
       } catch (err: any) {
         // Ako tabela fakture ne postoji ili nema podataka, počni od 1
@@ -224,14 +227,15 @@ export async function POST(req: NextRequest) {
     const brojFakture = `${String(sledeciBroj).padStart(3, "0")}/${godina}`;
 
     let fakturaId: number;
+    let fakturaInserted = false;
     try {
       const [insertResult]: any = await conn.query(
         `
         INSERT INTO fakture
           (bill_to_klijent_id, godina, broj_u_godini, broj_fiskalni, fiskalni_status,
            datum_izdavanja, tip, valuta, osnovica_km, pdv_stopa, pdv_iznos_km,
-           pdv_obracunat, iznos_ukupno_km)
-        VALUES (?, ?, ?, ?, 'DODIJELJEN', ?, ?, ?, ?, ?, ?, ?, ?)
+           pdv_obracunat, iznos_ukupno_km, poziv_na_broj)
+        VALUES (?, ?, ?, ?, 'DODIJELJEN', ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
           narucilacId,
@@ -247,38 +251,80 @@ export async function POST(req: NextRequest) {
           pdvIznosKm,
           pdvObracunat,
           iznosUkupnoKm,
+          String(pnb || "").trim() || null,
         ],
       );
       fakturaId = Number(insertResult.insertId);
+      fakturaInserted = true;
     } catch (insertErr: any) {
-      await conn.rollback();
-      // Proveri da li je greška zbog nepostojanja tabele ili kolone
       const errMsg = String(insertErr?.message || "").toLowerCase();
       const errCode = insertErr?.code || "";
-      
       if (
-        errMsg.includes("doesn't exist") ||
-        errMsg.includes("unknown column") ||
-        errCode === "ER_NO_SUCH_TABLE" ||
-        errCode === "ER_BAD_FIELD_ERROR"
+        (errMsg.includes("unknown column") || errCode === "ER_BAD_FIELD_ERROR") &&
+        errMsg.includes("poziv_na_broj")
       ) {
-        return NextResponse.json(
-          {
-            ok: false,
-            error:
-              `Greška u bazi podataka: ${insertErr?.message || "Nepoznata greška"}. ` +
-              `Proverite da li je tabela 'fakture' kreirana sa ispravnom strukturom. ` +
-              `SQL skripta: scripts/create-fakture.sql`,
-            debug: {
-              message: insertErr?.message,
-              code: insertErr?.code,
-              sqlState: insertErr?.sqlState,
-            },
-          },
-          { status: 500 },
-        );
+        try {
+          const [insertResult2]: any = await conn.query(
+            `
+            INSERT INTO fakture
+              (bill_to_klijent_id, godina, broj_u_godini, broj_fiskalni, fiskalni_status,
+               datum_izdavanja, tip, valuta, osnovica_km, pdv_stopa, pdv_iznos_km,
+               pdv_obracunat, iznos_ukupno_km)
+            VALUES (?, ?, ?, ?, 'DODIJELJEN', ?, ?, ?, ?, ?, ?, ?, ?)
+            `,
+            [
+              narucilacId,
+              godina,
+              sledeciBroj,
+              pfrBroj,
+              datumFakture,
+              tipFakture,
+              String(ccy || "BAM").toUpperCase() === "KM" ? "BAM" : String(ccy || "BAM").toUpperCase(),
+              osnovicaKm,
+              pdvStopa,
+              pdvIznosKm,
+              pdvObracunat,
+              iznosUkupnoKm,
+            ],
+          );
+          fakturaId = Number(insertResult2.insertId);
+          fakturaInserted = true;
+        } catch (retryErr: any) {
+          await conn.rollback();
+          return NextResponse.json(
+            { ok: false, error: (retryErr as any)?.message ?? "Greška pri kreiranju fakture" },
+            { status: 500 },
+          );
+        }
       }
-      throw insertErr;
+      if (!fakturaInserted) {
+        await conn.rollback();
+        const errMsg2 = String(insertErr?.message || "").toLowerCase();
+        const errCode2 = insertErr?.code || "";
+        if (
+          errMsg2.includes("doesn't exist") ||
+          errMsg2.includes("unknown column") ||
+          errCode2 === "ER_NO_SUCH_TABLE" ||
+          errCode2 === "ER_BAD_FIELD_ERROR"
+        ) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error:
+                `Greška u bazi podataka: ${insertErr?.message || "Nepoznata greška"}. ` +
+                `Proverite da li je tabela 'fakture' kreirana sa ispravnom strukturom. ` +
+                `SQL skripta: scripts/create-fakture.sql`,
+              debug: {
+                message: insertErr?.message,
+                code: insertErr?.code,
+                sqlState: insertErr?.sqlState,
+              },
+            },
+            { status: 500 },
+          );
+        }
+        throw insertErr;
+      }
     }
 
     // Parse project_sub_items: "id:item1|item2,id2:item1" -> { id: ["item1","item2"] }

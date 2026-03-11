@@ -40,11 +40,16 @@ function formatAmount(
   return formatted + suffix;
 }
 
-async function fetchJson(url: string, init?: RequestInit) {
+async function fetchJson(
+  url: string,
+  init?: RequestInit,
+  defaultError?: string
+) {
   const res = await fetch(url, { cache: "no-store", ...(init || {}) });
   const j = await res.json().catch(() => null);
   if (!res.ok) {
-    const msg = j?.message || j?.error || "Greška.";
+    const msg =
+      j?.message || j?.error || defaultError || "Error.";
     const err: any = new Error(msg);
     err.payload = j;
     err.status = res.status;
@@ -76,12 +81,19 @@ export default function FinalOkButtonClient({
     setLoading(true);
     setConfirmWarnings(false);
     try {
-      const j = await fetchJson(`/api/projects/${projekatId}/final-ok-check`);
+      const j = await fetchJson(
+        `/api/projects/${projekatId}/final-ok-check`,
+        undefined,
+        t("common.errorGeneric")
+      );
       // j: { ok:true, ...payload }
       setData(j as any);
     } catch (e: any) {
       setData(null);
-      setErrorMsg(e?.message ?? t("finalOkModal.errCheck"));
+      const msg = e?.message;
+      if (msg === "BAD_ID") setErrorMsg(t("finalOkModal.errBadId"));
+      else if (msg === "NOT_FOUND") setErrorMsg(t("finalOkModal.errNotFound"));
+      else setErrorMsg(msg ?? t("finalOkModal.errCheck"));
     } finally {
       setLoading(false);
     }
@@ -92,14 +104,18 @@ export default function FinalOkButtonClient({
     setSaving(true);
     setErrorMsg(null);
     try {
-      await fetchJson(`/api/projects/${projekatId}/final-ok`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user": USER_LABEL,
+      await fetchJson(
+        `/api/projects/${projekatId}/final-ok`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user": USER_LABEL,
+          },
+          body: JSON.stringify({ force: hasWarnings ? confirmWarnings : true }),
         },
-        body: JSON.stringify({ force: hasWarnings ? confirmWarnings : true }),
-      });
+        t("common.errorGeneric")
+      );
 
       // nakon uspjeha: zatvori, refresh
       setOpen(false);
@@ -107,12 +123,17 @@ export default function FinalOkButtonClient({
       window.location.reload();
     } catch (e: any) {
       const payload = e?.payload;
+      const msg = e?.message;
       if (payload?.error === "FINAL_BLOCKED") {
         setErrorMsg(t("finalOkModal.errBlocked"));
       } else if (payload?.error === "FINAL_NEEDS_CONFIRM") {
         setErrorMsg(t("finalOkModal.errNeedsConfirm"));
+      } else if (msg === "BAD_ID") {
+        setErrorMsg(t("finalOkModal.errBadId"));
+      } else if (msg === "NOT_FOUND") {
+        setErrorMsg(t("finalOkModal.errNotFound"));
       } else {
-        setErrorMsg(e?.message ?? t("finalOkModal.errGeneric"));
+        setErrorMsg(msg ?? t("finalOkModal.errGeneric"));
       }
 
       // osvježi check

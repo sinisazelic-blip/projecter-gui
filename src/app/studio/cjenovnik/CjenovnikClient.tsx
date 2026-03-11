@@ -630,7 +630,7 @@ export default function CjenovnikClient({
       </div>
 
       {modalOpen ? (
-        <div style={overlayStyle()} role="dialog" aria-modal="true">
+        <div className="studio-modal" style={overlayStyle()} role="dialog" aria-modal="true">
           <div style={modalStyle(920)}>
             <div
               style={{
@@ -962,7 +962,7 @@ export default function CjenovnikClient({
       ) : null}
 
       {confirmOpen && selectedItem ? (
-        <div style={overlayStyle()} role="dialog" aria-modal="true">
+        <div className="studio-modal" style={overlayStyle()} role="dialog" aria-modal="true">
           <div style={modalStyle(640)}>
             <div
               style={{

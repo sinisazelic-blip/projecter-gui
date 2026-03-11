@@ -1,5 +1,5 @@
 /**
- * Matrica vidljivosti po verziji Fluxe (iz docs/Fluxa Compact vs Light vs Core.xlsx).
+ * Matrica vidljivosti po verziji Fluxe (iz docs/arhiva/Fluxa Compact vs Light vs Core.xlsx).
  * Ključ = ID iz Excela, vrijednost = { full, compact, light, core }.
  */
 export const FLUXA_EDITION_VISIBILITY = {
@@ -77,6 +77,8 @@ export const FLUXA_EDITION_VISIBILITY = {
   72: { full: true, compact: true, light: false, core: false },
   73: { full: true, compact: true, light: false, core: false },
   74: { full: true, compact: true, light: false, core: false },
+  /** Finance Tools (operativni alati za bankovne postinge): samo Full i Compact */
+  75: { full: true, compact: true, light: false, core: false },
 };
 
 export const FLUXA_EDITIONS = ["Full", "Compact", "Light", "Core"];

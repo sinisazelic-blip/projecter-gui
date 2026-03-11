@@ -8,6 +8,8 @@ import SubscriptionGuard from "@/components/SubscriptionGuard";
 import LicenceCheckWrapper from "@/components/LicenceCheckWrapper";
 import PerformanceMeasurePatch from "@/components/PerformanceMeasurePatch";
 import { GlobalTooltip } from "@/components/GlobalTooltip";
+import UputstvoShortcut from "@/components/UputstvoShortcut";
+import OnboardingTourWrapper from "@/components/OnboardingTourWrapper";
 import { cookies } from "next/headers";
 import { getValidLocale } from "@/lib/i18n";
 
@@ -40,6 +42,8 @@ export default async function RootLayout({ children }) {
           <LicenceCheckWrapper>
           <AuthUserProvider>
             <GlobalTooltip />
+            <UputstvoShortcut />
+            <OnboardingTourWrapper />
             <SubscriptionGuard>{children}</SubscriptionGuard>
           </AuthUserProvider>
         </LicenceCheckWrapper>

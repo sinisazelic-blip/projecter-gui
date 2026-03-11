@@ -23,7 +23,7 @@ export default function DashboardTopActions() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const { canSee } = useAuthUser();
+  const { canSee, onboardingCompleted, completeOnboarding } = useAuthUser();
   const tenantAdminEnabled = process.env.NEXT_PUBLIC_ENABLE_TENANT_ADMIN === "true";
   const showLicenceLink = isFeatureVisible(3) && tenantAdminEnabled;
   const showLicenceComingSoon = isFeatureVisible(3) && !tenantAdminEnabled;
@@ -33,6 +33,11 @@ export default function DashboardTopActions() {
 
   return (
     <div className="actions" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      {!onboardingCompleted && (
+        <button type="button" className="btn" onClick={completeOnboarding} style={{ fontSize: 13 }}>
+          Skip tour
+        </button>
+      )}
       {showLicenceLink && (
         <Link href="/studio/licence" className="btn" title={t("dashboard.licenceTitle")}>
           🔐 {t("dashboard.licenceLabel")}
@@ -128,6 +133,10 @@ export default function DashboardTopActions() {
           💰 {t("nav.cash")}
         </Link>
       )}
+
+      <Link href="/uputstvo" className="btn" title={t("nav.uputstvoTitle")}>
+        📖 {t("nav.uputstvo")}
+      </Link>
 
       <button
         type="button"

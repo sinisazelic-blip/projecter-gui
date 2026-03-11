@@ -54,7 +54,7 @@ export async function GET() {
   try {
     const byYear: Record<number, YearRow> = {};
 
-    // Arhiva: stg_master_finansije — ista logika kao Charts, 20 godina unazad
+    // Arhiva: stg_master_finansije — samo iznos_km, iznos_troska_km (kolone iznos_ukupno_km/iznos_sa_pdv_km ne postoje)
     try {
       const archiveRows = await query(
         `
@@ -63,7 +63,7 @@ export async function GET() {
           MONTH(datum_zavrsetka) AS mjesec,
           ROUND(SUM(COALESCE(iznos_km, 0)), 2) AS realized,
           ROUND(SUM(COALESCE(iznos_troska_km, 0)), 2) AS troskovi,
-          ROUND(SUM(COALESCE(iznos_ukupno_km, iznos_sa_pdv_km, iznos_km)) - SUM(COALESCE(iznos_km, 0)), 2) AS vat
+          0 AS vat
         FROM stg_master_finansije
         WHERE datum_zavrsetka IS NOT NULL
           AND datum_zavrsetka >= DATE_SUB(?, INTERVAL ? YEAR)
@@ -95,14 +95,27 @@ export async function GET() {
 
     // Od 2026: fakture (realized + VAT) i projektni_troskovi
     try {
+      // Konverzija EUR u KM (1.95583) da se ne zbrajaju iznosi u različitim valutama
       const revRows = await query(
         `
         SELECT
           YEAR(datum_izdavanja) AS godina,
           MONTH(datum_izdavanja) AS mjesec,
-          ROUND(SUM(COALESCE(iznos_ukupno_km, 0)), 2) AS iznos_ukupno_km,
-          ROUND(SUM(COALESCE(osnovica_km, 0)), 2) AS osnovica_km,
-          ROUND(SUM(COALESCE(pdv_iznos_km, 0)), 2) AS pdv_iznos_km
+          ROUND(SUM(
+            CASE WHEN UPPER(COALESCE(valuta, 'BAM')) IN ('BAM', 'KM') THEN COALESCE(iznos_ukupno_km, 0)
+            ELSE COALESCE(iznos_ukupno_km, 0) * 1.95583
+            END
+          ), 2) AS iznos_ukupno_km,
+          ROUND(SUM(
+            CASE WHEN UPPER(COALESCE(valuta, 'BAM')) IN ('BAM', 'KM') THEN COALESCE(osnovica_km, 0)
+            ELSE COALESCE(osnovica_km, 0) * 1.95583
+            END
+          ), 2) AS osnovica_km,
+          ROUND(SUM(
+            CASE WHEN UPPER(COALESCE(valuta, 'BAM')) IN ('BAM', 'KM') THEN COALESCE(pdv_iznos_km, 0)
+            ELSE COALESCE(pdv_iznos_km, 0) * 1.95583
+            END
+          ), 2) AS pdv_iznos_km
         FROM fakture
         WHERE (fiskalni_status IS NULL OR fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))
           AND datum_izdavanja >= ?

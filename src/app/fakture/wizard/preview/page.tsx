@@ -51,6 +51,8 @@ type ApiBuyer = {
   naziv_klijenta: string | null;
   tip_klijenta: string | null;
   porezni_id: string | null;
+  jib?: string | null;
+  pib?: string | null;
   adresa: string | null;
   grad: string | null;
   postanski_broj?: string | null;
@@ -222,6 +224,9 @@ export default function Page() {
   const pnb = sp.get("pnb") ?? "";
   const invoiceNumberFromUrl = sp.get("invoice_number") ?? ""; // Broj fakture iz URL-a (kada se učitava postojeća)
   const vatModeParam = sp.get("vat") as string | null; // BH_17 | INO_0 iz wizarda 2/3
+  const pfrLastParam = sp.get("pfr_last") ?? ""; // Posljednji PFR broj izdate fakture (ručni unos); sljedeći = N+1
+  const autoFiscalParam = sp.get("auto_fiscal") === "1"; // Da li koristiti automatsku fiskalizaciju (Fiskalizuj)
+  const trainingParam = sp.get("training") === "1"; // Testni račun: invoiceType Training – PU ne broji, provjera vraća "Ovo nije fiskalni račun"
 
   // Popust prije PDV-a (KM)
   const popustKm = useMemo(() => {
@@ -358,13 +363,25 @@ export default function Page() {
   const buyer = data?.buyer ?? null;
   const firma = data?.firma ?? null;
   const projects = Array.isArray(data?.projects) ? data!.projects : [];
-  const useFiskalizacijaDropbox = data?.fiskal_configured === true;
+  // Fiskalizuj dugme samo kad je uređaj konfigurisan I korisnik je izabrao automatsku fiskalizaciju (DA). Podrazumijevano NE = ručni PFR.
+  const useFiskalizacijaDropbox = data?.fiskal_configured === true && autoFiscalParam;
 
-  // Region sistema (BiH vs EU) određuje jezik fakture i zakonski okvir — ne zemlja kupca.
-  // locale "sr" = BiH (srpski, PFR kad je KM), locale "en" = EU (engleski, zakoni EU, bez PFR).
-  const isBiHContext = locale === "sr";
-  const lang: Lang = useMemo(() => (locale === "en" ? "EN" : "BH"), [locale]);
-  const docLang = locale === "en" ? "en" : "bh";
+  // ✅ Pravilo: INO faktura mora biti na engleskom (bez obzira na UI locale).
+  // INO prepoznajemo preko izabranog VAT moda ili buyer.is_ino iz baze.
+  const isInoInvoice =
+    String(vatModeParam || "").toUpperCase() === "INO_0" ||
+    buyer?.is_ino === true ||
+    buyer?.is_ino === 1;
+
+  // Region sistema (BiH vs EU) određuje pravila (PFR, zakonske napomene).
+  // INO faktura jezikom ide na EN, ali ako je sistem BiH (sr), i dalje važe BiH pravila.
+  const isBiHSystem = locale === "sr";
+  const isBiHContext = !isInoInvoice && isBiHSystem;
+  const lang: Lang = useMemo(
+    () => (isInoInvoice ? "EN" : locale === "en" ? "EN" : "BH"),
+    [isInoInvoice, locale],
+  );
+  const docLang = isInoInvoice ? "en" : locale === "en" ? "en" : "bh";
   const docTitle = useMemo(
     () => t(`wizard.previewDoc.${docLang}.docTitle`),
     [t, docLang],
@@ -374,17 +391,34 @@ export default function Page() {
     [t, docLang],
   );
 
-  // Fiskalizuj — poziva fiskalni uređaj (L-PFR), dobija QR i ostale elemente
+  // Fiskalizuj — PU prima samo JIB (13 cifara); za INO kupce obavezno 13×9 (9999999999999). PIB (12 cifara) nije dozvoljen.
   async function handleFiskalizuj() {
     if (fiskalizujLoading || fiskalizacijaDone) return;
     setFiskalizujLoading(true);
     try {
-      const buyerTaxId = buyer
-        ? (buyer.is_ino
-          ? "9999999999999"
-          : (buyer.porezni_id
-            ? String(buyer.porezni_id).replace(/[^\d]/g, "").trim().slice(0, 20)
-            : undefined))
+      let buyerTaxId: string | undefined;
+      if (buyer) {
+        if (buyer.is_ino) {
+          buyerTaxId = "9999999999999";
+        } else {
+          const jibRaw = (buyer.jib ?? buyer.porezni_id ?? "").toString().trim();
+          const digits = jibRaw.replace(/[^\d]/g, "").slice(0, 13);
+          if (digits.length === 13) buyerTaxId = digits;
+          else if (digits.length === 12) {
+            throw new Error(
+              "Fiskalni uređaj zahtijeva JIB (13 cifara), ne PIB (12). Unesite JIB kupca u podacima klijenta."
+            );
+          }
+          // else nema 13 cifara – ne šaljemo buyerId ili korisnik mora dopuniti JIB
+        }
+      }
+      // Broj u godini (1, 2, 3…) za PU – imamo ga tek nakon "Kreiraj račun". Format "1/2026" → 1.
+      const brojFaktureStr = invoiceNumber || invoiceNumberFromUrl || "";
+      const brojUGodini = brojFaktureStr.includes("/")
+        ? String(brojFaktureStr).split("/")[0]?.trim()
+        : brojFaktureStr.replace(/\D/g, "");
+      const fiscalInvoiceNumber = brojUGodini
+        ? parseInt(brojUGodini, 10)
         : undefined;
       const payload = {
         items: items.map((it) => ({
@@ -399,6 +433,9 @@ export default function Page() {
         dateISO: invoiceDateISO || undefined,
         buyerName: buyer?.naziv_klijenta ? String(buyer.naziv_klijenta).trim().slice(0, 500) : undefined,
         buyerTaxId: buyerTaxId || undefined,
+        invoiceNumber: Number.isFinite(fiscalInvoiceNumber) ? fiscalInvoiceNumber : undefined,
+        acceptLanguage: locale === "en" ? "en" : "sr;en",
+        training: trainingParam || undefined,
       };
       const res = await fetch("/api/fakture/fiskalizuj", {
         method: "POST",
@@ -410,6 +447,9 @@ export default function Page() {
         const msg = result.error || "Fiskalizacija nije uspjela";
         const urlLine = result.url ? `\nURL: ${result.url}` : "";
         throw new Error(msg + urlLine);
+      }
+      if (result?.printerError) {
+        alert(String(result.printerError));
       }
       setFiskalniOdgovor({
         verificationQRCode: result.verificationQRCode,
@@ -434,10 +474,16 @@ export default function Page() {
     setCreateError(null);
 
     try {
-      const pfrZaCreate =
-        useFiskalizacijaDropbox && fiskalniOdgovor?.totalCounter != null
-          ? fiskalniOdgovor.totalCounter
-          : undefined;
+      // PFR za novu fakturu: automatski = totalCounter iz uređaja; ručni = posljednji PFR (iz wizarda) + 1; prazno = API uzima MAX+1.
+      let pfrZaCreate: number | undefined;
+      if (useFiskalizacijaDropbox && fiskalniOdgovor?.totalCounter != null) {
+        pfrZaCreate = fiskalniOdgovor.totalCounter;
+      } else if (pfrLastParam.trim() !== "") {
+        const last = Number(pfrLastParam.trim());
+        pfrZaCreate = Number.isFinite(last) && last >= 0 ? last + 1 : undefined;
+      } else {
+        pfrZaCreate = undefined;
+      }
 
       const res = await fetch("/api/fakture/create", {
         method: "POST",
@@ -544,11 +590,23 @@ export default function Page() {
       
       // ✅ Ako je u grupi, koristi grupni naziv; inače override naziv ili radni_naziv
       const overrideNaziv = projectNameOverrides[p.projekat_id];
-      const title = group
+      const baseTitle = group
         ? group.name
         : String(overrideNaziv || p.radni_naziv || `Projekat #${p.projekat_id}`).trim();
+
+      // ✅ Ako radimo za krajnjeg klijenta preko agencije, istakni ga u naslovu:
+      // "Xiaomi — Naziv projekta"
+      const hasEndClient =
+        p.krajnji_klijent_id != null &&
+        p.klijent_naziv &&
+        String(p.klijent_naziv).trim() !== "" &&
+        p.narucilac_id != null &&
+        Number(p.krajnji_klijent_id) !== Number(p.narucilac_id);
+      const endClientName = hasEndClient ? String(p.klijent_naziv).trim() : "";
+      const title = endClientName ? `${endClientName} — ${baseTitle}` : baseTitle;
       
-      const sub = p.klijent_naziv ? `${clientLabel} ${p.klijent_naziv}` : "";
+      // Ako je krajnji klijent već u naslovu, nema potrebe da ga dupliramo u podnaslovu.
+      const sub = endClientName ? "" : (p.klijent_naziv ? `${clientLabel} ${p.klijent_naziv}` : "");
       const subItems = projectSubItems[p.projekat_id] ?? [];
       const qty = 1;
       const unit = Number(p.budzet_planirani ?? 0);
@@ -660,11 +718,13 @@ export default function Page() {
     " ",
   );
   const sellerCountry = String(firma?.drzava ?? "BiH").trim();
-  const sellerTax =
-    String(firma?.pdv_broj ?? "").trim() ||
-    String(firma?.pib ?? "").trim() ||
-    String(firma?.jib ?? "").trim() ||
-    "—";
+  const isBhDoc = docLang === "bh";
+  const sellerTax = isBhDoc
+    ? (String(firma?.jib ?? "").trim() || "—")
+    : String(firma?.pdv_broj ?? "").trim() ||
+      String(firma?.pib ?? "").trim() ||
+      String(firma?.jib ?? "").trim() ||
+      "—";
 
   const bankAccounts = Array.isArray(firma?.bank_accounts)
     ? firma!.bank_accounts
@@ -679,7 +739,9 @@ export default function Page() {
   const buyerAddr1 = String(buyer?.adresa ?? "—").trim();
   const buyerCityLine = safeLineJoin([buyer?.postanski_broj, buyer?.grad], " ");
   const buyerCountry = String(buyer?.drzava ?? "—").trim();
-  const buyerTax = String(buyer?.porezni_id ?? "—").trim();
+  const buyerTax = isBhDoc
+    ? (String(buyer?.jib ?? "").trim() || "—")
+    : String(buyer?.porezni_id ?? "—").trim();
 
   // PDF filename: broj-2026 Naručioc (npr. 012-2026 Udruženje poslodavaca RS)
   const pdfFilename = useMemo(() => {
@@ -881,8 +943,8 @@ export default function Page() {
           flex-shrink: 0;
         }
         .fiscalBlock{
-          border: 1px solid #000 !important;
-          background: #fff !important;
+          border: none !important;
+          background: transparent !important;
           padding: 10px 12px !important;
           font-size: 11px !important;
           color: #000 !important;
@@ -892,6 +954,7 @@ export default function Page() {
         .fiscalBlock .fiscalQrWrap img{ width: 140px; height: 140px; max-width: 160px; max-height: 160px; object-fit: contain; display: block; margin: 0 auto; }
         .fiscalBlock .fiscalLine{ margin: 4px 0 !important; }
         .fiscalBlock .fiscalEnd{ font-weight: 700 !important; margin-top: 8px !important; }
+        .fiscalTrainingNote{ font-size: 12px; color: var(--muted, #666); margin-right: 8px; }
 
         /* Obračun (Osnovica / PDV / Ukupno) uvijek uz desnu marginu */
         .totalsBox{
@@ -925,7 +988,7 @@ export default function Page() {
           line-height: 1.25 !important;
         }
 
-        /* Footer (linija + Made by Fluxa) uvijek ispod fiskalnog bloka i obračuna */
+        /* Footer: samo Made by FLUXA, centrirano (kao na originalnim fakturama) */
         .footer{
           margin-top: 18px;
           padding-top: 10px;
@@ -934,9 +997,8 @@ export default function Page() {
           color: #666;
           display:flex;
           align-items:center;
-          justify-content:space-between;
+          justify-content:center;
           gap: 10px;
-          flex-wrap: wrap;
         }
         .fluxaSig{
           display:inline-flex;
@@ -1143,23 +1205,30 @@ export default function Page() {
                     </Link>
 
                     {useFiskalizacijaDropbox && (
-                      <button
-                        type="button"
-                        className="btn"
-                        onClick={handleFiskalizuj}
-                        disabled={fiskalizujLoading || fiskalizacijaDone}
-                        style={{
-                          background: fiskalizacijaDone
-                            ? "rgba(34, 197, 94, 0.2)"
-                            : "linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.1))",
-                          borderColor: "rgba(34, 197, 94, 0.4)",
-                          fontWeight: 600,
-                        }}
-                        title={t("wizard.fiskalizujTitle")}
-                      >
-                        {fiskalizujLoading ? "⏳" : fiskalizacijaDone ? "✓" : "📋"}{" "}
-                        {t("wizard.fiskalizuj")}
-                      </button>
+                      <>
+                        {trainingParam && (
+                          <span className="fiscalTrainingNote" title="PU ne broji ovaj račun; provjera će vratiti „Ovo nije fiskalni račun”.">
+                            🧪 Testni račun
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={handleFiskalizuj}
+                          disabled={fiskalizujLoading || fiskalizacijaDone}
+                          style={{
+                            background: fiskalizacijaDone
+                              ? "rgba(34, 197, 94, 0.2)"
+                              : "linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.1))",
+                            borderColor: "rgba(34, 197, 94, 0.4)",
+                            fontWeight: 600,
+                          }}
+                          title={t("wizard.fiskalizujTitle")}
+                        >
+                          {fiskalizujLoading ? "⏳" : fiskalizacijaDone ? "✓" : "📋"}{" "}
+                          {t("wizard.fiskalizuj")}
+                        </button>
+                      </>
                     )}
 
                     <button
@@ -1317,12 +1386,21 @@ export default function Page() {
                       </div>
                       <div className="v">{(ccy === "BAM" || ccy === "KM") ? "KM" : ccy}</div>
                     </div>
-                    {isBiHContext && (ccy === "KM" || ccy === "BAM") && (
+                    {isBiHSystem && (
                       <div className="line">
                         <div className="k">
                           {t(`wizard.previewDoc.${docLang}.pfrNo`)}
                         </div>
-                        <div className="v">{createdInvoice?.broj_fiskalni ?? (fiskalniOdgovor?.totalCounter ?? "—")}</div>
+                        <div className="v">
+                          {createdInvoice?.broj_fiskalni ??
+                            (fiskalniOdgovor?.totalCounter ??
+                              (pfrLastParam.trim() !== "" && !useFiskalizacijaDropbox
+                                ? (() => {
+                                    const last = Number(pfrLastParam.trim());
+                                    return Number.isFinite(last) && last >= 0 ? String(last + 1) : "—";
+                                  })()
+                                : "—"))}
+                        </div>
                       </div>
                     )}
                     <div className="line">
@@ -1340,7 +1418,7 @@ export default function Page() {
               <div className="cols2">
                 <div>
                   <div className="blockTitle">
-                    {t(`wizard.previewDoc.${docLang}.legalEntity`)}
+                    {docLang === "bh" ? "Pravno lice" : "Legal entity"}
                   </div>
                   <div className="addr">
                     <div className="name">{sellerName}</div>
@@ -1349,7 +1427,7 @@ export default function Page() {
                       <div className="muted">{sellerCityLine}</div>
                     ) : null}
                     <div className="muted">{sellerCountry}</div>
-                    <div className="muted">{t(`wizard.previewDoc.${docLang}.pibJib`)}: {sellerTax}</div>
+                    <div className="muted">{isBhDoc ? "JIB" : t(`wizard.previewDoc.${docLang}.pibJib`)}: {sellerTax}</div>
 
                     {formattedBankAccounts.length > 0 ? (
                       <div className="bankList">
@@ -1371,7 +1449,7 @@ export default function Page() {
 
                 <div>
                   <div className="blockTitle">
-                    {t(`wizard.previewDoc.${docLang}.client`)}
+                    {docLang === "bh" ? "Klijent/Naručilac" : "Client/Orderer"}
                   </div>
                   <div className="addr">
                     <div className="name">{buyerName}</div>
@@ -1380,7 +1458,7 @@ export default function Page() {
                       <div className="muted">{buyerCityLine}</div>
                     ) : null}
                     <div className="muted">{buyerCountry}</div>
-                    <div className="muted">{t(`wizard.previewDoc.${docLang}.pibJib`)}: {buyerTax}</div>
+                    <div className="muted">{isBhDoc ? "JIB" : t(`wizard.previewDoc.${docLang}.pibJib`)}: {buyerTax}</div>
                   </div>
                 </div>
               </div>
@@ -1448,11 +1526,15 @@ export default function Page() {
               </div>
 
               <div className="totalsRow">
-                {isBiHContext && (ccy === "KM" || ccy === "BAM") ? (
+                {isBiHSystem ? (
                   <div className="fiscalSlot">
                     {(fiskalniOdgovor || createdInvoice?.broj_fiskalni) ? (
                       <div className="fiscalBlock">
-                        <div className="fiscalTitle">FISKALNI RAČUN</div>
+                        <div className="fiscalTitle">
+                          {useFiskalizacijaDropbox && fiskalniOdgovor?.verificationQRCode
+                            ? "FISKALNI RAČUN"
+                            : "FISKALNI RAČUN JE U PRILOGU"}
+                        </div>
                         {fiskalniOdgovor?.verificationQRCode ? (
                           <div className="fiscalQrWrap">
                             <img
@@ -1478,7 +1560,6 @@ export default function Page() {
                         {fiskalniOdgovor?.invoiceCounter ? (
                           <div className="fiscalLine">Brojač računa: {fiskalniOdgovor.invoiceCounter}</div>
                         ) : null}
-                        <div className="fiscalEnd">KRAJ FISKALNOG RAČUNA</div>
                       </div>
                     ) : null}
                   </div>
@@ -1534,7 +1615,7 @@ export default function Page() {
                       : `${t("wizard.previewDoc.bh.projectCompleted")} ${lastClosed ? fmtDDMMYYYYFromISO(lastClosed) : "—"}`}
                   </div>
 
-                  {!isBiHContext && vatModeParam === "INO_0" ? (
+                  {lang === "EN" && String(vatModeParam || "").toUpperCase() === "INO_0" ? (
                     <div
                       style={{
                         marginTop: 6,
@@ -1543,9 +1624,11 @@ export default function Page() {
                         lineHeight: 1.25,
                       }}
                     >
-                      {t("wizard.previewDoc.en.reverseCharge")}
+                      {isBiHSystem
+                        ? t("wizard.previewDoc.en.vatExemptionBiH")
+                        : t("wizard.previewDoc.en.reverseCharge")}
                     </div>
-                  ) : !isBiHContext ? (
+                  ) : lang === "EN" ? (
                     <div
                       style={{
                         marginTop: 6,
@@ -1554,7 +1637,9 @@ export default function Page() {
                         lineHeight: 1.25,
                       }}
                     >
-                      {t("wizard.previewDoc.en.vatExemption")}
+                      {isBiHSystem
+                        ? t("wizard.previewDoc.en.vatExemptionBiH")
+                        : t("wizard.previewDoc.en.vatExemption")}
                     </div>
                   ) : pdvOslobodjen && buyer?.pdv_oslobodjen_napomena ? (
                     <div

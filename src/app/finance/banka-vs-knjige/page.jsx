@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import FluxaLogo from "@/components/FluxaLogo";
 import { useTranslation } from "@/components/LocaleProvider";
 
 const fmtKM = (v) => {
@@ -37,17 +38,17 @@ export default function BankaVsKnjigePage() {
       .then((r) => r.json())
       .then((j) => {
         if (!alive) return;
-        if (!j.ok) throw new Error(j.error || "Greška");
+        if (!j.ok) throw new Error(j.error || t("common.error"));
         setData(j);
       })
       .catch((e) => {
-        if (alive) setError(e?.message ?? "Greška učitavanja");
+        if (alive) setError(e?.message ?? t("common.errorLoad"));
       })
       .finally(() => {
         if (alive) setLoading(false);
       });
     return () => { alive = false; };
-  }, [toDate, fromDate]);
+  }, [toDate, fromDate, t]);
 
   return (
     <div className="container">

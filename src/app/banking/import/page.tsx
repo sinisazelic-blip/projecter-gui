@@ -518,9 +518,23 @@ export default function BankImportPage() {
                 </div>
               </div>
 
-              <Link href="/dashboard" className="btn" title={t("common.dashboard")}>
-                🏠 {t("common.dashboard")}
-              </Link>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <Link
+                  href="/izvodi"
+                  className="btn"
+                  title={t("izvodi.backToListTitle")}
+                  style={{
+                    background: "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1))",
+                    borderColor: "rgba(59, 130, 246, 0.4)",
+                    fontWeight: 700,
+                  }}
+                >
+                  ← {t("izvodi.title")}
+                </Link>
+                <Link href="/dashboard" className="btn" title={t("common.dashboard")}>
+                  🏠 {t("common.dashboard")}
+                </Link>
+              </div>
             </div>
 
             <div className="divider" />
@@ -831,12 +845,12 @@ export default function BankImportPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {unmatchedRes.unmatched.map((t: any) => {
-                        const amount = Number(t.amount);
+                      {unmatchedRes.unmatched.map((row: any) => {
+                        const amount = Number(row.amount);
                         return (
-                          <tr key={t.tx_id}>
-                            <td className="nowrap">{t.value_date ?? ""}</td>
-                            <td className="nowrap">{t.reference ?? ""}</td>
+                          <tr key={row.tx_id}>
+                            <td className="nowrap">{row.value_date ?? ""}</td>
+                            <td className="nowrap">{row.reference ?? ""}</td>
                             <td
                               className="num"
                               style={{
@@ -851,11 +865,11 @@ export default function BankImportPage() {
                             >
                               {fmtMoney(amount)}
                             </td>
-                            <td style={{ minWidth: 260 }}>{cleanSpaces(t.counterparty)}</td>
-                            <td style={{ minWidth: 340 }}>{t.description ?? ""}</td>
+                            <td style={{ minWidth: 260 }}>{cleanSpaces(row.counterparty)}</td>
+                            <td style={{ minWidth: 340 }}>{row.description ?? ""}</td>
                             <td className="nowrap">
                               <button
-                                onClick={() => openManualMatch(t)}
+                                onClick={() => openManualMatch(row)}
                                 className="btn"
                               >
                                 {t("bankingImport.manualMatch")}
@@ -903,11 +917,11 @@ export default function BankImportPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {matchedRes.matched.map((t: any) => {
-                        const amount = Number(t.amount);
+                      {matchedRes.matched.map((row: any) => {
+                        const amount = Number(row.amount);
                         return (
-                          <tr key={t.tx_id}>
-                            <td className="nowrap">{t.value_date ?? ""}</td>
+                          <tr key={row.tx_id}>
+                            <td className="nowrap">{row.value_date ?? ""}</td>
                             <td
                               className="num"
                               style={{
@@ -922,13 +936,13 @@ export default function BankImportPage() {
                             >
                               {fmtMoney(amount)}
                             </td>
-                            <td style={{ minWidth: 260 }}>{cleanSpaces(t.counterparty)}</td>
-                            <td style={{ minWidth: 340 }}>{t.description ?? ""}</td>
+                            <td style={{ minWidth: 260 }}>{cleanSpaces(row.counterparty)}</td>
+                            <td style={{ minWidth: 340 }}>{row.description ?? ""}</td>
                             <td className="nowrap">
-                              <b>{t.kategorija ?? ""}</b>
-                              {t.projekat_id ? ` (P#${t.projekat_id})` : ""}
+                              <b>{row.kategorija ?? ""}</b>
+                              {row.projekat_id ? ` (P#${row.projekat_id})` : ""}
                             </td>
-                            <td className="nowrap">{t.matched_by} · {t.matched_at}</td>
+                            <td className="nowrap">{row.matched_by} · {row.matched_at}</td>
                           </tr>
                         );
                       })}
@@ -969,12 +983,12 @@ export default function BankImportPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredTxs.map((t: any) => {
-                  const amount = Number(t.amount);
+                {filteredTxs.map((row: any) => {
+                  const amount = Number(row.amount);
                   return (
-                    <tr key={t.tx_id}>
-                      <td className="nowrap">{t.value_date ?? ""}</td>
-                      <td className="nowrap">{t.reference ?? ""}</td>
+                    <tr key={row.tx_id}>
+                      <td className="nowrap">{row.value_date ?? ""}</td>
+                      <td className="nowrap">{row.reference ?? ""}</td>
                       <td
                         className="num"
                         style={{
@@ -989,8 +1003,8 @@ export default function BankImportPage() {
                       >
                         {fmtMoney(amount)}
                       </td>
-                      <td style={{ minWidth: 280 }}>{cleanSpaces(t.counterparty)}</td>
-                      <td style={{ minWidth: 360 }}>{t.description ?? ""}</td>
+                      <td style={{ minWidth: 280 }}>{cleanSpaces(row.counterparty)}</td>
+                      <td style={{ minWidth: 360 }}>{row.description ?? ""}</td>
                     </tr>
                   );
                 })}

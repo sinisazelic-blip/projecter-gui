@@ -118,7 +118,7 @@ export default function FiksniTroskoviClient({ initialRows = [] }) {
         setModalOpen(false);
         router.refresh();
       } catch (err) {
-        setError(err?.message ?? "Greška");
+        setError(err?.message ?? t("common.error"));
       }
     });
   }
@@ -136,7 +136,7 @@ export default function FiksniTroskoviClient({ initialRows = [] }) {
         await setFiksniTrosakActive(id, false);
         router.refresh();
       } catch (err) {
-        setError(err?.message ?? "Greška");
+        setError(err?.message ?? t("common.error"));
       }
     });
   }
@@ -147,7 +147,7 @@ export default function FiksniTroskoviClient({ initialRows = [] }) {
         await setFiksniTrosakActive(id, true);
         router.refresh();
       } catch (err) {
-        setError(err?.message ?? "Greška");
+        setError(err?.message ?? t("common.error"));
       }
     });
   }

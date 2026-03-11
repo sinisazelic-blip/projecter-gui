@@ -236,7 +236,7 @@ export default function StrategicCoreClient() {
         }),
       });
       const j = await res.json();
-      if (!j.ok) throw new Error(j.error || "Greška");
+      if (!j.ok) throw new Error(j.error || t("common.error"));
       setInicijacija_id(j.inicijacija_id);
       loadLayouts();
       setScreen("izaberi_layout");
@@ -253,7 +253,7 @@ export default function StrategicCoreClient() {
     try {
       const res = await fetch(`/api/sc/layouts/${sc_layout_id}`);
       const j = await res.json();
-      if (!j.ok) throw new Error(j.error || "Greška");
+      if (!j.ok) throw new Error(j.error || t("common.error"));
       setLayoutDetail({
         layout: j.layout,
         cells: j.layout?.cells ?? [],
@@ -367,7 +367,7 @@ export default function StrategicCoreClient() {
         body: JSON.stringify({ inicijacija_id, items: payload }),
       });
       const j = await res.json();
-      if (!j.ok) throw new Error(j.error || "Greška");
+      if (!j.ok) throw new Error(j.error || t("common.error"));
       router.push(`/inicijacije/${inicijacija_id}`);
     } catch (e: any) {
       setError(e?.message || t("scPage.errTransfer"));
@@ -392,7 +392,7 @@ export default function StrategicCoreClient() {
     try {
       const res = await fetch(`/api/sc/layouts/${sc_layout_id}`);
       const j = await res.json();
-      if (!j.ok) throw new Error(j.error || "Greška");
+      if (!j.ok) throw new Error(j.error || t("common.error"));
       const cells = j.layout?.cells ?? [];
       const creatorCellsMap: Record<string, { stavka_id: number; naziv: string; cijena: number; valuta: string; boja: string }> = {};
       for (const c of cells) {
@@ -488,7 +488,7 @@ export default function StrategicCoreClient() {
         body: JSON.stringify({ naziv: naziv.trim(), cols, rows, cells }),
       });
       const j = await res.json();
-      if (!j.ok) throw new Error(j.error || "Greška");
+      if (!j.ok) throw new Error(j.error || t("common.error"));
       loadLayouts();
       setEditingLayoutId(null);
       setEditingLayoutMeta(null);

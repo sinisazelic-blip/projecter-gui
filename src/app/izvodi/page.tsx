@@ -35,18 +35,44 @@ type Izvod = {
   imported_at: string | null;
 };
 
+type BankAccount = {
+  bank_account_no: string;
+  currency: string | null;
+};
+
 export default function IzvodiPage() {
   const sp = useSearchParams();
   const router = useRouter();
   const { t } = useTranslation();
 
+  const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [izvodi, setIzvodi] = useState<Izvod[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Izvod | null>(null);
 
   const accountFilter = sp.get("account") || "";
+  const currencyFilter = sp.get("currency") || "";
   const dateFromFilter = sp.get("date_from") || "";
   const dateToFilter = sp.get("date_to") || "";
+
+  // Učitaj listu računa (za tabove)
+  useEffect(() => {
+    fetch("/api/bank/batch?accounts_only=1", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.ok && Array.isArray(d.accounts)) {
+          setAccounts(
+            d.accounts.map((a: any) => ({
+              bank_account_no: String(a.bank_account_no ?? ""),
+              currency: a.currency ? String(a.currency) : null,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -56,6 +82,7 @@ export default function IzvodiPage() {
       try {
         const qs = new URLSearchParams();
         if (accountFilter) qs.set("account", accountFilter);
+        if (currencyFilter) qs.set("currency", currencyFilter);
         if (dateFromFilter) qs.set("date_from", dateFromFilter);
         if (dateToFilter) qs.set("date_to", dateToFilter);
 
@@ -84,7 +111,18 @@ export default function IzvodiPage() {
     }
 
     load();
-  }, [accountFilter, dateFromFilter, dateToFilter]);
+  }, [accountFilter, currencyFilter, dateFromFilter, dateToFilter]);
+
+  function selectAccount(acc: BankAccount | null) {
+    const qs = new URLSearchParams();
+    if (acc) {
+      qs.set("account", acc.bank_account_no);
+      if (acc.currency) qs.set("currency", acc.currency);
+    }
+    if (dateFromFilter) qs.set("date_from", dateFromFilter);
+    if (dateToFilter) qs.set("date_to", dateToFilter);
+    router.push(`/izvodi?${qs.toString()}`);
+  }
 
   function handleFilter() {
     const qs = new URLSearchParams();
@@ -109,13 +147,51 @@ export default function IzvodiPage() {
     router.push("/izvodi");
   }
 
+  const selectedAccountKey =
+    accountFilter && currencyFilter
+      ? `${accountFilter}|${currencyFilter}`
+      : accountFilter
+        ? `${accountFilter}|`
+        : null;
+
+  async function handleDelete(izvod: Izvod, e: React.MouseEvent) {
+    e.stopPropagation();
+    setConfirmDelete(izvod);
+  }
+
+  async function confirmDeleteBatch() {
+    if (!confirmDelete) return;
+    const batch_id = confirmDelete.batch_id;
+    setDeletingId(batch_id);
+    setConfirmDelete(null);
+    try {
+      const res = await fetch("/api/bank/batch/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batch_id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || t("izvodi.deleteError"));
+      }
+      setIzvodi((prev) => prev.filter((i) => i.batch_id !== batch_id));
+    } catch (err: any) {
+      setError(err?.message || t("izvodi.deleteError"));
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
     <div className="container">
       <style>{`
+        .listWrap { min-width: 0; max-width: 100%; }
         .tableCard {
           overflow-x: auto;
           width: 100%;
+          max-width: 100%;
           margin: 0;
+          -webkit-overflow-scrolling: touch;
         }
         .table {
           width: 100%;
@@ -140,6 +216,8 @@ export default function IzvodiPage() {
           white-space: normal;
           word-break: break-all;
         }  /* Broj računa */
+        .table th:nth-child(4),
+        .table td:nth-child(4) { width: 90px; text-align: center; }  /* Akcija */
         .table .num {
           text-align: right;
           font-family: 'Courier New', monospace;
@@ -273,6 +351,53 @@ export default function IzvodiPage() {
               </div>
             </div>
 
+            {/* Tabovi po računu: BAM izvod 1 i EUR izvod 1 su odvojeno */}
+            {accounts.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 6 }}>
+                  {t("izvodi.selectAccount")}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{
+                      fontWeight: selectedAccountKey === null ? 700 : 400,
+                      background:
+                        selectedAccountKey === null
+                          ? "var(--active-bg)"
+                          : undefined,
+                    }}
+                    onClick={() => selectAccount(null)}
+                  >
+                    {t("izvodi.allAccounts")}
+                  </button>
+                  {accounts.map((acc) => {
+                    const key =
+                      `${acc.bank_account_no}|${acc.currency ?? ""}`;
+                    const isSelected = selectedAccountKey === key;
+                    const label = acc.currency
+                      ? `${acc.bank_account_no} (${acc.currency})`
+                      : acc.bank_account_no;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        className="btn"
+                        style={{
+                          fontWeight: isSelected ? 700 : 400,
+                          background: isSelected ? "var(--active-bg)" : undefined,
+                        }}
+                        onClick={() => selectAccount(acc)}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="divider" />
           </div>
         </div>
@@ -301,12 +426,13 @@ export default function IzvodiPage() {
                     <th>{t("izvodi.colStatementNo")}</th>
                     <th>{t("izvodi.colStatementDate")}</th>
                     <th>{t("izvodi.colAccountNo")}</th>
+                    <th>{t("izvodi.colAction")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {izvodi.length === 0 ? (
                     <tr>
-                      <td colSpan={3} style={{ opacity: 0.7, padding: 20 }}>
+                      <td colSpan={4} style={{ opacity: 0.7, padding: 20 }}>
                         {t("izvodi.noIzvodi")}
                       </td>
                     </tr>
@@ -315,7 +441,7 @@ export default function IzvodiPage() {
                       <tr
                         key={izvod.batch_id}
                         onClick={() => {
-                          // Otvori detalje izvoda
+                          if (deletingId === izvod.batch_id) return;
                           router.push(`/izvodi/${izvod.batch_id}`);
                         }}
                         style={{ cursor: "pointer" }}
@@ -324,6 +450,18 @@ export default function IzvodiPage() {
                         <td style={{ fontWeight: 600 }}>{izvod.statement_no || `#${izvod.batch_id}`}</td>
                         <td>{fmtDDMMYYYY(izvod.statement_date)}</td>
                         <td>{izvod.bank_account_no || "—"}</td>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            className="btn"
+                            disabled={deletingId !== null}
+                            onClick={(e) => handleDelete(izvod, e)}
+                            title={t("izvodi.deleteTitle")}
+                            style={{ fontSize: 12, padding: "6px 10px" }}
+                          >
+                            {deletingId === izvod.batch_id ? "…" : t("izvodi.delete")}
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -333,6 +471,61 @@ export default function IzvodiPage() {
           )}
         </div>
       </div>
+
+      {/* Potvrda brisanja */}
+      {confirmDelete && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+          onClick={() => setConfirmDelete(null)}
+        >
+          <div
+            style={{
+              background: "var(--card-bg)",
+              borderRadius: 12,
+              padding: 20,
+              maxWidth: 400,
+              boxShadow: "var(--shadow)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>
+              {t("izvodi.deleteConfirmTitle")}
+            </div>
+            <p style={{ margin: "0 0 16px", opacity: 0.9 }}>
+              {t("izvodi.deleteConfirmBody")}{" "}
+              <strong>
+                {confirmDelete.statement_no || `#${confirmDelete.batch_id}`}
+              </strong>{" "}
+              ({fmtDDMMYYYY(confirmDelete.statement_date)})?
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setConfirmDelete(null)}
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                className="btn"
+                style={{ background: "var(--bad)", color: "#fff" }}
+                onClick={confirmDeleteBatch}
+              >
+                {t("izvodi.delete")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

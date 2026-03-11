@@ -6,6 +6,7 @@ import { getValidLocale } from "@/lib/i18n";
 import { getT } from "@/lib/translations";
 import FluxaLogo from "@/components/FluxaLogo";
 import FazeClient from "./FazeClient";
+import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,25 @@ export default async function ProjekatFazePage({ params }) {
   const cookieStore = await cookies();
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value ?? "sr");
   const t = getT(locale);
+  const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
+  const session = token ? verifySessionToken(token) : null;
+  const isSaradnik = session?.nivo === 0;
+  if (isSaradnik) {
+    const userRows = await query(
+      "SELECT radnik_id FROM users WHERE user_id = ? LIMIT 1",
+      [session.user_id],
+    );
+    const radnikId = userRows?.[0]?.radnik_id != null ? Number(userRows[0].radnik_id) : null;
+    if (radnikId == null) redirect("/projects");
+    const accessRows = await query(
+      `SELECT 1 FROM projekat_faze pf
+       INNER JOIN projekat_faza_radnici pfr ON pfr.projekat_faza_id = pf.projekat_faza_id
+       WHERE pf.projekat_id = ? AND pfr.radnik_id = ?
+       LIMIT 1`,
+      [projekatId, radnikId],
+    );
+    if (!accessRows?.length) redirect("/projects");
+  }
 
   const [proj] = await query(
     `SELECT projekat_id, radni_naziv, DATE_FORMAT(rok_glavni, '%Y-%m-%d') AS rok_glavni FROM projekti WHERE projekat_id = ? LIMIT 1`,
@@ -74,6 +94,7 @@ export default async function ProjekatFazePage({ params }) {
             radnici={radnici || []}
             dobavljaci={dobavljaci || []}
             locale={locale}
+            readOnly={isSaradnik}
           />
         </div>
       </div>

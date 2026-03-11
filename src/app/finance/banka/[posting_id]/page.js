@@ -191,20 +191,33 @@ async function createIncomeAndLinkFromPosting(formData) {
   "use server";
 
   const postingId = Number(formData.get("posting_id"));
-  const projekatId = Number(formData.get("projekat_id"));
+  const fakturaIdRaw = formData.get("faktura_id");
+  const fakturaId = fakturaIdRaw != null && String(fakturaIdRaw).trim() !== "" ? Number(fakturaIdRaw) : null;
+  let projekatId = Number(formData.get("projekat_id"));
   const amountKm = Number.parseFloat(
-    String(formData.get("amountkm") ?? "").replace(",", "."),
+    String(formData.get("amount_km") ?? formData.get("amountkm") ?? "").replace(",", "."),
   );
   const datum = String(formData.get("datum") || "").slice(0, 10);
   const opis = String(formData.get("opis") || "").trim();
   const napomena = String(formData.get("napomena") || "").trim();
 
   if (!Number.isFinite(postingId) || postingId <= 0) redirect("/finance/banka");
-  if (!Number.isFinite(projekatId) || projekatId <= 0)
-    redirect(`/finance/banka/${postingId}`);
   if (!Number.isFinite(amountKm) || amountKm <= 0)
     redirect(`/finance/banka/${postingId}`);
   if (!datum || !opis) redirect(`/finance/banka/${postingId}`);
+
+  if (Number.isFinite(fakturaId) && fakturaId > 0) {
+    const fpRows = await query(
+      `SELECT projekat_id FROM faktura_projekti WHERE faktura_id = ? ORDER BY projekat_id ASC LIMIT 1`,
+      [fakturaId],
+    ).catch(() => []);
+    const first = Array.isArray(fpRows) ? fpRows[0] : fpRows?.rows?.[0];
+    if (!first?.projekat_id) redirect(`/finance/banka/${postingId}?msg=faktura_nema_projekat`);
+    projekatId = Number(first.projekat_id);
+  } else {
+    if (!Number.isFinite(projekatId) || projekatId <= 0)
+      redirect(`/finance/banka/${postingId}?msg=projekat_ili_faktura`);
+  }
 
   const posting = await loadPosting(postingId);
   if (!posting) redirect(`/finance/banka/${postingId}`);
@@ -224,21 +237,34 @@ async function createIncomeAndLinkFromPosting(formData) {
   if (!Number.isFinite(rawAmount) || rawAmount <= 0)
     redirect(`/finance/banka/${postingId}?msg=wrong_sign`);
 
-  // Create prihod (try common schemas)
   let prihodId = null;
+  const hasFakturaId = Number.isFinite(fakturaId) && fakturaId > 0;
 
   try {
     const res = await query(
       `
       INSERT INTO projektni_prihodi
-        (projekat_id, datum, iznos_km, opis, napomena, status)
-      VALUES (?, ?, ?, ?, ?, 'NASTALO')
+        (projekat_id, faktura_id, datum, iznos_km, opis, napomena, status)
+      VALUES (?, ?, ?, ?, ?, ?, 'NASTALO')
       `,
-      [projekatId, datum, amountKm, opis, napomena || null],
+      [projekatId, hasFakturaId ? fakturaId : null, datum, amountKm, opis, napomena || null],
     );
     prihodId = res?.insertId ?? null;
   } catch {}
 
+  if (!prihodId) {
+    try {
+      const res = await query(
+        `
+        INSERT INTO projektni_prihodi
+          (projekat_id, datum, iznos_km, opis, napomena, status)
+        VALUES (?, ?, ?, ?, ?, 'NASTALO')
+        `,
+        [projekatId, datum, amountKm, opis, napomena || null],
+      );
+      prihodId = res?.insertId ?? null;
+    } catch {}
+  }
   if (!prihodId) {
     try {
       const res = await query(
@@ -252,7 +278,6 @@ async function createIncomeAndLinkFromPosting(formData) {
       prihodId = res?.insertId ?? null;
     } catch {}
   }
-
   if (!prihodId) {
     const res = await query(
       `
@@ -276,6 +301,13 @@ async function createIncomeAndLinkFromPosting(formData) {
     `,
     [postingId, prihodId, amountKm],
   );
+
+  if (hasFakturaId) {
+    await query(
+      `UPDATE fakture SET fiskalni_status = 'PLACENA' WHERE faktura_id = ?`,
+      [fakturaId],
+    ).catch(() => {});
+  }
 
   revalidatePath(`/finance/banka/${postingId}`);
   revalidatePath(`/finance/banka`);
@@ -413,6 +445,10 @@ function msgText(code) {
     };
   if (c === "wrong_sign")
     return { text: "Neispravan smjer iznosa za ovu akciju.", kind: "warn" };
+  if (c === "faktura_nema_projekat")
+    return { text: "Izabrana faktura nema nijedan projekat (faktura_projekti).", kind: "warn" };
+  if (c === "projekat_ili_faktura")
+    return { text: "Unesi projekat ID ili odaberi neplaćenu fakturu.", kind: "warn" };
   return null;
 }
 
@@ -527,6 +563,22 @@ export default async function BankPostingDetailPage({ params, searchParams }) {
     linkState.payCnt > 0 ||
     linkState.costCnt > 0 ||
     linkState.fixedCnt > 0;
+
+  let neplaceneFakture = [];
+  if (amount > 0) {
+    const rows = await query(
+      `
+      SELECT f.faktura_id, f.broj_fakture_puni AS broj_fakture, f.iznos_ukupno_km AS iznos_sa_pdv,
+             k.naziv_klijenta AS narucilac_naziv
+      FROM fakture f
+      LEFT JOIN klijenti k ON k.klijent_id = f.bill_to_klijent_id
+      WHERE (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('PLACENA','STORNIRAN','ZAMIJENJEN'))
+      ORDER BY f.datum_izdavanja DESC, f.faktura_id DESC
+      LIMIT 200
+      `,
+    ).catch(() => []);
+    neplaceneFakture = Array.isArray(rows) ? rows : rows?.rows ?? [];
+  }
 
   // ✅ 2.25 UI guardrails
   const canQuickCreate =
@@ -688,16 +740,34 @@ export default async function BankPostingDetailPage({ params, searchParams }) {
                       />
                     </div>
 
-                    <div style={{ width: 180 }}>
-                      <div className="label">projekat_id</div>
+                    <div style={{ minWidth: 260, flex: "1 1 280px" }}>
+                      <div className="label">Poveži na fakturu (neplaćenu)</div>
+                      <select className="input" name="faktura_id" defaultValue="">
+                        <option value="">— Ne povezuj na fakturu</option>
+                        {neplaceneFakture.map((f) => {
+                          const broj = f.broj_fakture ?? `#${f.faktura_id}`;
+                          const klijent = f.narucilac_naziv ?? "—";
+                          const iznos = Number(f.iznos_sa_pdv);
+                          const iznosStr = Number.isFinite(iznos) ? iznos.toFixed(2) : "—";
+                          return (
+                            <option key={f.faktura_id} value={f.faktura_id}>
+                              {broj} — {klijent} — {iznosStr} KM
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <div className="subtle" style={{ marginTop: 6 }}>
+                        Ako odabereš fakturu, prihod se veže na nju i faktura se označi kao naplaćena.
+                      </div>
+                    </div>
+
+                    <div style={{ width: 140 }}>
+                      <div className="label">Projekat ID (ako ne vežeš na fakturu)</div>
                       <input
                         className="input"
                         name="projekat_id"
                         placeholder="npr. 77"
                       />
-                      <div className="subtle" style={{ marginTop: 6 }}>
-                        Prihod mora imati projekat.
-                      </div>
                     </div>
 
                     <div style={{ minWidth: 320, flex: 1 }}>

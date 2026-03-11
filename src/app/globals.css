@@ -58,6 +58,11 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes onboarding-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px var(--accent, #3b82f6); opacity: 1; }
+  50% { box-shadow: 0 0 0 8px var(--accent, #3b82f6); opacity: 0.85; }
+}
+
 html,
 body {
   height: 100%;
@@ -137,11 +142,13 @@ textarea {
   outline: none;
 }
 
+/* Light mode: vidljiva siva ivica na svim poljima (nadjačava inline stilove) */
 [data-theme="light"] input,
 [data-theme="light"] select,
 [data-theme="light"] textarea {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid #b0b8c4 !important;
+  color: var(--text) !important;
 }
 
 input::placeholder,
@@ -594,6 +601,16 @@ option {
   background: rgba(255, 255, 255, 0.1);
 }
 
+[data-theme="light"] .btn {
+  border: 1px solid #b0b8c4 !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="light"] .btn:hover {
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+
 .btn-faze-important {
   font-size: 15px !important;
   font-weight: 800 !important;
@@ -862,6 +879,20 @@ option {
   z-index: 5;
   background: rgba(8, 10, 16, 0.85);
   backdrop-filter: blur(8px);
+}
+
+/* Studio šifarnici: popup/modal s manje transparentnosti (lakše čitanje) */
+.studio-modal {
+  background: rgba(0, 0, 0, 0.7) !important;
+  backdrop-filter: blur(10px);
+}
+.studio-modal > div {
+  background: linear-gradient(180deg, rgba(18, 24, 34, 0.98), rgba(12, 16, 24, 0.97)) !important;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+[data-theme="light"] .studio-modal > div {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.97)) !important;
+  border-color: rgba(0, 0, 0, 0.12);
 }
 
 /* =========================
@@ -1161,5 +1192,51 @@ option {
     font-size: 18px;
     padding: 14px 18px;
     max-width: min(480px, 90vw);
+  }
+}
+
+/* Uputstvo stranica */
+.uputstvoContent p {
+  margin-bottom: 12px;
+}
+.uputstvoContent p:last-child {
+  margin-bottom: 0;
+}
+.uputstvoContent ul,
+.uputstvoContent ol {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+.uputstvoContent li {
+  margin-bottom: 6px;
+}
+.uputstvoContent strong {
+  font-weight: 700;
+}
+.uputstvoContent a {
+  color: rgba(147, 197, 253, 0.95);
+  text-decoration: none;
+}
+.uputstvoContent a:hover {
+  text-decoration: underline;
+}
+.uputstvoContent em {
+  opacity: 0.85;
+  font-style: italic;
+}
+.uputstvo-mutedHover:hover {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.95);
+}
+@media (max-width: 700px) {
+  .uputstvoGrid {
+    grid-template-columns: 1fr !important;
+  }
+  .uputstvoNav {
+    position: static;
+    border-right: none;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding-bottom: 16px;
+    margin-bottom: 24px;
   }
 }

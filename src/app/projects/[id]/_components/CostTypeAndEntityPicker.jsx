@@ -70,15 +70,15 @@ export default function CostTypeAndEntityPicker({ value, onChange, tipLabel: tip
       .then((data) => {
         if (cancelled) return;
         if (data?.ok) setTypes(Array.isArray(data.items) ? data.items : []);
-        else setErr(data?.message ?? "Greška pri učitavanju tipova");
+        else setErr(data?.message ?? t("projectDetail.errorLoadingTypes"));
       })
-      .catch(() => !cancelled && setErr("Greška pri učitavanju tipova"))
+      .catch(() => !cancelled && setErr(t("projectDetail.errorLoadingTypes")))
       .finally(() => !cancelled && setLoadingTypes(false));
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   // izabrani tip (sa requires_entity)
   const selectedType = useMemo(() => {
@@ -112,7 +112,7 @@ export default function CostTypeAndEntityPicker({ value, onChange, tipLabel: tip
           if (!cancelled) {
             if (data?.ok)
               setTalents(Array.isArray(data.items) ? data.items : []);
-            else setErr(data?.message ?? "Greška pri učitavanju talenata");
+            else setErr(data?.message ?? t("projectDetail.errorLoadingTalents"));
           }
         }
 
@@ -122,11 +122,11 @@ export default function CostTypeAndEntityPicker({ value, onChange, tipLabel: tip
           if (!cancelled) {
             if (data?.ok)
               setVendors(Array.isArray(data.items) ? data.items : []);
-            else setErr(data?.message ?? "Greška pri učitavanju dobavljača");
+            else setErr(data?.message ?? t("projectDetail.errorLoadingVendors"));
           }
         }
       } catch {
-        if (!cancelled) setErr("Greška pri učitavanju entiteta");
+        if (!cancelled) setErr(t("projectDetail.errorLoadingEntities"));
       } finally {
         if (!cancelled) setLoadingEntities(false);
       }
@@ -137,7 +137,7 @@ export default function CostTypeAndEntityPicker({ value, onChange, tipLabel: tip
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requires]);
+  }, [requires, t]);
 
   // kad promijeniš tip: automatski postavi entity_type i očisti entity_id
   useEffect(() => {
@@ -196,7 +196,9 @@ export default function CostTypeAndEntityPicker({ value, onChange, tipLabel: tip
   const addEntityInline = async () => {
     try {
       const label =
-        requires === "talent" ? "Ime i prezime talenta" : "Naziv dobavljača";
+        requires === "talent"
+          ? t("projectDetail.talentNamePrompt")
+          : t("projectDetail.vendorNamePrompt");
       const name = window.prompt(label);
       if (!name || !String(name).trim()) return;
 
@@ -208,7 +210,7 @@ export default function CostTypeAndEntityPicker({ value, onChange, tipLabel: tip
       });
       const data = await r.json();
       if (!data?.ok) {
-        alert(data?.message ?? "Greška");
+        alert(data?.message ?? t("common.error"));
         return;
       }
 
@@ -231,7 +233,7 @@ export default function CostTypeAndEntityPicker({ value, onChange, tipLabel: tip
       });
     } catch (e) {
       setLoadingEntities(false);
-      alert(e?.message ?? "Greška");
+      alert(e?.message ?? t("common.error"));
     }
   };
 
@@ -327,7 +329,7 @@ export default function CostTypeAndEntityPicker({ value, onChange, tipLabel: tip
       {err && (
         <div style={{ fontSize: 13, opacity: 0.9 }}>
           <span className="badge" data-status="ERROR">
-            Greška
+            {t("common.error")}
           </span>{" "}
           {err}
         </div>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/components/LocaleProvider";
 
 type Props = {
   projekatId: number;
@@ -13,13 +14,21 @@ export default function ProjectStornoButton({
   disabled = false,
 }: Props) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function getStornoError(data: { error_code?: string; error?: string }) {
+    if (data?.error_code === "INVOICED")
+      return t("projectDetail.stornoErrorInvoiced");
+    if (data?.error_code === "ALREADY_CANCELLED")
+      return t("projectDetail.stornoErrorAlreadyCancelled");
+    return data?.error || t("common.error");
+  }
+
   async function handleStorno() {
     if (disabled || saving) return;
-    if (!window.confirm("Da li ste sigurni da želite stornirati ovaj projekat?"))
-      return;
+    if (!window.confirm(t("projectDetail.stornoConfirm"))) return;
 
     setSaving(true);
     setError(null);
@@ -30,10 +39,13 @@ export default function ProjectStornoButton({
         body: JSON.stringify({}),
       });
       const data = await res.json();
-      if (!data?.ok) throw new Error(data?.error || "Greška");
+      if (!data?.ok) {
+        setError(getStornoError(data));
+        return;
+      }
       router.refresh();
     } catch (e: any) {
-      setError(e?.message ?? "Greška");
+      setError(e?.message ?? t("common.error"));
     } finally {
       setSaving(false);
     }
@@ -46,7 +58,7 @@ export default function ProjectStornoButton({
         onClick={handleStorno}
         disabled={disabled || saving}
         className="stornoBtn"
-        title="Storniraj projekat (Otkazan)"
+        title={t("projectDetail.stornoTitle")}
         style={{
           background: "#9ca3af",
           color: "#111827",
@@ -60,7 +72,7 @@ export default function ProjectStornoButton({
           opacity: disabled || saving ? 0.6 : 0.95,
         }}
       >
-        {saving ? "…" : "STORNO"}
+        {saving ? t("projectDetail.stornoInProgress") : "STORNO"}
       </button>
       {error && (
         <span style={{ fontSize: 12, color: "rgba(255,80,80,.95)" }}>{error}</span>

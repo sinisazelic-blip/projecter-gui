@@ -73,9 +73,6 @@ export default async function Page({ searchParams }) {
   const inputStyle = {
     padding: "10px 12px",
     borderRadius: 12,
-    border: "1px solid rgba(255,255,255,.18)",
-    background: "rgba(255,255,255,.06)",
-    color: "inherit",
     outline: "none",
     width: "100%",
   };
@@ -117,6 +114,27 @@ export default async function Page({ searchParams }) {
         .brandTitle { font-size: 22px; font-weight: 800; line-height: 1.1; margin: 0; }
         .brandSub { font-size: 12px; opacity: .75; margin-top: 4px; }
         .divider { height: 1px; background: rgba(255,255,255,.12); margin: 12px 0 0; }
+
+        .settingsModule {
+          margin-top: 28px;
+          padding: 18px 16px 20px;
+          border-radius: 18px;
+          border: 1px solid rgba(255,255,255,.10);
+          background: rgba(255,255,255,.03);
+          box-shadow: 0 8px 24px rgba(0,0,0,.12);
+        }
+        .settingsModuleTitle {
+          font-size: 14px;
+          font-weight: 700;
+          letter-spacing: .02em;
+          opacity: .9;
+          margin: 0 0 16px 0;
+        }
+        .settingsModuleDivider {
+          height: 1px;
+          background: rgba(255,255,255,.10);
+          margin: 18px 0 16px 0;
+        }
 
         .bodyWrap { flex:1; min-height:0; overflow:auto; padding: 14px 0 18px; }
         .card{
@@ -472,17 +490,20 @@ export default async function Page({ searchParams }) {
               </div>
             </form>
 
-            {locale === "sr" && (
-              <div className="btnRow">
-                <FiskalModal />
-                <span className="muted">
-                  {t("firma.activeId")}{" "}
-                  <span className="mono">{pick(f?.firma_id) || "—"}</span>
-                </span>
-              </div>
-            )}
-
-            <BrojacFakturaCard />
+            <div className="settingsModule">
+              <h3 className="settingsModuleTitle">{t("firma.settingsModuleTitle")}</h3>
+              {locale === "sr" && (
+                <div className="btnRow">
+                  <FiskalModal />
+                  <span className="muted">
+                    {t("firma.activeId")}{" "}
+                    <span className="mono">{pick(f?.firma_id) || "—"}</span>
+                  </span>
+                </div>
+              )}
+              {locale === "sr" && <div className="settingsModuleDivider" />}
+              <BrojacFakturaCard />
+            </div>
           </div>
         </div>
       </div>

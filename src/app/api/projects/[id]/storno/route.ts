@@ -28,16 +28,16 @@ export async function POST(req: Request) {
   );
   const statusId = Number(rows?.[0]?.status_id ?? 0);
 
-  // Ne dozvoli storno ako je već otkazan/arhiviran/fakturisan
+  // Ne dozvoli storno ako je već otkazan/arhiviran/fakturisan (klijent prevodi po error_code)
   if (statusId === 9) {
     return NextResponse.json(
-      { ok: false, error: "Projekat je fakturisan, storno nije moguće." },
+      { ok: false, error_code: "INVOICED" },
       { status: 409 },
     );
   }
   if (statusId === 10 || statusId === 11 || statusId === 12) {
     return NextResponse.json(
-      { ok: false, error: "Projekat je već otkazan/arhiviran." },
+      { ok: false, error_code: "ALREADY_CANCELLED" },
       { status: 409 },
     );
   }
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    message: "Projekat je storniran (Otkazan).",
+    message: "storno_ok",
     projekat_id: projekatId,
   });
 }

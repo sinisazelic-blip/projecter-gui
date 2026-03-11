@@ -434,7 +434,7 @@ export default function RadneFazeClient({
 
       {/* Modal: New/Edit */}
       {modalOpen ? (
-        <div style={overlayStyle()} role="dialog" aria-modal="true">
+        <div className="studio-modal" style={overlayStyle()} role="dialog" aria-modal="true">
           <div style={modalStyle(920)}>
             <div
               style={{
