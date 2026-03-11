@@ -30,15 +30,18 @@ function createPool(): mysql.Pool {
   });
 }
 
-// Ref da možemo zamijeniti pool kad je zatvoren (Pool is closed)
-const poolRef: { current: mysql.Pool } = {
-  current: global.__projecter_pool__ ?? createPool(),
+// Lazy init: ne kreiraj pool pri importu (build na DO nema DB env), nego pri prvom korištenju
+const poolRef: { current: mysql.Pool | null } = {
+  current: global.__projecter_pool__ ?? null,
 };
-if (process.env.NODE_ENV !== "production") {
-  global.__projecter_pool__ = poolRef.current;
-}
 
 function getPool(): mysql.Pool {
+  if (!poolRef.current) {
+    poolRef.current = createPool();
+    if (process.env.NODE_ENV !== "production") {
+      global.__projecter_pool__ = poolRef.current;
+    }
+  }
   return poolRef.current;
 }
 
