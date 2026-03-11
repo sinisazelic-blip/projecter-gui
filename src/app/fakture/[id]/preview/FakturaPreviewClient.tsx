@@ -203,7 +203,7 @@ export default function FakturaPreviewClient() {
   const projects = Array.isArray(data?.projects) ? data!.projects : [];
 
   // ✅ Pravilo: INO faktura uvijek mora biti na EN, ali BiH sistem (sr) i dalje pokazuje PFR i koristi BiH zakonsku napomenu.
-  const isInoInvoice = Boolean(buyer?.is_ino === true || buyer?.is_ino === 1);
+  const isInoInvoice = Boolean(buyer?.is_ino);
   const isBiHSystem = locale === "sr";
   const lang: Lang = useMemo(
     () => (isInoInvoice ? "EN" : isBiHSystem ? "BH" : "EN"),
