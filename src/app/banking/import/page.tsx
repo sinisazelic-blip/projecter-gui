@@ -510,7 +510,7 @@ export default function BankImportPage() {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo style={{}} /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
                   <div className="brandTitle">{t("bankingImport.title")}</div>
