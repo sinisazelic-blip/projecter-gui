@@ -376,7 +376,7 @@ export default function FakturaPreviewClient() {
           filename: `${pdfFilename}.pdf`,
           image: { type: "jpeg", quality: 0.98 },
           html2canvas: { scale: 2 },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait", hotfixes: ["px_scaling"] },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait", hotfixes: ["px_scaling"] } as { unit?: string; format?: string | [number, number]; orientation?: "portrait" | "landscape" },
         })
         .from(el)
         .save();
