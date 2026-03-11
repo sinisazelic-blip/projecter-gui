@@ -61,7 +61,7 @@ function fmtDate(iso: string) {
   let d = new Date(iso);
   if (Number.isNaN(d.getTime())) {
     const ymd = iso.match(/(\d{4})-(\d{2})-(\d{2})/);
-    if (ymd) d = new Date(ymd[1]!, Number(ymd[2]!) - 1, Number(ymd[3]!));
+    if (ymd) d = new Date(Number(ymd[1]), Number(ymd[2]!) - 1, Number(ymd[3]!));
     if (Number.isNaN(d.getTime())) return iso;
   }
   const day = String(d.getDate()).padStart(2, "0");
