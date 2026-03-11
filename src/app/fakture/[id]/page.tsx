@@ -195,7 +195,7 @@ export default function FakturaDetailPage() {
             <div className="topRow" style={{ justifyContent: "space-between" }}>
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo style={{}} /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
                   <div className="brandTitle">📄 Faktura #{faktura.broj_fakture}</div>
