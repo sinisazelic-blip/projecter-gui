@@ -9,6 +9,7 @@
 const fs = require("fs");
 const path = require("path");
 const mysql = require("mysql2/promise");
+const bcrypt = require("bcryptjs");
 
 function loadEnvLocal() {
   const envPath = path.join(process.cwd(), ".env.local");
@@ -89,6 +90,35 @@ async function main() {
         (3, 'zatvoren', 'Zatvoren', NULL, 3, 3)
       `);
       console.log("  + projekt_statusi (3 reda)");
+    }
+
+    // ----- roles + demo user (za login "Pogledaj demo") -----
+    try {
+      const [hasRoles] = await conn.query("SELECT 1 FROM roles LIMIT 1");
+      if (hasRoles.length === 0) {
+        const nivoCol = await conn.query(
+          "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'roles' AND COLUMN_NAME IN ('nivo_ovlastenja', 'nivo_ovlascenja') LIMIT 1"
+        ).then(([r]) => r[0]?.COLUMN_NAME || "nivo_ovlastenja");
+        await conn.query(
+          `INSERT INTO roles (naziv, ${nivoCol}) VALUES ('Demo', 10)`
+        );
+        console.log("  + roles (1 red: Demo, nivo 10)");
+      }
+      const [demoUser] = await conn.query(
+        "SELECT user_id FROM users WHERE username = 'demo' LIMIT 1"
+      );
+      if (demoUser.length === 0) {
+        const [roleRow] = await conn.query("SELECT role_id FROM roles ORDER BY role_id LIMIT 1");
+        const roleId = roleRow[0]?.role_id ?? 1;
+        const hash = await bcrypt.hash("demo", 10);
+        await conn.query(
+          `INSERT INTO users (username, password, role_id, aktivan) VALUES (?, ?, ?, 1)`,
+          ["demo", hash, roleId]
+        );
+        console.log("  + users (demo / demo)");
+      }
+    } catch (e) {
+      console.warn("  ! Preskačem roles/users (tabela ili kolone nedostaju):", e?.message || e);
     }
 
     // ----- statusi (za inicijacije/deals) -----

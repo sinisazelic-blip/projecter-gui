@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken } from "@/lib/auth/session";
 import { COOKIE_NAME } from "@/lib/auth/session";
-import { query } from "@/lib/db";
+import { query, runWithSession } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ user: null }, { status: 200 });
   }
 
+  return runWithSession(session, async () => {
   let onboardingCompleted = false;
   try {
     const onboardingRows = await query<{ n: number }>(
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
   }
 
   const payload: {
-    user: { user_id: number; username: string; role_id: number | null; nivo: number };
+    user: { user_id: number; username: string; role_id: number | null; nivo: number; isDemo?: boolean };
     subscription_ends_at?: string;
     subscription_expired?: boolean;
     onboarding_completed?: boolean;
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest) {
       username: session.username,
       role_id: session.role_id,
       nivo: session.nivo,
+      isDemo: session.isDemo === true,
     },
     onboarding_completed: onboardingCompleted,
   };
@@ -63,4 +65,5 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json(payload);
+  });
 }

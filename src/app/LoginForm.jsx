@@ -54,6 +54,38 @@ export default function LoginForm() {
     }
   }
 
+  async function handleDemoLogin(e) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "demo", password: "demo" }),
+      });
+      const data = await res.json().catch(() => ({ ok: false, error: "" }));
+      if (data.ok) {
+        router.push("/dashboard");
+        router.refresh();
+        return;
+      }
+      if (res.status === 503 && data.error === "DEMO_NOT_CONFIGURED") {
+        setError("Demo baza nije konfigurirana (postavi DEMO_DB_NAME u env-u na hostingu).");
+        return;
+      }
+      if (res.status === 401) {
+        setError("Demo nalog nije dostupan. U demo bazi mora postojati korisnik demo (seed: node scripts/seed-demo.js).");
+        return;
+      }
+      setError("Greška pri demo prijavi. Pokušaj ponovo.");
+    } catch {
+      setError("Greška u vezi. Je li server pokrenut?");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -146,6 +178,26 @@ export default function LoginForm() {
         }}
       >
         {loading ? "Prijava…" : "Prijava"}
+      </button>
+
+      <button
+        type="button"
+        onClick={handleDemoLogin}
+        disabled={loading}
+        className="btn"
+        style={{
+          marginTop: 4,
+          padding: "10px 20px",
+          fontSize: 14,
+          width: "100%",
+          maxWidth: 200,
+          background: "transparent",
+          border: "1px solid var(--border, #333)",
+          color: "var(--muted)",
+        }}
+        title="Prijava u demo bazu (korisnik demo / lozinka demo)"
+      >
+        Pogledaj demo
       </button>
     </form>
   );

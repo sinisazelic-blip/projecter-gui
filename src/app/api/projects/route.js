@@ -1,8 +1,7 @@
 // src/app/api/projects/route.js
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { query } from "@/lib/db";
-import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
+import { withDbSession } from "@/lib/auth/with-db-session";
 
 export const dynamic = "force-dynamic";
 
@@ -23,11 +22,9 @@ function decOrNull(v) {
 }
 
 export async function GET(req) {
+  return withDbSession(req, async (req, session) => {
   try {
     const url = new URL(req.url);
-    const cookieStore = await cookies();
-    const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
-    const session = token ? verifySessionToken(token) : null;
     const nivo = session?.nivo ?? 1;
     let radnikId = null;
     if (session && nivo === SARADNIK_NIVO) {
@@ -326,4 +323,5 @@ export async function GET(req) {
       { status: 500 },
     );
   }
+  });
 }

@@ -12,6 +12,8 @@ import UputstvoShortcut from "@/components/UputstvoShortcut";
 import OnboardingTourWrapper from "@/components/OnboardingTourWrapper";
 import { cookies } from "next/headers";
 import { getValidLocale } from "@/lib/i18n";
+import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
+import { runWithSession } from "@/lib/db";
 
 export const metadata = {
   title: "Fluxa · P&FE",
@@ -25,7 +27,9 @@ export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value ?? "sr");
   const lang = locale === "en" ? "en" : "bs";
-  return (
+  const token = cookieStore.get(COOKIE_NAME)?.value;
+  const session = token ? verifySessionToken(token) : null;
+  return await runWithSession(session, () => (
     <html lang={lang} data-theme="dark" data-locale={locale} suppressHydrationWarning>
       <head>
         <script
@@ -52,5 +56,5 @@ export default async function RootLayout({ children }) {
       </ThemeProvider>
       </body>
     </html>
-  );
+  ));
 }

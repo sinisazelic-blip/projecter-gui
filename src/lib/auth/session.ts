@@ -8,6 +8,8 @@ export type SessionPayload = {
   username: string;
   role_id: number | null;
   nivo: number;
+  /** true = svi DB upiti idu na demo bazu (DEMO_DB_NAME); false ili nedefinirano = studio baza (DB_NAME) */
+  isDemo?: boolean;
   exp: number;
 };
 
