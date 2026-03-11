@@ -122,6 +122,7 @@ type ViewMode =
   | "invoiced"
   | "archived"
   | "no_project"
+  | "storno"
   | "all";
 
 const VIEW_OPTIONS_KEYS: ViewMode[] = [

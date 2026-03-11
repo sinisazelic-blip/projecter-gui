@@ -29,7 +29,6 @@ export default function MobileLayout({
   return (
     <div
       style={{
-        minHeight: "100vh",
         minHeight: "100dvh",
         background: "var(--bg, #0a0a0a)",
         color: "var(--text, #fafafa)",

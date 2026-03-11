@@ -47,11 +47,11 @@ export default function DealTableRow({
     <tr
       onClick={(e) => {
         // Ne navigiraj ako je klik na link ili button
+        const t = e.target as EventTarget & { closest?: (s: string) => Element | null };
         if (
           e.target instanceof HTMLAnchorElement ||
           e.target instanceof HTMLButtonElement ||
-          e.target.closest("a") ||
-          e.target.closest("button")
+          (typeof t.closest === "function" && (t.closest("a") || t.closest("button")))
         )
           return;
         window.location.href = `/inicijacije/${deal.inicijacija_id}`;

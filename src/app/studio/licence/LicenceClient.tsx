@@ -12,7 +12,7 @@ type TenantRow = {
   plan_id: number;
   plan_naziv: string;
   max_users: number;
-  monthly_price?: number | null;
+  monthly_price?: number | string | null;
   currency?: string | null;
   subscription_starts_at: string;
   subscription_ends_at: string;

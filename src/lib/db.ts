@@ -45,7 +45,7 @@ function getPool(): mysql.Pool {
 /** Export za kompatibilnost; pristup uvijek ide preko trenutnog poola. */
 export const pool = new Proxy({} as mysql.Pool, {
   get(_, prop) {
-    return (getPool() as Record<string, unknown>)[prop as string];
+    return (getPool() as unknown as Record<string, unknown>)[prop as string];
   },
 });
 

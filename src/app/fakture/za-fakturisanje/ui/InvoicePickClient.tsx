@@ -185,10 +185,8 @@ export default function InvoicePickClient({
     const el = ref.current;
     if (!el) return;
     // Chrome/Edge support
-    // @ts-expect-error showPicker exists in Chromium
-    if (typeof el.showPicker === "function") {
-      // @ts-expect-error
-      el.showPicker();
+    if (typeof (el as HTMLInputElement & { showPicker?: () => void }).showPicker === "function") {
+      (el as HTMLInputElement & { showPicker: () => void }).showPicker();
       return;
     }
     // fallback

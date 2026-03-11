@@ -185,7 +185,7 @@ export default function InvoiceWizard() {
 
           // Detektuj INO ili oslobođen od PDV-a
           if (previewData?.buyer) {
-            const buyer = previewData.buyer;
+            const buyer = previewData.buyer as { drzava?: string; is_ino?: boolean | number | string; pdv_oslobodjen?: number };
             const drz = String(buyer.drzava ?? "").trim();
             const isIno = drz !== "" && drz.toLowerCase() !== "bih";
             const isInoFlag = buyer.is_ino === 1 || buyer.is_ino === true || buyer.is_ino === "1";

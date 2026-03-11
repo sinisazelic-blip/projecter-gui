@@ -47,7 +47,8 @@ export default function FirmaHeader() {
           onClick={handleStartTour}
           title={t("firma.startTourTitle")}
         >
-          🎯 {t("firma.startTour")}
+          <img src="/fluxa/Icon.ico" alt="" width={15} height={15} style={{ display: "inline-block", verticalAlign: "middle", marginRight: 6 }} />
+          {t("firma.startTour")}
         </button>
         <Link href="/studio/users" className="btn" title={t("dashboard.usersTitle")}>
           👤 {t("dashboard.users")}

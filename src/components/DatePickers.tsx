@@ -100,10 +100,9 @@ export function DateTimePickerDDMMYYYYHHMM({
     if (!el) return;
 
     // Chrome/Edge support
-    // @ts-expect-error showPicker exists in Chromium
-    if (typeof el.showPicker === "function") {
-      // @ts-expect-error
-      el.showPicker();
+    const inputEl = el as HTMLInputElement & { showPicker?: () => void };
+    if (typeof inputEl.showPicker === "function") {
+      inputEl.showPicker();
       return;
     }
 
@@ -276,10 +275,9 @@ export function DatePickerDDMMYYYY({
     if (!el) return;
 
     // Chrome/Edge support
-    // @ts-expect-error showPicker exists in Chromium
-    if (typeof el.showPicker === "function") {
-      // @ts-expect-error
-      el.showPicker();
+    const inputEl = el as HTMLInputElement & { showPicker?: () => void };
+    if (typeof inputEl.showPicker === "function") {
+      inputEl.showPicker();
       return;
     }
 

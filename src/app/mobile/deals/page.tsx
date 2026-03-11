@@ -33,7 +33,6 @@ export default function MobileDealsPage() {
   return (
     <div
       style={{
-        minHeight: "100vh",
         minHeight: "100dvh",
         padding: "20px 16px 32px",
         display: "flex",

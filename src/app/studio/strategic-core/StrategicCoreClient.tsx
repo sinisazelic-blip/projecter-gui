@@ -781,8 +781,8 @@ export default function StrategicCoreClient() {
             </label>
           </div>
           <ChessboardGrid
-            cols={layoutDetail.layout?.cols ?? COLS}
-            rows={layoutDetail.layout?.rows ?? ROWS}
+            cols={layoutDetail.layout?.cols ?? COLS_DEFAULT}
+            rows={layoutDetail.layout?.rows ?? ROWS_DEFAULT}
             cellContent={(col, row) => {
               const c = getEffectiveCell(col, row);
               const qty = clicks[cellKey(col, row)] ?? 0;

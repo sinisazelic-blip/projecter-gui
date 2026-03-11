@@ -372,7 +372,7 @@ export default function KlijentiClient({
     startTransition(async () => {
       try {
         if (modalMode === "new") {
-          await createKlijent(payload);
+          await createKlijent(payload as Parameters<typeof createKlijent>[0]);
           setModalOpen(false);
           setSelectedId(null);
           router.refresh();
@@ -381,7 +381,7 @@ export default function KlijentiClient({
           const result = await updateKlijent({
             klijent_id: form.klijent_id,
             ...payload,
-          });
+          } as Parameters<typeof updateKlijent>[0]);
           if (result?.created_at != null || result?.updated_at != null) {
             setForm((prev) => ({
               ...prev,
@@ -1204,7 +1204,7 @@ export default function KlijentiClient({
               </button>
               <button
                 className="btn btn--active"
-                onClick={onSave}
+                onClick={() => onSave()}
                 disabled={isPending}
                 style={btnDisabled(isPending)}
               >

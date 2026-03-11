@@ -28,7 +28,6 @@ export default function MobilePage() {
   return (
     <div
       style={{
-        minHeight: "100vh",
         minHeight: "100dvh",
         padding: "24px 20px 32px",
         display: "flex",

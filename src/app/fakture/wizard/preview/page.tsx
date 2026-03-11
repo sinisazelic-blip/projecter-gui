@@ -60,6 +60,8 @@ type ApiBuyer = {
   email: string | null;
   rok_placanja_dana: number | null;
   is_ino?: number | boolean;
+  pdv_oslobodjen?: number;
+  pdv_oslobodjen_napomena?: string | null;
 };
 
 type ApiFirma = {
@@ -782,7 +784,7 @@ export default function Page() {
           filename: `${pdfFilename}.pdf`,
           image: { type: "jpeg", quality: 0.98 },
           html2canvas: { scale: 2 },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait", hotfixes: ["px_scaling"] },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait", hotfixes: ["px_scaling"] } as { unit?: string; format?: string | [number, number]; orientation?: "portrait" | "landscape" },
         })
         .from(el)
         .save();

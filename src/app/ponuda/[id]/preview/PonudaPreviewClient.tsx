@@ -166,7 +166,7 @@ export default function PonudaPreviewClient() {
 
   const bh = useMemo(() => {
     if (!klijent) return true;
-    if (klijent.is_ino === true || klijent.is_ino === 1) return false;
+    if (klijent.is_ino) return false; // 1 ili true iz API-ja
     return isBiH(klijent.drzava);
   }, [klijent]);
   const lang: Lang = useMemo(() => (bh ? "BH" : "EN"), [bh]);
@@ -327,7 +327,7 @@ export default function PonudaPreviewClient() {
             format: "a4",
             orientation: "portrait",
             hotfixes: ["px_scaling"],
-          },
+          } as { unit?: string; format?: string | [number, number]; orientation?: "portrait" | "landscape" },
         })
         .from(el)
         .save();
