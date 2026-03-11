@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
     max_users?: number;
     subscription_starts_at?: string;
     subscription_ends_at?: string;
-    monthly_price?: number | null;
+    monthly_price?: number | string | null;
     currency?: string | null;
   };
   try {
@@ -111,7 +111,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "DATES_REQUIRED" }, { status: 400 });
   }
 
-  const monthlyPrice = body?.monthly_price != null && body.monthly_price !== "" ? Number(body.monthly_price) : null;
+  const rawPrice = body?.monthly_price;
+  const monthlyPrice = rawPrice != null && rawPrice !== "" ? Number(rawPrice) : null;
   const currency = typeof body?.currency === "string" ? body.currency.trim().slice(0, 3) || null : null;
 
   const crypto = await import("crypto");
