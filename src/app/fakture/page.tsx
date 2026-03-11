@@ -291,7 +291,7 @@ const headers = [
                               cache: "no-store",
                             });
                             const raw = await res.text();
-                            let data: { ok?: boolean; faktura?: { projekti_ids?: number[]; datum_izdavanja?: string; datum_dospijeca?: string; valuta?: string; pdv_iznos?: number; broj_fiskalni?: string } };
+                            let data: { ok?: boolean; faktura?: { projekti_ids?: number[]; datum_izdavanja?: string; datum_dospijeca?: string; valuta?: string; pdv_iznos?: number; broj_fiskalni?: string; broj_fakture?: string } };
                             try {
                               data = raw ? JSON.parse(raw) : {};
                             } catch {
