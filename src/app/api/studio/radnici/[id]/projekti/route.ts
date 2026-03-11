@@ -21,9 +21,7 @@ export async function GET(
       );
     }
 
-    const rows = await query<
-      { projekat_id: number; radni_naziv: string | null }[]
-    >(
+    const rows = await query<{ projekat_id: number; radni_naziv: string | null }>(
       `SELECT DISTINCT p.projekat_id, p.radni_naziv
          FROM projekat_faza_radnici pfr
          JOIN projekat_faze pf ON pf.projekat_faza_id = pfr.projekat_faza_id
