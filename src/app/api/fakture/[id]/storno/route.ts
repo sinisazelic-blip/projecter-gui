@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
         [`%"faktura_id":${originalFakturaId}%`],
       );
       if (auditRows?.length) {
-        projekatIds = [...new Set(auditRows.map((r: any) => Number(r.projekat_id)).filter(Number.isFinite))];
+        projekatIds = [...new Set(auditRows.map((r: any) => Number(r.projekat_id)).filter((n): n is number => Number.isFinite(n)))];
       }
     }
 
