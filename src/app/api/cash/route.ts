@@ -139,7 +139,8 @@ export async function POST(req: NextRequest) {
           [datumPlacanja, iznosKm, currency === "BAM" ? "BAM" : currency, iznosKm, note]
         );
         
-        paymentId = placanjeRes?.insertId ?? placanjeRes?.rows?.insertId ?? null;
+        const insertResult = placanjeRes as unknown as { insertId?: number };
+        paymentId = insertResult?.insertId ?? null;
         
         if (paymentId) {
           paymentCreated = true;
