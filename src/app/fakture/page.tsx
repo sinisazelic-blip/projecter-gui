@@ -80,7 +80,7 @@ export default function FakturePage() {
           cache: "no-store",
         });
         const text = await res.text();
-        let data: { ok?: boolean; error?: string; fakture?: unknown[]; narucioci?: unknown[] };
+        let data: { ok?: boolean; error?: string; fakture?: Faktura[]; narucioci?: Narucioc[] };
         try {
           data = text ? JSON.parse(text) : {};
         } catch {
@@ -91,8 +91,8 @@ export default function FakturePage() {
           throw new Error(data.error || t("fakture.loadError"));
         }
 
-        setFakture(data.fakture || []);
-        setNarucioci(data.narucioci || []);
+        setFakture(data.fakture ?? []);
+        setNarucioci(data.narucioci ?? []);
       } catch (err: any) {
         setError(err?.message || t("common.error"));
       } finally {
