@@ -3,6 +3,17 @@ import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+const EUR_TO_BAM = 1.95583;
+
+/** SQL izraz: iznos u KM (konvertuje EUR→BAM) */
+const IZNOS_KM_SQL = `
+  CASE
+    WHEN UPPER(COALESCE(f.valuta, 'BAM')) IN ('BAM', 'KM') THEN COALESCE(f.iznos_ukupno_km, 0)
+    WHEN UPPER(COALESCE(f.valuta, '')) = 'EUR' THEN COALESCE(f.iznos_ukupno_km, 0) * ${EUR_TO_BAM}
+    ELSE COALESCE(f.iznos_ukupno_km, 0)
+  END
+`;
+
 export async function GET() {
   try {
     const year = new Date().getFullYear();
@@ -86,7 +97,7 @@ export async function GET() {
         SELECT
           f.faktura_id,
           COALESCE(f.broj_fakture_puni, CONCAT(LPAD(f.broj_u_godini, 3, '0'), '/', f.godina)) AS broj_fakture,
-          f.iznos_ukupno_km AS iznos,
+          (${IZNOS_KM_SQL}) AS iznos,
           DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(kn.rok_placanja_dana, 30) DAY) AS datum_dospijeca,
           (SELECT p.radni_naziv
            FROM faktura_projekti fp2
@@ -130,7 +141,13 @@ export async function GET() {
     let troskoviYtd = 0;
     try {
       const fRows = (await query(
-        `SELECT COALESCE(SUM(iznos_ukupno_km), 0) AS s
+        `SELECT COALESCE(SUM(
+           CASE
+             WHEN UPPER(COALESCE(valuta, 'BAM')) IN ('BAM', 'KM') THEN COALESCE(iznos_ukupno_km, 0)
+             WHEN UPPER(COALESCE(valuta, '')) = 'EUR' THEN COALESCE(iznos_ukupno_km, 0) * ${EUR_TO_BAM}
+             ELSE COALESCE(iznos_ukupno_km, 0)
+           END
+         ), 0) AS s
          FROM fakture
          WHERE (fiskalni_status IS NULL OR fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))
            AND datum_izdavanja >= ? AND datum_izdavanja <= ?`,
@@ -154,17 +171,40 @@ export async function GET() {
     }
     const dobitYtd = Math.round((fakturisanoYtd - troskoviYtd) * 100) / 100;
 
-    // --- 4) Projekti u fazi izrade (status 1–7): suma budžeta ---
+    // --- 4) Projekti u fazi izrade (status 1–7): suma budžeta u KM ---
+    // Koristi staging (projekat_stavke) s konverzijom EUR→BAM, kao projects route
     let budzetProjekata = 0;
     let brojProjekata = 0;
     try {
+      const stagingJoin = `
+        LEFT JOIN (
+          SELECT ps1.projekat_id,
+            ROUND(SUM(
+              CASE
+                WHEN UPPER(COALESCE(ps1.valuta, 'BAM')) IN ('BAM','KM') THEN COALESCE(ps1.line_total, 0)
+                WHEN UPPER(COALESCE(ps1.valuta, '')) = 'EUR' THEN COALESCE(ps1.line_total, 0) * ${EUR_TO_BAM}
+                ELSE 0
+              END
+            ), 2) AS budzet_km
+          FROM projekat_stavke ps1
+          LEFT JOIN (
+            SELECT projekat_id, MAX(IFNULL(snapshot_id, 0)) AS snapshot_id
+            FROM projekat_stavke
+            GROUP BY projekat_id
+          ) ls ON ls.projekat_id = ps1.projekat_id
+          WHERE IFNULL(ps1.snapshot_id, 0) = COALESCE(ls.snapshot_id, 0)
+          GROUP BY ps1.projekat_id
+        ) ps ON ps.projekat_id = p.projekat_id
+      `;
+      const budgetExpr = "COALESCE(ps.budzet_km, vf.budzet_planirani, p.budzet_planirani, 0)";
       const sumRows = (await query(
         `
         SELECT
           COUNT(*) AS cnt,
-          COALESCE(SUM(COALESCE(vf.budzet_planirani, p.budzet_planirani, 0)), 0) AS budzet
+          COALESCE(SUM(${budgetExpr}), 0) AS budzet
         FROM projekti p
         LEFT JOIN vw_projekti_finansije vf ON vf.projekat_id = p.projekat_id
+        ${stagingJoin}
         WHERE p.status_id BETWEEN 1 AND 7
         `,
       )) as any[];
