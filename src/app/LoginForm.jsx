@@ -228,10 +228,8 @@ export default function LoginForm({ isDemoInstance = false }) {
       </button>
 
       {!isDemoInstance && (
-        <button
-          type="button"
-          onClick={handleDemoLogin}
-          disabled={loading}
+        <a
+          href="https://demo.studiotaf.xyz/"
           className="btn"
           style={{
             marginTop: 4,
@@ -242,11 +240,15 @@ export default function LoginForm({ isDemoInstance = false }) {
             background: "transparent",
             border: "1px solid var(--border, #333)",
             color: "var(--muted)",
+            textDecoration: "none",
+            textAlign: "center",
+            display: "block",
+            boxSizing: "border-box",
           }}
-          title="Prijava u demo bazu (korisnik demo / lozinka demo)"
+          title="Pogledaj demo na demo.studiotaf.xyz (korisnik demo / lozinka demo)"
         >
           Pogledaj demo
-        </button>
+        </a>
       )}
     </form>
   );
