@@ -1,6 +1,6 @@
 // src/app/projects/page.js
 import Link from "next/link";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { query } from "@/lib/db";
 import { getValidLocale } from "@/lib/i18n";
 import { getT } from "@/lib/translations";
@@ -277,13 +277,22 @@ function sortProjects(rows, status_group) {
 
 const COOKIE_NAME = "fluxa_session";
 
-async function apiGetNoStore(path, sessionCookieValue) {
-  const base = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+function getBaseUrl(host, protocol) {
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, "");
+  if (host) {
+    const p = host.includes("localhost") ? "http" : (protocol || "https");
+    return `${p}://${host}`;
+  }
+  return "http://localhost:3000";
+}
+
+async function apiGetNoStore(path, sessionCookieValue, base) {
+  const baseUrl = base || process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const headers = { "cache-control": "no-store" };
   if (sessionCookieValue) {
     headers["Cookie"] = `${COOKIE_NAME}=${sessionCookieValue}`;
   }
-  const res = await fetch(`${base}${path}`, {
+  const res = await fetch(`${baseUrl.replace(/\/$/, "")}${path}`, {
     cache: "no-store",
     headers,
   });
@@ -522,7 +531,11 @@ export default async function Page({ searchParams }) {
   const sessionCookie = cookieStore.get(COOKIE_NAME)?.value ?? null;
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value ?? "sr");
   const t = getT(locale);
-  const json = await apiGetNoStore(`/api/projects${qs}`, sessionCookie);
+  const headersList = await headers();
+  const host = headersList.get("host") || "";
+  const protocol = headersList.get("x-forwarded-proto") || "https";
+  const base = getBaseUrl(host, protocol);
+  const json = await apiGetNoStore(`/api/projects${qs}`, sessionCookie, base);
   const projectsRaw = json?.rows ?? [];
   const total = Number(json?.total ?? 0);
 
