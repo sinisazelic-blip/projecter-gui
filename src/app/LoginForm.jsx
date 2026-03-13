@@ -24,9 +24,19 @@ export default function LoginForm({ isDemoInstance = false }) {
       });
       let data = { ok: false, error: "" };
       try {
-        data = await res.json();
-      } catch {
-        setError("Greška od servera (nije JSON). Provjeri terminal gdje radi npm run dev.");
+        const text = await res.text();
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch {
+          const snippet = text.slice(0, 120).replace(/\s+/g, " ");
+          setError(
+            `Server nije vratio JSON (${res.status}). ${snippet ? `Odgovor: "${snippet}…"` : "Prazan odgovor."} ` +
+              "Provjeri env (DB_*, AUTH_SECRET) i logove na hostingu."
+          );
+          return;
+        }
+      } catch (parseErr) {
+        setError("Greška pri čitanju odgovora. Provjeri mrežu i logove na hostingu.");
         return;
       }
 
@@ -66,7 +76,15 @@ export default function LoginForm({ isDemoInstance = false }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: "demo", password: "demo" }),
       });
-      const data = await res.json().catch(() => ({ ok: false, error: "" }));
+      const text = await res.text();
+      let data = { ok: false, error: "" };
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        const snippet = text.slice(0, 120).replace(/\s+/g, " ");
+        setError(`Server nije vratio JSON (${res.status}). ${snippet ? `Odgovor: "${snippet}…"` : "Prazan odgovor."}`);
+        return;
+      }
       if (data.ok) {
         router.push("/dashboard");
         router.refresh();
