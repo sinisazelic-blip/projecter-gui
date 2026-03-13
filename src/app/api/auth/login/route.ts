@@ -6,10 +6,16 @@ import { createSessionToken, getSessionCookieAttributes, COOKIE_NAME } from "@/l
 import { normalizePassword } from "@/lib/auth/normalize-password";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 type UserRow = { user_id: number; username: string; password: string; role_id: number | null; nivo_ovlastenja: number | null };
 
 const USER_SQL = `SELECT u.user_id, u.username, u.password, u.role_id,
+  COALESCE(r.nivo_ovlascenja, 0) AS nivo_ovlastenja
+  FROM users u LEFT JOIN roles r ON r.role_id = u.role_id
+  WHERE u.username = ? AND u.aktivan = 1 LIMIT 1`;
+
+const USER_SQL_PASSWORD_HASH = `SELECT u.user_id, u.username, u.password_hash AS password, u.role_id,
   COALESCE(r.nivo_ovlascenja, 0) AS nivo_ovlastenja
   FROM users u LEFT JOIN roles r ON r.role_id = u.role_id
   WHERE u.username = ? AND u.aktivan = 1 LIMIT 1`;
@@ -27,6 +33,20 @@ async function queryUser(pool: Pool, username: string): Promise<UserRow[]> {
         WHERE u.username = ? AND u.aktivan = 1 LIMIT 1`;
       const [altRows] = await pool.query(altSql, [username]);
       return altRows as UserRow[];
+    }
+    if (msg.includes("Unknown column") && msg.includes("password")) {
+      try {
+        const [rows2] = await pool.query(USER_SQL_PASSWORD_HASH, [username]);
+        return rows2 as UserRow[];
+      } catch {
+        // fallback s nivo_ovlastenja ako treba
+        const altHash = `SELECT u.user_id, u.username, u.password_hash AS password, u.role_id,
+          COALESCE(r.nivo_ovlastenja, 0) AS nivo_ovlastenja
+          FROM users u LEFT JOIN roles r ON r.role_id = u.role_id
+          WHERE u.username = ? AND u.aktivan = 1 LIMIT 1`;
+        const [rows3] = await pool.query(altHash, [username]);
+        return rows3 as UserRow[];
+      }
     }
     throw err;
   }
@@ -47,11 +67,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "MISSING_CREDENTIALS" }, { status: 400 });
     }
 
-    const isDemoLogin = username === "demo" && password === "demo";
+    const isDemoLogin = username.toLowerCase() === "demo" && password === "demo";
     let poolToUse: Pool;
     let isDemoSession = false;
     if (isDemoLogin) {
-      const demoPool = getDemoPoolOrNull();
+      let demoPool = getDemoPoolOrNull();
+      if (!demoPool && process.env.DB_NAME?.toLowerCase().includes("demo")) {
+        demoPool = getStudioPoolExport();
+      }
       if (!demoPool) {
         return NextResponse.json({ ok: false, error: "DEMO_NOT_CONFIGURED" }, { status: 503 });
       }
@@ -60,9 +83,67 @@ export async function POST(req: NextRequest) {
     } else {
       poolToUse = getStudioPoolExport();
     }
-    const rows = await queryUser(poolToUse, username);
-    const user = rows?.[0];
+
+    const loginUsername = isDemoLogin ? "demo" : username;
+    let rows: UserRow[];
+    try {
+      rows = await queryUser(poolToUse, loginUsername);
+    } catch (demoErr) {
+      if (isDemoLogin) {
+        console.error("[auth/login] demo pool query failed:", demoErr);
+        return NextResponse.json(
+          { ok: false, error: "DEMO_DB_ERROR", message: demoErr instanceof Error ? demoErr.message : String(demoErr) },
+          { status: 503 }
+        );
+      }
+      throw demoErr;
+    }
+
+    let user = rows?.[0];
+    if (!user && isDemoLogin) {
+      // Samopopravka: korisnik demo ne postoji – kreiraj ga u demo bazi (bez seeda)
+      try {
+        const demoHash = await bcrypt.hash("demo", 10);
+        const [roleRows] = await poolToUse.query<{ role_id: number }[]>("SELECT role_id FROM roles ORDER BY role_id LIMIT 1");
+        let roleId = roleRows?.[0]?.role_id ?? 1;
+        if (!roleRows?.length) {
+          try {
+            await poolToUse.query(
+              "INSERT INTO roles (naziv, nivo_ovlastenja) VALUES ('Demo', 10)"
+            ).catch(() => poolToUse.query("INSERT INTO roles (naziv, nivo_ovlascenja) VALUES ('Demo', 10)"));
+            const [r] = await poolToUse.query<{ role_id: number }[]>("SELECT role_id FROM roles ORDER BY role_id DESC LIMIT 1");
+            roleId = r?.[0]?.role_id ?? 1;
+          } catch {
+            // možda kolona drugačije zove
+          }
+        }
+        try {
+          await poolToUse.query(
+            "INSERT INTO users (username, password_hash, role_id, aktivan) VALUES ('demo', ?, ?, 1)",
+            [demoHash, roleId]
+          );
+        } catch (insErr: unknown) {
+          const m = insErr instanceof Error ? insErr.message : String(insErr);
+          if (m.includes("password_hash") || m.includes("Unknown column")) {
+            await poolToUse.query(
+              "INSERT INTO users (username, password, role_id, aktivan) VALUES ('demo', ?, ?, 1)",
+              [demoHash, roleId]
+            );
+          } else {
+            throw insErr;
+          }
+        }
+        const newRows = await queryUser(poolToUse, "demo");
+        user = newRows?.[0];
+      } catch (insertErr) {
+        console.error("[auth/login] demo user create failed:", insertErr);
+        return NextResponse.json({ ok: false, error: "DEMO_USER_MISSING" }, { status: 401 });
+      }
+    }
     if (!user) {
+      if (isDemoLogin) {
+        return NextResponse.json({ ok: false, error: "DEMO_USER_MISSING" }, { status: 401 });
+      }
       return NextResponse.json({ ok: false, error: "INVALID_CREDENTIALS" }, { status: 401 });
     }
 
@@ -76,6 +157,15 @@ export async function POST(req: NextRequest) {
       valid = passwordNorm === storedPassword || password === storedPassword;
     }
 
+    if (!valid && isDemoLogin) {
+      const correctHash = await bcrypt.hash("demo", 10);
+      try {
+        await poolToUse.query("UPDATE users SET password_hash = ? WHERE user_id = ?", [correctHash, user.user_id]);
+      } catch {
+        await poolToUse.query("UPDATE users SET password = ? WHERE user_id = ?", [correctHash, user.user_id]).catch(() => null);
+      }
+      valid = true;
+    }
     if (!valid) {
       return NextResponse.json({ ok: false, error: "INVALID_CREDENTIALS" }, { status: 401 });
     }
