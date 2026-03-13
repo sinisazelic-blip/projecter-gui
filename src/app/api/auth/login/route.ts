@@ -104,15 +104,16 @@ export async function POST(req: NextRequest) {
       // Samopopravka: korisnik demo ne postoji – kreiraj ga u demo bazi (bez seeda)
       try {
         const demoHash = await bcrypt.hash("demo", 10);
-        const [roleRows] = await poolToUse.query<{ role_id: number }[]>("SELECT role_id FROM roles ORDER BY role_id LIMIT 1");
-        let roleId = roleRows?.[0]?.role_id ?? 1;
-        if (!roleRows?.length) {
+        const [roleRows] = await poolToUse.query("SELECT role_id FROM roles ORDER BY role_id LIMIT 1");
+        const roleRowsTyped = roleRows as { role_id: number }[];
+        let roleId = roleRowsTyped?.[0]?.role_id ?? 1;
+        if (!roleRowsTyped?.length) {
           try {
             await poolToUse.query(
               "INSERT INTO roles (naziv, nivo_ovlastenja) VALUES ('Demo', 10)"
             ).catch(() => poolToUse.query("INSERT INTO roles (naziv, nivo_ovlascenja) VALUES ('Demo', 10)"));
-            const [r] = await poolToUse.query<{ role_id: number }[]>("SELECT role_id FROM roles ORDER BY role_id DESC LIMIT 1");
-            roleId = r?.[0]?.role_id ?? 1;
+            const [r] = await poolToUse.query("SELECT role_id FROM roles ORDER BY role_id DESC LIMIT 1");
+            roleId = (r as { role_id: number }[])?.[0]?.role_id ?? 1;
           } catch {
             // možda kolona drugačije zove
           }
