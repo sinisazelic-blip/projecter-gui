@@ -23,14 +23,20 @@ function getNested(obj, path) {
   return typeof cur === "string" ? cur : path;
 }
 
-export function LocaleProvider({ children, initialLocale }) {
-  const [locale, setLocaleState] = useState(() => getValidLocale(initialLocale) || "sr");
+export function LocaleProvider({ children, initialLocale, forceLocale }) {
+  const forced = forceLocale != null ? getValidLocale(forceLocale) : null;
+  const [locale, setLocaleState] = useState(() => (forced || getValidLocale(initialLocale) || "sr"));
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setLocaleState(getLocaleFromDocument());
+    if (forced) {
+      setLocaleState(forced);
+      setLocaleInDocument(forced);
+    } else {
+      setLocaleState(getLocaleFromDocument());
+    }
     setMounted(true);
-  }, []);
+  }, [forced]);
 
   const setLocale = useCallback((newLocale) => {
     const valid = getValidLocale(newLocale);

@@ -1,4 +1,13 @@
 {
+  "login": {
+    "labelUsername": "Username",
+    "placeholderUsername": "Username",
+    "labelPassword": "Password",
+    "placeholderPassword": "Password",
+    "submit": "Sign in",
+    "submitLoading": "Signing in…",
+    "credentialsHint": "User: demo  Pass: demo"
+  },
   "globalError": {
     "title": "Something went wrong",
     "fallbackMessage": "An error occurred.",

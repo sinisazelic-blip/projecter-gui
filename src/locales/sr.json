@@ -1,4 +1,13 @@
 {
+  "login": {
+    "labelUsername": "Korisničko ime",
+    "placeholderUsername": "Korisničko ime",
+    "labelPassword": "Lozinka",
+    "placeholderPassword": "Lozinka",
+    "submit": "Prijava",
+    "submitLoading": "Prijava…",
+    "credentialsHint": "User: demo  Pass: demo"
+  },
   "globalError": {
     "title": "Nešto nije u redu",
     "fallbackMessage": "Došlo je do greške.",

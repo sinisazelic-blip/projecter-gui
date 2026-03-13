@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/components/LocaleProvider";
 
-export default function LoginForm() {
+export default function LoginForm({ isDemoInstance = false }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -70,15 +72,25 @@ export default function LoginForm() {
         router.refresh();
         return;
       }
-      if (res.status === 503 && data.error === "DEMO_NOT_CONFIGURED") {
-        setError("Demo baza nije konfigurirana (postavi DEMO_DB_NAME u env-u na hostingu).");
-        return;
+      if (res.status === 503) {
+        if (data.error === "DEMO_NOT_CONFIGURED") {
+          setError("Demo baza nije konfigurirana (postavi DEMO_DB_NAME u env-u na hostingu).");
+          return;
+        }
+        if (data.error === "DEMO_DB_ERROR") {
+          setError("Greška pri pristupu demo bazi: " + (data.message || "provjeri DEMO_DB_NAME i da baza postoji."));
+          return;
+        }
       }
       if (res.status === 401) {
+        if (data.error === "DEMO_USER_MISSING") {
+          setError("U demo bazi nema korisnika demo. Pokreni seed: node scripts/seed-demo.js (prema bazi iz DEMO_DB_NAME).");
+          return;
+        }
         setError("Demo nalog nije dostupan. U demo bazi mora postojati korisnik demo (seed: node scripts/seed-demo.js).");
         return;
       }
-      setError("Greška pri demo prijavi. Pokušaj ponovo.");
+      setError(data.message || data.error || "Greška pri demo prijavi. Pokušaj ponovo.");
     } catch {
       setError("Greška u vezi. Je li server pokrenut?");
     } finally {
@@ -99,6 +111,23 @@ export default function LoginForm() {
         maxWidth: 320,
       }}
     >
+      {isDemoInstance && (
+        <div
+          style={{
+            width: "100%",
+            padding: "12px 16px",
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: 10,
+            fontSize: 14,
+            color: "var(--muted)",
+            textAlign: "center",
+            fontFamily: "monospace",
+          }}
+        >
+          {t("login.credentialsHint")}
+        </div>
+      )}
       <div style={{ width: "100%" }}>
         <label
           htmlFor="login-user"
@@ -111,7 +140,7 @@ export default function LoginForm() {
             textAlign: "left",
           }}
         >
-          Korisničko ime
+          {t("login.labelUsername")}
         </label>
         <input
           id="login-user"
@@ -119,7 +148,7 @@ export default function LoginForm() {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           autoComplete="username"
-          placeholder="Korisničko ime"
+          placeholder={t("login.placeholderUsername")}
           disabled={loading}
           style={{
             width: "100%",
@@ -140,7 +169,7 @@ export default function LoginForm() {
             textAlign: "left",
           }}
         >
-          Lozinka
+          {t("login.labelPassword")}
         </label>
         <input
           id="login-password"
@@ -148,7 +177,7 @@ export default function LoginForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
-          placeholder="Lozinka"
+          placeholder={t("login.placeholderPassword")}
           disabled={loading}
           style={{
             width: "100%",
@@ -177,28 +206,30 @@ export default function LoginForm() {
           maxWidth: 200,
         }}
       >
-        {loading ? "Prijava…" : "Prijava"}
+        {loading ? t("login.submitLoading") : t("login.submit")}
       </button>
 
-      <button
-        type="button"
-        onClick={handleDemoLogin}
-        disabled={loading}
-        className="btn"
-        style={{
-          marginTop: 4,
-          padding: "10px 20px",
-          fontSize: 14,
-          width: "100%",
-          maxWidth: 200,
-          background: "transparent",
-          border: "1px solid var(--border, #333)",
-          color: "var(--muted)",
-        }}
-        title="Prijava u demo bazu (korisnik demo / lozinka demo)"
-      >
-        Pogledaj demo
-      </button>
+      {!isDemoInstance && (
+        <button
+          type="button"
+          onClick={handleDemoLogin}
+          disabled={loading}
+          className="btn"
+          style={{
+            marginTop: 4,
+            padding: "10px 20px",
+            fontSize: 14,
+            width: "100%",
+            maxWidth: 200,
+            background: "transparent",
+            border: "1px solid var(--border, #333)",
+            color: "var(--muted)",
+          }}
+          title="Prijava u demo bazu (korisnik demo / lozinka demo)"
+        >
+          Pogledaj demo
+        </button>
+      )}
     </form>
   );
 }

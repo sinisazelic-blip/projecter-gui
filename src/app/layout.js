@@ -10,10 +10,15 @@ import PerformanceMeasurePatch from "@/components/PerformanceMeasurePatch";
 import { GlobalTooltip } from "@/components/GlobalTooltip";
 import UputstvoShortcut from "@/components/UputstvoShortcut";
 import OnboardingTourWrapper from "@/components/OnboardingTourWrapper";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { getValidLocale } from "@/lib/i18n";
 import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
 import { runWithSession } from "@/lib/db";
+
+function isDemoInstanceHost(host) {
+  if (!host || typeof host !== "string") return false;
+  return host.includes("demo.studiotaf.xyz") || host.startsWith("demo.");
+}
 
 export const metadata = {
   title: "Fluxa · P&FE",
@@ -25,7 +30,10 @@ export const metadata = {
 
 export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
-  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value ?? "sr");
+  const headersList = await headers();
+  const host = headersList.get("host") || "";
+  const forceEnForDemo = isDemoInstanceHost(host);
+  const locale = forceEnForDemo ? "en" : getValidLocale(cookieStore.get("NEXT_LOCALE")?.value ?? "sr");
   const lang = locale === "en" ? "en" : "bs";
   const token = cookieStore.get(COOKIE_NAME)?.value;
   const session = token ? verifySessionToken(token) : null;
@@ -41,7 +49,7 @@ export default async function RootLayout({ children }) {
       <body>
         <PerformanceMeasurePatch />
         <ThemeProvider>
-        <LocaleProvider initialLocale={locale}>
+        <LocaleProvider initialLocale={locale} forceLocale={forceEnForDemo ? "en" : undefined}>
         <FluxaEditionProvider>
           <LicenceCheckWrapper>
           <AuthUserProvider>

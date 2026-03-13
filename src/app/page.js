@@ -1,8 +1,18 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import LoginForm from "./LoginForm";
 import FluxaLogo from "@/components/FluxaLogo";
 
-export default function HomePage() {
+function isDemoInstanceHost(host) {
+  if (!host || typeof host !== "string") return false;
+  return host.includes("demo.studiotaf.xyz") || host.startsWith("demo.");
+}
+
+export default async function HomePage() {
+  const headersList = await headers();
+  const host = headersList.get("host") || "";
+  const isDemoInstance = isDemoInstanceHost(host);
+
   return (
     <main
       style={{
@@ -46,7 +56,8 @@ export default function HomePage() {
           Project & Finance Engine
         </p>
 
-        <LoginForm />
+        <LoginForm isDemoInstance={isDemoInstance} />
+        {!isDemoInstance && (
         <Link
           href="/owner-login"
           style={{
@@ -60,6 +71,7 @@ export default function HomePage() {
         >
           Owner pristup
         </Link>
+        )}
       </div>
     </main>
   );
