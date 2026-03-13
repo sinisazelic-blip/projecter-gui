@@ -24,38 +24,36 @@ function optEnv(name: string): string | undefined {
   return process.env[name];
 }
 
-function createStudioPool(): mysql.Pool {
-  return mysql.createPool({
+function getPoolOptions(dbName: string) {
+  const port = process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306;
+  const opts: mysql.PoolOptions = {
     host: mustEnv("DB_HOST"),
     user: mustEnv("DB_USER"),
     password: mustEnv("DB_PASSWORD"),
-    database: mustEnv("DB_NAME"),
-    port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
+    database: dbName,
+    port,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
     enableKeepAlive: true,
     keepAliveInitialDelay: 0,
-    connectTimeout: 10000,
-  });
+    connectTimeout: 15000,
+  };
+  // DO Managed MySQL zahtijeva SSL; ostale instalacije mogu raditi bez
+  if (port === 25060 || process.env.DB_SSL === "1" || process.env.DB_SSL === "true") {
+    opts.ssl = { rejectUnauthorized: false };
+  }
+  return opts;
+}
+
+function createStudioPool(): mysql.Pool {
+  return mysql.createPool(getPoolOptions(mustEnv("DB_NAME")));
 }
 
 function createDemoPool(): mysql.Pool {
   const demoDb = optEnv("DEMO_DB_NAME");
   if (!demoDb) throw new Error("DEMO_DB_NAME is required for demo pool");
-  return mysql.createPool({
-    host: mustEnv("DB_HOST"),
-    user: mustEnv("DB_USER"),
-    password: mustEnv("DB_PASSWORD"),
-    database: demoDb,
-    port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    enableKeepAlive: true,
-    keepAliveInitialDelay: 0,
-    connectTimeout: 10000,
-  });
+  return mysql.createPool(getPoolOptions(demoDb));
 }
 
 const studioPoolRef: { current: mysql.Pool | null } = {
