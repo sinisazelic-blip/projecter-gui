@@ -21,7 +21,7 @@ $status = git status --short
 if ([string]::IsNullOrWhiteSpace($status)) {
     Write-Host "Nema novih izmjena za commit." -ForegroundColor Yellow
 } else {
-    git commit -m "Novi deal: +Novi klijent flow, SC layout naziv, demo login hint, i18n"
+    git commit -m "Novi deal +Novi flow, SC layout naziv, POST /api/klijenti, newDealForm i18n"
     Write-Host "Commitano." -ForegroundColor Green
 }
 Write-Host ""

@@ -128,6 +128,7 @@ export default function StrategicCoreClient() {
   });
 
   const [creatorCells, setCreatorCells] = useState<Record<string, { stavka_id: number; naziv: string; cijena: number; valuta: string; boja: string }>>({});
+  const [creatorLayoutName, setCreatorLayoutName] = useState("");
   const [creatorEditing, setCreatorEditing] = useState<{ col: number; row: number } | null>(null);
   const [creatorRows, setCreatorRows] = useState(ROWS_NOVI);
   const [selectedStavkaForColor, setSelectedStavkaForColor] = useState<CjenovnikItem | null>(null);
@@ -379,6 +380,7 @@ export default function StrategicCoreClient() {
   const handleLayoutSC = () => {
     setScreen("layout_creator");
     setCreatorCells({});
+    setCreatorLayoutName("");
     setCreatorEditing(null);
     setCreatorRows(ROWS_NOVI);
     setEditingLayoutId(null);
@@ -407,6 +409,7 @@ export default function StrategicCoreClient() {
         };
       }
       setCreatorCells(creatorCellsMap);
+      setCreatorLayoutName(j.layout?.naziv ?? "");
       setEditingLayoutId(sc_layout_id);
       setEditingLayoutMeta({ cols: j.layout?.cols ?? COLS_NOVI, rows: j.layout?.rows ?? ROWS_NOVI });
       setCreatorEditing(null);
@@ -468,9 +471,11 @@ export default function StrategicCoreClient() {
   };
 
   const handleSaveLayout = async () => {
-    const layout = editingLayoutId ? layouts.find((l) => l.sc_layout_id === editingLayoutId) : null;
-    const naziv = (editingLayoutId && layout?.naziv) ? layout.naziv : (window.prompt(t("scPage.layoutNamePrompt")) ?? "");
-    if (!naziv?.trim()) return;
+    const naziv = creatorLayoutName.trim();
+    if (!naziv) {
+      setError(t("scPage.errLayoutNameRequired"));
+      return;
+    }
     const cells: { col_index: number; row_index: number; stavka_id: number; boja: string }[] = [];
     for (const [key, v] of Object.entries(creatorCells)) {
       const [col, row] = key.split(",").map(Number);
@@ -490,6 +495,7 @@ export default function StrategicCoreClient() {
       const j = await res.json();
       if (!j.ok) throw new Error(j.error || t("common.error"));
       loadLayouts();
+      setCreatorLayoutName("");
       setEditingLayoutId(null);
       setEditingLayoutMeta(null);
       setIzaberiLayoutSamoEdit(false);
@@ -898,6 +904,16 @@ export default function StrategicCoreClient() {
           <h2 style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 800, marginBottom: 12 }}>
             {editingLayoutId ? t("scPage.editLayoutTitle") : t("scPage.newLayoutTitle")}
           </h2>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4 }}>{t("scPage.layoutNamePrompt")}</label>
+            <input
+              value={creatorLayoutName}
+              onChange={(e) => setCreatorLayoutName(e.target.value)}
+              placeholder={t("scPage.layoutNamePlaceholder")}
+              className="input"
+              style={{ width: "100%", padding: 12 }}
+            />
+          </div>
           <p style={{ fontSize: "clamp(12px, 2.2vw, 14px)", opacity: 0.8, marginBottom: 12 }}>
             {t("scPage.clickFieldHint")}
           </p>
@@ -943,7 +959,7 @@ export default function StrategicCoreClient() {
             </button>
           )}
           <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn" onClick={() => { setScreen("izbor"); setEditingLayoutId(null); setEditingLayoutMeta(null); setCreatorRows(ROWS_NOVI); setIzaberiLayoutSamoEdit(false); }} style={BTN_STYLE}>
+            <button className="btn" onClick={() => { setScreen("izbor"); setCreatorLayoutName(""); setEditingLayoutId(null); setEditingLayoutMeta(null); setCreatorRows(ROWS_NOVI); setIzaberiLayoutSamoEdit(false); }} style={BTN_STYLE}>
               {t("scPage.cancel")}
             </button>
             <button className="btn btn--active" onClick={handleSaveLayout} disabled={loading} style={BTN_STYLE}>
