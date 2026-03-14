@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useTheme } from "@/components/ThemeProvider";
 
 export default function FluxaLogo({ className = "brandLogo", alt = "FLUXA", style, linkToDashboard = true, ...props }) {
@@ -9,9 +8,9 @@ export default function FluxaLogo({ className = "brandLogo", alt = "FLUXA", styl
   const img = <img src={src} alt={alt} className={className || undefined} style={style} {...props} />;
   if (linkToDashboard) {
     return (
-      <Link href="/dashboard" className="brandLogoLink" title="Dashboard">
+      <a href="/dashboard" className="brandLogoLink" title="Dashboard">
         {img}
-      </Link>
+      </a>
     );
   }
   return img;
