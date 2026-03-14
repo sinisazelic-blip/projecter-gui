@@ -468,6 +468,16 @@ option {
 .brandLogoBlock .brandLogo {
   display: block;
 }
+.brandLogoLink {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.brandLogoLink:hover {
+  opacity: 0.9;
+}
 .brandSlogan {
   font-size: 12px;
   line-height: 1.25;
