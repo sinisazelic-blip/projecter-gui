@@ -14,20 +14,22 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Build OK." -ForegroundColor Green
 Write-Host ""
 
-Write-Host "=== 2. Commit izmjena na fix/status-flow ===" -ForegroundColor Cyan
+$currentBranch = git rev-parse --abbrev-ref HEAD
+Write-Host "=== 2. Commit izmjena na $currentBranch ===" -ForegroundColor Cyan
 git add -A
 $status = git status --short
 if ([string]::IsNullOrWhiteSpace($status)) {
     Write-Host "Nema novih izmjena za commit." -ForegroundColor Yellow
 } else {
-    git commit -m "i18n: finance tools, izvještaji, krediti, početna stanja, ColumnPicker, VAT overview"
+    git commit -m "Novi deal: +Novi klijent flow, SC layout naziv, demo login hint, i18n"
     Write-Host "Commitano." -ForegroundColor Green
 }
 Write-Host ""
 
 Write-Host "=== 3. Merge u main i push ===" -ForegroundColor Cyan
 git checkout main
-git merge fix/status-flow -m "Merge fix/status-flow: i18n sr/en, EUR za EU verziju"
+$mergeMsg = "Merge " + $currentBranch + ": Novi deal flow, SC layout, demo hint, i18n"
+git merge $currentBranch -m $mergeMsg
 
 Write-Host "Push main na origin..." -ForegroundColor Yellow
 git push origin main
@@ -38,5 +40,5 @@ Write-Host "DigitalOcean ce automatski deployovati app.studiotaf.xyz i demo.stud
 Write-Host "Ako ne krene automatski, u DO konzoli: Apps -> studio -> Deploy"
 Write-Host ""
 
-# Vrati se na fix/status-flow
-git checkout fix/status-flow
+# Vrati se na prethodnu granu
+git checkout $currentBranch
