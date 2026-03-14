@@ -8,7 +8,7 @@ const STORAGE_KEY_OWNER = "FLUXA_OWNER_TOKEN";
 
 const FluxaEditionContext = createContext(null);
 
-export function FluxaEditionProvider({ children }) {
+export function FluxaEditionProvider({ children, initialDemoInstance = false }) {
   const [edition, setEditionState] = useState("Full");
   const [isOwner, setIsOwner] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -32,7 +32,7 @@ export function FluxaEditionProvider({ children }) {
     }
   }, []);
 
-  const effectiveEdition = isOwner ? edition : "Full";
+  const effectiveEdition = isOwner ? edition : initialDemoInstance ? "Compact" : "Full";
 
   const isFeatureVisible = useCallback(
     (featureId) => {

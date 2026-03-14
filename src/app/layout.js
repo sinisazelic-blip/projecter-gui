@@ -50,7 +50,7 @@ export default async function RootLayout({ children }) {
         <PerformanceMeasurePatch />
         <ThemeProvider>
         <LocaleProvider initialLocale={locale} forceLocale={forceEnForDemo ? "en" : undefined}>
-        <FluxaEditionProvider>
+        <FluxaEditionProvider initialDemoInstance={forceEnForDemo}>
           <LicenceCheckWrapper>
           <AuthUserProvider>
             <GlobalTooltip />
