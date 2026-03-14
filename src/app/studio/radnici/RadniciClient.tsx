@@ -7,7 +7,7 @@ import type { RadnikRow } from "./page";
 import { setRadnikActive } from "./actions";
 import { useTranslation } from "@/components/LocaleProvider";
 
-type ProjekatLink = { projekat_id: number; radni_naziv: string };
+type ProjekatLink = { projekat_id: number; radni_naziv: string; tip?: "account_manager" | "crew" | "faze" };
 
 type FormState = {
   radnik_id?: number;
@@ -1010,7 +1010,7 @@ export default function RadniciClient({
                         }}
                       >
                         {radnikProjekti.map((pr) => (
-                          <li key={pr.projekat_id}>
+                          <li key={pr.projekat_id} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                             <Link
                               href={`/projects/${pr.projekat_id}`}
                               style={{
@@ -1026,11 +1026,26 @@ export default function RadniciClient({
                               style={{
                                 color: "var(--muted)",
                                 fontSize: 12,
-                                marginLeft: 6,
                               }}
                             >
                               #{pr.projekat_id}
                             </span>
+                            {pr.tip && (
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  padding: "2px 6px",
+                                  borderRadius: 6,
+                                  background: pr.tip === "account_manager" ? "rgba(59, 130, 246, 0.2)" : pr.tip === "crew" ? "rgba(34, 197, 94, 0.2)" : "rgba(255,255,255,0.08)",
+                                  color: pr.tip === "account_manager" ? "rgb(96, 165, 250)" : pr.tip === "crew" ? "rgb(74, 222, 128)" : "var(--muted)",
+                                  fontWeight: 600,
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.04em",
+                                }}
+                              >
+                                {pr.tip === "account_manager" ? t("studioRadnici.tipAccountManager") : pr.tip === "crew" ? t("studioRadnici.tipCrew") : t("studioRadnici.tipFaze")}
+                              </span>
+                            )}
                           </li>
                         ))}
                       </ul>
