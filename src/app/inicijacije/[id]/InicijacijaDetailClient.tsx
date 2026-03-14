@@ -2,8 +2,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { DatePickerDDMMYYYY } from "@/components/DatePickers";
 import FluxaLogo from "@/components/FluxaLogo";
 import StatusTimelineBar from "@/components/StatusTimelineBar";
@@ -26,6 +27,7 @@ type Row = {
 
   operativni_signal?: "NORMALNO" | "PAZNJA" | "STOP" | null;
   opened_at?: string | null;
+  account_manager_name?: string | null;
 };
 
 type Klijent = { klijent_id: number; naziv_klijenta: string };
@@ -85,6 +87,22 @@ type ProjectStatusRow = {
 };
 
 const USER_LABEL = "SiNY";
+const TIMELINE_STORAGE_KEY = "fluxa_deal_timeline_open";
+
+function getTimelineStoredOpen() {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(TIMELINE_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function setTimelineStoredOpen(open: boolean) {
+  try {
+    window.localStorage.setItem(TIMELINE_STORAGE_KEY, open ? "1" : "0");
+  } catch {}
+}
 
 function getViaOptions(t: (k: string) => string) {
   return [
@@ -309,6 +327,7 @@ export default function InicijacijaDetailClient() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingTimeline, setSavingTimeline] = useState(false);
+  const [timelineExpanded, setTimelineExpanded] = useState(false);
   const [addingItem, setAddingItem] = useState(false);
   const [openingProject, setOpeningProject] = useState(false);
   const [ponudeList, setPonudeList] = useState<{ ponuda_id: number; broj_ponude: string }[]>([]);
@@ -546,6 +565,18 @@ export default function InicijacijaDetailClient() {
       setLoading(false);
     }
   }
+
+  const toggleTimelineExpanded = useCallback(() => {
+    setTimelineExpanded((prev) => {
+      const next = !prev;
+      setTimelineStoredOpen(next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    setTimelineExpanded(getTimelineStoredOpen());
+  }, []);
 
   useEffect(() => {
     if (!Number.isFinite(id) || id <= 0) return;
@@ -1555,23 +1586,66 @@ onClick={() => setCloseOpen(false)}
           {/* TIMELINE */}
           {!loading && (
             <div className="cardLike">
-              <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 10 }}>
-                {t("dealDetail.timelineDeal")}
+              <button
+                type="button"
+                onClick={toggleTimelineExpanded}
+                aria-expanded={timelineExpanded}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  background: "none",
+                  border: "none",
+                  color: "inherit",
+                  cursor: "pointer",
+                  padding: 0,
+                  marginBottom: timelineExpanded ? 10 : 0,
+                  textAlign: "left",
+                  fontSize: "inherit",
+                }}
+              >
+                <span style={{ fontWeight: 800, fontSize: 16 }}>
+                  {t("dealDetail.timelineDeal")}
+                </span>
+                <span style={{ marginLeft: "auto", display: "flex", alignItems: "center" }}>
+                  {timelineExpanded ? <ChevronUp size={20} strokeWidth={2} /> : <ChevronDown size={20} strokeWidth={2} />}
+                </span>
+              </button>
+
+              {/* Uvijek vidljivo: Account Manager, Otvoren, Deadline */}
+              <div
+                style={{
+                  marginTop: 10,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 16,
+                  flexWrap: "wrap",
+                  marginBottom: 12,
+                }}
+              >
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 140 }}>
+                  <div className="label">{t("dealDetail.accountManager")}</div>
+                  <div style={{ ...inputStyle, opacity: 0.9 }}>
+                    {(row?.account_manager_name ?? "").trim() || "—"}
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 140, marginLeft: "auto" }}>
+                  <div className="label">{t("dealDetail.openedAt")}</div>
+                  <div style={{ ...inputStyle, opacity: 0.9 }}>
+                    {formatHumanDT(row?.opened_at ?? null, locale)}
+                  </div>
+                </div>
               </div>
 
               <div
-                className="grid2"
                 style={{
-                  marginTop: 10,
+                  marginTop: 4,
                   opacity: dealReadOnly ? 0.65 : 1,
                   pointerEvents: dealReadOnly ? "none" : "auto",
                 }}
               >
-                <div className="label">{t("dealDetail.openedAt")}</div>
-                <div style={{ ...inputStyle, opacity: 0.9 }}>
-                  {formatHumanDT(row?.opened_at ?? null, locale)}
-                </div>
-
                 <div className="label deadlineLabel">
                   {t("dealDetail.deadlineLabel")}
                 </div>
@@ -1599,28 +1673,39 @@ onClick={() => setCloseOpen(false)}
                     {t("dealDetail.deadlineOnlyMattersHint")}
                   </div>
                 </div>
-
-                <div className="label">{t("dealDetail.via")}</div>
-                <select
-                  value={t_via}
-                  onChange={(e) => setTVia(e.target.value)}
-                  style={inputStyle}
-                >
-                  {VIA_OPTIONS.map((o) => (
-                    <option key={o.v} value={o.v}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-
-                <div className="label">{t("dealDetail.note")}</div>
-                <input
-                  value={t_note}
-                  onChange={(e) => setTNote(e.target.value)}
-                  placeholder={t("dealDetail.notePlaceholderDeal")}
-                  style={inputStyle}
-                />
               </div>
+
+              {timelineExpanded && (
+                <div
+                  className="grid2"
+                  style={{
+                    marginTop: 14,
+                    opacity: dealReadOnly ? 0.65 : 1,
+                    pointerEvents: dealReadOnly ? "none" : "auto",
+                  }}
+                >
+                  <div className="label">{t("dealDetail.via")}</div>
+                  <select
+                    value={t_via}
+                    onChange={(e) => setTVia(e.target.value)}
+                    style={inputStyle}
+                  >
+                    {VIA_OPTIONS.map((o) => (
+                      <option key={o.v} value={o.v}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="label">{t("dealDetail.note")}</div>
+                  <input
+                    value={t_note}
+                    onChange={(e) => setTNote(e.target.value)}
+                    placeholder={t("dealDetail.notePlaceholderDeal")}
+                    style={inputStyle}
+                  />
+                </div>
+              )}
 
               <div
                 style={{

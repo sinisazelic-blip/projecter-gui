@@ -21,14 +21,14 @@ $status = git status --short
 if ([string]::IsNullOrWhiteSpace($status)) {
     Write-Host "Nema novih izmjena za commit." -ForegroundColor Yellow
 } else {
-    git commit -m "Novi deal +Novi flow, SC layout naziv, POST /api/klijenti, newDealForm i18n"
+    git commit -m "Crew, Account Manager, Timeline collapsible: Deal + Projekat, SC Novi deal"
     Write-Host "Commitano." -ForegroundColor Green
 }
 Write-Host ""
 
 Write-Host "=== 3. Merge u main i push ===" -ForegroundColor Cyan
 git checkout main
-$mergeMsg = "Merge " + $currentBranch + ": Novi deal flow, SC layout, demo hint, i18n"
+$mergeMsg = "Merge " + $currentBranch + ": Crew, Account Manager, Timeline collapsible, SC Novi deal"
 git merge $currentBranch -m $mergeMsg
 
 Write-Host "Push main na origin..." -ForegroundColor Yellow

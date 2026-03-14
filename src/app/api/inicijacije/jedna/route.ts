@@ -48,7 +48,11 @@ export async function GET(req: Request) {
 
         -- ✅ kanonski status projekta (statusi_projekta)
         p.status_id AS projekat_status_id,
-        sp.naziv_statusa AS projekat_status_name
+        sp.naziv_statusa AS projekat_status_name,
+
+        -- ✅ Account Manager (onaj koji je otvorio projekat)
+        p.account_manager_radnik_id,
+        CONCAT(COALESCE(am.ime,''), ' ', COALESCE(am.prezime,'')) AS account_manager_name
 
       FROM inicijacije i
       LEFT JOIN statusi s
@@ -57,6 +61,8 @@ export async function GET(req: Request) {
         ON p.projekat_id = i.projekat_id
       LEFT JOIN statusi_projekta sp
         ON sp.status_id = p.status_id
+      LEFT JOIN radnici am
+        ON am.radnik_id = p.account_manager_radnik_id
       WHERE i.inicijacija_id = ?
       LIMIT 1
       `,

@@ -153,9 +153,9 @@ export async function GET(req) {
         where.push("1 = 0");
       } else {
         where.push(
-          "p.projekat_id IN (SELECT DISTINCT pf.projekat_id FROM projekat_faze pf INNER JOIN projekat_faza_radnici pfr ON pfr.projekat_faza_id = pf.projekat_faza_id WHERE pfr.radnik_id = ?)",
+          "(p.projekat_id IN (SELECT DISTINCT pf.projekat_id FROM projekat_faze pf INNER JOIN projekat_faza_radnici pfr ON pfr.projekat_faza_id = pf.projekat_faza_id WHERE pfr.radnik_id = ?) OR p.projekat_id IN (SELECT projekat_id FROM projekat_crew WHERE radnik_id = ?))",
         );
-        params.push(radnikId);
+        params.push(radnikId, radnikId);
       }
     }
 

@@ -17,6 +17,7 @@ import { getT } from "@/lib/translations";
 
 import ProjectHeader from "./_components/ProjectHeader";
 import ProjectSummaryCard from "./_components/ProjectSummaryCard";
+import CrewPanel from "./_components/CrewPanel";
 import CostsPanel from "./_components/CostsPanel";
 
 import FinalOkButtonClient from "./_components/FinalOkButtonClient";
@@ -503,8 +504,11 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
       `SELECT 1 FROM projekat_faze pf
        INNER JOIN projekat_faza_radnici pfr ON pfr.projekat_faza_id = pf.projekat_faza_id
        WHERE pf.projekat_id = ? AND pfr.radnik_id = ?
+       UNION
+       SELECT 1 FROM projekat_crew pc
+       WHERE pc.projekat_id = ? AND pc.radnik_id = ?
        LIMIT 1`,
-      [projekatId, radnikId],
+      [projekatId, radnikId, projekatId, radnikId],
     );
     if (!accessRows?.length) redirect("/projects");
   }
@@ -532,6 +536,10 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
 
       -- ✅ FIX: view nema radni_naziv
       p.radni_naziv AS radni_naziv,
+
+      -- ✅ Account Manager (onaj koji je otvorio projekat)
+      p.account_manager_radnik_id,
+      CONCAT(COALESCE(am.ime,''), ' ', COALESCE(am.prezime,'')) AS account_manager_name,
 
       -- ✅ Deal -> Project ključne stvari
       p.rok_glavni,
@@ -563,6 +571,8 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
     FROM projekti p
     LEFT JOIN statusi_projekta s
       ON s.status_id = p.status_id
+    LEFT JOIN radnici am
+      ON am.radnik_id = p.account_manager_radnik_id
 
     LEFT JOIN vw_projekti_finansije v
       ON v.projekat_id = p.projekat_id
@@ -631,6 +641,21 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
   );
 
   const project = projRows?.[0];
+
+  let crew = [];
+  try {
+    const crewRows = await query(
+      `SELECT pc.radnik_id, pc.sort_order, r.ime, r.prezime
+       FROM projekat_crew pc
+       JOIN radnici r ON r.radnik_id = pc.radnik_id
+       WHERE pc.projekat_id = ?
+       ORDER BY pc.sort_order ASC, pc.radnik_id ASC`,
+      [projekatId],
+    );
+    crew = Array.isArray(crewRows) ? crewRows : [];
+  } catch {
+    crew = [];
+  }
 
   const costs = await query(
     `
@@ -1143,6 +1168,12 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
 
           <ProjectHeader project={project} statusName={statusName} hideTitle t={t} locale={locale} />
           <ProjectSummaryCard project={project} locale={locale} />
+
+          <CrewPanel
+            project={project}
+            crew={crew}
+            readOnly={isReadOnlyOwner}
+          />
 
           {!!project?.napomena && (
             <div className="noteBox">

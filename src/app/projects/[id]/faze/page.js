@@ -32,8 +32,11 @@ export default async function ProjekatFazePage({ params }) {
       `SELECT 1 FROM projekat_faze pf
        INNER JOIN projekat_faza_radnici pfr ON pfr.projekat_faza_id = pf.projekat_faza_id
        WHERE pf.projekat_id = ? AND pfr.radnik_id = ?
+       UNION
+       SELECT 1 FROM projekat_crew pc
+       WHERE pc.projekat_id = ? AND pc.radnik_id = ?
        LIMIT 1`,
-      [projekatId, radnikId],
+      [projekatId, radnikId, projekatId, radnikId],
     );
     if (!accessRows?.length) redirect("/projects");
   }

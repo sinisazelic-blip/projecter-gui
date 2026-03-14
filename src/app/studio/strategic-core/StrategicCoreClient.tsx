@@ -141,10 +141,24 @@ export default function StrategicCoreClient() {
 
   const [cjenovnikSearch, setCjenovnikSearch] = useState("");
 
+  const [noviKlijentModalOpen, setNoviKlijentModalOpen] = useState(false);
+  const [noviKlijentModalFor, setNoviKlijentModalFor] = useState<"narucilac" | "krajnji">("narucilac");
+  const [noviKlijentModalNaziv, setNoviKlijentModalNaziv] = useState("");
+  const [noviKlijentModalSaving, setNoviKlijentModalSaving] = useState(false);
+  const [noviKlijentModalError, setNoviKlijentModalError] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const cellKey = (col: number, row: number) => `${col},${row}`;
+
+  const requiredFieldWrapStyle: React.CSSProperties = {
+    background: "rgba(125, 211, 252, 0.06)",
+    border: "1px solid rgba(125, 211, 252, 0.2)",
+    borderRadius: 12,
+    padding: 2,
+    marginBottom: 12,
+  };
 
   const loadLayouts = useCallback(async () => {
     try {
@@ -245,6 +259,44 @@ export default function StrategicCoreClient() {
       setError(e?.message || t("scPage.errCreateDeal"));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openNoviKlijentModal = (forField: "narucilac" | "krajnji") => {
+    setNoviKlijentModalFor(forField);
+    setNoviKlijentModalNaziv("");
+    setNoviKlijentModalError(null);
+    setNoviKlijentModalOpen(true);
+  };
+
+  const handleNoviKlijentSave = async () => {
+    const naziv = noviKlijentModalNaziv.trim();
+    if (!naziv) {
+      setNoviKlijentModalError(t("scPage.errNazivRequired"));
+      return;
+    }
+    setNoviKlijentModalSaving(true);
+    setNoviKlijentModalError(null);
+    try {
+      const res = await fetch("/api/klijenti", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ naziv_klijenta: naziv }),
+      });
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error || t("common.error"));
+      const newK = { klijent_id: j.klijent_id, naziv_klijenta: j.naziv_klijenta, is_ino: 0 };
+      setKlijenti((prev) => [...prev, newK].sort((a, b) => a.naziv_klijenta.localeCompare(b.naziv_klijenta)));
+      if (noviKlijentModalFor === "narucilac") {
+        setNoviForm((p) => ({ ...p, narucilac_id: String(j.klijent_id) }));
+      } else {
+        setNoviForm((p) => ({ ...p, krajnji_klijent_id: String(j.klijent_id) }));
+      }
+      setNoviKlijentModalOpen(false);
+    } catch (e: any) {
+      setNoviKlijentModalError(e?.message || t("scPage.errCreateClient"));
+    } finally {
+      setNoviKlijentModalSaving(false);
     }
   };
 
@@ -617,79 +669,61 @@ export default function StrategicCoreClient() {
           <h2 style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 800, marginBottom: 16 }}>{t("scPage.newDealTitle")}</h2>
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4 }}>{t("scPage.currency")}</label>
-            <select
-              value={valuta}
-              onChange={(e) => setValuta(e.target.value as "BAM" | "EUR")}
-              className="input"
-              style={{ width: "100%", padding: 12 }}
-            >
+            <select value={valuta} onChange={(e) => setValuta(e.target.value as "BAM" | "EUR")} className="input" style={{ width: "100%", padding: 12 }}>
               <option value="BAM">KM</option>
               <option value="EUR">EUR</option>
             </select>
           </div>
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4 }}>
-              {t("scPage.narucilacRequired")}
-            </label>
-            <select
-              value={noviForm.narucilac_id}
-              onChange={(e) => setNoviForm((p) => ({ ...p, narucilac_id: e.target.value }))}
-              className="input"
-              style={{ width: "100%", padding: 12 }}
-            >
-              <option value="">{t("scPage.selectOption")}</option>
-              {klijenti.map((k) => (
-                <option key={k.klijent_id} value={k.klijent_id}>{k.naziv_klijenta}</option>
-              ))}
-            </select>
+          <div style={requiredFieldWrapStyle}>
+            <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4, marginLeft: 4 }}>{t("scPage.narucilacRequired")}</label>
+            <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+              <select value={noviForm.narucilac_id} onChange={(e) => setNoviForm((p) => ({ ...p, narucilac_id: e.target.value }))} className="input" style={{ flex: 1, padding: 12 }}>
+                <option value="">{t("scPage.selectOption")}</option>
+                {klijenti.map((k) => <option key={k.klijent_id} value={k.klijent_id}>{k.naziv_klijenta}</option>)}
+              </select>
+              <button type="button" className="btn btn--active" onClick={() => openNoviKlijentModal("narucilac")} title={t("scPage.addClient")} style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>+ {t("scPage.btnNew")}</button>
+            </div>
           </div>
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4 }}>
-              {t("scPage.krajnjiOptional")}
-            </label>
-            <select
-              value={noviForm.krajnji_klijent_id}
-              onChange={(e) => setNoviForm((p) => ({ ...p, krajnji_klijent_id: e.target.value }))}
-              className="input"
-              style={{ width: "100%", padding: 12 }}
-            >
-              <option value="">{t("scPage.notSelected")}</option>
-              {klijenti.map((k) => (
-                <option key={k.klijent_id} value={k.klijent_id}>{k.naziv_klijenta}</option>
-              ))}
-            </select>
+            <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4 }}>{t("scPage.krajnjiOptional")}</label>
+            <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+              <select value={noviForm.krajnji_klijent_id} onChange={(e) => setNoviForm((p) => ({ ...p, krajnji_klijent_id: e.target.value }))} className="input" style={{ flex: 1, padding: 12 }}>
+                <option value="">{t("scPage.notSelected")}</option>
+                {klijenti.map((k) => <option key={k.klijent_id} value={k.klijent_id}>{k.naziv_klijenta}</option>)}
+              </select>
+              <button type="button" className="btn btn--active" onClick={() => openNoviKlijentModal("krajnji")} title={t("scPage.addClient")} style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>+ {t("scPage.btnNew")}</button>
+            </div>
           </div>
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4 }}>
-              {t("scPage.radniRequired")}
-            </label>
-            <input
-              value={noviForm.radni_naziv}
-              onChange={(e) => setNoviForm((p) => ({ ...p, radni_naziv: e.target.value }))}
-              placeholder={t("scPage.radniPlaceholder")}
-              className="input"
-              style={{ width: "100%", padding: 12 }}
-            />
+          <div style={requiredFieldWrapStyle}>
+            <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4, marginLeft: 4 }}>{t("scPage.radniRequired")}</label>
+            <input value={noviForm.radni_naziv} onChange={(e) => setNoviForm((p) => ({ ...p, radni_naziv: e.target.value }))} placeholder={t("scPage.radniPlaceholder")} className="input" style={{ width: "100%", padding: 12 }} />
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4 }}>
-              {t("scPage.note")}
-            </label>
-            <textarea
-              value={noviForm.napomena}
-              onChange={(e) => setNoviForm((p) => ({ ...p, napomena: e.target.value }))}
-              rows={3}
-              className="input"
-              style={{ width: "100%", padding: 12 }}
-            />
+            <label style={{ fontSize: 12, opacity: 0.8, display: "block", marginBottom: 4 }}>{t("scPage.note")}</label>
+            <textarea value={noviForm.napomena} onChange={(e) => setNoviForm((p) => ({ ...p, napomena: e.target.value }))} rows={3} className="input" style={{ width: "100%", padding: 12 }} />
           </div>
           <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn" onClick={() => setScreen("izbor")} style={BTN_STYLE}>
-              {t("scPage.cancel")}
-            </button>
-            <button className="btn btn--active" onClick={handleCreateDeal} disabled={loading} style={BTN_STYLE}>
+            <button className="btn" onClick={() => setScreen("izbor")} style={BTN_STYLE}>{t("scPage.cancel")}</button>
+            <button className="btn btn--active" onClick={handleCreateDeal} disabled={loading} style={{ ...BTN_STYLE, border: "2px solid rgba(125, 211, 252, 0.5)", background: "rgba(125, 211, 252, 0.2)", fontWeight: 700 }}>
               {loading ? t("scPage.working") : t("scPage.createAndSelectLayout")}
             </button>
+          </div>
+        </div>
+      )}
+
+      {noviKlijentModalOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => !noviKlijentModalSaving && setNoviKlijentModalOpen(false)}>
+          <div className="card" style={{ padding: 20, maxWidth: 400, width: "100%", border: "1px solid var(--border)", boxShadow: "var(--shadow)" }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginBottom: 12, fontSize: 18 }}>{t("scPage.modalNewClientTitle")}</h3>
+            <div style={{ marginBottom: 12 }}>
+              <label className="muted" style={{ display: "block", marginBottom: 6 }}>{t("newDealForm.clientName")}</label>
+              <input value={noviKlijentModalNaziv} onChange={(e) => setNoviKlijentModalNaziv(e.target.value)} placeholder={t("scPage.clientNamePlaceholder")} className="input" style={{ width: "100%", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,.18)", background: "rgba(255,255,255,.06)" }} autoFocus onKeyDown={(e) => e.key === "Enter" && handleNoviKlijentSave()} />
+            </div>
+            {noviKlijentModalError && <div style={{ color: "var(--bad)", fontSize: 13, marginBottom: 12 }}>{noviKlijentModalError}</div>}
+            <div style={{ display: "flex", gap: 10 }}>
+              <button type="button" className="btn btn--active" onClick={handleNoviKlijentSave} disabled={noviKlijentModalSaving} style={{ padding: "10px 20px" }}>{noviKlijentModalSaving ? t("scPage.saving") : t("scPage.ok")}</button>
+              <button type="button" className="btn" onClick={() => !noviKlijentModalSaving && setNoviKlijentModalOpen(false)}>{t("scPage.cancel")}</button>
+            </div>
           </div>
         </div>
       )}

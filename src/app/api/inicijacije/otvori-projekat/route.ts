@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import pool from "@/lib/db";
+import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
 
 function asInt(v: any) {
   const n = Number(v);
@@ -85,10 +87,23 @@ async function ensureProjectSnapshot(
 async function ensureProjectMeta(
   conn: any,
   projekat_id: number,
-  meta: { rok_glavni: string | null; napomena: string | null },
+  meta: { rok_glavni: string | null; napomena: string | null; account_manager_radnik_id?: number | null },
 ) {
+  const am = meta.account_manager_radnik_id;
+  const hasAmCol = await hasColumn(conn, "projekti", "account_manager_radnik_id");
+  const useAm = hasAmCol && am != null;
   const [res]: any = await conn.query(
+    useAm
+      ? `
+    UPDATE projekti
+    SET
+      rok_glavni = COALESCE(rok_glavni, ?),
+      napomena   = COALESCE(napomena, ?),
+      account_manager_radnik_id = COALESCE(account_manager_radnik_id, ?)
+    WHERE projekat_id = ?
+    LIMIT 1
     `
+      : `
     UPDATE projekti
     SET
       rok_glavni = COALESCE(rok_glavni, ?),
@@ -96,7 +111,7 @@ async function ensureProjectMeta(
     WHERE projekat_id = ?
     LIMIT 1
     `,
-    [meta.rok_glavni, meta.napomena, projekat_id],
+    useAm ? [meta.rok_glavni, meta.napomena, am, projekat_id] : [meta.rok_glavni, meta.napomena, projekat_id],
   );
   return { updated: Number(res?.affectedRows ?? 0) };
 }
@@ -105,6 +120,19 @@ export async function POST(req: NextRequest) {
   const conn = await (pool as any).getConnection();
 
   try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
+    const session = token ? verifySessionToken(token) : null;
+    let accountManagerRadnikId: number | null = null;
+    if (session?.user_id) {
+      const [urows]: any = await conn.query(
+        `SELECT radnik_id FROM users WHERE user_id = ? LIMIT 1`,
+        [session.user_id],
+      );
+      accountManagerRadnikId =
+        urows?.[0]?.radnik_id != null ? Number(urows[0].radnik_id) : null;
+    }
+
     const body = await req.json().catch(() => ({}));
     const inicijacija_id = asInt(body?.inicijacija_id);
 
@@ -177,6 +205,7 @@ export async function POST(req: NextRequest) {
     const meta = {
       rok_glavni: acceptedDate,
       napomena: inic.napomena ?? null,
+      account_manager_radnik_id: accountManagerRadnikId,
     };
 
     if (inic.projekat_id) {
@@ -203,8 +232,20 @@ export async function POST(req: NextRequest) {
     );
     const nextId = Number(mrows?.[0]?.mx ?? 0) + 1;
 
+    const hasAmCol = await hasColumn(conn, "projekti", "account_manager_radnik_id");
     await conn.query(
+      hasAmCol
+        ? `
+      INSERT INTO projekti
+        (projekat_id, id_po, status_id, radni_naziv,
+         narucilac_id, krajnji_klijent_id,
+         tip_roka, rok_glavni, napomena, budzet_procenat_za_tim, account_manager_radnik_id)
+      VALUES
+        (?, ?, ?, ?,
+         ?, ?,
+         'deadline', ?, ?, ?, ?)
       `
+        : `
       INSERT INTO projekti
         (projekat_id, id_po, status_id, radni_naziv,
          narucilac_id, krajnji_klijent_id,
@@ -214,17 +255,30 @@ export async function POST(req: NextRequest) {
          ?, ?,
          'deadline', ?, ?, ?)
       `,
-      [
-        nextId,
-        nextId,
-        3,
-        inic.radni_naziv,
-        inic.narucilac_id,
-        inic.krajnji_klijent_id ?? null,
-        meta.rok_glavni,
-        meta.napomena,
-        100.00, // default 100% budžeta vidljivo timu
-      ],
+      hasAmCol
+        ? [
+            nextId,
+            nextId,
+            3,
+            inic.radni_naziv,
+            inic.narucilac_id,
+            inic.krajnji_klijent_id ?? null,
+            meta.rok_glavni,
+            meta.napomena,
+            100.0,
+            accountManagerRadnikId,
+          ]
+        : [
+            nextId,
+            nextId,
+            3,
+            inic.radni_naziv,
+            inic.narucilac_id,
+            inic.krajnji_klijent_id ?? null,
+            meta.rok_glavni,
+            meta.napomena,
+            100.0,
+          ],
     );
 
     await conn.query(
