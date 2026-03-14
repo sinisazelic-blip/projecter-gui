@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 /** Login page uvijek na engleskom – "ulazna vrata", bez čekanja na prevod. */
 const L = {
-  credentialsHint: "demo / demo",
+  credentialsHint: "Za pristup DEMO verziji ukucajte sljedeće podatke: demo / demo",
   labelUsername: "Username",
   placeholderUsername: "Enter username",
   labelPassword: "Password",
