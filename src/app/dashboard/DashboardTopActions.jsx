@@ -23,7 +23,8 @@ export default function DashboardTopActions() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const { canSee, onboardingCompleted, completeOnboarding } = useAuthUser();
+  const { canSee, onboardingCompleted, completeOnboarding, requestTourOnce } = useAuthUser();
+  const { isDemoInstance } = useFluxaEdition();
   const tenantAdminEnabled = process.env.NEXT_PUBLIC_ENABLE_TENANT_ADMIN === "true";
   const showLicenceLink = isFeatureVisible(3) && tenantAdminEnabled;
   const showLicenceComingSoon = isFeatureVisible(3) && !tenantAdminEnabled;
@@ -36,6 +37,17 @@ export default function DashboardTopActions() {
       {!onboardingCompleted && (
         <button type="button" className="btn" onClick={completeOnboarding} style={{ fontSize: 13 }}>
           Skip tour
+        </button>
+      )}
+      {isDemoInstance && onboardingCompleted && (
+        <button
+          type="button"
+          className="btn"
+          onClick={requestTourOnce}
+          title={t("firma.startTourTitle")}
+          style={{ fontSize: 13 }}
+        >
+          Meet Fluxa
         </button>
       )}
       {showLicenceLink && (

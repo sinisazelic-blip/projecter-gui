@@ -48,6 +48,7 @@ export function FluxaEditionProvider({ children, initialDemoInstance = false }) 
     isOwner,
     isFeatureVisible,
     mounted,
+    isDemoInstance: initialDemoInstance,
   };
 
   return (
@@ -66,6 +67,7 @@ export function useFluxaEdition() {
       isOwner: false,
       isFeatureVisible: () => true,
       mounted: true,
+      isDemoInstance: false,
     };
   }
   return ctx;

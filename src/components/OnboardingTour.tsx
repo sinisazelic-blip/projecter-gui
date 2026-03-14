@@ -115,7 +115,8 @@ export default function OnboardingTour({
       return;
     }
     if (stepIndex === 4 && pathname === "/inicijacije") {
-      setStepIndex(4);
+      router.push("/dashboard");
+      setStepIndex(5);
       return;
     }
     if (stepIndex === 3 && pathname === "/inicijacije") {
@@ -132,6 +133,30 @@ export default function OnboardingTour({
   const handleSkip = useCallback(() => {
     onComplete();
   }, [onComplete]);
+
+  // Escape key to skip tour (izlaz kad zaglavi)
+  useEffect(() => {
+    if (!active || !currentStep) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onComplete();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [active, currentStep, onComplete]);
+
+  // Reset kad path ne odgovara koraku – nakon kratke pauze da ne prekine navigaciju
+  useEffect(() => {
+    if (!active || stepIndex <= 0) return;
+    if (step ?? stepForPath) return;
+    const t = setTimeout(() => {
+      setStepIndex(0);
+      router.replace("/dashboard");
+    }, 800);
+    return () => clearTimeout(t);
+  }, [active, stepIndex, step, stepForPath, router]);
 
   if (!active || !currentStep) return null;
 
