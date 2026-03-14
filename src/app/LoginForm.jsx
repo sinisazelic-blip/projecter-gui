@@ -2,10 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslation } from "@/components/LocaleProvider";
+
+/** Login page uvijek na engleskom – "ulazna vrata", bez čekanja na prevod. */
+const L = {
+  credentialsHint: "demo / demo",
+  labelUsername: "Username",
+  placeholderUsername: "Enter username",
+  labelPassword: "Password",
+  placeholderPassword: "Enter password",
+  submit: "Sign in",
+  submitLoading: "Signing in…",
+};
 
 export default function LoginForm({ isDemoInstance = false }) {
-  const { t } = useTranslation();
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -30,13 +39,13 @@ export default function LoginForm({ isDemoInstance = false }) {
         } catch {
           const snippet = text.slice(0, 120).replace(/\s+/g, " ");
           setError(
-            `Server nije vratio JSON (${res.status}). ${snippet ? `Odgovor: "${snippet}…"` : "Prazan odgovor."} ` +
-              "Provjeri env (DB_*, AUTH_SECRET) i logove na hostingu."
+            `Server did not return JSON (${res.status}). ${snippet ? `Response: "${snippet}…"` : "Empty response."} ` +
+              "Check env (DB_*, AUTH_SECRET) and hosting logs."
           );
           return;
         }
       } catch (parseErr) {
-        setError("Greška pri čitanju odgovora. Provjeri mrežu i logove na hostingu.");
+        setError("Error reading response. Check network and hosting logs.");
         return;
       }
 
@@ -47,20 +56,20 @@ export default function LoginForm({ isDemoInstance = false }) {
       }
 
       if (res.status === 401 && data.error === "INVALID_CREDENTIALS") {
-        setError("Pogrešno korisničko ime ili lozinka.");
+        setError("Invalid username or password.");
         return;
       }
       if (res.status === 500) {
         if (data.error === "MISSING_AUTH_SECRET") {
-          setError("U .env.local dodaj: AUTH_SECRET=neka_tajna_duga_min_16_znakova pa restartuj server (Ctrl+C, npm run dev).");
+          setError("Add AUTH_SECRET to .env.local (min 16 chars) and restart server (Ctrl+C, npm run dev).");
           return;
         }
-        setError("Greška na serveru. Otvori terminal (npm run dev) i pogledaj poruku greške.");
+        setError("Server error. Open terminal (npm run dev) and check the error message.");
         return;
       }
-      setError("Greška pri prijavi. Pokušaj ponovo.");
+      setError("Login error. Please try again.");
     } catch {
-      setError("Greška u vezi (mreža ili server ne odgovara). Je li pokrenut npm run dev?");
+      setError("Connection error (network or server not responding). Is npm run dev running?");
     } finally {
       setLoading(false);
     }
@@ -82,7 +91,7 @@ export default function LoginForm({ isDemoInstance = false }) {
         data = text ? JSON.parse(text) : {};
       } catch {
         const snippet = text.slice(0, 120).replace(/\s+/g, " ");
-        setError(`Server nije vratio JSON (${res.status}). ${snippet ? `Odgovor: "${snippet}…"` : "Prazan odgovor."}`);
+        setError(`Server did not return JSON (${res.status}). ${snippet ? `Response: "${snippet}…"` : "Empty response."}`);
         return;
       }
       if (data.ok) {
@@ -92,25 +101,25 @@ export default function LoginForm({ isDemoInstance = false }) {
       }
       if (res.status === 503) {
         if (data.error === "DEMO_NOT_CONFIGURED") {
-          setError("Demo baza nije konfigurirana (postavi DEMO_DB_NAME u env-u na hostingu).");
+          setError("Demo database not configured (set DEMO_DB_NAME in hosting env).");
           return;
         }
         if (data.error === "DEMO_DB_ERROR") {
-          setError("Greška pri pristupu demo bazi: " + (data.message || "provjeri DEMO_DB_NAME i da baza postoji."));
+          setError("Demo database error: " + (data.message || "check DEMO_DB_NAME and that the database exists."));
           return;
         }
       }
       if (res.status === 401) {
         if (data.error === "DEMO_USER_MISSING") {
-          setError("U demo bazi nema korisnika demo. Pokreni seed: node scripts/seed-demo.js (prema bazi iz DEMO_DB_NAME).");
+          setError("Demo user missing in database. Run seed: node scripts/seed-demo.js (against DEMO_DB_NAME).");
           return;
         }
-        setError("Demo nalog nije dostupan. U demo bazi mora postojati korisnik demo (seed: node scripts/seed-demo.js).");
+        setError("Demo account unavailable. Demo user must exist in database (seed: node scripts/seed-demo.js).");
         return;
       }
-      setError(data.message || data.error || "Greška pri demo prijavi. Pokušaj ponovo.");
+      setError(data.message || data.error || "Demo login error. Please try again.");
     } catch {
-      setError("Greška u vezi. Je li server pokrenut?");
+      setError("Connection error. Is the server running?");
     } finally {
       setLoading(false);
     }
@@ -143,7 +152,7 @@ export default function LoginForm({ isDemoInstance = false }) {
             fontFamily: "monospace",
           }}
         >
-          {t("login.credentialsHint")}
+          {L.credentialsHint}
         </div>
       )}
       <div style={{ width: "100%" }}>
@@ -158,7 +167,7 @@ export default function LoginForm({ isDemoInstance = false }) {
             textAlign: "left",
           }}
         >
-          {t("login.labelUsername")}
+          {L.labelUsername}
         </label>
         <input
           id="login-user"
@@ -166,7 +175,7 @@ export default function LoginForm({ isDemoInstance = false }) {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           autoComplete="username"
-          placeholder={t("login.placeholderUsername")}
+          placeholder={L.placeholderUsername}
           disabled={loading}
           style={{
             width: "100%",
@@ -187,7 +196,7 @@ export default function LoginForm({ isDemoInstance = false }) {
             textAlign: "left",
           }}
         >
-          {t("login.labelPassword")}
+          {L.labelPassword}
         </label>
         <input
           id="login-password"
@@ -195,7 +204,7 @@ export default function LoginForm({ isDemoInstance = false }) {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
-          placeholder={t("login.placeholderPassword")}
+          placeholder={L.placeholderPassword}
           disabled={loading}
           style={{
             width: "100%",
@@ -224,7 +233,7 @@ export default function LoginForm({ isDemoInstance = false }) {
           maxWidth: 200,
         }}
       >
-        {loading ? t("login.submitLoading") : t("login.submit")}
+        {loading ? L.submitLoading : L.submit}
       </button>
 
       {!isDemoInstance && (
@@ -245,9 +254,9 @@ export default function LoginForm({ isDemoInstance = false }) {
             display: "block",
             boxSizing: "border-box",
           }}
-          title="Pogledaj demo na demo.studiotaf.xyz (korisnik demo / lozinka demo)"
+          title="View demo at demo.studiotaf.xyz (user: demo / password: demo)"
         >
-          Pogledaj demo
+          View demo
         </a>
       )}
     </form>

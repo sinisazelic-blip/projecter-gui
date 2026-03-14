@@ -67,9 +67,9 @@ export default async function HomePage() {
             textDecoration: "none",
             opacity: 0.9,
           }}
-          title="Unesite owner šifru za pristup verziji Fluxe i dodatnim opcijama"
+          title="Enter owner password for full Fluxa version and extra options"
         >
-          Owner pristup
+          Owner access
         </Link>
         )}
       </div>
