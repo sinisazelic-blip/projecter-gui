@@ -5,10 +5,10 @@ import Link from "next/link";
 import FluxaLogo from "@/components/FluxaLogo";
 import { useTranslation } from "@/components/LocaleProvider";
 
-const fmtKM = (v) => {
+const fmtAmount = (v, suffix) => {
   const n = Number(v);
   if (v == null || !Number.isFinite(n)) return "—";
-  return `${n.toFixed(2)} KM`;
+  return `${n.toFixed(2)}${suffix}`;
 };
 
 const fmtDate = (s) => {
@@ -20,7 +20,8 @@ const fmtDate = (s) => {
 };
 
 export default function BankaVsKnjigePage() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const ccySuffix = t("common.currencySuffix") || (locale === "en" ? " EUR" : " KM");
   const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [fromDate, setFromDate] = useState("");
   const [data, setData] = useState(null);
@@ -77,7 +78,7 @@ export default function BankaVsKnjigePage() {
           <div className="card" style={{ marginBottom: 16 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end", marginBottom: 14 }}>
               <div>
-                <label className="label" style={{ display: "block", marginBottom: 4 }}>Stanje do datuma</label>
+                <label className="label" style={{ display: "block", marginBottom: 4 }}>{t("bankaVsKnjige.toDateLabel")}</label>
                 <input
                   type="date"
                   value={toDate}
@@ -87,14 +88,14 @@ export default function BankaVsKnjigePage() {
                 />
               </div>
               <div>
-                <label className="label" style={{ display: "block", marginBottom: 4 }}>Od (opciono, za promet)</label>
+                <label className="label" style={{ display: "block", marginBottom: 4 }}>{t("bankaVsKnjige.fromDateLabel")}</label>
                 <input
                   type="date"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
                   className="input"
                   style={{ padding: "8px 12px" }}
-                  placeholder="prazno = samo stanje"
+                  placeholder={t("bankaVsKnjige.fromPlaceholder")}
                 />
               </div>
             </div>
@@ -108,7 +109,7 @@ export default function BankaVsKnjigePage() {
 
           {loading && (
             <div className="card">
-              <div className="muted">Učitavanje…</div>
+              <div className="muted">{t("bankaVsKnjige.loading")}</div>
             </div>
           )}
 
@@ -124,18 +125,18 @@ export default function BankaVsKnjigePage() {
                 }}
               >
                 <div>
-                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>Stanje po banki (do {fmtDate(data.to_date)})</div>
-                  <div style={{ fontSize: 22, fontWeight: 800 }}>{fmtKM(data.stanje_banke_km)}</div>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{(t("bankaVsKnjige.stanjeBanke") || "").replace("{{date}}", fmtDate(data.to_date))}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800 }}>{fmtAmount(data.stanje_banke_km, ccySuffix)}</div>
                 </div>
                 <div>
-                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>Stanje po knjigama</div>
-                  <div style={{ fontSize: 22, fontWeight: 800 }}>{fmtKM(data.stanje_knjige_km)}</div>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t("bankaVsKnjige.stanjeKnjige")}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800 }}>{fmtAmount(data.stanje_knjige_km, ccySuffix)}</div>
                   <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
-                    Prihodi {fmtKM(data.suma_prihodi_km)} − Plaćanja {fmtKM(data.suma_placanja_km)}
+                    {(t("bankaVsKnjige.prihodiMinusPlacanja") || "").replace("{{prihodi}}", fmtAmount(data.suma_prihodi_km, ccySuffix)).replace("{{placanja}}", fmtAmount(data.suma_placanja_km, ccySuffix))}
                   </div>
                 </div>
                 <div>
-                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>Razlika</div>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t("bankaVsKnjige.razlika")}</div>
                   <div
                     style={{
                       fontSize: 22,
@@ -143,10 +144,10 @@ export default function BankaVsKnjigePage() {
                       color: data.u_ravnotezi ? "var(--good)" : "var(--warn)",
                     }}
                   >
-                    {fmtKM(data.razlika_km)}
+                    {fmtAmount(data.razlika_km, ccySuffix)}
                   </div>
                   <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
-                    {data.u_ravnotezi ? "✓ U ravnoteži" : "Razlika – provjeri linkovanje i unose"}
+                    {data.u_ravnotezi ? t("bankaVsKnjige.uRavnotezi") : t("bankaVsKnjige.nijeURavnotezi")}
                   </div>
                 </div>
               </div>
@@ -154,21 +155,20 @@ export default function BankaVsKnjigePage() {
               {data.promet_u_periodu && (
                 <div className="card" style={{ marginBottom: 16 }}>
                   <div style={{ fontWeight: 700, marginBottom: 10 }}>
-                    Promet u periodu {fmtDate(data.from_date)} – {fmtDate(data.to_date)}
+                    {(t("bankaVsKnjige.prometUPeriodu") || "").replace("{{from}}", fmtDate(data.from_date)).replace("{{to}}", fmtDate(data.to_date))}
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
-                    <span>Banka (promet): {fmtKM(data.promet_u_periodu.banka_km)}</span>
-                    <span>Prihodi: {fmtKM(data.promet_u_periodu.prihodi_km)}</span>
-                    <span>Plaćanja: {fmtKM(data.promet_u_periodu.placanja_km)}</span>
-                    <span>Knjige (neto): {fmtKM(data.promet_u_periodu.knjige_neto_km)}</span>
+                    <span>{t("bankaVsKnjige.bankaPromet")}: {fmtAmount(data.promet_u_periodu.banka_km, ccySuffix)}</span>
+                    <span>{t("bankaVsKnjige.prihodi")}: {fmtAmount(data.promet_u_periodu.prihodi_km, ccySuffix)}</span>
+                    <span>{t("bankaVsKnjige.placanja")}: {fmtAmount(data.promet_u_periodu.placanja_km, ccySuffix)}</span>
+                    <span>{t("bankaVsKnjige.knjigeNeto")}: {fmtAmount(data.promet_u_periodu.knjige_neto_km, ccySuffix)}</span>
                   </div>
                 </div>
               )}
 
               <div className="card" style={{ background: "rgba(255,255,255,0.02)" }}>
                 <div className="subtle" style={{ fontSize: 13, lineHeight: 1.6 }}>
-                  Stanje po banki = zbroj svih transakcija iz importa izvoda (bank_tx_posting) do odabranog datuma. EUR preračunato po 1,95 KM.
-                  Stanje po knjigama = suma prihoda (projektni_prihodi) − suma plaćanja (placanja) do istog datuma. Ako se razlika približava nuli, evidencija je usklađena.
+                  {t("bankaVsKnjige.opisNote")}
                 </div>
               </div>
             </>

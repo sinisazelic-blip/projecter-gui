@@ -1,15 +1,13 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
+import { formatAmount } from "@/lib/format";
 import { query } from "@/lib/db";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
 import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
-
-const fmtKM = (v) => {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return n.toFixed(2) + " KM";
-};
 
 const fmtDate = (d) => {
   if (!d) return "—";
@@ -26,6 +24,10 @@ function makeNeedle(row) {
 }
 
 export default async function PrihodiListPage({ searchParams }) {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
+  const t = getT(locale);
+
   const sp = await Promise.resolve(searchParams);
   const q = (sp?.q ?? "").trim();
   const projekatId = (sp?.projekat_id ?? "").trim();
@@ -78,17 +80,17 @@ export default async function PrihodiListPage({ searchParams }) {
                   <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Prihodi</div>
-                  <div className="brandSub">Finansije · Banka filter po redu</div>
+                  <div className="brandTitle">{t("prihodi.title")}</div>
+                  <div className="brandSub">{t("prihodi.subtitle")}</div>
                 </div>
               </div>
 
               <div className="actions">
-                <Link href="/finance" className="btn" title="Finansije">
-                  Finansije
+                <Link href="/finance" className="btn" title={t("finance.title")}>
+                  {t("finance.title")}
                 </Link>
-                <Link href="/dashboard" className="btn" title="Dashboard">
-                  🏠 Dashboard
+                <Link href="/dashboard" className="btn" title={t("common.dashboard")}>
+                  🏠 {t("common.dashboard")}
                 </Link>
               </div>
             </div>
@@ -101,31 +103,31 @@ export default async function PrihodiListPage({ searchParams }) {
       <div className="card tableCard" style={{ marginBottom: 14 }}>
         <form className="filters" method="GET" style={{ flexWrap: "wrap", padding: 16 }}>
           <div className="field">
-            <span className="label">Pretraga</span>
+            <span className="label">{t("prihodi.search")}</span>
             <input
               className="input"
               name="q"
               defaultValue={q}
-              placeholder="ID / opis…"
+              placeholder={t("prihodi.searchPlaceholder")}
             />
           </div>
 
           <div className="field">
-            <span className="label">projekat_id</span>
+            <span className="label">{t("prihodi.projekatId")}</span>
             <input
               className="input"
               name="projekat_id"
               defaultValue={projekatId}
-              placeholder="npr. 77"
+              placeholder={t("prihodi.projekatIdPlaceholder")}
             />
           </div>
 
           <div className="actions">
             <button className="btn btn--active" type="submit">
-              Primijeni
+              {t("prihodi.apply")}
             </button>
             <Link className="btn" href="/finance/prihodi">
-              Reset
+              {t("prihodi.reset")}
             </Link>
           </div>
         </form>
@@ -133,13 +135,13 @@ export default async function PrihodiListPage({ searchParams }) {
 
       <div className="card tableCard">
         <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <span style={{ fontWeight: 700, fontSize: 15 }}>Lista prihoda</span>
+          <span style={{ fontWeight: 700, fontSize: 15 }}>{t("prihodi.listTitle")}</span>
           <span style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <span className="muted">Prikazano: {list.length} (limit 200)</span>
+            <span className="muted">{(t("prihodi.shownCount") || "").replace("{{count}}", list.length)}</span>
             <ExportExcelButton
               filename="prihodi"
-              sheetName="Prihodi"
-              headers={["ID", "Projekat", "Datum", "Iznos (KM)", "Opis", "Napomena", "Status"]}
+              sheetName={t("prihodi.excelSheetName")}
+              headers={[t("prihodi.colId"), t("prihodi.colProjekat"), t("prihodi.colDatum"), t("prihodi.colIznos"), t("prihodi.colOpis"), "Napomena", t("prihodi.colStatus")]}
               rows={list.map((r) => [
                 r.prihod_id ?? r.id,
                 r.projekat_id ?? "",
@@ -156,13 +158,13 @@ export default async function PrihodiListPage({ searchParams }) {
           <table className="table">
             <thead>
               <tr>
-                <th style={{ width: 120 }}>ID</th>
-                <th style={{ width: 120 }}>Projekat</th>
-                <th style={{ width: 140 }}>Datum</th>
-                <th style={{ width: 170, textAlign: "right" }}>Iznos</th>
-                <th style={{ width: 110 }}>Banka</th>
-                <th>Opis</th>
-                <th style={{ width: 120 }}>Status</th>
+                <th style={{ width: 120 }}>{t("prihodi.colId")}</th>
+                <th style={{ width: 120 }}>{t("prihodi.colProjekat")}</th>
+                <th style={{ width: 140 }}>{t("prihodi.colDatum")}</th>
+                <th style={{ width: 170, textAlign: "right" }}>{t("prihodi.colIznos")}</th>
+                <th style={{ width: 110 }}>{t("prihodi.colBanka")}</th>
+                <th>{t("prihodi.colOpis")}</th>
+                <th style={{ width: 120 }}>{t("prihodi.colStatus")}</th>
               </tr>
             </thead>
             <tbody>
@@ -192,11 +194,11 @@ export default async function PrihodiListPage({ searchParams }) {
                             fontVariantNumeric: "tabular-nums",
                           }}
                         >
-                          {fmtKM(r.iznos_km)}
+                          {formatAmount(r.iznos_km, locale)}
                         </td>
                         <td>
                           <Link className="btn" href={bankHref}>
-                            Banka
+                            {t("prihodi.banka")}
                           </Link>
                         </td>
                         <td>
@@ -211,7 +213,7 @@ export default async function PrihodiListPage({ searchParams }) {
                   })
                 : <tr>
                     <td colSpan={7} className="subtle" style={{ padding: 14 }}>
-                      Nema rezultata.
+                      {t("prihodi.noResults")}
                     </td>
                   </tr>}
             </tbody>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
+import { formatAmount } from "@/lib/format";
 import { query } from "@/lib/db";
 import KreditForm from "./KreditForm";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
@@ -9,10 +10,13 @@ import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
 
-const fmtKM = (v) => {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return n.toFixed(2) + " KM";
+
+/** Za EU (en) nikad ne prikazuj BAM/KM — mapiraj na EUR */
+const displayValuta = (valuta, locale) => {
+  if (locale !== "en") return valuta ?? "";
+  const v = String(valuta ?? "").toUpperCase();
+  if (v === "BAM" || v === "KM") return "EUR";
+  return valuta ?? "";
 };
 
 const fmtDate = (d) => {
@@ -185,7 +189,7 @@ export default async function KreditiPage({ searchParams }) {
                       {t("krediti.remainderDebt")}
                     </div>
                     <div style={{ fontSize: 24, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>
-                      {fmtKM(ukupnoOstatak)}
+                      {formatAmount(ukupnoOstatak, locale)}
                     </div>
                   </div>
                   <div>
@@ -237,7 +241,7 @@ export default async function KreditiPage({ searchParams }) {
                         r.naziv ?? "",
                         r.banka_naziv ?? "",
                         r.ukupan_iznos ?? "",
-                        r.valuta ?? "",
+                        displayValuta(r.valuta, locale),
                         r.broj_rata ?? "",
                         r.uplaceno_rata ?? "",
                         r.ostatak_duga ?? "",
@@ -273,10 +277,10 @@ export default async function KreditiPage({ searchParams }) {
                                 {r.naziv ?? "—"}
                               </td>
                               <td>{r.banka_naziv ?? "—"}</td>
-                              <td className="num">{fmtKM(r.ukupan_iznos)}</td>
+                              <td className="num">{formatAmount(r.ukupan_iznos, locale)}</td>
                               <td className="num">{r.broj_rata ?? "—"}</td>
                               <td className="num">{r.uplaceno_rata ?? "—"}</td>
-                              <td className="num">{fmtKM(r.ostatak_duga)}</td>
+                              <td className="num">{formatAmount(r.ostatak_duga, locale)}</td>
                               <td className="num">{r.ostalo_rata}</td>
                               <td className="nowrap">
                                 {fmtMjesecGodina(r.datum_posljednja_rata)}

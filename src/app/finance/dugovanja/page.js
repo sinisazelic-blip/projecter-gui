@@ -1,16 +1,14 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
+import { formatAmount } from "@/lib/format";
 import { query } from "@/lib/db";
 import { getPocetnaStanja } from "@/lib/pocetna-stanja";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
 import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
-
-const fmtKM = (v) => {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return n.toFixed(2) + " KM";
-};
 
 const fmtDate = (d) => {
   if (!d) return "—";
@@ -27,6 +25,10 @@ function makeNeedle(row) {
 }
 
 export default async function DugovanjaListPage({ searchParams }) {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
+  const t = getT(locale);
+
   const sp = await Promise.resolve(searchParams);
   const q = (sp?.q ?? "").trim();
   const onlyOpen = sp?.only_open === "1";
@@ -120,20 +122,20 @@ export default async function DugovanjaListPage({ searchParams }) {
                   <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Dugovanja</div>
-                  <div className="brandSub">Finansije / Obaveze prema dobavljačima</div>
+                  <div className="brandTitle">{t("dugovanja.title")}</div>
+                  <div className="brandSub">{t("dugovanja.subtitle")}</div>
                 </div>
               </div>
 
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <Link href="/finance/dugovanja/novo" className="btn btn--active" title="Novo dugovanje">
-                  + Novo dugovanje
+                <Link href="/finance/dugovanja/novo" className="btn btn--active" title={t("dugovanja.novoDugovanje")}>
+                  + {t("dugovanja.novoDugovanje")}
                 </Link>
-                <Link href="/finance" className="btn" title="Finansije">
-                  Finansije
+                <Link href="/finance" className="btn" title={t("finance.title")}>
+                  {t("finance.title")}
                 </Link>
-                <Link href="/dashboard" className="btn" title="Dashboard">
-                  🏠 Dashboard
+                <Link href="/dashboard" className="btn" title={t("common.dashboard")}>
+                  🏠 {t("common.dashboard")}
                 </Link>
               </div>
             </div>
@@ -146,12 +148,12 @@ export default async function DugovanjaListPage({ searchParams }) {
       <div className="card tableCard" style={{ marginBottom: 14 }}>
         <form className="filters" method="GET" style={{ flexWrap: "wrap", padding: 16 }}>
           <div className="field">
-            <span className="label">Pretraga</span>
+            <span className="label">{t("dugovanja.search")}</span>
             <input
               className="input"
               name="q"
               defaultValue={q}
-              placeholder="ID / projekat / opis…"
+              placeholder={t("dugovanja.searchPlaceholder")}
             />
           </div>
 
@@ -162,15 +164,15 @@ export default async function DugovanjaListPage({ searchParams }) {
               value="1"
               defaultChecked={onlyOpen}
             />
-            <span className="label" style={{ marginBottom: 0 }}>Samo otvorena</span>
+            <span className="label" style={{ marginBottom: 0 }}>{t("dugovanja.onlyOpen")}</span>
           </label>
 
           <div className="actions">
             <button className="btn btn--active" type="submit">
-              Primijeni
+              {t("dugovanja.apply")}
             </button>
             <Link className="btn" href="/finance/dugovanja">
-              Reset
+              {t("dugovanja.reset")}
             </Link>
           </div>
         </form>
@@ -180,36 +182,36 @@ export default async function DugovanjaListPage({ searchParams }) {
       {(pocetnaStanja.dobavljaci?.length > 0 || pocetnaStanja.talenti?.length > 0) && (
         <div className="card tableCard" style={{ marginBottom: 14 }}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <span style={{ fontWeight: 700, fontSize: 15 }}>Početna stanja (31.12.) — pregled</span>
+            <span style={{ fontWeight: 700, fontSize: 15 }}>{t("dugovanja.pocetnaStanjaPreview")}</span>
             <Link href="/finance/pocetna-stanja" className="btn" style={{ fontSize: 13 }}>
-              Evidencija početnih stanja →
+              {t("dugovanja.evidencijaPocetnaStanja")}
             </Link>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
             {pocetnaStanja.dobavljaci?.length > 0 && (
               <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)" }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Dobavljači</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>{t("dugovanja.dobavljaci")}</div>
                 <div style={{ maxHeight: 200, overflowY: "auto" }}>
                   <table className="table" style={{ width: "100%" }}>
                     <thead>
                       <tr>
-                        <th style={{ textAlign: "left", padding: "6px 10px" }}>Naziv</th>
-                        <th style={{ textAlign: "right", padding: "6px 10px" }}>Iznos (KM)</th>
+                        <th style={{ textAlign: "left", padding: "6px 10px" }}>{t("dugovanja.colNaziv")}</th>
+                        <th style={{ textAlign: "right", padding: "6px 10px" }}>{t("pocetnaStanja.colIznosKm")}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {pocetnaStanja.dobavljaci.map((r) => (
                         <tr key={r.dobavljac_id} style={r.otpisano ? { opacity: 0.6 } : undefined}>
-                          <td style={{ padding: "6px 10px" }}>{r.naziv}{r.otpisano ? " (otpisano)" : ""}</td>
-                          <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 600 }}>{fmtKM(r.iznos_km)}</td>
+                          <td style={{ padding: "6px 10px" }}>{r.naziv}{r.otpisano ? ` ${t("dugovanja.otpisano")}` : ""}</td>
+                          <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 600 }}>{formatAmount(r.iznos_km, locale)}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr style={{ borderTop: "1px solid var(--border)", fontWeight: 700 }}>
-                        <td style={{ padding: "8px 10px" }}>Ukupno (aktivna)</td>
+                        <td style={{ padding: "8px 10px" }}>{t("dugovanja.ukupnoAktivna")}</td>
                         <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                          {fmtKM(pocetnaStanja.dobavljaci.filter((x) => !x.otpisano).reduce((s, x) => s + x.iznos_km, 0))}
+                          {formatAmount(pocetnaStanja.dobavljaci.filter((x) => !x.otpisano).reduce((s, x) => s + x.iznos_km, 0), locale)}
                         </td>
                       </tr>
                     </tfoot>
@@ -219,28 +221,28 @@ export default async function DugovanjaListPage({ searchParams }) {
             )}
             {pocetnaStanja.talenti?.length > 0 && (
               <div style={{ padding: "10px 16px" }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Talenti</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>{t("dugovanja.talenti")}</div>
                 <div style={{ maxHeight: 200, overflowY: "auto" }}>
                   <table className="table" style={{ width: "100%" }}>
                     <thead>
                       <tr>
-                        <th style={{ textAlign: "left", padding: "6px 10px" }}>Ime i prezime</th>
-                        <th style={{ textAlign: "right", padding: "6px 10px" }}>Iznos (KM)</th>
+                        <th style={{ textAlign: "left", padding: "6px 10px" }}>{t("dugovanja.colImePrezime")}</th>
+                        <th style={{ textAlign: "right", padding: "6px 10px" }}>{t("pocetnaStanja.colIznosKm")}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {pocetnaStanja.talenti.map((r) => (
                         <tr key={r.talent_id} style={r.otpisano ? { opacity: 0.6 } : undefined}>
-                          <td style={{ padding: "6px 10px" }}>{r.naziv}{r.otpisano ? " (otpisano)" : ""}</td>
-                          <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 600 }}>{fmtKM(r.iznos_km)}</td>
+                          <td style={{ padding: "6px 10px" }}>{r.naziv}{r.otpisano ? ` ${t("dugovanja.otpisano")}` : ""}</td>
+                          <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 600 }}>{formatAmount(r.iznos_km, locale)}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr style={{ borderTop: "1px solid var(--border)", fontWeight: 700 }}>
-                        <td style={{ padding: "8px 10px" }}>Ukupno (aktivna)</td>
+                        <td style={{ padding: "8px 10px" }}>{t("dugovanja.ukupnoAktivna")}</td>
                         <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                          {fmtKM(pocetnaStanja.talenti.filter((x) => !x.otpisano).reduce((s, x) => s + x.iznos_km, 0))}
+                          {formatAmount(pocetnaStanja.talenti.filter((x) => !x.otpisano).reduce((s, x) => s + x.iznos_km, 0), locale)}
                         </td>
                       </tr>
                     </tfoot>
@@ -254,13 +256,13 @@ export default async function DugovanjaListPage({ searchParams }) {
 
       <div className="card tableCard">
         <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <span style={{ fontWeight: 700, fontSize: 15 }}>Lista dugovanja (projekt_dugovanja)</span>
+          <span style={{ fontWeight: 700, fontSize: 15 }}>{t("dugovanja.listTitle")}</span>
           <span style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <span className="muted">Prikazano: {list.length} (limit 200)</span>
+            <span className="muted">{(t("dugovanja.shownCount") || "").replace("{{count}}", list.length)}</span>
             <ExportExcelButton
               filename="dugovanja"
-              sheetName="Dugovanja"
-              headers={["ID", "Projekat", "Datum", "Dospijeće", "Iznos (KM)", "Plaćeno (KM)", "Preostalo (KM)", "Opis", "Napomena"]}
+              sheetName={t("dugovanja.excelSheetName")}
+              headers={[t("dugovanja.colId"), t("dugovanja.colProjekat"), t("dugovanja.colDatum"), t("dugovanja.colDospijece"), t("dugovanja.colIznos"), t("dugovanja.colPlaceno"), t("dugovanja.colPreostalo"), t("dugovanja.colOpis"), "Napomena"]}
               rows={list.map((r) => {
                 const iznos = Number(r.iznos_km ?? r.iznos);
                 const paid = Number(r.paid_km ?? 0);
@@ -284,15 +286,15 @@ export default async function DugovanjaListPage({ searchParams }) {
           <table className="table">
             <thead>
               <tr>
-                <th style={{ width: 90 }}>ID</th>
-                <th style={{ width: 90 }}>Projekat</th>
-                <th style={{ width: 140 }}>Datum</th>
-                <th style={{ width: 140 }}>Dospijeće</th>
-                <th className="num">Iznos</th>
-                <th className="num">Plaćeno</th>
-                <th className="num">Preostalo</th>
-                <th>Opis</th>
-                <th style={{ width: 90 }}>Banka</th>
+                <th style={{ width: 90 }}>{t("dugovanja.colId")}</th>
+                <th style={{ width: 90 }}>{t("dugovanja.colProjekat")}</th>
+                <th style={{ width: 140 }}>{t("dugovanja.colDatum")}</th>
+                <th style={{ width: 140 }}>{t("dugovanja.colDospijece")}</th>
+                <th className="num">{t("dugovanja.colIznos")}</th>
+                <th className="num">{t("dugovanja.colPlaceno")}</th>
+                <th className="num">{t("dugovanja.colPreostalo")}</th>
+                <th>{t("dugovanja.colOpis")}</th>
+                <th style={{ width: 90 }}>{t("dugovanja.banka")}</th>
               </tr>
             </thead>
             <tbody>
@@ -325,10 +327,10 @@ export default async function DugovanjaListPage({ searchParams }) {
                         <td>{proj ?? "—"}</td>
                         <td className="nowrap">{fmtDate(r.datum)}</td>
                         <td className="nowrap">{fmtDate(r.datum_dospijeca)}</td>
-                        <td className="num">{fmtKM(iznos)}</td>
-                        <td className="num">{fmtKM(paid)}</td>
+                        <td className="num">{formatAmount(iznos, locale)}</td>
+                        <td className="num">{formatAmount(paid, locale)}</td>
                         <td className="num">
-                          {rem === null ? "—" : fmtKM(rem)}
+                          {rem === null ? "—" : formatAmount(rem, locale)}
                         </td>
                         <td>
                           <div style={{ fontWeight: 700 }}>{r.opis ?? "—"}</div>
@@ -341,7 +343,7 @@ export default async function DugovanjaListPage({ searchParams }) {
                         </td>
                         <td>
                           <Link className="btn" href={bankHref}>
-                            Banka
+                            {t("dugovanja.banka")}
                           </Link>
                         </td>
                       </tr>
@@ -350,7 +352,7 @@ export default async function DugovanjaListPage({ searchParams }) {
                 : (
                     <tr>
                       <td colSpan={9} className="muted" style={{ padding: 20 }}>
-                        Nema dugovanja u evidenciji. Koristi „+ Novo dugovanje” u zaglavlju za unos.
+                        {t("dugovanja.noResults")}
                       </td>
                     </tr>
                   )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useTranslation } from "@/components/LocaleProvider";
 
 type ImportResult = {
   ok: boolean;
@@ -13,6 +14,7 @@ type ImportResult = {
 };
 
 export default function PocetnaStanjaImport() {
+  const { t } = useTranslation();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [clearLoading, setClearLoading] = useState(false);
@@ -20,11 +22,7 @@ export default function PocetnaStanjaImport() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleClear() {
-    if (
-      !window.confirm(
-        "Obrisat ćeš SVA početna stanja (klijenti, dobavljači, talenti). Zatim možeš uvesti nova iz XLSX. Nastavi?",
-      )
-    ) {
+    if (!window.confirm(t("pocetnaStanja.clearAllConfirm"))) {
       return;
     }
     setClearLoading(true);
@@ -37,7 +35,7 @@ export default function PocetnaStanjaImport() {
       if (data.ok) {
         window.location.reload();
       } else {
-        setResult({ ok: false, error: data.error ?? "Greška pri brisanju." });
+        setResult({ ok: false, error: data.error ?? t("pocetnaStanja.errorDelete") });
       }
     } catch (err) {
       setResult({
@@ -85,10 +83,10 @@ export default function PocetnaStanjaImport() {
       }}
     >
       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: "var(--muted)" }}>
-        Ažuriranje iz XLSX
+        {t("pocetnaStanja.importSectionTitle")}
       </div>
       <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
-        Predložak (3 lista: Klijenti, Dobavljači, Talenti). Naziv = tačno kao u šifarniku.
+        {t("pocetnaStanja.importTemplateHint")}
       </div>
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
         <button
@@ -101,9 +99,9 @@ export default function PocetnaStanjaImport() {
             borderColor: "rgba(239, 68, 68, 0.4)",
             color: "var(--bad)",
           }}
-          title="Obriši sve redove iz tabela početnih stanja pa uvezi iznova"
+          title={t("pocetnaStanja.clearAllBtnTitle")}
         >
-          {clearLoading ? "Brišem…" : "Obriši sva početna stanja"}
+          {clearLoading ? t("pocetnaStanja.clearAllBtnLoading") : t("pocetnaStanja.clearAllBtn")}
         </button>
       </div>
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -113,7 +111,7 @@ export default function PocetnaStanjaImport() {
           className="btn"
           style={{ textDecoration: "none" }}
         >
-          Preuzmi predložak
+          {t("pocetnaStanja.downloadTemplate")}
         </a>
         <input
           ref={inputRef}
@@ -135,7 +133,7 @@ export default function PocetnaStanjaImport() {
             cursor: !file || loading ? "not-allowed" : "pointer",
           }}
         >
-          {loading ? "Uvoz…" : "Uvezi"}
+          {loading ? t("pocetnaStanja.importBtnLoading") : t("pocetnaStanja.importBtn")}
         </button>
       </div>
       {result && (
@@ -156,21 +154,24 @@ export default function PocetnaStanjaImport() {
           )}
           {result.ok && result.imported !== undefined && (
             <div>
-              Uvezeno ukupno: <b>{result.imported}</b> redova
+              {(t("pocetnaStanja.importedTotal") || "").replace("{{count}}", String(result.imported))}
               {(result.importedKlijenti != null || result.importedDobavljaci != null || result.importedTalenti != null) && (
                 <span style={{ color: "var(--muted)", marginLeft: 8 }}>
-                  (Klijenti: {result.importedKlijenti ?? 0}, Dobavljači: {result.importedDobavljaci ?? 0}, Talenti: {result.importedTalenti ?? 0})
+                  {(t("pocetnaStanja.importedByType") || "")
+                    .replace("{{klijenti}}", String(result.importedKlijenti ?? 0))
+                    .replace("{{dobavljaci}}", String(result.importedDobavljaci ?? 0))
+                    .replace("{{talenti}}", String(result.importedTalenti ?? 0))}
                 </span>
               )}
             </div>
           )}
           {result.errors && result.errors.length > 0 && (
             <div style={{ marginTop: 8 }}>
-              Greške:
+              {t("pocetnaStanja.errorsLabel")}
               <ul style={{ margin: "4px 0 0 16px", padding: 0 }}>
                 {result.errors.map((e, idx) => (
                   <li key={idx}>
-                    {e.sheet} red {e.row}: {e.message}
+                    {(t("pocetnaStanja.errorRow") || "").replace("{{sheet}}", e.sheet).replace("{{row}}", String(e.row)).replace("{{message}}", e.message)}
                   </li>
                 ))}
               </ul>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "@/components/LocaleProvider";
+import { formatAmount } from "@/lib/format";
 
 const fmt = (v) => {
   if (v === null || v === undefined) return "—";
@@ -9,12 +11,17 @@ const fmt = (v) => {
   return n.toFixed(2);
 };
 
-const MJESECI = [
-  "Januar", "Februar", "Mart", "April", "Maj", "Jun",
-  "Jul", "Avgust", "Septembar", "Oktobar", "Novembar", "Decembar",
-];
-
 export default function FinanceToolsClient() {
+  const { t, locale } = useTranslation();
+  const MJESECI = useMemo(
+    () => [
+      t("financeTools.monthJan"), t("financeTools.monthFeb"), t("financeTools.monthMar"),
+      t("financeTools.monthApr"), t("financeTools.monthMaj"), t("financeTools.monthJun"),
+      t("financeTools.monthJul"), t("financeTools.monthAug"), t("financeTools.monthSep"),
+      t("financeTools.monthOct"), t("financeTools.monthNov"), t("financeTools.monthDec"),
+    ],
+    [t],
+  );
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
@@ -47,7 +54,7 @@ export default function FinanceToolsClient() {
       if (!j?.ok) throw new Error(j?.error || "Failed to load unlinked");
       setRows(j.rows || []);
     } catch (e) {
-      setErr(e?.message ?? "Error");
+      setErr(e?.message ?? t("financeTools.errorLabel"));
     } finally {
       setLoading(false);
     }
@@ -79,7 +86,7 @@ export default function FinanceToolsClient() {
 
       await refresh();
     } catch (e) {
-      setErr(e?.message ?? "Error");
+      setErr(e?.message ?? t("financeTools.errorLabel"));
     }
   }
 
@@ -108,7 +115,7 @@ export default function FinanceToolsClient() {
 
       await refresh();
     } catch (e) {
-      setErr(e?.message ?? "Error");
+      setErr(e?.message ?? t("financeTools.errorLabel"));
     }
   }
 
@@ -118,10 +125,10 @@ export default function FinanceToolsClient() {
     try {
       const res = await fetch("/api/finance/bank-costs", { cache: "no-store" });
       const j = await res.json();
-      if (!j?.ok) throw new Error(j?.error || "Greška učitavanja");
+      if (!j?.ok) throw new Error(j?.error || t("financeTools.loadError"));
       setBankCosts({ byMonth: j.byMonth || [], byYear: j.byYear || {} });
     } catch (e) {
-      setErr(e?.message ?? "Greška");
+      setErr(e?.message ?? t("financeTools.errorLabel"));
     } finally {
       setBankCostsLoading(false);
     }
@@ -145,24 +152,22 @@ export default function FinanceToolsClient() {
       setDeactLinkId("");
       await refresh();
     } catch (e) {
-      setErr(e?.message ?? "Error");
+      setErr(e?.message ?? t("financeTools.errorLabel"));
     }
   }
 
   return (
     <>
       <div className="card" style={{ marginTop: 12 }}>
-        <div className="card-title">Troškovi banke</div>
-        <div className="card-subtitle">
-          Zbroj naknada (provizije, vođenje računa, prebacivanja) po mjesecima i godinama.
-        </div>
+        <div className="card-title">{t("financeTools.troskoviBanke")}</div>
+        <div className="card-subtitle">{t("financeTools.troskoviBankeDesc")}</div>
         <button
           type="button"
           className="btn"
           style={{ marginTop: 10 }}
           onClick={openBankCosts}
         >
-          Otvori pregled troškova banke
+          {t("financeTools.otvoriPregled")}
         </button>
       </div>
 
@@ -183,28 +188,28 @@ export default function FinanceToolsClient() {
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <div className="card-title" style={{ margin: 0 }}>Troškovi banke (KM)</div>
-            <button type="button" className="btn" onClick={() => setBankCostsOpen(false)}>Zatvori</button>
+            <div className="card-title" style={{ margin: 0 }}>{t("financeTools.troskoviBankeModal")}</div>
+            <button type="button" className="btn" onClick={() => setBankCostsOpen(false)}>{t("financeTools.zatvori")}</button>
           </div>
           {bankCostsLoading ? (
-            <p style={{ opacity: 0.8 }}>Učitavanje...</p>
+            <p style={{ opacity: 0.8 }}>{t("financeTools.loading")}</p>
           ) : (
             <>
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Mjesec</th>
-                    <th>Godina</th>
-                    <th style={{ textAlign: "right" }}>Iznos (KM)</th>
+                    <th>{t("financeTools.colMjesec")}</th>
+                    <th>{t("financeTools.colGodina")}</th>
+                    <th style={{ textAlign: "right" }}>{t("financeTools.colIznos")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {bankCosts.byMonth.length === 0 ? (
                     <tr>
                       <td colSpan={3} style={{ opacity: 0.8 }}>
-                        Nema transakcija koje odgovaraju kriteriju (provizije, naknade, vođenje računa).
+                        {t("financeTools.noTransactions")}
                         <br />
-                        <span style={{ fontSize: 12 }}>Provjeri da li su izvodi uvezeni i knjiženi; ako banka u opisu koristi druge riječi, možemo ih dodati.</span>
+                        <span style={{ fontSize: 12 }}>{t("financeTools.noTransactionsHint")}</span>
                       </td>
                     </tr>
                   ) : (
@@ -220,13 +225,13 @@ export default function FinanceToolsClient() {
               </table>
               {Object.keys(bankCosts.byYear).length > 0 && (
                 <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.12)" }}>
-                  <div className="card-subtitle" style={{ marginBottom: 8 }}>Ukupno po godini</div>
+                  <div className="card-subtitle" style={{ marginBottom: 8 }}>{t("financeTools.ukupnoPoGodini")}</div>
                   {Object.entries(bankCosts.byYear)
                     .sort((a, b) => Number(b[0]) - Number(a[0]))
                     .map(([year, total]) => (
                       <div key={year} style={{ display: "flex", justifyContent: "space-between", gap: 24, fontWeight: 700 }}>
                         <span>{year}</span>
-                        <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmt(total)} KM</span>
+                        <span style={{ fontVariantNumeric: "tabular-nums" }}>{formatAmount(total, locale)}</span>
                       </div>
                     ))}
                 </div>
@@ -259,7 +264,7 @@ export default function FinanceToolsClient() {
           }}
         >
           <div style={{ minWidth: 180 }}>
-            <div className="label">Default projekat_id (za INCOME)</div>
+            <div className="label">{t("financeTools.defaultProjekatId")}</div>
             <input
               className="input"
               value={defaultProjectId}
@@ -269,17 +274,17 @@ export default function FinanceToolsClient() {
           </div>
 
           <div style={{ flex: 1, minWidth: 260 }}>
-            <div className="label">Napomena/Opis (opcionalno)</div>
+            <div className="label">{t("financeTools.napomenaOpis")}</div>
             <input
               className="input"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Npr. Bank provizija / Posudba vlasnika / UIO..."
+              placeholder={t("financeTools.napomenaPlaceholder")}
             />
           </div>
 
           <button className="btn" onClick={refresh} disabled={loading}>
-            {loading ? "Učitavam..." : "Osvježi"}
+            {loading ? t("financeTools.ucitavam") : t("financeTools.osvjezi")}
           </button>
         </div>
 
@@ -291,7 +296,7 @@ export default function FinanceToolsClient() {
       </div>
 
       <div className="card" style={{ marginTop: 12 }}>
-        <div className="card-title">Deaktivacija payment linka (storno)</div>
+        <div className="card-title">{t("financeTools.deaktivacijaLinka")}</div>
         <div
           style={{
             display: "flex",
@@ -306,26 +311,23 @@ export default function FinanceToolsClient() {
               className="input"
               value={deactLinkId}
               onChange={(e) => setDeactLinkId(e.target.value)}
-              placeholder="npr. 6"
+              placeholder={t("financeTools.linkIdPlaceholder")}
             />
           </div>
           <button className="btn btn-danger" onClick={deactivatePaymentLink}>
-            Deaktiviraj link
+            {t("financeTools.deaktivirajLink")}
           </button>
         </div>
       </div>
 
       <div className="card" style={{ marginTop: 12 }}>
-        <div className="card-title">UNLINKED bank postings</div>
-        <div className="card-subtitle">
-          Incoming (amount &gt; 0) → LINK INCOME. Outgoing (amount &lt; 0) →
-          LINK PAY.
-        </div>
+        <div className="card-title">{t("financeTools.unlinkedTitle")}</div>
+        <div className="card-subtitle">{t("financeTools.unlinkedHint")}</div>
 
         <div style={{ marginTop: 10 }}>
-          <div className="badge">Incoming: {incoming.length}</div>{" "}
-          <div className="badge">Outgoing: {outgoing.length}</div>{" "}
-          <div className="badge">Total: {rows.length}</div>
+          <div className="badge">{t("financeTools.incoming")}: {incoming.length}</div>{" "}
+          <div className="badge">{t("financeTools.outgoing")}: {outgoing.length}</div>{" "}
+          <div className="badge">{t("financeTools.total")}: {rows.length}</div>
         </div>
 
         <div style={{ overflowX: "auto", marginTop: 10 }}>
@@ -333,18 +335,18 @@ export default function FinanceToolsClient() {
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Datum</th>
-                <th>Iznos</th>
-                <th>Partner</th>
-                <th>Opis</th>
-                <th style={{ width: 240 }}>Akcija</th>
+                <th>{t("financeTools.colDatum")}</th>
+                <th>{t("financeTools.colIznosShort")}</th>
+                <th>{t("financeTools.colPartner")}</th>
+                <th>{t("financeTools.colOpis")}</th>
+                <th style={{ width: 240 }}>{t("financeTools.colAkcija")}</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={6} style={{ opacity: 0.8 }}>
-                    Nema unlinked posting-a. ✅
+                    {t("financeTools.noUnlinked")}
                   </td>
                 </tr>
               ) : (
@@ -389,8 +391,8 @@ export default function FinanceToolsClient() {
                             disabled={!isOutgoing}
                             title={
                               isOutgoing
-                                ? "Link kao payment"
-                                : "Samo outgoing može biti payment"
+                                ? t("financeTools.linkPayTitle")
+                                : t("financeTools.linkPayDisabled")
                             }
                             onClick={() => linkPayment(r)}
                           >
@@ -401,8 +403,8 @@ export default function FinanceToolsClient() {
                             disabled={!isIncoming}
                             title={
                               isIncoming
-                                ? "Link kao income"
-                                : "Samo incoming može biti income"
+                                ? t("financeTools.linkIncomeTitle")
+                                : t("financeTools.linkIncomeDisabled")
                             }
                             onClick={() => linkIncome(r)}
                           >

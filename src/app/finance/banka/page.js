@@ -2,17 +2,13 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
+import { formatAmount } from "@/lib/format";
 import { query } from "@/lib/db";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
 import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
 
-const fmtKM = (v) => {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return n.toFixed(2) + " KM";
-};
 
 const fmtDate = (d) => {
   if (!d) return "—";
@@ -213,7 +209,7 @@ export default async function BankaPage({ searchParams }) {
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                     <span className="brandTitle">{t("banka.title")}</span>
                     {hasProject && (
-                      <span className="badge badge-green" title="Aktivan filter">
+                      <span className="badge badge-green" title={t("banka.activeFilter")}>
                         PROJEKAT #{projekatId}
                       </span>
                     )}
@@ -225,8 +221,8 @@ export default async function BankaPage({ searchParams }) {
               </div>
               <div className="actions">
                 {hasProject && (
-                  <Link className="btn" href={resetProjectHref} title={t("common.reset")}>
-                    {t("common.reset")} projekat
+                  <Link className="btn" href={resetProjectHref} title={t("banka.resetProject")}>
+                    {t("banka.resetProject")}
                   </Link>
                 )}
                 <Link className="btn" href="/finance">{t("finance.title")}</Link>
@@ -242,41 +238,41 @@ export default async function BankaPage({ searchParams }) {
             <form method="GET" className="banka-filters">
               <div className="banka-filters-row">
                 <div className="banka-field banka-field--wide">
-                  <label className="label">Pretraga</label>
+                  <label className="label">{t("banka.search")}</label>
                   <input
                     className="input"
                     name="q"
                     defaultValue={q}
-                    placeholder="partner / opis / tx_id…"
+                    placeholder={t("banka.searchPlaceholder")}
                   />
                 </div>
                 <div className="banka-field">
-                  <label className="label">Status (alloc)</label>
+                  <label className="label">{t("banka.statusAlloc")}</label>
                   <select className="input" name="alloc" defaultValue={alloc}>
-                    <option value="">(sve)</option>
+                    <option value="">{t("banka.all")}</option>
                     <option value="OK">OK</option>
                     <option value="UNLINKED">UNLINKED</option>
                     <option value="OVER_ALLOCATED">OVER_ALLOCATED</option>
                   </select>
                 </div>
                 <div className="banka-field">
-                  <label className="label">Projekat ID</label>
+                  <label className="label">{t("banka.projekatId")}</label>
                   <input
                     className="input"
                     name="projekat_id"
                     defaultValue={projekatIdRaw}
-                    placeholder="npr. 77"
+                    placeholder={t("banka.projekatIdPlaceholder")}
                   />
                   {hasProject && (
                     <div className="subtle" style={{ marginTop: 4, fontSize: 12 }}>
-                      <Link className="link" href={`/projects/${projekatId}`}>Otvori projekat</Link>
+                      <Link className="link" href={`/projects/${projekatId}`}>{t("banka.openProject")}</Link>
                     </div>
                   )}
                 </div>
               </div>
               <div className="banka-filters-row">
                 <div className="banka-field">
-                  <label className="label">Od datuma</label>
+                  <label className="label">{t("banka.fromDate")}</label>
                   <input
                     className="input"
                     name="from"
@@ -285,7 +281,7 @@ export default async function BankaPage({ searchParams }) {
                   />
                 </div>
                 <div className="banka-field">
-                  <label className="label">Do datuma</label>
+                  <label className="label">{t("banka.toDate")}</label>
                   <input
                     className="input"
                     name="to"
@@ -296,8 +292,8 @@ export default async function BankaPage({ searchParams }) {
                 <div className="banka-field banka-actions">
                   <label className="label" style={{ opacity: 0 }}>.</label>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button className="btn btn--active" type="submit">Primijeni</button>
-                    <Link className="btn" href="/finance/banka">Reset</Link>
+                    <button className="btn btn--active" type="submit">{t("banka.apply")}</button>
+                    <Link className="btn" href="/finance/banka">{t("banka.reset")}</Link>
                   </div>
                 </div>
               </div>
@@ -306,11 +302,11 @@ export default async function BankaPage({ searchParams }) {
 
           <div className="card tableCard banka-table-card">
             <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-              <span className="muted">Prikazano: {rows.length} (limit 200)</span>
+              <span className="muted">{(t("banka.shownCount") || "").replace("{{count}}", rows.length)}</span>
               <ExportExcelButton
                 filename="banka_izvod"
-                sheetName="Banka"
-                headers={["posting_id", "tx_id", "Datum", "Iznos", "Valuta", "alloc_status", "linked_total_km", "Partner", "Opis", "reversed"]}
+                sheetName={t("banka.excelSheetName")}
+                headers={["posting_id", "tx_id", t("banka.colDatum"), t("banka.colIznos"), t("banka.colValuta"), "alloc_status", "linked_total_km", t("banka.colPartner"), t("banka.colOpis"), "reversed"]}
                 rows={rows.map((r) => [
                   r.posting_id,
                   r.tx_id ?? "",
@@ -337,12 +333,12 @@ export default async function BankaPage({ searchParams }) {
                 </colgroup>
                 <thead>
                   <tr>
-                    <th>posting</th>
-                    <th>Datum</th>
-                    <th style={{ textAlign: "right" }}>iznos</th>
-                    <th>alloc</th>
-                    <th>rev</th>
-                    <th>partner / opis</th>
+                    <th>{t("banka.colPosting")}</th>
+                    <th>{t("banka.colDatum")}</th>
+                    <th style={{ textAlign: "right" }}>{t("banka.colIznos")}</th>
+                    <th>{t("banka.colAlloc")}</th>
+                    <th>{t("banka.colRev")}</th>
+                    <th>{t("banka.colPartnerOpis")}</th>
                   </tr>
                 </thead>
             <tbody>
@@ -370,7 +366,7 @@ export default async function BankaPage({ searchParams }) {
                             fontVariantNumeric: "tabular-nums",
                           }}
                         >
-                          {fmtKM(r.amount)}
+                          {formatAmount(r.amount, locale)}
                         </td>
                         <td>
                           {r.alloc_status
@@ -389,7 +385,7 @@ export default async function BankaPage({ searchParams }) {
                   })
                 : <tr>
                     <td colSpan={6} className="subtle" style={{ padding: 14 }}>
-                      Nema rezultata.
+                      {t("banka.noResults")}
                     </td>
                   </tr>}
                 </tbody>

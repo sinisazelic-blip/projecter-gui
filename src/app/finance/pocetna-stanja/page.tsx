@@ -1,4 +1,8 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
+import { formatAmount } from "@/lib/format";
 import { getPocetnaStanja } from "@/lib/pocetna-stanja";
 import PocetnaStanjaImport from "./PocetnaStanjaImport";
 import OtpisPocetnoStanjeButton from "./OtpisPocetnoStanjeButton";
@@ -6,10 +10,6 @@ import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
 
-const fmtKM = (v: number) => {
-  if (!Number.isFinite(v)) return "—";
-  return v.toFixed(2).replace(".", ",") + " KM";
-};
 
 /** Suma samo aktivnih (ne otpisanih) stavki */
 function sumAktivno<T extends { iznos_km: number; otpisano?: boolean }>(rows: T[]): number {
@@ -17,6 +17,10 @@ function sumAktivno<T extends { iznos_km: number; otpisano?: boolean }>(rows: T[
 }
 
 export default async function PocetnaStanjaPage() {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
+  const t = getT(locale);
+
   const data = await getPocetnaStanja();
 
   const sumKlijenti = sumAktivno(data.klijenti);
@@ -34,26 +38,26 @@ export default async function PocetnaStanjaPage() {
                   <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Evidencija početnih stanja</div>
+                  <div className="brandTitle">{t("pocetnaStanja.title")}</div>
                   <div className="brandSub">
-                    Finansije / Stanje na 31.12.2025 — klijenti, dobavljači, talenti
+                    {t("pocetnaStanja.subtitle")}
                   </div>
                   <div style={{ marginTop: 8, fontSize: 13, color: "var(--muted)" }}>
-                    Klijenti: <strong style={{ color: "var(--text)" }}>{data.klijenti.length}</strong> stanja
+                    {(t("pocetnaStanja.klijentiCount") || "").replace("{{count}}", String(data.klijenti.length))}
                     {" · "}
-                    Dobavljači: <strong style={{ color: "var(--text)" }}>{data.dobavljaci.length}</strong> stanja
+                    {(t("pocetnaStanja.dobavljaciCount") || "").replace("{{count}}", String(data.dobavljaci.length))}
                     {" · "}
-                    Talenti: <strong style={{ color: "var(--text)" }}>{data.talenti.length}</strong> stanja
+                    {(t("pocetnaStanja.talentiCount") || "").replace("{{count}}", String(data.talenti.length))}
                   </div>
                 </div>
               </div>
 
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <Link href="/finance" className="btn" title="Finansije">
-                  Finansije
+                <Link href="/finance" className="btn" title={t("finance.title")}>
+                  {t("finance.title")}
                 </Link>
-                <Link href="/dashboard" className="btn" title="Dashboard">
-                  🏠 Dashboard
+                <Link href="/dashboard" className="btn" title={t("common.dashboard")}>
+                  🏠 {t("common.dashboard")}
                 </Link>
               </div>
             </div>
@@ -73,10 +77,10 @@ export default async function PocetnaStanjaPage() {
           }}
         >
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontWeight: 700, fontSize: 15 }}>
-            Klijenti — potraživanja od klijenata
+            {t("pocetnaStanja.klijentiPotrazivanja")}
           </div>
           <div style={{ padding: "6px 16px", fontSize: 12, color: "var(--muted)" }}>
-            Pozitivan iznos = klijent duguje nama.
+            {t("pocetnaStanja.pozitivanIznos")}
           </div>
           <div className="pocetna-stanja-table-wrap">
             <table className="table pocetna-stanja-table" style={{ width: "100%", tableLayout: "fixed" }}>
@@ -88,17 +92,17 @@ export default async function PocetnaStanjaPage() {
                 </colgroup>
                 <thead>
                   <tr>
-                    <th style={{ textAlign: "left", padding: "10px 14px" }}>Naziv</th>
-                    <th style={{ textAlign: "right", padding: "10px 14px" }}>Iznos (KM)</th>
-                    <th style={{ textAlign: "center", padding: "10px 14px" }}>Akcija</th>
-                    <th style={{ textAlign: "left", padding: "10px 14px" }}>Napomena</th>
+                    <th style={{ textAlign: "left", padding: "10px 14px" }}>{t("pocetnaStanja.colNaziv")}</th>
+                    <th style={{ textAlign: "right", padding: "10px 14px" }}>{t("pocetnaStanja.colIznosKm")}</th>
+                    <th style={{ textAlign: "center", padding: "10px 14px" }}>{t("pocetnaStanja.colAkcija")}</th>
+                    <th style={{ textAlign: "left", padding: "10px 14px" }}>{t("pocetnaStanja.colNapomena")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.klijenti.length === 0 ? (
                     <tr>
                       <td colSpan={4} style={{ padding: 20, color: "var(--muted)" }}>
-                        Nema unosa ili tabela nije dostupna.
+                        {t("pocetnaStanja.noResults")}
                       </td>
                     </tr>
                   ) : (
@@ -109,14 +113,14 @@ export default async function PocetnaStanjaPage() {
                             {r.naziv}
                           </Link>
                           {r.otpisano && (
-                            <span className="badge badge-red" style={{ marginLeft: 8, fontSize: 11 }}>Otpisano</span>
+                            <span className="badge badge-red" style={{ marginLeft: 8, fontSize: 11 }}>{t("pocetnaStanja.otpisano")}</span>
                           )}
                           {r.otpisano && r.otpis_razlog && (
                             <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{r.otpis_razlog}</div>
                           )}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>
-                          {fmtKM(r.iznos_km)}
+                          {formatAmount(r.iznos_km, locale)}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           {!r.otpisano && (
@@ -132,9 +136,9 @@ export default async function PocetnaStanjaPage() {
                 </tbody>
                 <tfoot>
                   <tr style={{ borderTop: "2px solid var(--border)", fontWeight: 700 }}>
-                    <td style={{ padding: "12px 14px" }}>Ukupno (aktivna)</td>
+                    <td style={{ padding: "12px 14px" }}>{t("pocetnaStanja.ukupnoAktivna")}</td>
                     <td style={{ padding: "12px 14px", textAlign: "right" }}>
-                      {fmtKM(sumKlijenti)}
+                      {formatAmount(sumKlijenti, locale)}
                     </td>
                     <td style={{ padding: "12px 14px" }} />
                     <td style={{ padding: "12px 14px" }} />
@@ -143,7 +147,7 @@ export default async function PocetnaStanjaPage() {
               </table>
           </div>
           <div style={{ padding: "8px 16px", fontSize: 12, color: "var(--muted)" }}>
-            Prikazano: {data.klijenti.length} stavki
+            {(t("pocetnaStanja.prikazanoStavki") || "").replace("{{count}}", String(data.klijenti.length))}
           </div>
         </section>
 
@@ -158,10 +162,10 @@ export default async function PocetnaStanjaPage() {
           }}
         >
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontWeight: 700, fontSize: 15 }}>
-            Dobavljači — naša dugovanja prema dobavljačima
+            {t("pocetnaStanja.dobavljaciDugovanja")}
           </div>
           <div style={{ padding: "6px 16px", fontSize: 12, color: "var(--muted)" }}>
-            Iznos = koliko dugujemo dobavljaču.
+            {t("pocetnaStanja.dobavljaciIznos")}
           </div>
           <div className="pocetna-stanja-table-wrap">
             <table className="table pocetna-stanja-table" style={{ width: "100%", tableLayout: "fixed" }}>
@@ -173,17 +177,17 @@ export default async function PocetnaStanjaPage() {
                 </colgroup>
                 <thead>
                   <tr>
-                    <th style={{ textAlign: "left", padding: "10px 14px" }}>Naziv</th>
-                    <th style={{ textAlign: "right", padding: "10px 14px" }}>Iznos (KM)</th>
-                    <th style={{ textAlign: "center", padding: "10px 14px" }}>Akcija</th>
-                    <th style={{ textAlign: "left", padding: "10px 14px" }}>Napomena</th>
+                    <th style={{ textAlign: "left", padding: "10px 14px" }}>{t("pocetnaStanja.colNaziv")}</th>
+                    <th style={{ textAlign: "right", padding: "10px 14px" }}>{t("pocetnaStanja.colIznosKm")}</th>
+                    <th style={{ textAlign: "center", padding: "10px 14px" }}>{t("pocetnaStanja.colAkcija")}</th>
+                    <th style={{ textAlign: "left", padding: "10px 14px" }}>{t("pocetnaStanja.colNapomena")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.dobavljaci.length === 0 ? (
                     <tr>
                       <td colSpan={4} style={{ padding: 20, color: "var(--muted)" }}>
-                        Nema unosa u evidenciji. Kad uneseš početna stanja dobavljača (baza ili buduća forma), ovdje će se prikazati.
+                        {t("pocetnaStanja.noResultsDobavljaci")}
                       </td>
                     </tr>
                   ) : (
@@ -196,14 +200,14 @@ export default async function PocetnaStanjaPage() {
                               {r.naziv}
                             </Link>
                             {r.otpisano && (
-                              <span className="badge badge-red" style={{ marginLeft: 8, fontSize: 11 }}>Otpisano</span>
+                              <span className="badge badge-red" style={{ marginLeft: 8, fontSize: 11 }}>{t("pocetnaStanja.otpisano")}</span>
                             )}
                             {r.otpisano && r.otpis_razlog && (
                               <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{r.otpis_razlog}</div>
                             )}
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>
-                            {fmtKM(r.iznos_km)}
+                            {formatAmount(r.iznos_km, locale)}
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>
                             {!r.otpisano && fromPocetno && (
@@ -220,9 +224,9 @@ export default async function PocetnaStanjaPage() {
                 </tbody>
                 <tfoot>
                   <tr style={{ borderTop: "2px solid var(--border)", fontWeight: 700 }}>
-                    <td style={{ padding: "12px 14px" }}>Ukupno (aktivna)</td>
+                    <td style={{ padding: "12px 14px" }}>{t("pocetnaStanja.ukupnoAktivna")}</td>
                     <td style={{ padding: "12px 14px", textAlign: "right" }}>
-                      {fmtKM(sumDobavljaci)}
+                      {formatAmount(sumDobavljaci, locale)}
                     </td>
                     <td style={{ padding: "12px 14px" }} />
                     <td style={{ padding: "12px 14px" }} />
@@ -231,7 +235,7 @@ export default async function PocetnaStanjaPage() {
               </table>
           </div>
           <div style={{ padding: "8px 16px", fontSize: 12, color: "var(--muted)" }}>
-            Prikazano: {data.dobavljaci.length} stavki
+            {(t("pocetnaStanja.prikazanoStavki") || "").replace("{{count}}", String(data.dobavljaci.length))}
           </div>
         </section>
 
@@ -246,10 +250,10 @@ export default async function PocetnaStanjaPage() {
           }}
         >
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontWeight: 700, fontSize: 15 }}>
-            Talenti — naša dugovanja prema talentima
+            {t("pocetnaStanja.talentiDugovanja")}
           </div>
           <div style={{ padding: "6px 16px", fontSize: 12, color: "var(--muted)" }}>
-            Iznos = koliko dugujemo talentu.
+            {t("pocetnaStanja.talentiIznos")}
           </div>
           <div className="pocetna-stanja-table-wrap">
             <table className="table pocetna-stanja-table" style={{ width: "100%", tableLayout: "fixed" }}>
@@ -261,17 +265,17 @@ export default async function PocetnaStanjaPage() {
                 </colgroup>
                 <thead>
                   <tr>
-                    <th style={{ textAlign: "left", padding: "10px 14px" }}>Ime i prezime</th>
-                    <th style={{ textAlign: "right", padding: "10px 14px" }}>Iznos (KM)</th>
-                    <th style={{ textAlign: "center", padding: "10px 14px" }}>Akcija</th>
-                    <th style={{ textAlign: "left", padding: "10px 14px" }}>Napomena</th>
+                    <th style={{ textAlign: "left", padding: "10px 14px" }}>{t("pocetnaStanja.colImePrezime")}</th>
+                    <th style={{ textAlign: "right", padding: "10px 14px" }}>{t("pocetnaStanja.colIznosKm")}</th>
+                    <th style={{ textAlign: "center", padding: "10px 14px" }}>{t("pocetnaStanja.colAkcija")}</th>
+                    <th style={{ textAlign: "left", padding: "10px 14px" }}>{t("pocetnaStanja.colNapomena")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.talenti.length === 0 ? (
                     <tr>
                       <td colSpan={4} style={{ padding: 20, color: "var(--muted)" }}>
-                        Nema unosa ili tabela nije dostupna.
+                        {t("pocetnaStanja.noResults")}
                       </td>
                     </tr>
                   ) : (
@@ -284,14 +288,14 @@ export default async function PocetnaStanjaPage() {
                               {r.naziv}
                             </Link>
                             {r.otpisano && (
-                              <span className="badge badge-red" style={{ marginLeft: 8, fontSize: 11 }}>Otpisano</span>
+                              <span className="badge badge-red" style={{ marginLeft: 8, fontSize: 11 }}>{t("pocetnaStanja.otpisano")}</span>
                             )}
                             {r.otpisano && r.otpis_razlog && (
                               <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{r.otpis_razlog}</div>
                             )}
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>
-                            {fmtKM(r.iznos_km)}
+                            {formatAmount(r.iznos_km, locale)}
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>
                             {!r.otpisano && fromPocetno && (
@@ -308,9 +312,9 @@ export default async function PocetnaStanjaPage() {
                 </tbody>
                 <tfoot>
                   <tr style={{ borderTop: "2px solid var(--border)", fontWeight: 700 }}>
-                    <td style={{ padding: "12px 14px" }}>Ukupno (aktivna)</td>
+                    <td style={{ padding: "12px 14px" }}>{t("pocetnaStanja.ukupnoAktivna")}</td>
                     <td style={{ padding: "12px 14px", textAlign: "right" }}>
-                      {fmtKM(sumTalenti)}
+                      {formatAmount(sumTalenti, locale)}
                     </td>
                     <td style={{ padding: "12px 14px" }} />
                     <td style={{ padding: "12px 14px" }} />
@@ -319,7 +323,7 @@ export default async function PocetnaStanjaPage() {
               </table>
           </div>
           <div style={{ padding: "8px 16px", fontSize: 12, color: "var(--muted)" }}>
-            Prikazano: {data.talenti.length} stavki
+            {(t("pocetnaStanja.prikazanoStavki") || "").replace("{{count}}", String(data.talenti.length))}
           </div>
         </section>
 

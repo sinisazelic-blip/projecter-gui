@@ -1,16 +1,14 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
+import { formatAmount } from "@/lib/format";
 import { query } from "@/lib/db";
 import { getPocetnaStanja } from "@/lib/pocetna-stanja";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
 import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
-
-const fmtKM = (v) => {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return n.toFixed(2) + " KM";
-};
 
 const fmtDate = (d) => {
   if (!d) return "—";
@@ -39,6 +37,10 @@ function makeNeedle(row) {
 }
 
 export default async function PotrazivanjaListPage({ searchParams }) {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
+  const t = getT(locale);
+
   const sp = await Promise.resolve(searchParams);
   const q = (sp?.q ?? "").trim();
   const onlyOpen = sp?.only_open === "1";
@@ -135,17 +137,17 @@ export default async function PotrazivanjaListPage({ searchParams }) {
                   <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Potraživanja</div>
-                  <div className="brandSub">Finansije · Banka filter po redu</div>
+                  <div className="brandTitle">{t("potrazivanja.title")}</div>
+                  <div className="brandSub">{t("potrazivanja.subtitle")}</div>
                 </div>
               </div>
 
               <div className="actions">
-                <Link href="/finance" className="btn" title="Finansije">
-                  Finansije
+                <Link href="/finance" className="btn" title={t("finance.title")}>
+                  {t("finance.title")}
                 </Link>
-                <Link href="/dashboard" className="btn" title="Dashboard">
-                  🏠 Dashboard
+                <Link href="/dashboard" className="btn" title={t("common.dashboard")}>
+                  🏠 {t("common.dashboard")}
                 </Link>
               </div>
             </div>
@@ -158,12 +160,12 @@ export default async function PotrazivanjaListPage({ searchParams }) {
       <div className="card tableCard" style={{ marginBottom: 14 }}>
         <form className="filters" method="GET" style={{ flexWrap: "wrap", padding: 16 }}>
           <div className="field">
-            <span className="label">Pretraga</span>
+            <span className="label">{t("potrazivanja.search")}</span>
             <input
               className="input"
               name="q"
               defaultValue={q}
-              placeholder="ID / projekat / opis…"
+              placeholder={t("potrazivanja.searchPlaceholder")}
             />
           </div>
 
@@ -174,15 +176,15 @@ export default async function PotrazivanjaListPage({ searchParams }) {
               value="1"
               defaultChecked={onlyOpen}
             />
-            <span className="label" style={{ marginBottom: 0 }}>Samo otvorena</span>
+            <span className="label" style={{ marginBottom: 0 }}>{t("potrazivanja.onlyOpen")}</span>
           </label>
 
           <div className="actions">
             <button className="btn btn--active" type="submit">
-              Primijeni
+              {t("potrazivanja.apply")}
             </button>
             <Link className="btn" href="/finance/potrazivanja">
-              Reset
+              {t("potrazivanja.reset")}
             </Link>
           </div>
         </form>
@@ -192,9 +194,9 @@ export default async function PotrazivanjaListPage({ searchParams }) {
       {pocetnaStanja.klijenti?.length > 0 && (
         <div className="card tableCard" style={{ marginBottom: 14 }}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <span style={{ fontWeight: 700, fontSize: 15 }}>Početna stanja (31.12.) — potraživanja od klijenata</span>
+            <span style={{ fontWeight: 700, fontSize: 15 }}>{t("potrazivanja.pocetnaStanjaKlijentiPreview")}</span>
             <Link href="/finance/pocetna-stanja" className="btn" style={{ fontSize: 13 }}>
-              Evidencija početnih stanja →
+              {t("potrazivanja.evidencijaPocetnaStanja")}
             </Link>
           </div>
           <div style={{ padding: "10px 16px" }}>
@@ -202,23 +204,23 @@ export default async function PotrazivanjaListPage({ searchParams }) {
               <table className="table" style={{ width: "100%" }}>
                 <thead>
                   <tr>
-                    <th style={{ textAlign: "left", padding: "6px 10px" }}>Klijent</th>
-                    <th style={{ textAlign: "right", padding: "6px 10px" }}>Iznos (KM)</th>
+                    <th style={{ textAlign: "left", padding: "6px 10px" }}>{t("potrazivanja.colKlijent")}</th>
+                    <th style={{ textAlign: "right", padding: "6px 10px" }}>{t("pocetnaStanja.colIznosKm")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pocetnaStanja.klijenti.map((r) => (
                     <tr key={r.klijent_id} style={r.otpisano ? { opacity: 0.6 } : undefined}>
-                      <td style={{ padding: "6px 10px" }}>{r.naziv}{r.otpisano && " (otpisano)"}</td>
-                      <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 600 }}>{fmtKM(r.iznos_km)}</td>
+                      <td style={{ padding: "6px 10px" }}>{r.naziv}{r.otpisano && ` ${t("potrazivanja.otpisano")}`}</td>
+                      <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 600 }}>{formatAmount(r.iznos_km, locale)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr style={{ borderTop: "1px solid var(--border)", fontWeight: 700 }}>
-                    <td style={{ padding: "8px 10px" }}>Ukupno (aktivna)</td>
+                    <td style={{ padding: "8px 10px" }}>{t("potrazivanja.ukupnoAktivna")}</td>
                     <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                      {fmtKM(pocetnaStanja.klijenti.filter((x) => !x.otpisano).reduce((s, x) => s + x.iznos_km, 0))}
+                      {formatAmount(pocetnaStanja.klijenti.filter((x) => !x.otpisano).reduce((s, x) => s + x.iznos_km, 0), locale)}
                     </td>
                   </tr>
                 </tfoot>
@@ -230,13 +232,13 @@ export default async function PotrazivanjaListPage({ searchParams }) {
 
       <div className="card tableCard">
         <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <span style={{ fontWeight: 700, fontSize: 15 }}>Lista potraživanja (projekt_potrazivanja)</span>
+          <span style={{ fontWeight: 700, fontSize: 15 }}>{t("potrazivanja.listTitle")}</span>
           <span style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <span className="muted">Prikazano: {list.length} (limit 200)</span>
+            <span className="muted">{(t("potrazivanja.shownCount") || "").replace("{{count}}", list.length)}</span>
             <ExportExcelButton
               filename="potrazivanja"
-              sheetName="Potraživanja"
-              headers={["ID", "Projekat", "Datum", "Dospijeće", "Iznos (KM)", "Plaćeno (KM)", "Preostalo (KM)", "Opis", "Napomena"]}
+              sheetName={t("potrazivanja.excelSheetName")}
+              headers={[t("potrazivanja.colId"), t("potrazivanja.colProjekat"), t("potrazivanja.colDatum"), t("potrazivanja.colDospijece"), t("potrazivanja.colIznos"), t("potrazivanja.colPlaceno"), t("potrazivanja.colPreostalo"), t("potrazivanja.colOpis"), t("potrazivanja.colNapomena")]}
               rows={list.map((r) => {
                 const iznos = Number(r.iznos_km ?? r.iznos);
                 const paid = Number(r.paid_km ?? 0);
@@ -271,15 +273,15 @@ export default async function PotrazivanjaListPage({ searchParams }) {
             </colgroup>
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Projekat</th>
-                <th>Datum</th>
-                <th>Dospijeće</th>
-                <th className="num">Iznos</th>
-                <th className="num">Paid</th>
-                <th className="num">Preostalo</th>
-                <th>Banka</th>
-                <th>Opis</th>
+                <th>{t("potrazivanja.colId")}</th>
+                <th>{t("potrazivanja.colProjekat")}</th>
+                <th>{t("potrazivanja.colDatum")}</th>
+                <th>{t("potrazivanja.colDospijece")}</th>
+                <th className="num">{t("potrazivanja.colIznos")}</th>
+                <th className="num">{t("potrazivanja.colPlaceno")}</th>
+                <th className="num">{t("potrazivanja.colPreostalo")}</th>
+                <th>{t("potrazivanja.banka")}</th>
+                <th>{t("potrazivanja.colOpis")}</th>
               </tr>
             </thead>
             <tbody>
@@ -318,7 +320,7 @@ export default async function PotrazivanjaListPage({ searchParams }) {
                             fontVariantNumeric: "tabular-nums",
                           }}
                         >
-                          {fmtKM(iznos)}
+                          {formatAmount(iznos, locale)}
                         </td>
                         <td
                           style={{
@@ -326,7 +328,7 @@ export default async function PotrazivanjaListPage({ searchParams }) {
                             fontVariantNumeric: "tabular-nums",
                           }}
                         >
-                          {fmtKM(paid)}
+                          {formatAmount(paid, locale)}
                         </td>
                         <td
                           style={{
@@ -334,7 +336,7 @@ export default async function PotrazivanjaListPage({ searchParams }) {
                             fontVariantNumeric: "tabular-nums",
                           }}
                         >
-                          {rem === null ? "—" : fmtKM(rem)}
+                          {rem === null ? "—" : formatAmount(rem, locale)}
                         </td>
                         <td>
                           <Link className="btn" href={bankHref}>
@@ -367,7 +369,7 @@ export default async function PotrazivanjaListPage({ searchParams }) {
                   })
                 : <tr>
                     <td colSpan={9} className="subtle" style={{ padding: 20, textAlign: "center" }}>
-                      Nema rezultata.
+                      {t("potrazivanja.noResults")}
                     </td>
                   </tr>}
             </tbody>

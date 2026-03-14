@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "@/components/LocaleProvider";
 
 /**
  * Column picker - omogućava korisniku da bira koje kolone želi vidjeti u tabeli.
@@ -11,6 +12,7 @@ import { useState } from "react";
  * @param {Function} props.onChange - Callback (visibleColumns) => void
  */
 export function ColumnPicker({ columns = [], columnLabels = {}, visibleColumns = [], onChange }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   if (!columns.length) return null;
@@ -37,9 +39,9 @@ export function ColumnPicker({ columns = [], columnLabels = {}, visibleColumns =
         className="btn"
         onClick={() => setOpen(!open)}
         style={{ fontSize: 12, padding: "6px 10px" }}
-        title="Izaberi kolone za prikaz"
+        title={t("common.columnPickerSelectHint")}
       >
-        📋 Kolone
+        📋 {t("common.columnPickerTitle")}
       </button>
       {open && (
         <>
@@ -73,21 +75,21 @@ export function ColumnPicker({ columns = [], columnLabels = {}, visibleColumns =
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <span style={{ fontWeight: 700, fontSize: 13 }}>Kolone</span>
+              <span style={{ fontWeight: 700, fontSize: 13 }}>{t("common.columnPickerTitle")}</span>
               <div style={{ display: "flex", gap: 4 }}>
                 <button
                   type="button"
                   onClick={showAll}
                   style={{ fontSize: 11, padding: "2px 6px", background: "rgba(0,0,0,0.05)", border: "none", borderRadius: 4, cursor: "pointer" }}
                 >
-                  Sve
+                  {t("common.columnPickerAll")}
                 </button>
                 <button
                   type="button"
                   onClick={hideAll}
                   style={{ fontSize: 11, padding: "2px 6px", background: "rgba(0,0,0,0.05)", border: "none", borderRadius: 4, cursor: "pointer" }}
                 >
-                  Ništa
+                  {t("common.columnPickerNone")}
                 </button>
               </div>
             </div>

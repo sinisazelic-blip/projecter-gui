@@ -1,16 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/components/LocaleProvider";
 
+const defaultValutaByLocale = (locale) => (locale === "en" ? "EUR" : "BAM");
+const currencyOptionsByLocale = (locale) =>
+  locale === "en" ? ["EUR", "USD"] : ["BAM", "EUR"];
+
 export default function KreditForm() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const router = useRouter();
   const [form, setForm] = useState({
     naziv: "",
     ukupan_iznos: "",
-    valuta: "BAM",
+    valuta: defaultValutaByLocale(locale),
     broj_rata: "",
     uplaceno_rata: "0",
     iznos_rate: "",
@@ -21,6 +25,13 @@ export default function KreditForm() {
 
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
+
+  useEffect(() => {
+    const opts = currencyOptionsByLocale(locale);
+    setForm((prev) =>
+      opts.includes(prev.valuta) ? prev : { ...prev, valuta: defaultValutaByLocale(locale) },
+    );
+  }, [locale]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -57,7 +68,7 @@ export default function KreditForm() {
       setForm({
         naziv: "",
         ukupan_iznos: "",
-        valuta: "BAM",
+        valuta: defaultValutaByLocale(locale),
         broj_rata: "",
         uplaceno_rata: "0",
         iznos_rate: "",
@@ -113,8 +124,9 @@ export default function KreditForm() {
             value={form.valuta}
             onChange={handleChange}
           >
-            <option value="BAM">BAM</option>
-            <option value="EUR">EUR</option>
+            {currencyOptionsByLocale(locale).map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
           </select>
         </div>
 

@@ -27,9 +27,7 @@ export default async function FinanceToolsPage() {
                   </div>
                   <div>
                     <div className="brandTitle">{t("dashboard.financeTools")}</div>
-                    <div className="brandSub">
-                      Bank postings → meaning (bez Workbench-a, bez PowerShell-a).
-                    </div>
+                    <div className="brandSub">{t("financeTools.brandSub")}</div>
                   </div>
                 </div>
 
@@ -44,11 +42,8 @@ export default async function FinanceToolsPage() {
 
           <div className="bodyWrap">
             <div className="card" style={{ marginTop: 12 }}>
-              <div className="card-title">⚠️ Operativni alati</div>
-              <div className="card-subtitle">
-                Ovo je &quot;tools&quot; ekran. Koristi se pažljivo. Ništa se ne briše — linkovi
-                se mogu samo deaktivirati (storno).
-              </div>
+              <div className="card-title">⚠️ {t("financeTools.operativniAlati")}</div>
+              <div className="card-subtitle">{t("financeTools.toolsWarning")}</div>
             </div>
 
             <FinanceToolsClient />

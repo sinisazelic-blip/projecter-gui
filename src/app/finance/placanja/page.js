@@ -1,15 +1,13 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { getT } from "@/lib/translations";
+import { getValidLocale } from "@/lib/i18n";
+import { formatAmount } from "@/lib/format";
 import { query } from "@/lib/db";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
 import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
-
-const fmtKM = (v) => {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return n.toFixed(2) + " KM";
-};
 
 const fmtDate = (d) => {
   if (!d) return "—";
@@ -28,6 +26,10 @@ function makeNeedle(row) {
 }
 
 export default async function PlacanjaListPage({ searchParams }) {
+  const cookieStore = await cookies();
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
+  const t = getT(locale);
+
   const sp = await Promise.resolve(searchParams);
   const q = (sp?.q ?? "").trim();
 
@@ -75,17 +77,17 @@ export default async function PlacanjaListPage({ searchParams }) {
                   <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">Plaćanja</div>
-                  <div className="brandSub">Finansije · Banka filter po redu</div>
+                  <div className="brandTitle">{t("placanja.title")}</div>
+                  <div className="brandSub">{t("placanja.subtitle")}</div>
                 </div>
               </div>
 
               <div className="actions">
-                <Link href="/finance" className="btn" title="Finansije">
-                  Finansije
+                <Link href="/finance" className="btn" title={t("finance.title")}>
+                  {t("finance.title")}
                 </Link>
-                <Link href="/dashboard" className="btn" title="Dashboard">
-                  🏠 Dashboard
+                <Link href="/dashboard" className="btn" title={t("common.dashboard")}>
+                  🏠 {t("common.dashboard")}
                 </Link>
               </div>
             </div>
@@ -98,21 +100,21 @@ export default async function PlacanjaListPage({ searchParams }) {
       <div className="card tableCard" style={{ marginBottom: 14 }}>
         <form className="filters" method="GET" style={{ flexWrap: "wrap", padding: 16 }}>
           <div className="field">
-            <span className="label">Pretraga</span>
+            <span className="label">{t("placanja.search")}</span>
             <input
               className="input"
               name="q"
               defaultValue={q}
-              placeholder="ID / partner / opis…"
+              placeholder={t("placanja.searchPlaceholder")}
             />
           </div>
 
           <div className="actions">
             <button className="btn btn--active" type="submit">
-              Primijeni
+              {t("placanja.apply")}
             </button>
             <Link className="btn" href="/finance/placanja">
-              Reset
+              {t("placanja.reset")}
             </Link>
           </div>
         </form>
@@ -120,13 +122,13 @@ export default async function PlacanjaListPage({ searchParams }) {
 
       <div className="card tableCard">
         <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <span style={{ fontWeight: 700, fontSize: 15 }}>Lista plaćanja</span>
+          <span style={{ fontWeight: 700, fontSize: 15 }}>{t("placanja.listTitle")}</span>
           <span style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <span className="muted">Prikazano: {list.length} (limit 200)</span>
+            <span className="muted">{(t("placanja.shownCount") || "").replace("{{count}}", list.length)}</span>
             <ExportExcelButton
               filename="placanja"
-              sheetName="Plaćanja"
-              headers={["ID", "Datum", "Iznos (KM)", "Partner", "Opis", "Napomena", "Status"]}
+              sheetName={t("placanja.excelSheetName")}
+              headers={[t("placanja.colId"), t("placanja.colDatum"), t("placanja.colIznos"), t("placanja.colPartner"), t("placanja.colOpis"), t("placanja.colNapomena"), t("placanja.colStatus")]}
               rows={list.map((r) => [
                 r.placanje_id ?? r.id,
                 fmtDate(r.datum),
@@ -143,13 +145,13 @@ export default async function PlacanjaListPage({ searchParams }) {
           <table className="table">
             <thead>
               <tr>
-                <th style={{ width: 120 }}>ID</th>
-                <th style={{ width: 140 }}>Datum</th>
-                <th style={{ width: 170, textAlign: "right" }}>Iznos</th>
-                <th style={{ width: 260 }}>Partner</th>
-                <th style={{ width: 110 }}>Banka</th>
-                <th>Opis</th>
-                <th style={{ width: 120 }}>Status</th>
+                <th style={{ width: 120 }}>{t("placanja.colId")}</th>
+                <th style={{ width: 140 }}>{t("placanja.colDatum")}</th>
+                <th style={{ width: 170, textAlign: "right" }}>{t("placanja.colIznos")}</th>
+                <th style={{ width: 260 }}>{t("placanja.colPartner")}</th>
+                <th style={{ width: 110 }}>{t("placanja.banka")}</th>
+                <th>{t("placanja.colOpis")}</th>
+                <th style={{ width: 120 }}>{t("placanja.colStatus")}</th>
               </tr>
             </thead>
             <tbody>
@@ -178,19 +180,19 @@ export default async function PlacanjaListPage({ searchParams }) {
                             fontVariantNumeric: "tabular-nums",
                           }}
                         >
-                          {fmtKM(r.iznos_km)}
+                          {formatAmount(r.iznos_km, locale)}
                         </td>
                         <td style={{ fontWeight: 800 }}>{r.partner ?? "—"}</td>
                         <td>
                           <Link className="btn" href={bankHref}>
-                            Banka
+                            {t("placanja.banka")}
                           </Link>
                         </td>
                         <td>
                           <div className="subtle">{r.opis ?? "—"}</div>
                           {r.napomena
                             ? <div className="subtle">
-                                napomena: {r.napomena}
+                                {t("placanja.napomenaLabel")} {r.napomena}
                               </div>
                             : null}
                         </td>
@@ -200,7 +202,7 @@ export default async function PlacanjaListPage({ searchParams }) {
                   })
                 : <tr>
                     <td colSpan={7} className="subtle" style={{ padding: 14 }}>
-                      Nema rezultata.
+                      {t("placanja.noResults")}
                     </td>
                   </tr>}
             </tbody>

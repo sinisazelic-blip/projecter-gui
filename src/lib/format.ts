@@ -1,5 +1,29 @@
 // src/lib/format.ts
 
+/** Suffix za prikaz valute prema jeziku: en → EUR, sr → KM */
+export function getCurrencySuffix(locale: string): string {
+  return locale === "en" ? " EUR" : " KM";
+}
+
+/** Formatira broj za izvještaje (decimalni separator prema locale) */
+export function formatReportNum(
+  value: number | string | null | undefined,
+  locale: string = "sr",
+): string {
+  if (value == null || value === "") return "—";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value);
+  const loc = locale === "en" ? "en-GB" : "bs-BA";
+  return n.toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/** Formatira iznos s odgovarajućom valutom prema jeziku (en → EUR, sr → KM) */
+export function formatAmount(value: number | string | null | undefined, locale: string = "sr"): string {
+  const n = typeof value === "string" ? Number(value) : Number(value ?? 0);
+  if (!Number.isFinite(n)) return "—";
+  return n.toFixed(2) + getCurrencySuffix(locale);
+}
+
 export function formatKM(value: number | string | null | undefined) {
   const n = typeof value === "string" ? Number(value) : Number(value ?? 0);
   const safe = Number.isFinite(n) ? n : 0;

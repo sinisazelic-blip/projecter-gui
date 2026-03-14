@@ -104,18 +104,42 @@ async function main() {
         );
         console.log("  + roles (1 red: Demo, nivo 10)");
       }
+      const [roleRow] = await conn.query("SELECT role_id FROM roles ORDER BY role_id LIMIT 1");
+      const roleId = roleRow[0]?.role_id ?? 1;
+      const hash = await bcrypt.hash("demo", 10);
       const [demoUser] = await conn.query(
         "SELECT user_id FROM users WHERE username = 'demo' LIMIT 1"
       );
       if (demoUser.length === 0) {
-        const [roleRow] = await conn.query("SELECT role_id FROM roles ORDER BY role_id LIMIT 1");
-        const roleId = roleRow[0]?.role_id ?? 1;
-        const hash = await bcrypt.hash("demo", 10);
-        await conn.query(
-          `INSERT INTO users (username, password, role_id, aktivan) VALUES (?, ?, ?, 1)`,
-          ["demo", hash, roleId]
-        );
+        try {
+          await conn.query(
+            `INSERT INTO users (username, password_hash, role_id, aktivan) VALUES (?, ?, ?, 1)`,
+            ["demo", hash, roleId]
+          );
+        } catch (e) {
+          if (String(e?.message || e).includes("password_hash") || String(e?.message || e).includes("Unknown column")) {
+            await conn.query(
+              `INSERT INTO users (username, password, role_id, aktivan) VALUES (?, ?, ?, 1)`,
+              ["demo", hash, roleId]
+            );
+          } else throw e;
+        }
         console.log("  + users (demo / demo)");
+      } else {
+        try {
+          await conn.query(
+            "UPDATE users SET password_hash = ?, role_id = ?, aktivan = 1 WHERE username = 'demo'",
+            [hash, roleId]
+          );
+        } catch (e) {
+          if (String(e?.message || e).includes("password_hash") || String(e?.message || e).includes("Unknown column")) {
+            await conn.query(
+              "UPDATE users SET password = ?, role_id = ?, aktivan = 1 WHERE username = 'demo'",
+              [hash, roleId]
+            );
+          } else throw e;
+        }
+        console.log("  ~ users (demo / demo – lozinka ažurirana)");
       }
     } catch (e) {
       console.warn("  ! Preskačem roles/users (tabela ili kolone nedostaju):", e?.message || e);

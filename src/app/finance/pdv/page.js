@@ -3,15 +3,10 @@ import { cookies } from "next/headers";
 import FluxaLogo from "@/components/FluxaLogo";
 import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
+import { formatAmount } from "@/lib/format";
 import { getLastMonthRange, getPdvPrijavaData } from "@/lib/pdv-prijava";
 
 export const dynamic = "force-dynamic";
-
-const fmtKM = (v) => {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",") + " KM";
-};
 
 const fmtDate = (s) => {
   if (!s || typeof s !== "string") return "—";
@@ -87,7 +82,7 @@ export default async function PdvPrijavaPage({ searchParams }) {
                 />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <span className="subtle" style={{ fontSize: 12 }}>Do</span>
+                <span className="subtle" style={{ fontSize: 12 }}>{t("pdv.to")}</span>
                 <input
                   type="date"
                   name="to"
@@ -124,17 +119,17 @@ export default async function PdvPrijavaPage({ searchParams }) {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
               <div>
-                <div className="subtle" style={{ fontSize: 12, marginBottom: 4 }}>Izlazni PDV (KIF)</div>
-                <div style={{ fontSize: 18, fontWeight: 700 }}>{fmtKM(summary.pdv_izlazni_km)}</div>
+                <div className="subtle" style={{ fontSize: 12, marginBottom: 4 }}>{t("pdv.izlazniPdv")}</div>
+                <div style={{ fontSize: 18, fontWeight: 700 }}>{formatAmount(summary.pdv_izlazni_km, locale)}</div>
               </div>
               <div>
-                <div className="subtle" style={{ fontSize: 12, marginBottom: 4 }}>Ulazni PDV (KUF)</div>
-                <div style={{ fontSize: 18, fontWeight: 700 }}>{fmtKM(summary.pdv_ulazni_km)}</div>
+                <div className="subtle" style={{ fontSize: 12, marginBottom: 4 }}>{t("pdv.ulazniPdv")}</div>
+                <div style={{ fontSize: 18, fontWeight: 700 }}>{formatAmount(summary.pdv_ulazni_km, locale)}</div>
               </div>
               <div style={{ padding: "8px 0", paddingLeft: 12, borderLeft: "2px solid var(--accent)" }}>
-                <div className="subtle" style={{ fontSize: 12, marginBottom: 4 }}>Za prijavu</div>
+                <div className="subtle" style={{ fontSize: 12, marginBottom: 4 }}>{t("pdv.zaPrijavu")}</div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: "var(--accent)" }}>
-                  {fmtKM(summary.za_prijavu_km)}
+                  {formatAmount(summary.za_prijavu_km, locale)}
                 </div>
               </div>
             </div>
@@ -160,16 +155,16 @@ export default async function PdvPrijavaPage({ searchParams }) {
                     <th>Broj</th>
                     <th>Datum</th>
                     <th>Kupac / Naručilac</th>
-                    <th style={{ textAlign: "right" }}>Osnovica (KM)</th>
-                    <th style={{ textAlign: "right" }}>PDV (KM)</th>
-                    <th style={{ textAlign: "right" }}>Ukupno (KM)</th>
+                    <th style={{ textAlign: "right" }}>{t("pdv.colOsnovica")}</th>
+                    <th style={{ textAlign: "right" }}>{t("pdv.colPdv")}</th>
+                    <th style={{ textAlign: "right" }}>{t("pdv.colUkupno")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {kif.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="subtle" style={{ padding: 24, textAlign: "center" }}>
-                        Nema dokumenata u izabranom periodu.
+                        {t("pdv.noDocuments")}
                       </td>
                     </tr>
                   ) : (
@@ -178,9 +173,9 @@ export default async function PdvPrijavaPage({ searchParams }) {
                         <td>{r.broj}{r.iz_arhive ? " (arh.)" : ""}</td>
                         <td>{fmtDate(r.datum)}</td>
                         <td>{r.kupac}</td>
-                        <td style={{ textAlign: "right" }}>{fmtKM(r.osnovica_km)}</td>
-                        <td style={{ textAlign: "right" }}>{fmtKM(r.pdv_km)}</td>
-                        <td style={{ textAlign: "right" }}>{fmtKM(r.ukupno_km)}</td>
+                        <td style={{ textAlign: "right" }}>{formatAmount(r.osnovica_km, locale)}</td>
+                        <td style={{ textAlign: "right" }}>{formatAmount(r.pdv_km, locale)}</td>
+                        <td style={{ textAlign: "right" }}>{formatAmount(r.ukupno_km, locale)}</td>
                       </tr>
                     ))
                   )}
@@ -199,10 +194,10 @@ export default async function PdvPrijavaPage({ searchParams }) {
             }}
           >
             <div style={{ padding: 14, borderBottom: "1px solid var(--border)", fontWeight: 700 }}>
-              Dokumenti – ulazni PDV (KUF)
+              {t("pdv.dokumentiUlazni")}
             </div>
             <div className="subtle" style={{ padding: "8px 14px", fontSize: 12 }}>
-              Ulazni PDV je preračunat iz ukupnog iznosa (17% uključen) ako u KUF nije unesen posebno.
+              {t("pdv.ulazniPdvHint")}
             </div>
             <div style={{ overflowX: "auto" }}>
               <table className="table" style={{ margin: 0 }}>
@@ -229,9 +224,9 @@ export default async function PdvPrijavaPage({ searchParams }) {
                         <td>{r.broj}</td>
                         <td>{fmtDate(r.datum)}</td>
                         <td>{r.partner}</td>
-                        <td style={{ textAlign: "right" }}>{fmtKM(r.osnovica_km)}</td>
-                        <td style={{ textAlign: "right" }}>{fmtKM(r.pdv_km)}</td>
-                        <td style={{ textAlign: "right" }}>{fmtKM(r.ukupno_km)}</td>
+                        <td style={{ textAlign: "right" }}>{formatAmount(r.osnovica_km, locale)}</td>
+                        <td style={{ textAlign: "right" }}>{formatAmount(r.pdv_km, locale)}</td>
+                        <td style={{ textAlign: "right" }}>{formatAmount(r.ukupno_km, locale)}</td>
                       </tr>
                     ))
                   )}

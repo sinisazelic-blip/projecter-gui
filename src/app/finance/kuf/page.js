@@ -2,18 +2,13 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
+import { formatAmount } from "@/lib/format";
 import { query } from "@/lib/db";
 import KufImportForm from "./KufImportForm";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
 import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
-
-const fmtKM = (v) => {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return n.toFixed(2) + " KM";
-};
 
 const fmtDate = (d) => {
   if (!d) return "—";
@@ -267,7 +262,7 @@ export default async function KufPage({ searchParams }) {
                           <td className="nowrap">{fmtDate(r.datum_dospijeca)}</td>
                           <td>{partnerName(r)}</td>
                           <td className="num">
-                            {fmtKM(r.iznos_km ?? r.iznos)}
+                            {formatAmount(r.iznos_km ?? r.iznos, locale)}
                             {r.valuta !== "BAM" ? ` (${r.valuta})` : ""}
                           </td>
                           <td>{r.opis ?? "—"}</td>
