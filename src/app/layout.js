@@ -10,6 +10,7 @@ import PerformanceMeasurePatch from "@/components/PerformanceMeasurePatch";
 import { GlobalTooltip } from "@/components/GlobalTooltip";
 import UputstvoShortcut from "@/components/UputstvoShortcut";
 import OnboardingTourWrapper from "@/components/OnboardingTourWrapper";
+import DemoBadge from "@/components/DemoBadge";
 import { cookies, headers } from "next/headers";
 import { getValidLocale } from "@/lib/i18n";
 import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
@@ -20,13 +21,18 @@ function isDemoInstanceHost(host) {
   return host.includes("demo.studiotaf.xyz") || host.startsWith("demo.");
 }
 
-export const metadata = {
-  title: "Fluxa · P&FE",
-  description: "Fluxa — upravljanje projektima i finansijama (GUI).",
-  icons: {
-    icon: "/fluxa/Icon.ico",
-  },
-};
+export async function generateMetadata() {
+  const headersList = await headers();
+  const host = headersList.get("host") || "";
+  const isDemo = host.includes("demo.studiotaf.xyz") || host.startsWith("demo.");
+  return {
+    title: isDemo ? "Fluxa - DEMO" : "Fluxa · P&FE",
+    description: "Fluxa — upravljanje projektima i finansijama (GUI).",
+    icons: {
+      icon: "/fluxa/Icon.ico",
+    },
+  };
+}
 
 export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
@@ -47,6 +53,7 @@ export default async function RootLayout({ children }) {
         />
       </head>
       <body>
+        <DemoBadge show={forceEnForDemo} />
         <PerformanceMeasurePatch />
         <ThemeProvider>
         <LocaleProvider initialLocale={locale} forceLocale={forceEnForDemo ? "en" : undefined}>
