@@ -134,7 +134,7 @@ export function CloseProjectModal({
       </div>
 
       {loading ? (
-        <div className="py-6 text-center text-gray-600">Učitavam provjeru…</div>
+        <div className="py-6 text-center text-gray-600">Loading…</div>
       ) : !data ? (
         <div className="rounded-xl border p-4 text-sm">
           <div className="font-semibold mb-1">Nije moguće učitati provjeru</div>

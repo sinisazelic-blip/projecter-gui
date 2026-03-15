@@ -26,8 +26,8 @@ export default function DashboardTopActions() {
   const { canSee, onboardingCompleted, completeOnboarding, requestTourOnce } = useAuthUser();
   const { isDemoInstance } = useFluxaEdition();
   const tenantAdminEnabled = process.env.NEXT_PUBLIC_ENABLE_TENANT_ADMIN === "true";
-  const showLicenceLink = isFeatureVisible(3) && tenantAdminEnabled;
-  const showLicenceComingSoon = isFeatureVisible(3) && !tenantAdminEnabled;
+  const showLicenceLink = isFeatureVisible(3) && tenantAdminEnabled && !isDemoInstance;
+  const showLicenceComingSoon = isFeatureVisible(3) && !tenantAdminEnabled && !isDemoInstance;
   const showVerzijaDropdown = isOwner;
   const showMobile = isFeatureVisible(5) && canSee("Mobile dashboard", "-");
   const showBlagajna = isFeatureVisible(6) && canSee("Blagajna", "");

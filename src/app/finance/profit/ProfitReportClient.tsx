@@ -115,7 +115,7 @@ export default function ProfitReportClient({ initialView }: { initialView: "mont
     }
   }, [data, selectedYears.length]);
 
-  if (loading) return <div className="reportLoading">Učitavanje…</div>;
+  if (loading) return <div className="reportLoading">Loading…</div>;
   if (error) return <div className="reportError">{error}</div>;
   if (!data?.tableData?.length) return <div className="reportNote">Nema podataka za prikaz.</div>;
 

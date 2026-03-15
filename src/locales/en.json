@@ -2435,7 +2435,7 @@
   "studioUsers": {
     "title": "Users",
     "subtitle": "Studio / Master data",
-    "backToFirmaSettings": "Firma settings",
+    "backToFirmaSettings": "Company Settings",
     "hintClick": "Click a row to select it, then use",
     "change": "Edit",
     "delete": "Delete",
@@ -2498,7 +2498,7 @@
   "studioRoles": {
     "title": "Roles",
     "subtitle": "Studio / Master data",
-    "backToFirmaSettings": "Firma settings",
+    "backToFirmaSettings": "Company Settings",
     "hintClick": "Click a row to select it, then use",
     "change": "Edit",
     "selectFirst": "Select a row first",

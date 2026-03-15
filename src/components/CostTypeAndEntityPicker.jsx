@@ -194,7 +194,7 @@ export default function CostTypeAndEntityPicker({
           >
             <option value="">
               {loadingItems
-                ? "Učitavam..."
+                ? "Loading…"
                 : `— izaberi (${entityLabel.toLowerCase()}) —`}
             </option>
             {items.map((x) => (

@@ -488,7 +488,7 @@ export default function FakturaPreviewClient() {
     return (
       <div className="container">
         <div style={{ padding: 40, textAlign: "center", opacity: 0.7 }}>
-          Učitavanje...
+          Loading…
         </div>
       </div>
     );
