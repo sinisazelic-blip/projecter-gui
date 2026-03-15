@@ -1,5 +1,13 @@
-# Push i18n i ostale izmjene u main i na origin
+# Push na main i deploy na oba hosta (Studio + Demo)
 # app.studiotaf.xyz i demo.studiotaf.xyz deployuju sa main grane
+#
+# Koristenje:
+#   .\scripts\push-to-main-and-deploy.ps1
+#   .\scripts\push-to-main-and-deploy.ps1 "Moja commit poruka"
+
+param(
+    [string]$CommitMessage = "Favicon po instanci (demo/local), Back to Deals/PP, ikone Deal/Projekat, Dashboard Fluxa ikona globalno"
+)
 
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -21,14 +29,14 @@ $status = git status --short
 if ([string]::IsNullOrWhiteSpace($status)) {
     Write-Host "Nema novih izmjena za commit." -ForegroundColor Yellow
 } else {
-    git commit -m "Crew, Account Manager, Timeline collapsible: Deal + Projekat, SC Novi deal"
+    git commit -m $CommitMessage
     Write-Host "Commitano." -ForegroundColor Green
 }
 Write-Host ""
 
 Write-Host "=== 3. Merge u main i push ===" -ForegroundColor Cyan
 git checkout main
-$mergeMsg = "Merge " + $currentBranch + ": Crew, Account Manager, Timeline collapsible, SC Novi deal"
+$mergeMsg = "Merge " + $currentBranch + ": " + $CommitMessage
 git merge $currentBranch -m $mergeMsg
 
 Write-Host "Push main na origin..." -ForegroundColor Yellow
@@ -36,7 +44,9 @@ git push origin main
 
 Write-Host ""
 Write-Host "=== Gotovo ===" -ForegroundColor Green
-Write-Host "DigitalOcean ce automatski deployovati app.studiotaf.xyz i demo.studiotaf.xyz"
+Write-Host "DigitalOcean ce automatski deployovati oba hosta:"
+Write-Host "  - app.studiotaf.xyz (Studio)"
+Write-Host "  - demo.studiotaf.xyz (Demo)"
 Write-Host "Ako ne krene automatski, u DO konzoli: Apps -> studio -> Deploy"
 Write-Host ""
 

@@ -90,7 +90,7 @@ export default async function PrihodiListPage({ searchParams }) {
                   {t("finance.title")}
                 </Link>
                 <Link href="/dashboard" className="btn" title={t("common.dashboard")}>
-                  🏠 {t("common.dashboard")}
+                  <img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> {t("common.dashboard")}
                 </Link>
               </div>
             </div>

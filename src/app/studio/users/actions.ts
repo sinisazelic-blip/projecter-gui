@@ -1,6 +1,7 @@
 "use server";
 
 import bcrypt from "bcryptjs";
+import { revalidatePath } from "next/cache";
 import { query } from "@/lib/db";
 import { normalizePassword } from "@/lib/auth/normalize-password";
 
@@ -95,10 +96,11 @@ export async function createUser(input: {
   const passwordHash = await bcrypt.hash(passwordNorm, BCRYPT_ROUNDS);
 
   await query(
-    `INSERT INTO users (username, password, role_id, aktivan, radnik_id) VALUES (?,?,?,?,?)`,
+    `INSERT INTO users (username, password, role_id, aktivan, radnik_id, created_at, updated_at) VALUES (?,?,?,?,?, NOW(), NOW())`,
     [username, passwordHash, role_id, aktivan, radnik_id],
   );
 
+  revalidatePath("/studio/users");
   return { ok: true };
 }
 
@@ -149,16 +151,28 @@ export async function updateUser(input: {
   if (hasPassword) {
     const passwordNorm = normalizePassword(String(input.password).trim());
     const passwordHash = await bcrypt.hash(passwordNorm, BCRYPT_ROUNDS);
-    sql = `UPDATE users SET username=?, password=?, role_id=?, aktivan=?, radnik_id=? WHERE user_id=?`;
+    sql = `UPDATE users SET username=?, password=?, role_id=?, aktivan=?, radnik_id=?, updated_at=NOW() WHERE user_id=?`;
     params = [username, passwordHash, role_id, aktivan, radnik_id, id];
   } else {
-    sql = `UPDATE users SET username=?, role_id=?, aktivan=?, radnik_id=? WHERE user_id=?`;
+    sql = `UPDATE users SET username=?, role_id=?, aktivan=?, radnik_id=?, updated_at=NOW() WHERE user_id=?`;
     params = [username, role_id, aktivan, radnik_id, id];
   }
 
   await query(sql, params);
 
-  return { ok: true };
+  const [row] = (await query(
+    `SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+            DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+       FROM users WHERE user_id = ?`,
+    [id],
+  )) as { created_at: string | null; updated_at: string | null }[];
+
+  revalidatePath("/studio/users");
+  return {
+    ok: true,
+    created_at: row?.created_at ?? null,
+    updated_at: row?.updated_at ?? null,
+  };
 }
 
 export async function setUserActive(input: {
@@ -169,9 +183,10 @@ export async function setUserActive(input: {
   if (!Number.isFinite(id) || id <= 0)
     throw new Error("Neispravan user_id.");
 
-  await query(`UPDATE users SET aktivan=? WHERE user_id=?`, [
+  await query(`UPDATE users SET aktivan=?, updated_at=NOW() WHERE user_id=?`, [
     input?.aktivan ? 1 : 0,
     id,
   ]);
+  revalidatePath("/studio/users");
   return { ok: true };
 }

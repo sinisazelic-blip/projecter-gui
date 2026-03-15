@@ -46,8 +46,8 @@ export default async function UsersPage() {
         r.naziv AS role_naziv,
         u.aktivan,
         u.last_login_at,
-        u.created_at,
-        u.updated_at,
+        DATE_FORMAT(u.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+        DATE_FORMAT(u.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at,
         u.radnik_id,
         CONCAT(rad.ime, ' ', rad.prezime) AS radnik_ime_prezime
       FROM users u
@@ -76,9 +76,14 @@ export default async function UsersPage() {
                 </div>
               </div>
 
-              <Link href="/dashboard" className="btn" title={t("dashboard.title")}>
-                🏠 {t("dashboard.title")}
-              </Link>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Link href="/studio/firma" className="btn" title={t("studioUsers.backToFirmaSettings")}>
+                  ← {t("studioUsers.backToFirmaSettings")}
+                </Link>
+                <Link href="/dashboard" className="btn" title={t("dashboard.title")}>
+                  <img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> {t("dashboard.title")}
+                </Link>
+              </div>
             </div>
 
             <div className="divider" />

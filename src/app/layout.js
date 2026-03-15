@@ -21,6 +21,13 @@ function isDemoInstanceHost(host) {
   return host.includes("demo.studiotaf.xyz") || host.startsWith("demo.");
 }
 
+function getFaviconPath(host) {
+  if (!host || typeof host !== "string") return "/fluxa/Icon.ico";
+  if (host.includes("demo.studiotaf.xyz") || host.startsWith("demo.")) return "/fluxa/Icon-demo.png";
+  if (host === "localhost" || host.startsWith("127.0.0.1") || host.startsWith("localhost:")) return "/fluxa/Icon-local.png";
+  return "/fluxa/Icon.ico";
+}
+
 export async function generateMetadata() {
   const headersList = await headers();
   const host = headersList.get("host") || "";
@@ -29,7 +36,7 @@ export async function generateMetadata() {
     title: isDemo ? "Fluxa - DEMO" : "Fluxa · P&FE",
     description: "Fluxa — upravljanje projektima i finansijama (GUI).",
     icons: {
-      icon: "/fluxa/Icon.ico",
+      icon: getFaviconPath(host),
     },
   };
 }

@@ -156,7 +156,7 @@ export default function MobilePage() {
           padding: "16px 24px",
         }}
       >
-        <span>🏠 {t("mobile.fullVersion")}</span>
+        <span><img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> {t("mobile.fullVersion")}</span>
       </Link>
     </div>
   );

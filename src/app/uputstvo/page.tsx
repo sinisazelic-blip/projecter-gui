@@ -60,7 +60,7 @@ export default function UputstvoPage() {
               </div>
               <div className="actions">
                 <Link href="/dashboard" className="btn">
-                  🏠 Dashboard
+                  <img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> Dashboard
                 </Link>
               </div>
             </div>

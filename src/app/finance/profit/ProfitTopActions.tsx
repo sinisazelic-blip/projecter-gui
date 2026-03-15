@@ -22,7 +22,7 @@ export default function ProfitTopActions({
         🖨️ {printLabel}
       </button>
       <Link href="/dashboard" className="btn" title={dashboardLabel}>
-        🏠 {dashboardLabel}
+        <img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> {dashboardLabel}
       </Link>
     </div>
   );

@@ -86,7 +86,7 @@ export default async function FiksniTroskoviPage({ searchParams }) {
                   </Link>
                 )}
                 <Link className="btn" href="/dashboard" title={t("common.dashboard")}>
-                  🏠 {t("common.dashboard")}
+                  <img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> {t("common.dashboard")}
                 </Link>
               </div>
             </div>

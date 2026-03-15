@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/components/LocaleProvider";
 import type { RoleRow } from "./page";
@@ -103,7 +103,11 @@ export default function RolesClient({
 
   const [error, setError] = useState<string | null>(null);
 
-  const items = initialItems ?? [];
+  const [items, setItems] = useState<RoleRow[]>(initialItems ?? []);
+
+  useEffect(() => {
+    setItems(initialItems ?? []);
+  }, [initialItems]);
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
@@ -212,7 +216,25 @@ export default function RolesClient({
           await createRole(payload);
         } else {
           if (!form.role_id) throw new Error(t("studioRoles.errorMissingId"));
-          await updateRole({ role_id: form.role_id, ...payload });
+          const result = await updateRole({ role_id: form.role_id, ...payload });
+          if (result?.created_at != null || result?.updated_at != null) {
+            setForm((prev) => ({
+              ...prev,
+              created_at: result.created_at ?? prev.created_at,
+              updated_at: result.updated_at ?? prev.updated_at,
+            }));
+            setItems((prev) =>
+              prev.map((it) =>
+                Number(it.role_id) === Number(form.role_id)
+                  ? {
+                      ...it,
+                      created_at: result.created_at ?? it.created_at,
+                      updated_at: result.updated_at ?? it.updated_at,
+                    }
+                  : it,
+              ),
+            );
+          }
         }
         setModalOpen(false);
         setSelectedId(null);

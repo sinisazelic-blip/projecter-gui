@@ -133,7 +133,7 @@ export default async function DugovanjeDetailPage({ params }) {
                   Finansije
                 </Link>
                 <Link className="btn" href="/dashboard" title="Dashboard">
-                  🏠 Dashboard
+                  <img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> Dashboard
                 </Link>
               </div>
             </div>

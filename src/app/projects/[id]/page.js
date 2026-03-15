@@ -693,6 +693,19 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
   const costTypesRes = await loadCostTypes();
   const costTypes = costTypesRes.rows;
 
+  let inicijacijaId = null;
+  try {
+    const inicRows = await query(
+      `SELECT inicijacija_id FROM inicijacije WHERE projekat_id = ? LIMIT 1`,
+      [projekatId],
+    );
+    if (inicRows?.[0]?.inicijacija_id != null) {
+      inicijacijaId = Number(inicRows[0].inicijacija_id);
+    }
+  } catch {
+    inicijacijaId = null;
+  }
+
   if (!project) {
     return (
       <div className="container">
@@ -894,12 +907,15 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
           background: rgba(255,255,255,.06);
           opacity: .95;
         }
+        .topbarCenter { flex: 1; display: flex; justify-content: center; align-items: center; min-width: 0; }
+        .crossLinkBtn { display: inline-flex; align-items: center; justify-content: center; min-width: 200px; padding: 10px 24px; border-radius: 12px; font-weight: 600; font-size: 14px; letter-spacing: 0.02em; text-decoration: none; color: inherit; border: 1px solid rgba(255,255,255,.2); background: rgba(140,140,150,.25); transition: background .15s, border-color .15s; }
+        .crossLinkBtn:hover { background: rgba(160,160,170,.35); border-color: rgba(255,255,255,.28); }
       `}</style>
 
       {/* ✅ Topbar uvijek vidljiv; scroll je isključivo u donjem sadržaju */}
       <div style={{ flex: "0 0 auto", position: "sticky", top: 0, zIndex: 20 }}>
         <div className="container">
-          {/* Row 1: Fluxa Design — lijevo logo + slogan, zatim naziv stranice; desno Povratak na PP, Dashboard */}
+          {/* Row 1: Fluxa Design — lijevo logo + slogan; sredina Otvori Deal #; desno Povratak na PP, Dashboard */}
           <div className="topbar">
             <div className="topbarLeft">
               <div className="brandLogoBlock">
@@ -911,6 +927,18 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
               </div>
             </div>
 
+            <div className="topbarCenter">
+              {inicijacijaId != null ? (
+                <Link
+                  href={`/inicijacije/${inicijacijaId}`}
+                  className="crossLinkBtn"
+                  title={t("projectDetail.openDealHashTitle")}
+                >
+                  📋 {t("projectDetail.openDealHash")}{inicijacijaId}
+                </Link>
+              ) : null}
+            </div>
+
             <div className="navBtns">
               <Link
                 href="/projects"
@@ -918,10 +946,10 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                 title={t("projectDetail.backToPPTitle")}
                 className="glassbtn actionBtn"
               >
-                📋 {t("projectDetail.backToPP")}
+                📁 {t("projectDetail.backToPP")}
               </Link>
               <Link href="/dashboard" className="glassbtn actionBtn" title={t("projectDetail.dashboard")}>
-                🏠 {t("projectDetail.dashboard")}
+                <img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> {t("projectDetail.dashboard")}
               </Link>
             </div>
           </div>

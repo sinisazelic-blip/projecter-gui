@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/components/LocaleProvider";
 import type { UserRow, RoleOption, RadnikOption } from "./page";
@@ -113,7 +113,11 @@ export default function UsersClient({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const items = initialItems ?? [];
+  const [items, setItems] = useState<UserRow[]>(initialItems ?? []);
+
+  useEffect(() => {
+    setItems(initialItems ?? []);
+  }, [initialItems]);
 
   const counts = useMemo(() => {
     const total = items.length;
@@ -258,7 +262,7 @@ export default function UsersClient({
           });
         } else {
           if (!form.user_id) throw new Error(t("studioUsers.errorMissingId"));
-          await updateUser({
+          const result = await updateUser({
             user_id: form.user_id,
             username: form.username,
             password: form.password.trim() ? form.password : undefined,
@@ -266,6 +270,24 @@ export default function UsersClient({
             radnik_id: form.radnik_id ? Number(form.radnik_id) : null,
             aktivan: form.aktivan,
           });
+          if (result?.created_at != null || result?.updated_at != null) {
+            setForm((prev) => ({
+              ...prev,
+              created_at: result.created_at ?? prev.created_at,
+              updated_at: result.updated_at ?? prev.updated_at,
+            }));
+            setItems((prev) =>
+              prev.map((it) =>
+                Number(it.user_id) === Number(form.user_id)
+                  ? {
+                      ...it,
+                      created_at: result.created_at ?? it.created_at,
+                      updated_at: result.updated_at ?? it.updated_at,
+                    }
+                  : it,
+              ),
+            );
+          }
         }
         setModalOpen(false);
         setSelectedId(null);

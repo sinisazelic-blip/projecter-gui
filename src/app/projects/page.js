@@ -593,7 +593,7 @@ export default async function Page({ searchParams }) {
               style={{ fontSize: 15, padding: "10px 18px", minWidth: 130, fontWeight: 700 }}
               title={t("projectsPage.backToDashboard")}
             >
-              🏠 {t("projectsPage.dashboard")}
+              <img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> {t("projectsPage.dashboard")}
             </Link>
           </div>
 

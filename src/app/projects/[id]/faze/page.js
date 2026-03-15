@@ -80,7 +80,7 @@ export default async function ProjekatFazePage({ params }) {
                   {t("fazePage.backToProject")}
                 </Link>
                 <Link href="/dashboard" className="btn" title={t("fazePage.dashboard")}>
-                  🏠 {t("fazePage.dashboard")}
+                  <img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> {t("fazePage.dashboard")}
                 </Link>
               </div>
             </div>

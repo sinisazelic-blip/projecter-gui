@@ -433,7 +433,7 @@ export default async function DealsPage({ searchParams }: any) {
                   className="glassbtn"
                   title={t("deals.backToDashboard")}
                 >
-                  🏠 {t("dashboard.title")}
+                  <img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> {t("dashboard.title")}
                 </Link>
               </div>
             </div>

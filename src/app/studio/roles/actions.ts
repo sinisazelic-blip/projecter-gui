@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { query } from "@/lib/db";
 
 function cleanStr(v: any) {
@@ -50,19 +51,24 @@ export async function createRole(input: {
   const nivo = cleanInt(input?.nivo_ovlastenja);
   const opis = cleanStr(input?.opis);
   const nivoCol = await getNivoColumnName();
+  const hasCreatedAt = await hasColumn("roles", "created_at");
+  const hasUpdatedAt = await hasColumn("roles", "updated_at");
+  const dateCols = hasCreatedAt && hasUpdatedAt ? ", created_at, updated_at" : "";
+  const dateVals = hasCreatedAt && hasUpdatedAt ? ", NOW(), NOW()" : "";
 
   if (nivoCol) {
     await query(
-      `INSERT INTO roles (naziv, ${nivoCol}, opis) VALUES (?,?,?)`,
+      `INSERT INTO roles (naziv, ${nivoCol}, opis${dateCols}) VALUES (?,?,?${dateVals})`,
       [naziv, nivo, opis],
     );
   } else {
     await query(
-      `INSERT INTO roles (naziv, opis) VALUES (?,?)`,
+      `INSERT INTO roles (naziv, opis${dateCols}) VALUES (?,?${dateVals})`,
       [naziv, opis],
     );
   }
 
+  revalidatePath("/studio/roles");
   return { ok: true };
 }
 
@@ -82,18 +88,41 @@ export async function updateRole(input: {
   const nivo = cleanInt(input?.nivo_ovlastenja);
   const opis = cleanStr(input?.opis);
   const nivoCol = await getNivoColumnName();
+  const hasUpdatedAt = await hasColumn("roles", "updated_at");
+  const updatedAtSet = hasUpdatedAt ? ", updated_at=NOW()" : "";
 
   if (nivoCol) {
     await query(
-      `UPDATE roles SET naziv=?, ${nivoCol}=?, opis=? WHERE role_id=?`,
+      `UPDATE roles SET naziv=?, ${nivoCol}=?, opis=?${updatedAtSet} WHERE role_id=?`,
       [naziv, nivo, opis, id],
     );
   } else {
     await query(
-      `UPDATE roles SET naziv=?, opis=? WHERE role_id=?`,
+      `UPDATE roles SET naziv=?, opis=?${updatedAtSet} WHERE role_id=?`,
       [naziv, opis, id],
     );
   }
 
-  return { ok: true };
+  const hasCreatedAt = await hasColumn("roles", "created_at");
+  let created_at: string | null = null;
+  let updated_at: string | null = null;
+  if (hasCreatedAt || hasUpdatedAt) {
+    const dateCols = [
+      hasCreatedAt ? "DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at" : "NULL AS created_at",
+      hasUpdatedAt ? "DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at" : "NULL AS updated_at",
+    ].join(", ");
+    const [row] = (await query(
+      `SELECT ${dateCols} FROM roles WHERE role_id = ?`,
+      [id],
+    )) as { created_at: string | null; updated_at: string | null }[];
+    created_at = row?.created_at ?? null;
+    updated_at = row?.updated_at ?? null;
+  }
+
+  revalidatePath("/studio/roles");
+  return {
+    ok: true,
+    created_at,
+    updated_at,
+  };
 }

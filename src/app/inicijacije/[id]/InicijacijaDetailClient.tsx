@@ -1022,6 +1022,10 @@ export default function InicijacijaDetailClient() {
         .statusDot { width: 10px; height: 10px; border-radius: 999px; display:inline-block; box-shadow: 0 0 0 2px rgba(0,0,0,.15) inset; }
         .stornoBtn { background:#9ca3af; color:#111827; border:1px solid #6b7280; border-radius:8px; padding:4px 8px; font-size:11px; font-weight:700; letter-spacing:.5px; cursor:pointer; opacity:.95; }
         .stornoBtn:hover { background:#d1d5db; }
+
+        .topbarCenter { flex: 1; display: flex; justify-content: center; align-items: center; min-width: 0; }
+        .crossLinkBtn { display: inline-flex; align-items: center; justify-content: center; min-width: 200px; padding: 10px 24px; border-radius: 12px; font-weight: 600; font-size: 14px; letter-spacing: 0.02em; text-decoration: none; color: inherit; border: 1px solid rgba(255,255,255,.2); background: rgba(140,140,150,.25); transition: background .15s, border-color .15s; }
+        .crossLinkBtn:hover { background: rgba(160,160,170,.35); border-color: rgba(255,255,255,.28); }
       `}</style>
 
       <div className="topBlock">
@@ -1035,6 +1039,18 @@ export default function InicijacijaDetailClient() {
                 <div className="brandTitle">{t("dealDetail.pageTitle")}</div>
                 <div className="brandSub">{t("dealDetail.pageSubtitle")}</div>
               </div>
+            </div>
+
+            <div className="topbarCenter">
+              {row?.projekat_id ? (
+                <Link
+                  href={`/projects/${row.projekat_id}`}
+                  className="crossLinkBtn"
+                  title={t("dealDetail.openProjectHashTitle")}
+                >
+                  📁 {t("dealDetail.openProjectHash")}{row.projekat_id}
+                </Link>
+              ) : null}
             </div>
 
             <div className="navBtns">
@@ -1051,7 +1067,7 @@ export default function InicijacijaDetailClient() {
                 className="glassbtn actionBtn"
                 title={t("dealDetail.dashboard")}
               >
-                🏠 {t("dealDetail.dashboard")}
+                <img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> {t("dealDetail.dashboard")}
               </Link>
             </div>
           </div>
@@ -1094,10 +1110,10 @@ export default function InicijacijaDetailClient() {
                     title={
                       !acceptedOk
                         ? t("dealDetail.needDeadline")
-                        : t("dealDetail.openProjectTitle")
+                        : t("dealDetail.createProjectTitle")
                     }
                   >
-                    {openingProject ? t("dealDetail.opening") : t("dealDetail.openProject")}
+                    {openingProject ? t("dealDetail.opening") : t("dealDetail.createProject")}
                   </button>
                   <Link
                     href={row ? `/inicijacije/${id}/ponuda-wizard` : "#"}
