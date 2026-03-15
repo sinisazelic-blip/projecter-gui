@@ -354,6 +354,91 @@ async function main() {
       console.log("  + cjenovnik_stavke (3)");
     }
 
+    // ----- tip_troska (tipovi troškova za dropdown "Tip + entitet") -----
+    // Uvijek postavimo 3 tipa (REPLACE nadjačava ako već postoje), da demo ima Honorar/Ostalo/Firma
+    try {
+      await conn.query(`
+        REPLACE INTO tip_troska (tip_id, naziv, requires_entity, aktivan) VALUES
+        (1, 'Honorar', 'TALENT', 1),
+        (2, 'Ostalo', 'NONE', 1),
+        (3, 'Firma', 'VENDOR', 1)
+      `);
+      console.log("  + tip_troska (Honorar, Ostalo, Firma)");
+    } catch (e) {
+      console.warn("  ! Preskačem tip_troska seed:", e?.message || e);
+    }
+
+    // ----- projektni_troskovi (primjeri troškova na prvim projektima) -----
+    try {
+      const [costCount] = await conn.query("SELECT COUNT(*) AS c FROM projektni_troskovi");
+      if (costCount[0].c === 0) {
+        const [projRows] = await conn.query(
+          "SELECT projekat_id FROM projekti ORDER BY projekat_id ASC LIMIT 3",
+        );
+        const [talentRows] = await conn.query("SELECT talent_id FROM talenti ORDER BY talent_id ASC LIMIT 1");
+        const [dobRows] = await conn.query("SELECT dobavljac_id FROM dobavljaci ORDER BY dobavljac_id ASC LIMIT 1");
+        const pid1 = projRows?.[0]?.projekat_id ? Number(projRows[0].projekat_id) : null;
+        const pid2 = projRows?.[1]?.projekat_id ? Number(projRows[1].projekat_id) : null;
+        const talentId = talentRows?.[0]?.talent_id ? Number(talentRows[0].talent_id) : null;
+        const dobId = dobRows?.[0]?.dobavljac_id ? Number(dobRows[0].dobavljac_id) : null;
+        const today = new Date().toISOString().slice(0, 10);
+        const tipId = 1;
+
+        if (pid1) {
+          await conn.query(
+            `
+            INSERT INTO projektni_troskovi (projekat_id, tip_id, datum_troska, opis, iznos_km, status)
+            VALUES (?, ?, ?, ?, ?, ?)
+            `,
+            [pid1, tipId, today, "Demo seed: production day (catering)", 450.0, "NASTALO"],
+          );
+          await conn.query(
+            `
+            INSERT INTO projektni_troskovi (projekat_id, tip_id, datum_troska, opis, iznos_km, status)
+            VALUES (?, ?, ?, ?, ?, ?)
+            `,
+            [pid1, tipId, today, "Demo seed: equipment rental", 320.0, "NASTALO"],
+          );
+        }
+        if (pid2) {
+          await conn.query(
+            `
+            INSERT INTO projektni_troskovi (projekat_id, tip_id, datum_troska, opis, iznos_km, status)
+            VALUES (?, ?, ?, ?, ?, ?)
+            `,
+            [pid2, tipId, today, "Demo seed: talent fee", 600.0, "NASTALO"],
+          );
+        }
+        // Jedan trošak s entity (talent ili dobavljač) ako kolone postoje
+        if (pid1 && (talentId != null || dobId != null)) {
+          try {
+            await conn.query(
+              `
+              INSERT INTO projektni_troskovi
+                (projekat_id, tip_id, datum_troska, opis, iznos_km, status, entity_type, entity_id)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              `,
+              [
+                pid1,
+                tipId,
+                today,
+                talentId != null ? "Demo seed: talent (John Smith)" : "Demo seed: vendor (Studio One)",
+                350.0,
+                "NASTALO",
+                talentId != null ? "talent" : "vendor",
+                talentId != null ? talentId : dobId,
+              ],
+            );
+          } catch (e) {
+            // Kolone entity_type/entity_id možda ne postoje
+          }
+        }
+        console.log("  + projektni_troskovi (demo primjeri)");
+      }
+    } catch (e) {
+      console.warn("  ! Preskačem projektni_troskovi seed:", e?.message || e);
+    }
+
     // ==========================================================
     // DODATNI DEMO PODACI: deal-ovi (inicijacije), 2 fakture, 1 izvod
     // ==========================================================

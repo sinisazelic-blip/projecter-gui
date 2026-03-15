@@ -6,7 +6,7 @@
 #   .\scripts\push-to-main-and-deploy.ps1 "Moja commit poruka"
 
 param(
-    [string]$CommitMessage = "Favicon po instanci (demo/local), Back to Deals/PP, ikone Deal/Projekat, Dashboard Fluxa ikona globalno"
+    [string]$CommitMessage = "Demo: tipovi troškova (tip_troska seed + fallback), projektni_troskovi seed"
 )
 
 $ErrorActionPreference = "Stop"
