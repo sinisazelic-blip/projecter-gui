@@ -1,9 +1,13 @@
 /**
- * Seed demo baze – ubacuje lažne klijente, projekte, talente, dobavljače i minimalne šifarnike
- * za prikaz u UI-u. Koristi DB_* iz .env.local (postavi DB_NAME=studio_db_demo).
+ * Seed demo baze – ubacuje lažne klijente, projekte, talente, dobavljače i šifarnike
+ * za prikaz u UI-u. Svi podaci su međunarodni (EU/svijet), bez reference na BiH.
  *
- * Pokretanje: node scripts/seed-demo.js
- * (iz root foldera projekta)
+ * POKRETANJE (iz root foldera projekta):
+ *   1. U .env.local postavi: DB_NAME=studio_db_demo (i DB_HOST, DB_PORT, DB_USER, DB_PASSWORD)
+ *   2. node scripts/seed-demo.js
+ *
+ * Za praznu demo bazu seed ubaci sve. Ako tabela već ima podatke, dopunjava šifarnike
+ * i samo one "dodatne" blokove koji provjeravaju email/tag (klijenti +2, talenti +2, inicijacije, fakture, izvod).
  */
 
 const fs = require("fs");
@@ -68,28 +72,87 @@ async function main() {
     await conn.query("SET FOREIGN_KEY_CHECKS = 0");
     const seedTag = "DEMO_SEED_2026";
 
-    // ----- statusi_projekta (projekti.status_id FK) -----
+    // ----- statusi_projekta (projekti.status_id FK) – potrebno svih 12 za FINAL OK / Close -----
+    const fullStatusiProjekta = [
+      [1, "Open", "Project in preparation", 1, 1, "draft"],
+      [2, "In progress", "Project in progress", 2, 1, "active"],
+      [3, "Service", "Service phase", 3, 1, "active"],
+      [4, "Production", "Production", 4, 1, "active"],
+      [5, "Production", "Production (omega)", 5, 1, "active"],
+      [6, "Post-production", "Post-production", 6, 1, "active"],
+      [7, "Completed", "FINAL OK – completed", 7, 1, "done"],
+      [8, "Closed", "Closed (soft-lock)", 8, 1, "closed"],
+      [9, "Invoiced", "Invoiced (read-only)", 9, 1, "invoiced"],
+      [10, "Archived", "Archived", 10, 1, "arch"],
+      [11, "On hold", "On hold", 11, 1, "arch"],
+      [12, "Cancelled", "Cancelled", 12, 1, "cancelled"],
+    ];
     const [existingSp] = await conn.query("SELECT 1 FROM statusi_projekta LIMIT 1");
     if (existingSp.length === 0) {
+      const values = fullStatusiProjekta
+        .map(([id, naziv, opis, red, akt, core]) => `(${id}, ${conn.escape(naziv)}, ${conn.escape(opis)}, ${red}, ${akt}, ${conn.escape(core)})`)
+        .join(",\n        ");
       await conn.query(`
         INSERT INTO statusi_projekta (status_id, naziv_statusa, opis, redoslijed, aktivan, core_faza) VALUES
-        (1, 'U pripremi', 'Projekat u pripremi', 1, 1, 'draft'),
-        (2, 'Aktivan', 'Projekat u toku', 2, 1, 'active'),
-        (3, 'Zatvoren', 'Projekat završen', 3, 1, 'closed')
+        ${values}
       `);
-      console.log("  + statusi_projekta (3 reda)");
+      console.log("  + statusi_projekta (12 reda)");
+    } else {
+      // Demo baza možda ima samo 1,2,3 – dopuni do 12 da FINAL OK / Close rade
+      const [ids] = await conn.query("SELECT status_id FROM statusi_projekta");
+      const existingIds = new Set((ids || []).map((r) => Number(r.status_id)));
+      const toInsert = fullStatusiProjekta.filter(([id]) => !existingIds.has(id));
+      if (toInsert.length > 0) {
+        const values = toInsert
+          .map(([id, naziv, opis, red, akt, core]) => `(${id}, ${conn.escape(naziv)}, ${conn.escape(opis)}, ${red}, ${akt}, ${conn.escape(core)})`)
+          .join(",\n        ");
+        await conn.query(`
+          INSERT INTO statusi_projekta (status_id, naziv_statusa, opis, redoslijed, aktivan, core_faza) VALUES
+          ${values}
+        `);
+        console.log("  + statusi_projekta dopunjeno za status_id: " + toInsert.map(([id]) => id).join(", "));
+      }
     }
 
-    // ----- projekt_statusi (API project-statuses) -----
+    // ----- projekt_statusi (API project-statuses) – ista 12 kao statusi_projekta -----
+    const fullProjektStatusi = [
+      [1, "open", "Open", null, 1, 1],
+      [2, "in_progress", "In progress", null, 2, 2],
+      [3, "service", "Service", null, 3, 3],
+      [4, "production", "Production", null, 4, 4],
+      [5, "production_omega", "Production", null, 5, 5],
+      [6, "post_production", "Post-production", null, 6, 6],
+      [7, "completed", "Completed", null, 7, 7],
+      [8, "closed_soft", "Closed", null, 8, 8],
+      [9, "invoiced", "Invoiced", null, 9, 9],
+      [10, "archived", "Archived", null, 10, 10],
+      [11, "on_hold", "On hold", null, 11, 11],
+      [12, "cancelled", "Cancelled", null, 12, 12],
+    ];
     const [existingPs] = await conn.query("SELECT 1 FROM projekt_statusi LIMIT 1");
     if (existingPs.length === 0) {
+      const psValues = fullProjektStatusi
+        .map(([id, kod, naziv, opis, sort, red]) => `(${id}, ${conn.escape(kod)}, ${conn.escape(naziv)}, ${opis == null ? "NULL" : conn.escape(opis)}, ${sort}, ${red})`)
+        .join(",\n        ");
       await conn.query(`
         INSERT INTO projekt_statusi (status_id, kod, naziv, opis, sort, redoslijed) VALUES
-        (1, 'priprema', 'U pripremi', NULL, 1, 1),
-        (2, 'aktivan', 'Aktivan', NULL, 2, 2),
-        (3, 'zatvoren', 'Zatvoren', NULL, 3, 3)
+        ${psValues}
       `);
-      console.log("  + projekt_statusi (3 reda)");
+      console.log("  + projekt_statusi (12 reda)");
+    } else {
+      const [psIds] = await conn.query("SELECT status_id FROM projekt_statusi");
+      const existingPsIds = new Set((psIds || []).map((r) => Number(r.status_id)));
+      const toInsertPs = fullProjektStatusi.filter(([id]) => !existingPsIds.has(id));
+      if (toInsertPs.length > 0) {
+        const psValues = toInsertPs
+          .map(([id, kod, naziv, opis, sort, red]) => `(${id}, ${conn.escape(kod)}, ${conn.escape(naziv)}, ${opis == null ? "NULL" : conn.escape(opis)}, ${sort}, ${red})`)
+          .join(",\n        ");
+        await conn.query(`
+          INSERT INTO projekt_statusi (status_id, kod, naziv, opis, sort, redoslijed) VALUES
+          ${psValues}
+        `);
+        console.log("  + projekt_statusi dopunjeno za status_id: " + toInsertPs.map(([id]) => id).join(", "));
+      }
     }
 
     // ----- roles + demo user (za login "Pogledaj demo") -----
@@ -152,7 +215,7 @@ async function main() {
       );
       if (!hasNovo.length) {
         await conn.query(
-          `INSERT INTO statusi (entitet, kod, naziv, redoslijed, aktivan) VALUES ('inicijacija', 'novo', 'Novo', 1, 1)`,
+          `INSERT INTO statusi (entitet, kod, naziv, redoslijed, aktivan) VALUES ('inicijacija', 'novo', 'New', 1, 1)`,
         );
         console.log("  + statusi inicijacija: novo");
       }
@@ -162,7 +225,7 @@ async function main() {
       );
       if (!hasOtvorena.length) {
         await conn.query(
-          `INSERT INTO statusi (entitet, kod, naziv, redoslijed, aktivan) VALUES ('inicijacija', 'otvorena', 'Otvorena', 2, 1)`,
+          `INSERT INTO statusi (entitet, kod, naziv, redoslijed, aktivan) VALUES ('inicijacija', 'otvorena', 'Open', 2, 1)`,
         );
       }
       const [hasDobijena] = await conn.query(
@@ -170,7 +233,7 @@ async function main() {
       );
       if (!hasDobijena.length) {
         await conn.query(
-          `INSERT INTO statusi (entitet, kod, naziv, redoslijed, aktivan) VALUES ('inicijacija', 'dobijena', 'Dobijena', 3, 1)`,
+          `INSERT INTO statusi (entitet, kod, naziv, redoslijed, aktivan) VALUES ('inicijacija', 'dobijena', 'Won', 3, 1)`,
         );
       }
       const [hasIzgubljena] = await conn.query(
@@ -178,62 +241,52 @@ async function main() {
       );
       if (!hasIzgubljena.length) {
         await conn.query(
-          `INSERT INTO statusi (entitet, kod, naziv, redoslijed, aktivan) VALUES ('inicijacija', 'izgubljena', 'Izgubljena', 4, 1)`,
+          `INSERT INTO statusi (entitet, kod, naziv, redoslijed, aktivan) VALUES ('inicijacija', 'izgubljena', 'Lost', 4, 1)`,
         );
       }
-      console.log("  + statusi inicijacija (novo/otvorena/dobijena/izgubljena) ensured");
+      console.log("  + statusi inicijacija (New/Open/Won/Lost) ensured");
     } catch (e) {
       console.warn("  ! Preskačem seed statusa inicijacija (tabela/kolone se razlikuju):", e?.message || e);
     }
 
-    // ----- klijenti -----
+    // ----- klijenti (više za dobar demo prikaz) -----
     const [existingK] = await conn.query("SELECT 1 FROM klijenti LIMIT 1");
     if (existingK.length === 0) {
       await conn.query(`
         INSERT INTO klijenti (naziv_klijenta, tip_klijenta, adresa, grad, drzava, email, rok_placanja_dana, aktivan) VALUES
-        ('Demo TV d.o.o.', 'direktni', 'Demo ulica 1', 'Sarajevo', 'BiH', 'demo@demo.ba', 14, 1),
-        ('Agencija Demo', 'agencija', 'Agencijska 5', 'Mostar', 'BiH', 'agencija@demo.ba', 30, 1),
-        ('Ino Client Ltd', 'direktni', 'Foreign St 10', 'London', 'UK', 'ino@demo.com', 30, 1)
+        ('Acme Media Ltd', 'direktni', 'Broadway 12', 'London', 'UK', 'contact@acme-media.eu', 14, 1),
+        ('Nordic Agency AB', 'agencija', 'Storgatan 5', 'Stockholm', 'SE', 'hello@nordic-agency.eu', 30, 1),
+        ('Delta Client GmbH', 'direktni', 'Friedrichstraße 44', 'Berlin', 'DE', 'info@delta-client.com', 30, 1),
+        ('Retail Partners SA', 'direktni', 'Rue de Commerce 8', 'Paris', 'FR', 'orders@retail-a.eu', 15, 1),
+        ('Trade Co d.o.o.', 'direktni', 'Ilica 22', 'Zagreb', 'HR', 'sales@retail-b.hr', 20, 1),
+        ('Iberia Brands SL', 'direktni', 'Gran Vía 100', 'Madrid', 'ES', 'info@iberia-brands.eu', 21, 1),
+        ('Alpine Events GmbH', 'agencija', 'Kärntner Straße 18', 'Vienna', 'AT', 'hello@alpine-events.eu', 30, 1),
+        ('Lowlands BV', 'direktni', 'Damrak 42', 'Amsterdam', 'NL', 'contact@lowlands.nl', 14, 1),
+        ('Celtic Media Ltd', 'direktni', 'Grafton Street 5', 'Dublin', 'IE', 'hello@celtic-media.eu', 30, 1)
       `);
-      console.log("  + klijenti (3)");
+      console.log("  + klijenti (9)");
     }
-    // Dodatni fake klijenti (bez dupliranja)
-    try {
-      const [moreK] = await conn.query(
-        "SELECT klijent_id FROM klijenti WHERE email IN ('client.a@demo.ba','client.b@demo.ba') LIMIT 2",
-      );
-      if (moreK.length < 2) {
-        await conn.query(
-          `
-          INSERT INTO klijenti (naziv_klijenta, tip_klijenta, adresa, grad, drzava, email, rok_placanja_dana, aktivan)
-          SELECT * FROM (
-            SELECT 'Demo Retail A d.o.o.' AS naziv_klijenta, 'direktni' AS tip_klijenta, 'Market 12' AS adresa, 'Banja Luka' AS grad, 'BiH' AS drzava, 'client.a@demo.ba' AS email, 15 AS rok_placanja_dana, 1 AS aktivan
-            UNION ALL
-            SELECT 'Demo Retail B d.o.o.', 'direktni', 'Trg 7', 'Tuzla', 'BiH', 'client.b@demo.ba', 20, 1
-          ) x
-          WHERE NOT EXISTS (SELECT 1 FROM klijenti k WHERE k.email = x.email)
-          `,
-        );
-        console.log("  + klijenti (dodatna 2)");
-      }
-    } catch {}
 
-    // ----- projekti (narucilac_id, status_id) -----
-    const [klijentIds] = await conn.query("SELECT klijent_id FROM klijenti ORDER BY klijent_id LIMIT 3");
+    // ----- projekti (više, različiti statusi za dobar prikaz) -----
+    const [klijentIds] = await conn.query("SELECT klijent_id FROM klijenti ORDER BY klijent_id LIMIT 9");
     const [projCount] = await conn.query("SELECT COUNT(*) AS c FROM projekti");
     if (projCount[0].c === 0 && klijentIds.length > 0) {
-      const k1 = klijentIds[0].klijent_id;
-      const k2 = klijentIds[1]?.klijent_id ?? k1;
+      const k = (i) => klijentIds[Math.min(i, klijentIds.length - 1)].klijent_id;
       await conn.query(
         `
         INSERT INTO projekti (narucilac_id, radni_naziv, naziv_za_fakturu, status_id, rok_glavni, budzet_planirani, is_test) VALUES
-        (?, 'Demo kampanja 2026', 'Demo kampanja 2026', 1, DATE_ADD(CURDATE(), INTERVAL 30 DAY), 15000.00, 1),
-        (?, 'Spot za brend X', 'Spot za brend X', 2, DATE_ADD(CURDATE(), INTERVAL 14 DAY), 8000.00, 1),
-        (?, 'Event pokroviteljstvo', 'Event pokroviteljstvo', 1, DATE_ADD(CURDATE(), INTERVAL 60 DAY), 25000.00, 1)
+        (?, 'Spring campaign 2026', 'Spring campaign 2026', 1, DATE_ADD(CURDATE(), INTERVAL 30 DAY), 15000.00, 1),
+        (?, 'Brand X spot', 'Brand X spot', 2, DATE_ADD(CURDATE(), INTERVAL 14 DAY), 8000.00, 1),
+        (?, 'Event sponsorship', 'Event sponsorship', 1, DATE_ADD(CURDATE(), INTERVAL 60 DAY), 25000.00, 1),
+        (?, 'Product launch video', 'Product launch video', 4, DATE_ADD(CURDATE(), INTERVAL 21 DAY), 12000.00, 1),
+        (?, 'Documentary series', 'Documentary series', 3, DATE_ADD(CURDATE(), INTERVAL 90 DAY), 45000.00, 1),
+        (?, 'Social ads package', 'Social ads package', 2, DATE_ADD(CURDATE(), INTERVAL 7 DAY), 5500.00, 1),
+        (?, 'Corporate rebrand', 'Corporate rebrand', 1, DATE_ADD(CURDATE(), INTERVAL 45 DAY), 32000.00, 1),
+        (?, 'Podcast studio setup', 'Podcast studio setup', 5, DATE_ADD(CURDATE(), INTERVAL 14 DAY), 9800.00, 1)
       `,
-        [k1, k2, k1]
+        [k(0), k(1), k(0), k(2), k(3), k(4), k(5), k(6)]
       );
-      console.log("  + projekti (3)");
+      console.log("  + projekti (8)");
     }
     // Osiguraj barem 1 projekat označen kao demo (za fakture/deal povezivanja)
     let demoProjectId = null;
@@ -244,42 +297,37 @@ async function main() {
       if (demoProj?.[0]?.projekat_id) demoProjectId = Number(demoProj[0].projekat_id);
     } catch {}
 
-    // ----- talenti -----
+    // ----- talenti (više imena za dobar prikaz) -----
     const [talCount] = await conn.query("SELECT COUNT(*) AS c FROM talenti");
     if (talCount[0].c === 0) {
       await conn.query(`
         INSERT INTO talenti (ime_prezime, vrsta, email, aktivan) VALUES
-        ('Demo Spiker', 'spiker', 'spiker@demo.ba', 1),
-        ('Demo Glumac', 'glumac', 'glumac@demo.ba', 1),
-        ('Demo Muzičar', 'muzicar', NULL, 1)
+        ('John Smith', 'spiker', 'john.smith@talent.eu', 1),
+        ('Oleg Petrov', 'glumac', 'oleg.petrov@talent.eu', 1),
+        ('Pete Jones', 'muzicar', 'pete.jones@talent.eu', 1),
+        ('Marie Dubois', 'montazer', 'marie.dubois@talent.eu', 1),
+        ('Hans Weber', 'kamera', 'hans.weber@talent.eu', 1),
+        ('Anna Kowalski', 'glumac', 'anna.kowalski@talent.eu', 1),
+        ('Marco Rossi', 'spiker', 'marco.rossi@talent.eu', 1),
+        ('Elena Vasquez', 'kamera', 'elena.vasquez@talent.eu', 1),
+        ('James O\'Brien', 'muzicar', 'james.obrien@talent.eu', 1),
+        ('Sophie Müller', 'montazer', 'sophie.mueller@talent.eu', 1)
       `);
-      console.log("  + talenti (3)");
+      console.log("  + talenti (10)");
     }
-    // Još par talenata (ne dupliraj po emailu)
-    try {
-      await conn.query(
-        `
-        INSERT INTO talenti (ime_prezime, vrsta, email, aktivan)
-        SELECT * FROM (
-          SELECT 'Demo Montažer' AS ime_prezime, 'montazer' AS vrsta, 'montazer@demo.ba' AS email, 1 AS aktivan
-          UNION ALL
-          SELECT 'Demo Kamera', 'kamera', 'kamera@demo.ba', 1
-        ) x
-        WHERE NOT EXISTS (SELECT 1 FROM talenti t WHERE t.email = x.email)
-        `,
-      );
-      console.log("  + talenti (dodatna 2)");
-    } catch {}
 
     // ----- dobavljaci -----
     const [dobCount] = await conn.query("SELECT COUNT(*) AS c FROM dobavljaci");
     if (dobCount[0].c === 0) {
       await conn.query(`
         INSERT INTO dobavljaci (naziv, vrsta, pravno_lice, grad, email, aktivan) VALUES
-        ('Demo Studio', 'studio', 1, 'Sarajevo', 'studio@demo.ba', 1),
-        ('Demo Freelancer', 'freelancer', 0, 'Mostar', 'freelancer@demo.ba', 1)
+        ('Studio One GmbH', 'studio', 1, 'Munich', 'studio@studio-one.eu', 1),
+        ('Freelance Pro', 'freelancer', 0, 'Amsterdam', 'contact@freelance-pro.eu', 1),
+        ('Rental House Ltd', 'studio', 1, 'London', 'gear@rental-house.co.uk', 1),
+        ('Post Studio Paris', 'studio', 1, 'Paris', 'contact@poststudio.eu', 1),
+        ('Sound & Light BV', 'freelancer', 0, 'Rotterdam', 'info@soundlight.eu', 1)
       `);
-      console.log("  + dobavljaci (2)");
+      console.log("  + dobavljaci (5)");
     }
 
     // ----- radne_faze (opciono, za fazne prikaze) -----
@@ -287,9 +335,9 @@ async function main() {
     if (fazeCount[0].c === 0) {
       await conn.query(`
         INSERT INTO radne_faze (naziv, opis_poslova, vrsta_posla, aktivna) VALUES
-        ('Preprodukcija', 'Priprema', 'produkcija', 1),
-        ('Produkcija', 'Snimanje', 'produkcija', 1),
-        ('Postprodukcija', 'Montaža i finalizacija', 'produkcija', 1)
+        ('Pre-production', 'Prep and planning', 'produkcija', 1),
+        ('Production', 'Shoot', 'produkcija', 1),
+        ('Post-production', 'Edit and delivery', 'produkcija', 1)
       `);
       console.log("  + radne_faze (3)");
     }
@@ -299,9 +347,9 @@ async function main() {
     if (cjenCount[0].c === 0) {
       await conn.query(`
         INSERT INTO cjenovnik_stavke (naziv, jedinica, cijena_default, valuta_default, sort_order, active) VALUES
-        ('Demo stavka po satu', 'SAT', 50.00, 'BAM', 100, 1),
-        ('Demo stavka po danu', 'DAN', 400.00, 'BAM', 200, 1),
-        ('Demo stavka komad', 'KOM', 100.00, 'BAM', 300, 1)
+        ('Hourly rate', 'SAT', 75.00, 'EUR', 100, 1),
+        ('Day rate', 'DAN', 550.00, 'EUR', 200, 1),
+        ('Per unit', 'KOM', 120.00, 'EUR', 300, 1)
       `);
       console.log("  + cjenovnik_stavke (3)");
     }
@@ -324,24 +372,30 @@ async function main() {
           [`%${seedTag}%`],
         );
         if (!hasDeals.length) {
+          const k2 = klijentIds?.[1]?.klijent_id ?? narucilacId;
+          const k3 = klijentIds?.[2]?.klijent_id ?? narucilacId;
+          const k4 = klijentIds?.[3]?.klijent_id ?? narucilacId;
+          const k5 = klijentIds?.[4]?.klijent_id ?? narucilacId;
           await conn.query(
             `
             INSERT INTO inicijacije
               (narucilac_id, krajnji_klijent_id, radni_naziv, kontakt_ime, kontakt_tel, kontakt_email, napomena, status_id)
             VALUES
-              (?, NULL, 'Demo deal #1 — proljetna kampanja', 'Nina Demo', '+387 65 111 222', 'nina.demo@demo.ba', ?, ?),
-              (?, NULL, 'Demo deal #2 — rebranding paket', 'Marko Demo', '+387 65 333 444', 'marko.demo@demo.ba', ?, ?)
+              (?, NULL, 'Demo deal #1 — spring campaign', 'John Smith', '+44 20 7946 0958', 'john.smith@acme-media.eu', ?, ?),
+              (?, NULL, 'Demo deal #2 — rebrand package', 'Oleg Petrov', '+1 212 555 0147', 'oleg.petrov@delta-client.com', ?, ?),
+              (?, NULL, 'Demo deal #3 — product launch', 'Anna Berg', '+46 8 123 4567', 'anna.berg@nordic-agency.eu', ?, ?),
+              (?, NULL, 'Demo deal #4 — documentary', 'Pierre Martin', '+33 1 42 86 8300', 'pierre.martin@retail-a.eu', ?, ?),
+              (?, NULL, 'Demo deal #5 — social campaign', 'Lisa Weber', '+49 30 12345678', 'lisa.weber@delta-client.com', ?, ?)
             `,
             [
-              narucilacId,
-              `${seedTag}: inicijacija 1`,
-              statusNovoId,
-              narucilacId,
-              `${seedTag}: inicijacija 2`,
-              statusNovoId,
+              narucilacId, `${seedTag}: inicijacija 1`, statusNovoId,
+              narucilacId, `${seedTag}: inicijacija 2`, statusNovoId,
+              k2, `${seedTag}: inicijacija 3`, statusNovoId,
+              k3, `${seedTag}: inicijacija 4`, statusNovoId,
+              k4, `${seedTag}: inicijacija 5`, statusNovoId,
             ],
           );
-          console.log("  + inicijacije (2)");
+          console.log("  + inicijacije (5)");
         }
       }
     } catch (e) {
@@ -385,9 +439,9 @@ async function main() {
                datum_izdavanja, tip, valuta, osnovica_km, pdv_stopa, pdv_iznos_km,
                pdv_obracunat, iznos_ukupno_km, poziv_na_broj)
             VALUES
-              (?, ?, ?, ?, 'DODIJELJEN', ?, 'obicna', 'BAM', ?, 17.0, ?, 1, ?, ?)
+              (?, ?, ?, ?, 'DODIJELJEN', ?, 'obicna', 'EUR', ?, 20.0, ?, 1, ?, ?)
             `,
-            [billTo, year, start, 9001 + start, today, 1200.0, 204.0, 1404.0, "77112233"],
+            [billTo, year, start, 9001 + start, today, 1000.0, 200.0, 1200.0, "77112233"],
           );
           const faktura1Id = Number(ins1?.insertId);
           if (faktura1Id) {
@@ -398,8 +452,8 @@ async function main() {
                 [
                   faktura1Id,
                   projekatId,
-                  JSON.stringify(["Produkcija video spota", "Postprodukcija + grafike"]),
-                  "Demo kampanja 2026",
+                  JSON.stringify(["Video production", "Post-production and graphics"]),
+                  "Spring campaign 2026",
                 ],
               );
             } catch (e) {
@@ -432,8 +486,8 @@ async function main() {
                 [
                   faktura2Id,
                   projekatId,
-                  JSON.stringify(["Kreativa + copy", "Adaptacije formata"]),
-                  "Demo kampanja 2026 (EUR)",
+                  JSON.stringify(["Creative and copy", "Format adaptations"]),
+                  "Spring campaign 2026 (EUR)",
                 ],
               );
             } catch (e) {
@@ -467,11 +521,11 @@ async function main() {
              statement_no, statement_date, currency,
              opening_balance, closing_balance, total_debit, total_credit, file_hash)
           VALUES
-            (?, 'DEMO_SEED', 'UPP-DEMO', 'BA39DEMO000000000000', '0000000000000', ?,
+            (?, 'DEMO_SEED', 'UPP-DEMO', 'DE89370400440532013000', 'DE123456789', ?,
              999, ?, 'EUR',
              1000.00, 1015.00, 120.00, 135.00, ?)
           `,
-          [1, `Studio Demo (${seedTag})`, statementDate, fileHash],
+          [1, `Acme Media Ltd (${seedTag})`, statementDate, fileHash],
         );
         const batchId = Number(bRes?.insertId);
         if (batchId) {
@@ -482,10 +536,10 @@ async function main() {
               value_date: statementDate,
               amount: -85.0,
               currency: "EUR",
-              counterparty: "Demo Supplier GmbH",
-              counterparty_bank: "DEMO BANK",
-              description: "NAKNADA ZA KONVERZIJU",
-              full_description: "NAKNADA ZA KONVERZIJU | EUR OPERATIVNI TEČAJ 1.95583",
+              counterparty: "Bank Fees Ltd",
+              counterparty_bank: "Demo Bank AG",
+              description: "FX conversion fee",
+              full_description: "FX conversion fee | EUR rate 1.05",
               tx_type: 1,
               direction_flag: 1,
               is_fee: 1,
@@ -498,10 +552,10 @@ async function main() {
               value_date: statementDate,
               amount: 100.0,
               currency: "EUR",
-              counterparty: "Demo Client A d.o.o.",
-              counterparty_bank: "UNICREDIT DEMO",
-              description: "UPLATA PO FAKTURI 001",
-              full_description: "Uplata po fakturi (demo) | poziv 77112233",
+              counterparty: "Retail Partners SA",
+              counterparty_bank: "BNP Paribas",
+              description: "Payment ref invoice 001",
+              full_description: "Payment ref invoice 001 | ref 77112233",
               tx_type: 2,
               direction_flag: 2,
               is_fee: 0,

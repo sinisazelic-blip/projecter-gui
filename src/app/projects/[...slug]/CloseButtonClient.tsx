@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "@/components/LocaleProvider";
 
 const USER_LABEL = "SiNY"; // <- ili "Sinisa"
 
@@ -26,6 +27,7 @@ export function CloseButtonClient({
 }: {
   projekatId: number;
 }) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
 
   // poruke (greške / success)
@@ -47,7 +49,7 @@ export function CloseButtonClient({
       const j1 = (await readJson(r1)) as CloseCheckResponse;
 
       if (!r1.ok || !j1?.ok) {
-        setMsg(j1?.error || "Greška: close-check nije uspio.");
+        setMsg(j1?.error || t("common.error"));
         setCheck(null);
         return null;
       }
@@ -55,7 +57,7 @@ export function CloseButtonClient({
       setCheck(j1);
       return j1;
     } catch (e: any) {
-      setMsg(e?.message || "Neočekivana greška (close-check).");
+      setMsg(e?.message || t("common.error"));
       setCheck(null);
       return null;
     }
@@ -78,16 +80,17 @@ export function CloseButtonClient({
       const j2 = await readJson(r2);
 
       if (!r2.ok || !j2?.ok) {
-        const e = j2?.error || "Greška pri arhiviranju.";
-        const hb = j2?.hard_blocks?.[0]?.message;
-        setMsg(hb || e);
+        const hb = j2?.hard_blocks?.[0];
+        const msgKey = hb?.code ? `closeProject.block_${hb.code}` : null;
+        const msg = msgKey ? (t(msgKey) !== msgKey ? t(msgKey) : hb?.message) : (j2?.error || t("common.error"));
+        setMsg(msg || hb?.message || j2?.error);
         return;
       }
 
-      setMsg("Projekat je arhiviran.");
+      setMsg(t("closeProject.archivedOk"));
       window.location.reload();
     } catch (e: any) {
-      setMsg(e?.message || "Neočekivana greška.");
+      setMsg(e?.message || t("common.error"));
     } finally {
       setLoading(false);
     }
@@ -108,17 +111,17 @@ export function CloseButtonClient({
       if (!j1) return;
 
       if (!j1.ok_to_close) {
-        const hb = j1?.hard_blocks?.[0]?.message;
-        setMsg(hb || "Zatvaranje nije dozvoljeno.");
+        const hb = j1?.hard_blocks?.[0];
+        const msgKey = hb?.code ? `closeProject.block_${hb.code}` : null;
+        setMsg(msgKey && t(msgKey) !== msgKey ? t(msgKey) : (hb?.message || t("closeProject.closeNotAllowed")));
         return;
       }
 
       const hasWarnings = Array.isArray(j1?.warnings) && j1.warnings.length > 0;
 
-      // Ako ima warnings → prikaži inline potvrdu (bez popup-a)
       if (hasWarnings) {
         setNeedsConfirm(true);
-        setMsg("Postoje upozorenja. Potrebna je potvrda prije arhiviranja.");
+        setMsg(t("closeProject.needsConfirm"));
         return;
       }
 
@@ -138,7 +141,7 @@ export function CloseButtonClient({
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
         <button className="btn" disabled={loading} onClick={onPrimaryClick}>
-          {loading ? "Provjeravam…" : "Arhiviraj"}
+          {loading ? t("closeProject.checking") : t("closeProject.archive")}
         </button>
 
         {msg && <span style={{ opacity: 0.85, fontSize: 13 }}>{msg}</span>}
@@ -153,38 +156,41 @@ export function CloseButtonClient({
             background: "rgba(245,158,11,0.10)",
           }}
         >
-          <div style={{ fontWeight: 800, marginBottom: 6 }}>Upozorenja</div>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>{t("closeProject.warningsTitle")}</div>
 
-          {/* Ako close-check ima hard blocks (ne bi trebao kad ok_to_close=true, ali bolje prikazati) */}
           {hardBlocks.length > 0 && (
             <div style={{ marginBottom: 10 }}>
               <div
                 style={{ fontWeight: 700, marginBottom: 6, color: "#b91c1c" }}
               >
-                Blokade
+                {t("closeProject.blocksTitle")}
               </div>
               <ul style={{ margin: 0, paddingLeft: 18 }}>
-                {hardBlocks.map((b, i) => (
-                  <li key={`${b.code ?? "HB"}-${i}`}>
-                    {b.message ?? "Blokada"}
-                    {typeof b.count === "number" ? ` (${b.count})` : ""}
-                  </li>
-                ))}
+                {hardBlocks.map((b, i) => {
+                  const key = b.code ? `closeProject.block_${b.code}` : "";
+                  const text = key && t(key) !== key ? t(key) : (b.message ?? "");
+                  return (
+                    <li key={`${b.code ?? "HB"}-${i}`}>
+                      {text}
+                      {typeof b.count === "number" ? ` (${b.count})` : ""}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
 
           {warnings.length > 0 ? (
             <ul style={{ margin: 0, paddingLeft: 18, marginBottom: 10 }}>
-              {warnings.map((w, i) => (
-                <li key={`${w.code ?? "W"}-${i}`}>
-                  {w.message ?? "Upozorenje"}
-                </li>
-              ))}
+              {warnings.map((w, i) => {
+                const key = w.code ? `closeProject.warning_${w.code}` : "";
+                const text = key && t(key) !== key ? t(key) : (w.message ?? "");
+                return <li key={`${w.code ?? "W"}-${i}`}>{text}</li>;
+              })}
             </ul>
           ) : (
             <div style={{ marginBottom: 10, opacity: 0.9 }}>
-              Postoje upozorenja.
+              {t("closeProject.warningsTitle")}.
             </div>
           )}
 
@@ -202,7 +208,7 @@ export function CloseButtonClient({
               onChange={(e) => setConfirmWarnings(e.target.checked)}
               disabled={loading}
             />
-            Razumijem upozorenja i želim nastaviti
+            {t("closeProject.understandAndContinue")}
           </label>
 
           <div style={{ display: "flex", gap: 10 }}>
@@ -215,7 +221,7 @@ export function CloseButtonClient({
                 await doClose(true);
               }}
             >
-              Potvrdi arhiviranje
+              {t("closeProject.confirmArchive")}
             </button>
 
             <button
@@ -227,7 +233,7 @@ export function CloseButtonClient({
                 setMsg(null);
               }}
             >
-              Odustani
+              {t("closeProject.cancel")}
             </button>
           </div>
         </div>

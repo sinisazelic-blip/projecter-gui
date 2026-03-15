@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "@/components/LocaleProvider";
 
 const USER_LABEL = "SiNY"; // ← promijeni u "Sinisa" ako želiš
 
@@ -13,6 +14,7 @@ export function CloseProjectModal({
   onDone: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsConfirm, setNeedsConfirm] = useState(false);
@@ -26,7 +28,7 @@ export function CloseProjectModal({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-user": USER_LABEL, // ✅ OVO je bitno
+          "x-user": USER_LABEL,
         },
         body: JSON.stringify(force ? { force: true } : {}),
       });
@@ -38,12 +40,15 @@ export function CloseProjectModal({
           setNeedsConfirm(true);
           return;
         }
-        throw new Error(json?.error || "Greška pri zatvaranju projekta");
+        const hb = json?.hard_blocks?.[0];
+        const msgKey = hb?.code ? `closeProject.block_${hb.code}` : null;
+        const msg = msgKey && t(msgKey) !== msgKey ? t(msgKey) : (hb?.message || json?.error || t("closeProjectModal.error"));
+        throw new Error(msg);
       }
 
       onDone();
     } catch (e: any) {
-      setError(e.message || "Neočekivana greška");
+      setError(e.message || t("common.error"));
     } finally {
       setLoading(false);
     }
@@ -52,12 +57,11 @@ export function CloseProjectModal({
   return (
     <div className="card">
       <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 10 }}>
-        Arhiviranje projekta
+        {t("closeProjectModal.title")}
       </div>
 
       <div style={{ opacity: 0.9, marginBottom: 12 }}>
-        Ova akcija će zaključati projekat. Nakon toga izmjene neće biti
-        dozvoljene.
+        {t("closeProjectModal.intro")}
       </div>
 
       {error && (
@@ -74,10 +78,10 @@ export function CloseProjectModal({
           }}
         >
           <div style={{ fontWeight: 700, marginBottom: 6 }}>
-            Postoje upozorenja
+            {t("closeProjectModal.warningsTitle")}
           </div>
           <div style={{ opacity: 0.9, marginBottom: 10 }}>
-            Projekat ima upozorenja (npr. bank storno). Da li želiš nastaviti?
+            {t("closeProjectModal.warningsIntro")}
           </div>
 
           <button
@@ -85,7 +89,7 @@ export function CloseProjectModal({
             onClick={() => closeProject(true)}
             disabled={loading}
           >
-            Da, arhiviraj uprkos upozorenjima
+            {t("closeProjectModal.confirmAnyway")}
           </button>
         </div>
       )}
@@ -96,11 +100,11 @@ export function CloseProjectModal({
           onClick={() => closeProject(false)}
           disabled={loading}
         >
-          Arhiviraj
+          {t("closeProjectModal.archive")}
         </button>
 
         <button className="btn" onClick={onCancel} disabled={loading}>
-          Otkaži
+          {t("closeProjectModal.cancel")}
         </button>
       </div>
     </div>

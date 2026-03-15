@@ -310,9 +310,12 @@ export default function FinalOkButtonClient({
                     <div>
                       {t("finalOkModal.statusNow")}{" "}
                       <b>
-                        {data.summary.status_name
-                          ? data.summary.status_name
-                          : `#${data.summary.status_id}`}
+                        {(() => {
+                          const key = `statuses.project.${data.summary.status_id}`;
+                          const translated = t(key);
+                          if (translated !== key) return translated;
+                          return data.summary.status_name ?? `#${data.summary.status_id}`;
+                        })()}
                       </b>
                     </div>
                     <div>
