@@ -25,6 +25,8 @@ function fmtMoney(n: number, ccy: string) {
   return `${s} ${label}`;
 }
 
+const EUR_TO_BAM = 1.95583;
+
 function parseIds(idsRaw: string): number[] {
   return String(idsRaw || "")
     .split(",")
@@ -1607,7 +1609,22 @@ export default function Page() {
                     <div className="k">
                       {t(`wizard.previewDoc.${docLang}.totalDue`)}
                     </div>
-                    <div className="v">{fmtMoney(totalAmount, ccy)}</div>
+                    <div className="v">
+                      {fmtMoney(totalAmount, ccy)}
+                      {isInoInvoice && ccy === "EUR" ? (
+                        <div
+                          style={{
+                            marginTop: 2,
+                            fontSize: 9,
+                            color: "#555",
+                            lineHeight: 1.25,
+                            fontWeight: 500,
+                          }}
+                        >
+                          BAM equivalent: {(Math.round(totalAmount * EUR_TO_BAM * 100) / 100).toFixed(2)} BAM
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
 
                   {/* ✅ Proj completion ovdje, da se “rupa” iznad obračuna zatvori */}

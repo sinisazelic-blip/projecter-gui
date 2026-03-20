@@ -25,6 +25,8 @@ function fmtMoney(n: number, ccy: string) {
   return `${s} ${label}`;
 }
 
+const EUR_TO_BAM = 1.95583;
+
 function parseIds(idsRaw: string): number[] {
   return String(idsRaw || "")
     .split(",")
@@ -1188,7 +1190,22 @@ export default function FakturaPreviewClient() {
                         ? t("wizard.previewDoc.en.totalDue")
                         : t("wizard.previewDoc.bh.totalDue")}
                     </div>
-                    <div className="v">{fmtMoney(totalAmount, ccy)}</div>
+                    <div className="v">
+                      {fmtMoney(totalAmount, ccy)}
+                      {isInoInvoice && ccy === "EUR" ? (
+                        <div
+                          style={{
+                            marginTop: 2,
+                            fontSize: 9,
+                            color: "#555",
+                            lineHeight: 1.25,
+                            fontWeight: 500,
+                          }}
+                        >
+                          BAM equivalent: {(Math.round(totalAmount * EUR_TO_BAM * 100) / 100).toFixed(2)} BAM
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
 
                   <div className="completedLine">
