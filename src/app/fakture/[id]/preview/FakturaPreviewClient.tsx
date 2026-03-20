@@ -1192,7 +1192,7 @@ export default function FakturaPreviewClient() {
                     </div>
                     <div className="v">
                       {fmtMoney(totalAmount, ccy)}
-                      {isInoInvoice && ccy === "EUR" ? (
+                      {isInoInvoice && String(ccy).trim() === "EUR" ? (
                         <div
                           style={{
                             marginTop: 2,
