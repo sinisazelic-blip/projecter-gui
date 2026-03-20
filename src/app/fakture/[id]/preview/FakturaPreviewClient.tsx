@@ -1172,7 +1172,7 @@ export default function FakturaPreviewClient() {
                     </div>
                     <div className="v">{fmtMoney(baseAmount, ccy)}</div>
                   </div>
-                  {vatRate > 0 && (
+                  {(vatRate > 0 || isInoInvoice) && (
                     <>
                       <div className="totLine">
                         <div className="k">
@@ -1190,7 +1190,14 @@ export default function FakturaPreviewClient() {
                         ? t("wizard.previewDoc.en.totalDue")
                         : t("wizard.previewDoc.bh.totalDue")}
                     </div>
-                    <div className="v">
+                    <div
+                      className="v"
+                      style={
+                        isInoInvoice && String(ccy).trim() === "EUR"
+                          ? { display: "flex", flexDirection: "column", alignItems: "flex-end" }
+                          : undefined
+                      }
+                    >
                       {fmtMoney(totalAmount, ccy)}
                       {isInoInvoice && String(ccy).trim() === "EUR" ? (
                         <div
@@ -1200,6 +1207,8 @@ export default function FakturaPreviewClient() {
                             color: "#555",
                             lineHeight: 1.25,
                             fontWeight: 500,
+                            textAlign: "right",
+                            width: "100%",
                           }}
                         >
                           BAM equivalent: {(Math.round(totalAmount * EUR_TO_BAM * 100) / 100).toFixed(2)} BAM
