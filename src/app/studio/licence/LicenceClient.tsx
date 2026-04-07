@@ -6,14 +6,20 @@ import { useTranslation } from "@/components/LocaleProvider";
 const USER_LIMIT_OPTIONS = [1, 3, 5, 10, 50, 101] as const; // 101 = 100+
 const CURRENCY_OPTIONS = ["EUR", "KM"];
 
+const SOCCS_TIER_OPTIONS = ["BASIC", "BASIC_PLUS", "PROFESSIONAL", "ENTERPRISE"] as const;
+
 type TenantRow = {
   tenant_id: number;
+  tenant_public_id?: string | null;
   naziv: string;
   plan_id: number;
   plan_naziv: string;
   max_users: number;
   monthly_price?: number | string | null;
   currency?: string | null;
+  soccs_tier?: string | null;
+  soccs_federation_parent_tenant_id?: number | null;
+  federation_naziv?: string | null;
   subscription_starts_at: string;
   subscription_ends_at: string;
   status: string;
@@ -49,6 +55,16 @@ export default function LicenceClient() {
   const [tokenModalRow, setTokenModalRow] = useState<TenantRow | null>(null);
   const [tokenRegenerating, setTokenRegenerating] = useState(false);
   const [newTenantToken, setNewTenantToken] = useState<string | null>(null);
+  const [newTenantSoccsTier, setNewTenantSoccsTier] = useState<string>("BASIC");
+
+  const [soccsModal, setSoccsModal] = useState<TenantRow | null>(null);
+  const [soccsTierDraft, setSoccsTierDraft] = useState("BASIC");
+  const [soccsFedDraft, setSoccsFedDraft] = useState<number | "">("");
+  const [soccsSaving, setSoccsSaving] = useState(false);
+  const [soccsGenCode, setSoccsGenCode] = useState<string | null>(null);
+  const [soccsMeetSponsor, setSoccsMeetSponsor] = useState<number | "">("");
+  const [soccsMeetNote, setSoccsMeetNote] = useState("");
+  const [soccsGenBusy, setSoccsGenBusy] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -189,6 +205,7 @@ export default function LicenceClient() {
           subscription_ends_at: newTenantEnd,
           monthly_price: newTenantPrice.trim() ? Number(newTenantPrice) : null,
           currency: newTenantPrice.trim() ? newTenantCurrency : null,
+          soccs_tier: newTenantSoccsTier,
         }),
       });
       const data = await res.json();
@@ -201,6 +218,7 @@ export default function LicenceClient() {
         setNewTenantEnd("");
         setNewTenantPrice("");
         setNewTenantCurrency("EUR");
+        setNewTenantSoccsTier("BASIC");
         setNewTenantToken(data.licence_token ?? null);
         await load();
       } else {
@@ -214,6 +232,88 @@ export default function LicenceClient() {
   };
 
   const formatMaxUsers = (n: number) => (n >= 101 ? t("studioLicence.users100Plus") : String(n));
+  const formatSoccsTier = (row: TenantRow) => {
+    const s = String(row.soccs_tier ?? "BASIC").toUpperCase();
+    return SOCCS_TIER_OPTIONS.includes(s as (typeof SOCCS_TIER_OPTIONS)[number]) ? s : "BASIC";
+  };
+
+  const openSoccsModal = (row: TenantRow) => {
+    setSoccsModal(row);
+    setSoccsTierDraft(formatSoccsTier(row));
+    setSoccsFedDraft(row.soccs_federation_parent_tenant_id ?? "");
+    setSoccsGenCode(null);
+    setSoccsMeetSponsor("");
+    setSoccsMeetNote("");
+  };
+
+  const handleSoccsSave = async () => {
+    if (!soccsModal) return;
+    setSoccsSaving(true);
+    setError(null);
+    try {
+      const body: Record<string, unknown> = { soccs_tier: soccsTierDraft };
+      if (soccsFedDraft === "") {
+        body.soccs_federation_parent_tenant_id = null;
+      } else if (typeof soccsFedDraft === "number") {
+        body.soccs_federation_parent_tenant_id = soccsFedDraft;
+      }
+      const res = await fetch(`/api/tenant-admin/tenants/${soccsModal.tenant_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        await load();
+        setSoccsModal((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            soccs_tier: soccsTierDraft,
+            soccs_federation_parent_tenant_id:
+              soccsFedDraft === "" ? null : typeof soccsFedDraft === "number" ? soccsFedDraft : null,
+          };
+        });
+      } else setError(data.error ?? t("common.error"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSoccsSaving(false);
+    }
+  };
+
+  const handleGenerateSoccsCode = async (purpose: "FIRST_INSTALL" | "MEET_SESSION") => {
+    if (!soccsModal) return;
+    setSoccsGenBusy(true);
+    setError(null);
+    try {
+      const body: Record<string, unknown> = {
+        tenant_id: soccsModal.tenant_id,
+        purpose,
+        valid_days: 365 * 5,
+      };
+      if (purpose === "MEET_SESSION") {
+        if (typeof soccsMeetSponsor === "number") {
+          body.sponsor_tenant_id = soccsMeetSponsor;
+        }
+        body.meet_note = soccsMeetNote.trim() || null;
+      }
+      const res = await fetch("/api/tenant-admin/activation-codes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.ok && data.code) {
+        setSoccsGenCode(data.code);
+      } else setError(data.error ?? t("common.error"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSoccsGenBusy(false);
+    }
+  };
+
   const formatPrice = (row: TenantRow) => {
     if (row.monthly_price == null || row.monthly_price === "") return "—";
     const curr = row.currency || "EUR";
@@ -258,6 +358,7 @@ export default function LicenceClient() {
             <tr>
               <th style={thTd}>{t("studioLicence.colNaziv")}</th>
               <th style={thTd}>{t("studioLicence.colPlan")}</th>
+              <th style={thTd}>{t("studioLicence.colSoccs")}</th>
               <th style={thTd}>{t("studioLicence.colKorisnici")}</th>
               <th style={thTd}>{t("studioLicence.colCijena")}</th>
               <th style={thTd}>{t("studioLicence.colIstice")}</th>
@@ -270,7 +371,7 @@ export default function LicenceClient() {
           <tbody>
             {tenants.length === 0 ? (
               <tr>
-                <td colSpan={9} style={thTd}>
+                <td colSpan={10} style={thTd}>
                   {t("studioLicence.noTenants")}
                 </td>
               </tr>
@@ -279,6 +380,7 @@ export default function LicenceClient() {
                 <tr key={row.tenant_id}>
                   <td style={thTd}>{row.naziv}</td>
                   <td style={thTd}>{row.plan_naziv}</td>
+                  <td style={thTd}>{formatSoccsTier(row)}</td>
                   <td style={thTd}>{formatMaxUsers(row.max_users)}</td>
                   <td style={thTd}>{formatPrice(row)}</td>
                   <td style={thTd}>{row.subscription_ends_at}</td>
@@ -302,6 +404,15 @@ export default function LicenceClient() {
                     </button>
                   </td>
                   <td style={thTd}>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ marginRight: 8, fontSize: 12 }}
+                      onClick={() => openSoccsModal(row)}
+                      title={t("studioLicence.soccsModalTitle")}
+                    >
+                      {t("studioLicence.soccsButton")}
+                    </button>
                     <button
                       type="button"
                       className="btn"
@@ -495,6 +606,16 @@ export default function LicenceClient() {
                   </option>
                 ))}
               </select>
+              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.soccsNewTenantTier")}</label>
+              <select
+                value={newTenantSoccsTier}
+                onChange={(e) => setNewTenantSoccsTier(e.target.value)}
+                style={{ padding: 8, marginBottom: 12, width: "100%", maxWidth: 280 }}
+              >
+                {SOCCS_TIER_OPTIONS.map((tier) => (
+                  <option key={tier} value={tier}>{tier}</option>
+                ))}
+              </select>
               <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.labelStart")}</label>
               <input
                 type="date"
@@ -543,6 +664,118 @@ export default function LicenceClient() {
                   {t("common.cancel")}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal SOCCS / aktivacija */}
+      {soccsModal && (
+        <div className="studio-modal" style={overlayStyle()} onClick={() => !soccsSaving && !soccsGenBusy && setSoccsModal(null)}>
+          <div style={modalStyle(560)} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: 24, maxHeight: "90vh", overflow: "auto" }}>
+              <h3 style={{ marginTop: 0 }}>{t("studioLicence.soccsModalTitle")}</h3>
+              <p style={{ fontSize: 13, opacity: 0.9, marginBottom: 8 }}>{soccsModal.naziv}</p>
+              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.soccsPublicId")}</label>
+              <code style={{ display: "block", padding: 10, background: "var(--panel)", borderRadius: 8, marginBottom: 12, wordBreak: "break-all", fontSize: 11 }}>
+                {soccsModal.tenant_public_id || "—"}
+              </code>
+              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.soccsTierLabel")}</label>
+              <select
+                value={soccsTierDraft}
+                onChange={(e) => setSoccsTierDraft(e.target.value)}
+                style={{ padding: 8, marginBottom: 12, width: "100%", maxWidth: 280 }}
+              >
+                {SOCCS_TIER_OPTIONS.map((tier) => (
+                  <option key={tier} value={tier}>{tier}</option>
+                ))}
+              </select>
+              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.soccsFederationLabel")}</label>
+              <p style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>{t("studioLicence.soccsFederationHint")}</p>
+              <select
+                value={soccsFedDraft === "" ? "" : String(soccsFedDraft)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSoccsFedDraft(v === "" ? "" : Number(v));
+                }}
+                style={{ padding: 8, marginBottom: 12, width: "100%", maxWidth: 360 }}
+              >
+                <option value="">{t("studioLicence.soccsFederationNone")}</option>
+                {tenants
+                  .filter((x) => x.tenant_id !== soccsModal.tenant_id)
+                  .map((x) => (
+                    <option key={x.tenant_id} value={x.tenant_id}>
+                      {x.naziv} (#{x.tenant_id})
+                    </option>
+                  ))}
+              </select>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+                <button type="button" className="btn" disabled={soccsSaving} onClick={handleSoccsSave}>
+                  {soccsSaving ? t("common.loading") : t("studioLicence.soccsSaveTier")}
+                </button>
+              </div>
+              <hr style={{ borderColor: "var(--border)", margin: "16px 0" }} />
+              <label style={{ display: "block", marginBottom: 8 }}>{t("studioLicence.soccsGenerateFirst")}</label>
+              <button
+                type="button"
+                className="btn"
+                disabled={soccsGenBusy}
+                style={{ marginBottom: 16 }}
+                onClick={() => handleGenerateSoccsCode("FIRST_INSTALL")}
+              >
+                {soccsGenBusy ? t("common.loading") : t("studioLicence.soccsGenerateFirst")}
+              </button>
+              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.soccsGenerateMeet")}</label>
+              <select
+                value={soccsMeetSponsor === "" ? "" : String(soccsMeetSponsor)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSoccsMeetSponsor(v === "" ? "" : Number(v));
+                }}
+                style={{ padding: 8, marginBottom: 8, width: "100%", maxWidth: 360 }}
+              >
+                <option value="">{t("studioLicence.soccsMeetSponsor")}</option>
+                {tenants
+                  .filter((x) => x.tenant_id !== soccsModal.tenant_id)
+                  .map((x) => (
+                    <option key={x.tenant_id} value={x.tenant_id}>
+                      {x.naziv} (#{x.tenant_id})
+                    </option>
+                  ))}
+              </select>
+              <input
+                type="text"
+                value={soccsMeetNote}
+                onChange={(e) => setSoccsMeetNote(e.target.value)}
+                placeholder={t("studioLicence.soccsMeetNote")}
+                style={{ padding: 8, marginBottom: 8, width: "100%", maxWidth: 400 }}
+              />
+              <button
+                type="button"
+                className="btn"
+                disabled={soccsGenBusy}
+                style={{ marginBottom: 16 }}
+                onClick={() => handleGenerateSoccsCode("MEET_SESSION")}
+              >
+                {soccsGenBusy ? t("common.loading") : t("studioLicence.soccsGenerateMeet")}
+              </button>
+              {soccsGenCode && (
+                <>
+                  <p style={{ fontSize: 13, marginBottom: 6 }}>{t("studioLicence.soccsCodeGenerated")}</p>
+                  <code style={{ display: "block", padding: 12, background: "var(--panel)", borderRadius: 8, marginBottom: 8, wordBreak: "break-all", fontSize: 12 }}>
+                    {soccsGenCode}
+                  </code>
+                  <button type="button" className="btn" onClick={() => copyToClipboard(soccsGenCode)}>
+                    {t("studioLicence.copyToken")}
+                  </button>
+                </>
+              )}
+              <p style={{ fontSize: 12, opacity: 0.85, marginTop: 16, lineHeight: 1.45 }}>
+                {t("studioLicence.soccsVerifyUrlHint")}
+              </p>
+              <button type="button" className="btn" style={{ marginTop: 12 }} onClick={() => setSoccsModal(null)}>
+                {t("common.close")}
+              </button>
             </div>
           </div>
         </div>

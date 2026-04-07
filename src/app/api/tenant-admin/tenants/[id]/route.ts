@@ -38,6 +38,8 @@ export async function PATCH(
     max_users?: number;
     monthly_price?: number | string | null;
     currency?: string | null;
+    soccs_tier?: string | null;
+    soccs_federation_parent_tenant_id?: number | null;
   };
   try {
     body = await req.json();
@@ -50,7 +52,7 @@ export async function PATCH(
   let newLicenceToken: string | undefined;
 
   if (body.regenerate_licence_token === true) {
-    const crypto = await import("crypto");
+    const crypto = await import("node:crypto");
     newLicenceToken = crypto.randomBytes(24).toString("hex");
     updates.push("licence_token = ?");
     paramsList.push(newLicenceToken);
@@ -88,6 +90,28 @@ export async function PATCH(
     if (s === "SUSPENDOVAN" || s === "AKTIVAN" || s === "ISTEKLO") {
       updates.push("status = ?");
       paramsList.push(s);
+    }
+  }
+
+  if (body.soccs_tier !== undefined) {
+    const raw = body.soccs_tier == null ? "" : String(body.soccs_tier).trim().toUpperCase();
+    const allowed = ["BASIC", "BASIC_PLUS", "PROFESSIONAL", "ENTERPRISE"];
+    if (raw && allowed.includes(raw)) {
+      updates.push("soccs_tier = ?");
+      paramsList.push(raw);
+    }
+  }
+
+  if (body.soccs_federation_parent_tenant_id !== undefined) {
+    const v = body.soccs_federation_parent_tenant_id;
+    if (v === null) {
+      updates.push("soccs_federation_parent_tenant_id = NULL");
+    } else {
+      const pid = Number(v);
+      if (Number.isInteger(pid) && pid > 0 && pid !== id) {
+        updates.push("soccs_federation_parent_tenant_id = ?");
+        paramsList.push(pid);
+      }
     }
   }
 

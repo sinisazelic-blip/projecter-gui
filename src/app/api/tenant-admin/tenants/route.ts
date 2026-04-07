@@ -29,12 +29,16 @@ export async function GET() {
   try {
     const rows = await query<{
       tenant_id: number;
+      tenant_public_id: string | null;
       naziv: string;
       plan_id: number;
       plan_naziv: string;
       max_users: number;
       monthly_price: number | null;
       currency: string | null;
+      soccs_tier: string | null;
+      soccs_federation_parent_tenant_id: number | null;
+      federation_naziv: string | null;
       subscription_starts_at: string;
       subscription_ends_at: string;
       status: string;
@@ -43,12 +47,16 @@ export async function GET() {
     }>(
       `SELECT
         t.tenant_id,
+        t.tenant_public_id,
         t.naziv,
         t.plan_id,
         p.naziv AS plan_naziv,
         COALESCE(t.max_users, p.max_users) AS max_users,
         t.monthly_price,
         t.currency,
+        t.soccs_tier,
+        t.soccs_federation_parent_tenant_id,
+        fp.naziv AS federation_naziv,
         DATE_FORMAT(t.subscription_starts_at, '%Y-%m-%d') AS subscription_starts_at,
         DATE_FORMAT(t.subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
         t.status,
@@ -56,6 +64,7 @@ export async function GET() {
         t.licence_token
        FROM tenants t
        JOIN plans p ON p.plan_id = t.plan_id
+       LEFT JOIN tenants fp ON fp.tenant_id = t.soccs_federation_parent_tenant_id
        ORDER BY t.naziv ASC`
     );
 
@@ -82,6 +91,7 @@ export async function POST(req: NextRequest) {
     subscription_ends_at?: string;
     monthly_price?: number | string | null;
     currency?: string | null;
+    soccs_tier?: string | null;
   };
   try {
     body = await req.json();
@@ -115,14 +125,18 @@ export async function POST(req: NextRequest) {
   const monthlyPrice = rawPrice != null && rawPrice !== "" ? Number(rawPrice) : null;
   const currency = typeof body?.currency === "string" ? body.currency.trim().slice(0, 3) || null : null;
 
-  const crypto = await import("crypto");
+  const crypto = await import("node:crypto");
   const licenceToken = crypto.randomBytes(24).toString("hex");
+  const tenantPublicId = crypto.randomUUID();
+  const soccsTierRaw = body?.soccs_tier != null ? String(body.soccs_tier).trim().toUpperCase() : "BASIC";
+  const allowedTier = ["BASIC", "BASIC_PLUS", "PROFESSIONAL", "ENTERPRISE"];
+  const soccsTier = allowedTier.includes(soccsTierRaw) ? soccsTierRaw : "BASIC";
 
   try {
     const res = await query(
-      `INSERT INTO tenants (naziv, plan_id, max_users, subscription_starts_at, subscription_ends_at, status, licence_token, monthly_price, currency)
-       VALUES (?, ?, ?, ?, ?, 'AKTIVAN', ?, ?, ?)`,
-      [naziv, planId, maxUsers, startRaw, endRaw, licenceToken, monthlyPrice ?? null, currency]
+      `INSERT INTO tenants (naziv, plan_id, max_users, subscription_starts_at, subscription_ends_at, status, licence_token, monthly_price, currency, tenant_public_id, soccs_tier)
+       VALUES (?, ?, ?, ?, ?, 'AKTIVAN', ?, ?, ?, ?, ?)`,
+      [naziv, planId, maxUsers, startRaw, endRaw, licenceToken, monthlyPrice ?? null, currency, tenantPublicId, soccsTier]
     );
     const header = Array.isArray(res) ? res[0] : res;
     const insertId = (header as { insertId?: number })?.insertId;
