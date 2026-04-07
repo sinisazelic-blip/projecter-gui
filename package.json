@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "biome check",
-    "format": "biome format --write"
+    "format": "biome format --write",
+    "migrate:soccs": "node scripts/run-soccs-migration.cjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
