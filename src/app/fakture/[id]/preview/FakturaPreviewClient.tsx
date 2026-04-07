@@ -794,7 +794,7 @@ export default function FakturaPreviewClient() {
           
           .paper {
             width: 210mm !important;
-            min-height: 297mm !important;
+            min-height: auto !important;
             max-width: 210mm !important;
             box-sizing: border-box !important;
             overflow-x: hidden !important;
@@ -834,6 +834,10 @@ export default function FakturaPreviewClient() {
           table {
             page-break-inside: auto;
           }
+
+          thead {
+            display: table-header-group !important;
+          }
           
           thead tr {
             background: #F7F7F7 !important;
@@ -854,11 +858,6 @@ export default function FakturaPreviewClient() {
             color: #000 !important;
           }
           
-          .totalsBox {
-            border: 1px solid #000 !important;
-            background: #F7F7F7 !important;
-          }
-          
           .totLine .k, .totLine .v {
             color: #000 !important;
           }
@@ -875,9 +874,36 @@ export default function FakturaPreviewClient() {
             page-break-inside: avoid;
             page-break-after: auto;
           }
-          
-          .invRow, .cols2, .totalsRow, .totalsBox, .footer {
-            page-break-inside: avoid;
+
+          /* Safe zone (kao wizard preview): ne cijepati logičke cjeline; flex totals u štampi fragmentira */
+          .invRow, .cols2, .footer {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+
+          .totalsRow {
+            display: block !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+
+          .totalsRow .fiscalSlot {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            margin-bottom: 10px !important;
+          }
+
+          .totalsRow .totalsBox {
+            border: 1px solid #000 !important;
+            background: #F7F7F7 !important;
+            width: 100% !important;
+            max-width: 320px !important;
+            margin-left: auto !important;
+            margin-right: 0 !important;
+            padding: 10px 12px !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
         }
       `}</style>

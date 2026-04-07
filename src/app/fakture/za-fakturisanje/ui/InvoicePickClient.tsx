@@ -78,6 +78,31 @@ function fmtKM(v: any): string {
   return `${n.toFixed(2)} KM`;
 }
 
+/** Usklađeno sa wizard preview-data: prazno / BiH = domaći; ostalo = INO (planirani iznos u EUR). */
+function isBiHNarucilac(drzava: string | null | undefined): boolean {
+  const drz = String(drzava ?? "").trim().toLowerCase();
+  if (!drz) return true;
+  return (
+    drz === "bih" ||
+    drz === "ba" ||
+    drz === "bosna i hercegovina" ||
+    drz === "bosnia and herzegovina"
+  );
+}
+
+function fmtEur(v: any): string {
+  if (v === null || v === undefined) return "—";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  return `${n.toFixed(2)} EUR`;
+}
+
+function fmtBudzetZaFakturu(r: Row): string {
+  const v = r.budzet_planirani;
+  if (isBiHNarucilac(r.narucilac_drzava)) return fmtKM(v);
+  return fmtEur(v);
+}
+
 export default function InvoicePickClient({
   rows: initialRows,
   narucioci: initialNarucioci,
@@ -497,7 +522,7 @@ export default function InvoicePickClient({
                           {fmtDDMMYYYY(r.closed_at ?? null)}
                         </td>
                         <td className="num nowrap">
-                          {fmtKM(r.budzet_planirani)}
+                          {fmtBudzetZaFakturu(r)}
                         </td>
                         {showSaPdvColumn && (
                           <td className="num nowrap">
