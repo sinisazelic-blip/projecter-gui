@@ -1,5 +1,74 @@
 # Deploy Fluxe na DigitalOcean App Platform
 
+Ovaj dokument je **kanonski vodič** za produkciju: od izmjene koda u repou do žive aplikacije na DO. Ako App Platform ponekad ne pokupi novi kod automatski, vidi **§ Ručni redeploy i „tvrdoglav“ DO** ispod.
+
+---
+
+## 0. Redovan tok: izmjena koda → GitHub → DigitalOcean
+
+### 0.1 Šta u praksi radimo (standard)
+
+1. **Lokalno** u rootu projekta (`projecter-gui`) završiš izmjene i commit-uješ na granu **`main`**.
+2. **Push na GitHub:**  
+   `git push origin main`  
+   Repozitorij: `https://github.com/sinisazelic-blip/projecter-gui.git`
+3. **DigitalOcean App Platform** (app **studio**, komponenta **studiotaf**) treba da bude podešena da na **push** na `main` automatski pokrene **novi build** (Build Command: `npm ci && npm run build`, Run: `npm run start`). Nakon uspješnog deploya, promjene su žive na produkcijskoj domeni (npr. **app.studiotaf.xyz** — provjeri u DO UI koji je tačan URL).
+
+### 0.2 Minimalne komande (lokalno, PowerShell)
+
+```powershell
+cd "C:\Users\Studio\OneDrive\Desktop\projecter-gui"
+git status
+git add -A
+git commit -m "opis izmjene"
+git push origin main
+```
+
+### 0.3 Provjera nakon pusha
+
+- U DO: **Apps → studio → Activity** (ili **Deployments**) — treba da se pojavi novi deployment u toku / završen uspješno.
+- Ako build padne: otvori **Build** log (ne samo Runtime).
+
+### 0.4 Ručni redeploy i „tvrdoglav“ DO (App Platform)
+
+Ponekad se novi commit **ne pokupi** odmah ili deployment se „zaglavi“. Redoslijed pokušaja:
+
+1. **Force rebuild u DO**  
+   U **Apps → studio** otvori **Actions** (ili **Settings** ovisno o UI verziji) i pokreni **Deploy** / **Redeploy** / **Force rebuild** (naziv varira), da se ponovo pokrene build sa istog `main` commita.
+
+2. **Provjeri granu**  
+   U **App Spec** komponente **studiotaf** mora biti **Branch: `main`** (ili eksplicitno grana koju stvarno push-uješ).
+
+3. **Povezanost sa GitHubom**  
+   U DO provjeri da je repo još uvijek povezan i da OAuth/integracija nije istekla (ponekad treba ponovo autorizovati GitHub).
+
+### 0.5 Ručni deploy na samom serveru (SSH + git + PM2)
+
+**Kada:** Imaš **Droplet** (ili VM) gdje je kod **kloniran** ručno i aplikacija radi preko **PM2** / **systemd**, a ne čisti „samo App Platform build iz GitHuba bez SSH-a“. Ovo je **fallback** kada App Platform nije u upotrebi za taj host ili kada radiš ispravak direktno na mašini.
+
+**Tipičan tok (prilagodi putanje i ime PM2 procesa):**
+
+```bash
+ssh korisnik@IP_ILI_HOSTNAME
+cd /putanja/do/projecter-gui   # gdje je repo
+git fetch origin
+git checkout main
+git pull origin main
+npm ci
+npm run build
+pm2 restart fluxa   # ili: pm2 restart all — ime procesa provjeri sa: pm2 list
+```
+
+- Ako nema PM2: `npm run start` u **screenu**/tmux ili preko **systemd** servisa (v. `PLAN_DEPLOY_I_INSTALACIJA.md` u `docs/Fluxa_docs/`).
+- **Nikad** ne commituj `.env.local` sa tajnama; na serveru env ostaje u `.env.local` ili u DO varijablama.
+
+### 0.6 Veza sa ostalom dokumentacijom
+
+- Opšti plan instalacije na serveru (PM2, nginx, `.env`): **`docs/Fluxa_docs/PLAN_DEPLOY_I_INSTALACIJA.md`**
+- Demo baza, seed: **§ 6** u ovom fajlu
+
+---
+
 ## 1. GitHub repozitorijum
 
 - Na GitHubu (sinisazelic-blip) napravi **novi prazan repozitorijum** (npr. `projecter-gui`). Ne dodavaj README/licence (već postoje u projektu).

@@ -13,6 +13,7 @@ Kratak, konciznan vodič za developere koji dolaze u projekat: šta prvo pročit
 | **[API_CONTRACTS.md](API_CONTRACTS.md)** | Konvencije API-ja (base `/api`, format odgovora), ugovori po domeni (projekti, klijenti, troškovi, plaćanja, fiksni, fakture). Napomena: u kodu postoje i brojne rute koje su dodane nakon ovog dokumenta — puna lista je u strukturi `src/app/api/` ispod. |
 | **[DB_MAP.md](DB_MAP.md)** | Mapiranje baze: klijenti, projekti, projektni_troskovi, placanja, fiksni_troskovi, fakture, talenti, dobavljaci, users, roles, radne_faze. Relacije i ključne kolone. |
 | **[PLAN_DEPLOY_I_INSTALACIJA.md](PLAN_DEPLOY_I_INSTALACIJA.md)** | Priprema prije upload-a, deploy na DO, env na serveru, prazna baza, novi tenant, licence. |
+| **[../DEPLOY_DIGITALOCEAN.md](../DEPLOY_DIGITALOCEAN.md)** | **Produkcija:** redovan tok `git push main` → App Platform (studio/studiotaf), ručni redeploy, SSH + `git pull` + PM2 kada DO ne povuče kod. |
 | **[ANALIZA-BAZE-DO.md](ANALIZA-BAZE-DO.md)** | Stanje baze na DO (tabele, view-ovi), kritične napomene (npr. brojac_faktura), preporuke za optimizaciju. |
 
 ---

@@ -1,5 +1,11 @@
 # Dokumentacija Fluxe
 
+## Deploy na DigitalOcean (GitHub → DO)
+
+**Kanonski vodič za produkciju:** **[DEPLOY_DIGITALOCEAN.md](DEPLOY_DIGITALOCEAN.md)** — redovan tok (push na `main`), App Platform, env varijable, a kada DO „ne povuče“ novi kod: ručni redeploy ili SSH na server.
+
+---
+
 Glavna Fluxa dokumentacija nalazi se u folderu **[Fluxa_docs/](Fluxa_docs/)**. Tu su svi dokumenti potrebni za održavanje, deploy i onboard developera:
 
 - Pregled dokumentacije (README-DOKUMENTACIJA.md)
