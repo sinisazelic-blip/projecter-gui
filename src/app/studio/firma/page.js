@@ -23,9 +23,15 @@ function accOrEmpty(accs, idx) {
       bank_racun: "",
       iban: "",
       swift: "",
+      show_on_invoice: 1,
       primary_rank: null,
     }
   );
+}
+
+function isMissingShowOnInvoiceColumn(err) {
+  const msg = String(err?.message ?? err ?? "");
+  return msg.includes("Unknown column") && msg.includes("show_on_invoice");
 }
 
 export default async function Page({ searchParams }) {
@@ -48,8 +54,21 @@ export default async function Page({ searchParams }) {
 
   const f = firmaRows?.[0] || null;
 
-  const accs = f?.firma_id
-    ? await query(
+  let accs = [];
+  if (f?.firma_id) {
+    try {
+      accs = await query(
+        `
+        SELECT bank_account_id, bank_naziv, bank_racun, iban, swift, show_on_invoice, primary_rank
+        FROM firma_bank_accounts
+        WHERE firma_id = ?
+        ORDER BY bank_account_id ASC
+        `,
+        [f.firma_id],
+      );
+    } catch (err) {
+      if (!isMissingShowOnInvoiceColumn(err)) throw err;
+      const legacyAccs = await query(
         `
         SELECT bank_account_id, bank_naziv, bank_racun, iban, swift, primary_rank
         FROM firma_bank_accounts
@@ -57,8 +76,12 @@ export default async function Page({ searchParams }) {
         ORDER BY bank_account_id ASC
         `,
         [f.firma_id],
-      )
-    : [];
+      );
+      accs = Array.isArray(legacyAccs)
+        ? legacyAccs.map((x) => ({ ...x, show_on_invoice: 1 }))
+        : [];
+    }
+  }
 
   const a1 = accOrEmpty(accs, 0);
   const a2 = accOrEmpty(accs, 1);
@@ -217,11 +240,7 @@ export default async function Page({ searchParams }) {
 
         <div className="bodyWrap">
           <div className="card">
-            {saved
-              ? <div className="ok">
-                  ✅ {t("firma.savedOk")}
-                </div>
-              : null}
+            {saved ? <div className="ok">✅ {t("firma.savedOk")}</div> : null}
 
             <div className="sectionTitle">{t("firma.sectionBasic")}</div>
 
@@ -235,9 +254,7 @@ export default async function Page({ searchParams }) {
                     style={inputStyle}
                     required
                   />
-                  <div className="hint">
-                    {t("firma.hintNaziv")}
-                  </div>
+                  <div className="hint">{t("firma.hintNaziv")}</div>
                 </div>
 
                 <div>
@@ -366,14 +383,14 @@ export default async function Page({ searchParams }) {
 
               <div style={{ height: 10 }} />
 
-<div>
-                  <div style={labelStyle}>{t("firma.labelBrojRjesenja")}</div>
-                  <input
-                    name="broj_rjesenja"
-                    defaultValue={pick(f?.broj_rjesenja)}
-                    style={inputStyle}
-                  />
-                </div>
+              <div>
+                <div style={labelStyle}>{t("firma.labelBrojRjesenja")}</div>
+                <input
+                  name="broj_rjesenja"
+                  defaultValue={pick(f?.broj_rjesenja)}
+                  style={inputStyle}
+                />
+              </div>
 
               <div style={{ height: 10 }} />
 
@@ -387,7 +404,11 @@ export default async function Page({ searchParams }) {
                       min="0"
                       max="30"
                       step="0.01"
-                      defaultValue={f?.vat_rate_local != null ? String(f.vat_rate_local) : ""}
+                      defaultValue={
+                        f?.vat_rate_local != null
+                          ? String(f.vat_rate_local)
+                          : ""
+                      }
                       style={inputStyle}
                       placeholder={t("firma.placeholderVatRateLocal")}
                     />
@@ -399,9 +420,7 @@ export default async function Page({ searchParams }) {
               <div style={{ height: 18 }} />
 
               <div className="sectionTitle">{t("firma.sectionBanks")}</div>
-              <div className="hint">
-                {t("firma.hintBanks")}
-              </div>
+              <div className="hint">{t("firma.hintBanks")}</div>
 
               {/* ✅ hidden: da API zna koji je “glavni” */}
               <input
@@ -415,7 +434,12 @@ export default async function Page({ searchParams }) {
                 return (
                   <div key={i} className="bankCard">
                     <div className="bankHead">
-                      <div className="pill">{(t("firma.accountNum") || "").replace("{{n}}", String(i))}</div>
+                      <div className="pill">
+                        {(t("firma.accountNum") || "").replace(
+                          "{{n}}",
+                          String(i),
+                        )}
+                      </div>
 
                       <label className="pill" style={{ cursor: "pointer" }}>
                         <input
@@ -431,7 +455,9 @@ export default async function Page({ searchParams }) {
 
                     <div className="twoCol" style={row2}>
                       <div>
-                        <div style={labelStyle}>{t("firma.labelBankNaziv")}</div>
+                        <div style={labelStyle}>
+                          {t("firma.labelBankNaziv")}
+                        </div>
                         <input
                           name={`bank_naziv_${i}`}
                           defaultValue={pick(a.bank_naziv)}
@@ -470,8 +496,23 @@ export default async function Page({ searchParams }) {
                     </div>
 
                     <div className="hint">
-                      {(t("firma.accountEmptyHint") || "").replace("{{n}}", String(i))}
+                      {(t("firma.accountEmptyHint") || "").replace(
+                        "{{n}}",
+                        String(i),
+                      )}
                     </div>
+                    <label
+                      className="pill"
+                      style={{ marginTop: 8, cursor: "pointer" }}
+                    >
+                      <input
+                        type="checkbox"
+                        name={`show_on_invoice_${i}`}
+                        defaultChecked={Number(a.show_on_invoice ?? 1) === 1}
+                        style={{ marginRight: 8 }}
+                      />
+                      {t("firma.showOnInvoice")}
+                    </label>
                   </div>
                 );
               })}
@@ -485,13 +526,13 @@ export default async function Page({ searchParams }) {
                 </Link>
               </div>
 
-              <div className="hint">
-                {t("firma.saveHint")}
-              </div>
+              <div className="hint">{t("firma.saveHint")}</div>
             </form>
 
             <div className="settingsModule">
-              <h3 className="settingsModuleTitle">{t("firma.settingsModuleTitle")}</h3>
+              <h3 className="settingsModuleTitle">
+                {t("firma.settingsModuleTitle")}
+              </h3>
               {locale === "sr" && (
                 <div className="btnRow">
                   <FiskalModal />

@@ -45,7 +45,8 @@ export async function GET(
       `SELECT ${ponudeCols} FROM ponude p WHERE p.ponuda_id = ? LIMIT 1`,
       [id],
     );
-    let ponuda: any = Array.isArray(ponudeRows) && ponudeRows.length ? ponudeRows[0] : null;
+    let ponuda: any =
+      Array.isArray(ponudeRows) && ponudeRows.length ? ponudeRows[0] : null;
     if (ponuda && !hasPopustKm) ponuda = { ...ponuda, popust_km: null };
     if (!ponuda) {
       return NextResponse.json(
@@ -71,7 +72,8 @@ export async function GET(
       ? `SELECT klijent_id, naziv_klijenta, adresa, grad, drzava, porezni_id, email, COALESCE(is_ino, 0) AS is_ino FROM klijenti WHERE klijent_id = ? LIMIT 1`
       : `SELECT klijent_id, naziv_klijenta, adresa, grad, drzava, porezni_id, email FROM klijenti WHERE klijent_id = ? LIMIT 1`;
     const klijentRows = await query(klijentSql, [(ponuda as any).klijent_id]);
-    let klijent: any = Array.isArray(klijentRows) && klijentRows.length ? klijentRows[0] : null;
+    let klijent: any =
+      Array.isArray(klijentRows) && klijentRows.length ? klijentRows[0] : null;
     if (klijent && !klijentiHasIsIno) klijent = { ...klijent, is_ino: 0 };
 
     // Firma (aktivni profil) za zaglavlje preview-a
@@ -79,13 +81,32 @@ export async function GET(
       `SELECT firma_id, naziv, pravni_naziv, adresa, grad, drzava, pdv_broj, pib, jib, logo_path
        FROM firma_profile WHERE is_active = 1 ORDER BY updated_at DESC LIMIT 1`,
     );
-    let firma: any = Array.isArray(firmaProfileRows) && firmaProfileRows.length ? firmaProfileRows[0] : null;
+    let firma: any =
+      Array.isArray(firmaProfileRows) && firmaProfileRows.length
+        ? firmaProfileRows[0]
+        : null;
     if (firma?.firma_id) {
-      const accRows = await query(
-        `SELECT bank_account_id, bank_naziv, bank_racun, iban, swift FROM firma_bank_accounts WHERE firma_id = ? ORDER BY bank_account_id ASC`,
-        [firma.firma_id],
-      );
-      firma = { ...firma, bank_accounts: Array.isArray(accRows) ? accRows : [] };
+      let accRows: any[] = [];
+      try {
+        accRows = await query(
+          `SELECT bank_account_id, bank_naziv, bank_racun, iban, swift, show_on_invoice FROM firma_bank_accounts WHERE firma_id = ? AND COALESCE(show_on_invoice, 1) = 1 ORDER BY bank_account_id ASC`,
+          [firma.firma_id],
+        );
+      } catch (e: any) {
+        const msg = String(e?.message ?? "");
+        if (msg.includes("Unknown column") && msg.includes("show_on_invoice")) {
+          accRows = await query(
+            `SELECT bank_account_id, bank_naziv, bank_racun, iban, swift FROM firma_bank_accounts WHERE firma_id = ? ORDER BY bank_account_id ASC`,
+            [firma.firma_id],
+          );
+        } else {
+          throw e;
+        }
+      }
+      firma = {
+        ...firma,
+        bank_accounts: Array.isArray(accRows) ? accRows : [],
+      };
     }
 
     return NextResponse.json({
@@ -97,9 +118,16 @@ export async function GET(
     });
   } catch (e: any) {
     const msg = e?.message ?? "";
-    if (msg.includes("ponude") || msg.includes("doesn't exist") || msg.includes("Unknown table")) {
+    if (
+      msg.includes("ponude") ||
+      msg.includes("doesn't exist") ||
+      msg.includes("Unknown table")
+    ) {
       return NextResponse.json(
-        { ok: false, error: "Ponuda nije pronađena. (Tabela ponude možda nije kreirana.)" },
+        {
+          ok: false,
+          error: "Ponuda nije pronađena. (Tabela ponude možda nije kreirana.)",
+        },
         { status: 404 },
       );
     }

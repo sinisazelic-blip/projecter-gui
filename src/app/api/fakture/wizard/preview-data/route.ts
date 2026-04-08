@@ -80,9 +80,15 @@ export async function GET(req: Request) {
 
       // pomoćno: INO = sve osim BiH (bih, ba, bosna i hercegovina)
       if (buyer) {
-        const drz = String(buyer.drzava ?? "").trim().toLowerCase();
-        const isBiH = !drz || drz === "bih" || drz === "ba" ||
-          drz === "bosna i hercegovina" || drz === "bosnia and herzegovina";
+        const drz = String(buyer.drzava ?? "")
+          .trim()
+          .toLowerCase();
+        const isBiH =
+          !drz ||
+          drz === "bih" ||
+          drz === "ba" ||
+          drz === "bosna i hercegovina" ||
+          drz === "bosnia and herzegovina";
         buyer.is_ino = !isBiH;
       }
     }
@@ -103,11 +109,24 @@ export async function GET(req: Request) {
 
     let firma_accounts: any[] = [];
     if (firma_profile?.firma_id) {
-      const accRows = await query(
-        `SELECT * FROM firma_bank_accounts WHERE firma_id = ? ORDER BY bank_account_id ASC`,
-        [firma_profile.firma_id],
-      );
-      firma_accounts = Array.isArray(accRows) ? accRows : [];
+      try {
+        const accRows = await query(
+          `SELECT * FROM firma_bank_accounts WHERE firma_id = ? AND COALESCE(show_on_invoice, 1) = 1 ORDER BY bank_account_id ASC`,
+          [firma_profile.firma_id],
+        );
+        firma_accounts = Array.isArray(accRows) ? accRows : [];
+      } catch (err: any) {
+        const msg = String(err?.message ?? err ?? "");
+        if (msg.includes("Unknown column") && msg.includes("show_on_invoice")) {
+          const legacyAccRows = await query(
+            `SELECT * FROM firma_bank_accounts WHERE firma_id = ? ORDER BY bank_account_id ASC`,
+            [firma_profile.firma_id],
+          );
+          firma_accounts = Array.isArray(legacyAccRows) ? legacyAccRows : [];
+        } else {
+          throw err;
+        }
+      }
     }
 
     // vraćamo u jednom objektu da UI ima sve na jednom mjestu
@@ -129,7 +148,15 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json(
-      { ok: true, ids, projects, buyer, firma, narucioc_count, fiskal_configured },
+      {
+        ok: true,
+        ids,
+        projects,
+        buyer,
+        firma,
+        narucioc_count,
+        fiskal_configured,
+      },
       { status: 200 },
     );
   } catch (err: any) {

@@ -1,6 +1,8 @@
 /**
- * Pokreće scripts/sql/alter-soccs-tenant-bridge.sql na bazi iz .env.local / .env.
- * Ne treba MySQL Workbench: node scripts/run-soccs-migration.cjs
+ * Pokreće SQL migraciju na bazi iz .env.local / .env.
+ * Ne treba MySQL Workbench:
+ *   node scripts/run-soccs-migration.cjs
+ *   node scripts/run-soccs-migration.cjs scripts/sql/alter-firma-bank-accounts-show-on-invoice.sql
  *
  * Za DigitalOcean: DB_PORT=25060 ili DB_SSL=true (SSL kao u src/lib/db.ts).
  * Migracija nije idempotentna – drugi put će pasti ako su kolone već dodane.
@@ -63,7 +65,12 @@ function getConnectionOptions() {
 async function main() {
   const root = path.join(__dirname, "..");
   loadEnvLocal(root);
-  const sqlPath = path.join(__dirname, "sql", "alter-soccs-tenant-bridge.sql");
+  const argPath = process.argv[2] ? String(process.argv[2]).trim() : "";
+  const sqlPath = argPath
+    ? path.isAbsolute(argPath)
+      ? argPath
+      : path.join(root, argPath)
+    : path.join(__dirname, "sql", "alter-soccs-tenant-bridge.sql");
   if (!fs.existsSync(sqlPath)) {
     throw new Error(`Nema fajla: ${sqlPath}`);
   }

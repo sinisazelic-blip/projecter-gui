@@ -1,4 +1,4 @@
-# Plan razvoja – Fluxa / Projecter
+# Plan razvoja – FLUXA
 
 *Sačuvano: 11.02.2026*
 

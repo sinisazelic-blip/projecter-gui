@@ -55,6 +55,18 @@ export default async function HomePage() {
         >
           Project & Finance Engine
         </p>
+        <p
+          style={{
+            margin: 0,
+            marginTop: -8,
+            fontSize: 12,
+            letterSpacing: "0.08em",
+            color: "var(--muted)",
+            opacity: 0.7,
+          }}
+        >
+          FLUXA V2.0
+        </p>
 
         <LoginForm isDemoInstance={isDemoInstance} />
         {!isDemoInstance && (

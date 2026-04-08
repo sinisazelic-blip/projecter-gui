@@ -14,7 +14,9 @@ const PUBLIC_OR_SPECIAL = ["/", "/subscription-expired", "/demo"];
 /** Prefixi koji su uvijek dozvoljeni (npr. API, _next, static). Ne koristi se u AuthUserProvider. */
 export function isPublicPath(pathname: string): boolean {
   if (!pathname) return true;
-  return PUBLIC_OR_SPECIAL.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  return PUBLIC_OR_SPECIAL.some(
+    (p) => pathname === p || pathname.startsWith(p + "/"),
+  );
 }
 
 /**
@@ -32,22 +34,34 @@ const ROUTE_TO_MODULE: { path: string; module: string; inPage: string }[] = [
   { path: "/finance/prihodi", module: "Finansije - Potraživanja", inPage: "" },
   { path: "/finance/dugovanja", module: "Finansije - Dugovanja", inPage: "" },
   { path: "/finance/banka", module: "Finansije - Banka", inPage: "" },
-  { path: "/finance/pocetna-stanja", module: "Finansije - Početno stanje", inPage: "" },
+  {
+    path: "/finance/pocetna-stanja",
+    module: "Finansije - Početno stanje",
+    inPage: "",
+  },
   { path: "/finance/otpis", module: "Finansije - Otpis", inPage: "" },
   { path: "/finance/placanja", module: "Finansije - Dugovanja", inPage: "" },
-  { path: "/finance/potrazivanja", module: "Finansije - Potraživanja", inPage: "" },
+  {
+    path: "/finance/potrazivanja",
+    module: "Finansije - Potraživanja",
+    inPage: "",
+  },
   { path: "/finance/krediti", module: "Finansije - Dugovanja", inPage: "" },
   { path: "/finance/kuf", module: "Finansije - Početno stanje", inPage: "" },
   { path: "/finance/pdv", module: "Finansije - Dugovanja", inPage: "" },
   { path: "/finance/cashflow", module: "Finansije - Banka", inPage: "" },
   { path: "/finance/banka-vs-knjige", module: "Finansije - Banka", inPage: "" },
-  { path: "/finance/fiksni-troskovi", module: "Finansije - Dugovanja", inPage: "" },
+  {
+    path: "/finance/fiksni-troskovi",
+    module: "Finansije - Dugovanja",
+    inPage: "",
+  },
   { path: "/finance/profit", module: "Izvještaji", inPage: "" },
   { path: "/finance", module: "Finansije - Potraživanja", inPage: "" },
   { path: "/cash", module: "Blagajna", inPage: "" },
   { path: "/mobile", module: "Mobile dashboard", inPage: "-" },
   { path: "/studio/klijenti", module: "Šifarnici - Klijenti", inPage: "" },
-  { path: "/studio/talenti", module: "Šifarnici - Talenti", inPage: "" },
+  { path: "/studio/talenti", module: "Šifarnici - Saradnici", inPage: "" },
   { path: "/studio/dobavljaci", module: "Šifarnici - Dobavljači", inPage: "" },
   { path: "/studio/cjenovnik", module: "Šifarnici - Cjenovnik", inPage: "" },
   { path: "/studio/radnici", module: "Šifarnici - Radnici", inPage: "" },
@@ -65,10 +79,16 @@ const ROUTE_TO_MODULE: { path: string; module: string; inPage: string }[] = [
   { path: "/banking", module: "Finansije - Banka", inPage: "" },
 ];
 
-function getModuleForPath(pathname: string): { module: string; inPage: string } | null {
+function getModuleForPath(
+  pathname: string,
+): { module: string; inPage: string } | null {
   const path = pathname.startsWith("/") ? pathname : `/${pathname}`;
   for (const { path: p, module: mod, inPage } of ROUTE_TO_MODULE) {
-    if (path === p || (p.endsWith("/") && path.startsWith(p)) || (!p.endsWith("/") && path.startsWith(p + "/"))) {
+    if (
+      path === p ||
+      (p.endsWith("/") && path.startsWith(p)) ||
+      (!p.endsWith("/") && path.startsWith(p + "/"))
+    ) {
       return { module: mod, inPage };
     }
   }
@@ -90,7 +110,8 @@ export function mayAccessPath(pathname: string, nivo: number): boolean {
 
   if (nivo === SARADNIK_NIVO) {
     if (pathname === "/dashboard") return true;
-    if (pathname === "/projects" || pathname.startsWith("/projects/")) return true;
+    if (pathname === "/projects" || pathname.startsWith("/projects/"))
+      return true;
     return false;
   }
 

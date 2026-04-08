@@ -6,10 +6,20 @@
 export const LEVELS = [0, 1, 2, 3, 5, 6, 8, 9, 10] as const;
 export type Level = (typeof LEVELS)[number];
 
-export type Permission = "demo" | "hide" | "Read Only" | "Show" | "Use" | "Edit" | "all";
+export type Permission =
+  | "demo"
+  | "hide"
+  | "Read Only"
+  | "Show"
+  | "Use"
+  | "Edit"
+  | "all";
 
-export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Level, Permission>>>> = {
-  "Dashboard": {
+export const PERMISSIONS_MATRIX: Record<
+  string,
+  Record<string, Partial<Record<Level, Permission>>>
+> = {
+  Dashboard: {
     "": {
       "0": "Show",
       "1": "Show",
@@ -19,8 +29,8 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Show",
       "8": "Show",
       "9": "Show",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
   "Mobile dashboard": {
     "-": {
@@ -31,7 +41,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Finansiki pregled": {
       "1": "hide",
@@ -41,10 +51,10 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "Show",
       "9": "Show",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
-  "Deals": {
+  Deals: {
     "-": {
       "1": "hide",
       "2": "hide",
@@ -53,9 +63,9 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Show",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
-    "filteri": {
+    filteri: {
       "1": "hide",
       "2": "hide",
       "3": "hide",
@@ -63,10 +73,10 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Use",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
-  "Deal": {
+  Deal: {
     "-": {
       "1": "hide",
       "2": "hide",
@@ -75,9 +85,9 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
-    "storno": {
+    storno: {
       "1": "hide",
       "2": "hide",
       "3": "hide",
@@ -85,7 +95,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Timeline (Deal)": {
       "1": "hide",
@@ -95,7 +105,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Stavke - oređivanje budžeta": {
       "1": "hide",
@@ -105,7 +115,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Ukupno/budžet:": {
       "1": "hide",
@@ -115,7 +125,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Strategic Core": {
       "1": "hide",
@@ -125,7 +135,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Status (Deal)": {
       "1": "hide",
@@ -135,7 +145,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Podaci o klijentu/naručiocu": {
       "1": "hide",
@@ -145,8 +155,8 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
   "Strategic Core": {
     "": {
@@ -157,10 +167,10 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
-  "PP": {
+  PP: {
     "-": {
       "0": "Show",
       "1": "hide",
@@ -170,9 +180,9 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Show",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
-    "filteri": {
+    filteri: {
       "1": "hide",
       "2": "hide",
       "3": "Show",
@@ -180,9 +190,9 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Show",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
-    "Rok": {
+    Rok: {
       "1": "hide",
       "2": "hide",
       "3": "Show",
@@ -190,7 +200,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Show",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Budžet-Troškovi-Zarada": {
       "1": "hide",
@@ -200,7 +210,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Show",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Budžet - pravo stanje u opisu": {
       "1": "hide",
@@ -210,9 +220,9 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
-    "Status": {
+    Status: {
       "1": "hide",
       "2": "hide",
       "3": "Show",
@@ -220,10 +230,10 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Show",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
-  "Projekat": {
+  Projekat: {
     "-": {
       "1": "hide",
       "2": "hide",
@@ -232,7 +242,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Show",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Basics (ime, timeline status, semafor, rok)": {
       "1": "hide",
@@ -242,7 +252,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Show",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "owner semafor": {
       "1": "hide",
@@ -252,7 +262,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "budžet limit show": {
       "1": "hide",
@@ -262,9 +272,9 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
-    "ProBono": {
+    ProBono: {
       "1": "hide",
       "2": "hide",
       "3": "hide",
@@ -272,7 +282,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Owner obračun zarade": {
       "1": "hide",
@@ -282,7 +292,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Show",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Faze Show/Edit": {
       "1": "hide",
@@ -292,7 +302,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Edit",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Final OK": {
       "1": "hide",
@@ -302,9 +312,9 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Use",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
-    "Storno": {
+    Storno: {
       "1": "hide",
       "2": "hide",
       "3": "hide",
@@ -312,7 +322,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Grupa Finansije": {
       "1": "hide",
@@ -322,7 +332,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Show",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Budžet - info stvarnog iznosa": {
       "1": "hide",
@@ -332,9 +342,9 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
-    "Napomenta": {
+    Napomenta: {
       "1": "hide",
       "2": "hide",
       "3": "Show",
@@ -342,7 +352,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Show",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Dodaj trošak": {
       "1": "hide",
@@ -352,7 +362,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Edit",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Troškovi stavke": {
       "1": "hide",
@@ -362,7 +372,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Edit",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Troškovi stavke/edit": {
       "1": "hide",
@@ -372,7 +382,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Edit",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Troškovi stavke/edit/finansije": {
       "1": "hide",
@@ -382,7 +392,7 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Edit",
       "8": "all",
       "9": "all",
-      "10": "all"
+      "10": "all",
     },
     "Troškovi stavke/storno prikaži": {
       "1": "hide",
@@ -392,10 +402,10 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Edit",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
-  "Fakture": {
+  Fakture: {
     "": {
       "1": "hide",
       "2": "hide",
@@ -404,10 +414,10 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
-  "Naplate": {
+  Naplate: {
     "": {
       "1": "hide",
       "2": "hide",
@@ -416,8 +426,8 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
   "Finansije - Potraživanja": {
     "": {
@@ -428,8 +438,8 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
   "Finansije - Dugovanja": {
     "": {
@@ -440,8 +450,8 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
   "Finansije - Banka": {
     "": {
@@ -452,8 +462,8 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
   "Finansije - Početno stanje": {
     "": {
@@ -464,8 +474,8 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "hide",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
   "Finansije - Otpis": {
     "": {
@@ -476,10 +486,10 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "hide",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
-  "Blagajna": {
+  Blagajna: {
     "": {
       "1": "hide",
       "2": "hide",
@@ -488,8 +498,8 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "hide",
       "9": "hide",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
   "Šifarnici - Klijenti": {
     "": {
@@ -500,8 +510,8 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Edit",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
   "Šifarnici - Dobavljači": {
     "": {
@@ -512,10 +522,10 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Edit",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
-  "Šifarnici - Talenti": {
+  "Šifarnici - Saradnici": {
     "": {
       "1": "hide",
       "2": "hide",
@@ -524,8 +534,8 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Edit",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
   "Šifarnici - Radnici": {
     "": {
@@ -536,8 +546,8 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Edit",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
   "Šifarnici - Cjenovnik": {
     "": {
@@ -548,8 +558,8 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
   "Šifarnici - Faze": {
     "": {
@@ -560,8 +570,8 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "Edit",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
   "Šifarnici - Users": {
     "": {
@@ -572,8 +582,8 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
   "Šifarnici - Roles": {
     "": {
@@ -584,8 +594,8 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
   "Firma (postavke, logo)": {
     "": {
@@ -596,10 +606,10 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "all",
       "9": "all",
-      "10": "all"
-    }
+      "10": "all",
+    },
   },
-  "Izvještaji": {
+  Izvještaji: {
     "": {
       "1": "hide",
       "2": "Read Only",
@@ -608,9 +618,9 @@ export const PERMISSIONS_MATRIX: Record<string, Record<string, Partial<Record<Le
       "6": "hide",
       "8": "Show",
       "9": "Show",
-      "10": "all"
-    }
-  }
+      "10": "all",
+    },
+  },
 };
 
 function nearestLevel(level: number): Level {
@@ -625,7 +635,7 @@ function nearestLevel(level: number): Level {
 export function getPermission(
   module: string,
   inPage: string,
-  userLevel: number
+  userLevel: number,
 ): Permission {
   const mod = PERMISSIONS_MATRIX[module];
   if (!mod) return "hide";

@@ -23,7 +23,7 @@ export default function FirmaHeader() {
       <div className="brandWrap">
         <div className="brandLogoBlock">
           <FluxaLogo />
-          <span className="brandSlogan">Project & Finance Engine</span>
+          <span className="brandSlogan">Project & Finance Engine · V2.0</span>
         </div>
         <div>
           <div className="brandTitle">{t("firma.title")}</div>
@@ -47,17 +47,49 @@ export default function FirmaHeader() {
           onClick={handleStartTour}
           title={t("firma.startTourTitle")}
         >
-          <img src="/fluxa/Icon.ico" alt="" width={15} height={15} style={{ display: "inline-block", verticalAlign: "middle", marginRight: 6 }} />
+          <img
+            src="/fluxa/Icon.ico"
+            alt=""
+            width={15}
+            height={15}
+            style={{
+              display: "inline-block",
+              verticalAlign: "middle",
+              marginRight: 6,
+            }}
+          />
           {t("firma.startTour")}
         </button>
-        <Link href="/studio/users" className="btn" title={t("dashboard.usersTitle")}>
+        <Link
+          href="/studio/users"
+          className="btn"
+          title={t("dashboard.usersTitle")}
+        >
           👤 {t("dashboard.users")}
         </Link>
-        <Link href="/studio/roles" className="btn" title={t("dashboard.rolesTitle")}>
+        <Link
+          href="/studio/roles"
+          className="btn"
+          title={t("dashboard.rolesTitle")}
+        >
           🎭 {t("dashboard.roles")}
         </Link>
-        <Link href="/dashboard" className="btn" title={t("firma.backToDashboard")}>
-          <img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> {t("common.dashboard")}
+        <Link
+          href="/dashboard"
+          className="btn"
+          title={t("firma.backToDashboard")}
+        >
+          <img
+            src="/fluxa/Icon.ico"
+            alt=""
+            style={{
+              width: 18,
+              height: 18,
+              verticalAlign: "middle",
+              marginRight: 6,
+            }}
+          />{" "}
+          {t("common.dashboard")}
         </Link>
       </div>
     </div>

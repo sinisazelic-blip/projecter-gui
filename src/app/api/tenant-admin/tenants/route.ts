@@ -7,15 +7,30 @@ export const dynamic = "force-dynamic";
 
 function requireTenantAdmin(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   if (process.env.ENABLE_TENANT_ADMIN !== "true") {
-    return { error: NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 }) };
+    return {
+      error: NextResponse.json(
+        { ok: false, error: "FORBIDDEN" },
+        { status: 403 },
+      ),
+    };
   }
   const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) {
-    return { error: NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 }) };
+    return {
+      error: NextResponse.json(
+        { ok: false, error: "UNAUTHORIZED" },
+        { status: 401 },
+      ),
+    };
   }
   const session = verifySessionToken(token);
   if (!session) {
-    return { error: NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 }) };
+    return {
+      error: NextResponse.json(
+        { ok: false, error: "UNAUTHORIZED" },
+        { status: 401 },
+      ),
+    };
   }
   return { error: null };
 }
@@ -43,6 +58,7 @@ export async function GET() {
       subscription_ends_at: string;
       status: string;
       days_until_end: number;
+      meet_remaining: number;
       licence_token: string | null;
     }>(
       `SELECT
@@ -61,11 +77,19 @@ export async function GET() {
         DATE_FORMAT(t.subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
         t.status,
         DATEDIFF(t.subscription_ends_at, CURDATE()) AS days_until_end,
+        (
+          SELECT COUNT(*)
+          FROM soccs_activation_codes sac
+          WHERE sac.tenant_id = t.tenant_id
+            AND sac.purpose = 'MEET_SESSION'
+            AND UPPER(sac.status) = 'ISSUED'
+            AND (sac.valid_until IS NULL OR sac.valid_until >= NOW())
+        ) AS meet_remaining,
         t.licence_token
        FROM tenants t
        JOIN plans p ON p.plan_id = t.plan_id
        LEFT JOIN tenants fp ON fp.tenant_id = t.soccs_federation_parent_tenant_id
-       ORDER BY t.naziv ASC`
+       ORDER BY t.naziv ASC`,
     );
 
     return NextResponse.json({ ok: true, tenants: rows ?? [] });
@@ -96,51 +120,107 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "INVALID_BODY" },
+      { status: 400 },
+    );
   }
 
   const naziv = String(body?.naziv ?? "").trim();
   if (!naziv) {
-    return NextResponse.json({ ok: false, error: "NAZIV_REQUIRED" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "NAZIV_REQUIRED" },
+      { status: 400 },
+    );
   }
 
   const planId = Number(body?.plan_id);
   if (!Number.isInteger(planId) || planId <= 0) {
-    return NextResponse.json({ ok: false, error: "PLAN_ID_REQUIRED" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "PLAN_ID_REQUIRED" },
+      { status: 400 },
+    );
   }
 
   const maxUsers = body?.max_users != null ? Number(body.max_users) : 5;
-  if (!MAX_USER_OPTIONS.includes(maxUsers as (typeof MAX_USER_OPTIONS)[number])) {
+  if (
+    !MAX_USER_OPTIONS.includes(maxUsers as (typeof MAX_USER_OPTIONS)[number])
+  ) {
     const valid = MAX_USER_OPTIONS.join(", ");
-    return NextResponse.json({ ok: false, error: "MAX_USERS_INVALID", valid }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "MAX_USERS_INVALID", valid },
+      { status: 400 },
+    );
   }
 
-  const startRaw = String(body?.subscription_starts_at ?? "").trim().slice(0, 10);
-  const endRaw = String(body?.subscription_ends_at ?? "").trim().slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(startRaw) || !/^\d{4}-\d{2}-\d{2}$/.test(endRaw)) {
-    return NextResponse.json({ ok: false, error: "DATES_REQUIRED" }, { status: 400 });
+  const startRaw = String(body?.subscription_starts_at ?? "")
+    .trim()
+    .slice(0, 10);
+  const endRaw = String(body?.subscription_ends_at ?? "")
+    .trim()
+    .slice(0, 10);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(startRaw) ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(endRaw)
+  ) {
+    return NextResponse.json(
+      { ok: false, error: "DATES_REQUIRED" },
+      { status: 400 },
+    );
   }
 
   const rawPrice = body?.monthly_price;
-  const monthlyPrice = rawPrice != null && rawPrice !== "" ? Number(rawPrice) : null;
-  const currency = typeof body?.currency === "string" ? body.currency.trim().slice(0, 3) || null : null;
+  const monthlyPrice =
+    rawPrice != null && rawPrice !== "" ? Number(rawPrice) : null;
+  const currency =
+    typeof body?.currency === "string"
+      ? body.currency.trim().slice(0, 3) || null
+      : null;
 
   const crypto = await import("node:crypto");
   const licenceToken = crypto.randomBytes(24).toString("hex");
   const tenantPublicId = crypto.randomUUID();
-  const soccsTierRaw = body?.soccs_tier != null ? String(body.soccs_tier).trim().toUpperCase() : "BASIC";
-  const allowedTier = ["BASIC", "BASIC_PLUS", "PROFESSIONAL", "ENTERPRISE"];
-  const soccsTier = allowedTier.includes(soccsTierRaw) ? soccsTierRaw : "BASIC";
+  const soccsTierRaw =
+    body?.soccs_tier != null
+      ? String(body.soccs_tier).trim().toUpperCase()
+      : "";
+  const allowedTier = [
+    "BASIC",
+    "BASIC_PLUS",
+    "PROFESSIONAL",
+    "ENTERPRISE",
+    "SWIMVOICE",
+  ];
+  const soccsTier = soccsTierRaw
+    ? allowedTier.includes(soccsTierRaw)
+      ? soccsTierRaw
+      : "BASIC"
+    : null;
 
   try {
     const res = await query(
       `INSERT INTO tenants (naziv, plan_id, max_users, subscription_starts_at, subscription_ends_at, status, licence_token, monthly_price, currency, tenant_public_id, soccs_tier)
        VALUES (?, ?, ?, ?, ?, 'AKTIVAN', ?, ?, ?, ?, ?)`,
-      [naziv, planId, maxUsers, startRaw, endRaw, licenceToken, monthlyPrice ?? null, currency, tenantPublicId, soccsTier]
+      [
+        naziv,
+        planId,
+        maxUsers,
+        startRaw,
+        endRaw,
+        licenceToken,
+        monthlyPrice ?? null,
+        currency,
+        tenantPublicId,
+        soccsTier,
+      ],
     );
     const header = Array.isArray(res) ? res[0] : res;
     const insertId = (header as { insertId?: number })?.insertId;
-    return NextResponse.json({ ok: true, tenant_id: insertId ?? null, licence_token: licenceToken });
+    return NextResponse.json({
+      ok: true,
+      tenant_id: insertId ?? null,
+      licence_token: licenceToken,
+    });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

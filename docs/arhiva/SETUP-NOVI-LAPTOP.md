@@ -6,7 +6,7 @@ Kratki redoslijed da sve na drugom laptopu radi kao na starom.
 
 ## 1. Šta već imaš
 
-- **OneDrive** – folder s projektom će se sinkronizovati (npr. `Desktop\projecter-gui`).
+- **OneDrive** – folder s projektom će se sinkronizovati (npr. `Desktop\FLUXA`).
 - **MySQL** – baza; provjeri da servis radi i da imaš pristup (isti korisnik/lozinka kao na starom laptopu ako koristiš lokalnu bazu).
 - **Visual Studio Code** – nije obavezno ako radiš samo u Cursoru; Cursor je dovoljan za ovaj projekat.
 
@@ -54,8 +54,8 @@ Ako ne vidiš neku ekstenziju, u Cursoru obično radi VS Code marketplace; ako t
 
 ## 4. Projekt na novom laptopu
 
-1. **Čekaj OneDrive** da završi sync projekta (folder `projecter-gui`).
-2. **Otvori projekt u Cursoru:** File → Open Folder → izaberi `projecter-gui` (iz OneDrive foldera).
+1. **Čekaj OneDrive** da završi sync projekta (folder `FLUXA`).
+2. **Otvori projekt u Cursoru:** File → Open Folder → izaberi `FLUXA` (iz OneDrive foldera).
 3. **Varijable okruženja:**  
    Na starom laptopu u rootu projekta imaš `.env.local` (baza, itd.). Na novom laptopu:
    - Ili **kopiraj** `.env.local` s starog laptopa (USB, mail, OneDrive – pazi da ne commituješ ga u Git),  

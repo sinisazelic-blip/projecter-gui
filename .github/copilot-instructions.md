@@ -1,4 +1,4 @@
-# AI Coding Assistant Instructions for proJECTer GUI
+# AI Coding Assistant Instructions for FLUXA
 
 ## Architecture Overview
 This is a Next.js 16 application managing project finances for Studio TAF. It connects to a DigitalOcean MySQL database (`studio_db`) via mysql2. The app uses App Router with server components and actions for data operations.
@@ -67,4 +67,4 @@ async function addCost(formData) {
 - `docs/Fluxa_docs/STATE.md` - App modules and state management
 - `src/lib/db.ts` - Database utilities
 - `src/lib/api/response.ts` - Response helpers</content>
-<parameter name="filePath">c:\Users\Studio TAF\OneDrive\Desktop\projecter-gui\.github\copilot-instructions.md
+<parameter name="filePath">c:\Users\Studio TAF\OneDrive\Desktop\FLUXA\.github\copilot-instructions.md

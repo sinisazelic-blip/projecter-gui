@@ -100,7 +100,7 @@ Detalji implementacije master API-ja (kako spremaš tokene, kako vraćaš `allow
 
 2. **Instalacija i build**
    ```bash
-   cd /path/to/projecter-gui
+   cd /path/to/FLUXA
    npm ci
    npm run build
    ```

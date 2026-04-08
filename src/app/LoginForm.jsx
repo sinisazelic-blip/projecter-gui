@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 /** Login page uvijek na engleskom – "ulazna vrata", bez čekanja na prevod. */
 const L = {
@@ -40,17 +40,21 @@ export default function LoginForm({ isDemoInstance = false }) {
           const snippet = text.slice(0, 120).replace(/\s+/g, " ");
           setError(
             `Server did not return JSON (${res.status}). ${snippet ? `Response: "${snippet}…"` : "Empty response."} ` +
-              "Check env (DB_*, AUTH_SECRET) and hosting logs."
+              "Check env (DB_*, AUTH_SECRET) and hosting logs.",
           );
           return;
         }
-      } catch (parseErr) {
+      } catch {
         setError("Error reading response. Check network and hosting logs.");
         return;
       }
 
       if (data.ok) {
-        router.push("/dashboard");
+        if (data.activation_required) {
+          router.push("/activation");
+        } else {
+          router.push("/dashboard");
+        }
         router.refresh();
         return;
       }
@@ -61,65 +65,21 @@ export default function LoginForm({ isDemoInstance = false }) {
       }
       if (res.status === 500) {
         if (data.error === "MISSING_AUTH_SECRET") {
-          setError("Add AUTH_SECRET to .env.local (min 16 chars) and restart server (Ctrl+C, npm run dev).");
+          setError(
+            "Add AUTH_SECRET to .env.local (min 16 chars) and restart server (Ctrl+C, npm run dev).",
+          );
           return;
         }
-        setError("Server error. Open terminal (npm run dev) and check the error message.");
+        setError(
+          "Server error. Open terminal (npm run dev) and check the error message.",
+        );
         return;
       }
       setError("Login error. Please try again.");
     } catch {
-      setError("Connection error (network or server not responding). Is npm run dev running?");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleDemoLogin(e) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: "demo", password: "demo" }),
-      });
-      const text = await res.text();
-      let data = { ok: false, error: "" };
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        const snippet = text.slice(0, 120).replace(/\s+/g, " ");
-        setError(`Server did not return JSON (${res.status}). ${snippet ? `Response: "${snippet}…"` : "Empty response."}`);
-        return;
-      }
-      if (data.ok) {
-        router.push("/dashboard");
-        router.refresh();
-        return;
-      }
-      if (res.status === 503) {
-        if (data.error === "DEMO_NOT_CONFIGURED") {
-          setError("Demo database not configured (set DEMO_DB_NAME in hosting env).");
-          return;
-        }
-        if (data.error === "DEMO_DB_ERROR") {
-          setError("Demo database error: " + (data.message || "check DEMO_DB_NAME and that the database exists."));
-          return;
-        }
-      }
-      if (res.status === 401) {
-        if (data.error === "DEMO_USER_MISSING") {
-          setError("Demo user missing in database. Run seed: node scripts/seed-demo.js (against DEMO_DB_NAME).");
-          return;
-        }
-        setError("Demo account unavailable. Demo user must exist in database (seed: node scripts/seed-demo.js).");
-        return;
-      }
-      setError(data.message || data.error || "Demo login error. Please try again.");
-    } catch {
-      setError("Connection error. Is the server running?");
+      setError(
+        "Connection error (network or server not responding). Is npm run dev running?",
+      );
     } finally {
       setLoading(false);
     }
@@ -215,7 +175,14 @@ export default function LoginForm({ isDemoInstance = false }) {
       </div>
 
       {error && (
-        <p style={{ margin: 0, fontSize: 13, color: "var(--danger, #f87171)", width: "100%" }}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 13,
+            color: "var(--danger, #f87171)",
+            width: "100%",
+          }}
+        >
           {error}
         </p>
       )}

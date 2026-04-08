@@ -21,7 +21,7 @@ function fmtDDMMYYYYFromISO(isoLike: string | null): string {
 function fmtMoney(n: number, ccy: string) {
   const v = Number.isFinite(n) ? n : 0;
   const s = v.toFixed(2);
-  const label = (ccy === "BAM" || ccy === "KM") ? "KM" : ccy;
+  const label = ccy === "BAM" || ccy === "KM" ? "KM" : ccy;
   return `${s} ${label}`;
 }
 
@@ -117,10 +117,14 @@ function safeLineJoin(
 // ✅ Formatiraj bankovne račune prema traženom formatu: Naziv banke - (KM) broj - (EUR) IBAN - SWIFT
 function formatBankAccounts(accounts: any[]): string[] {
   if (!accounts || accounts.length === 0) return [];
+  const visibleAccounts = accounts.filter(
+    (acc) => Number(acc?.show_on_invoice ?? 1) === 1,
+  );
+  if (visibleAccounts.length === 0) return [];
 
   const byBank: Record<string, any[]> = {};
 
-  for (const acc of accounts) {
+  for (const acc of visibleAccounts) {
     const bankName = String(
       acc?.bank_naziv ?? acc?.banka_naziv ?? acc?.bank ?? acc?.naziv_bank ?? "",
     ).trim();
@@ -142,11 +146,11 @@ function formatBankAccounts(accounts: any[]): string[] {
     for (const acc of bankAccounts) {
       const account = String(
         acc?.bank_racun ??
-        acc?.racun ??
-        acc?.broj_racuna ??
-        acc?.account_no ??
-        acc?.account ??
-        "",
+          acc?.racun ??
+          acc?.broj_racuna ??
+          acc?.account_no ??
+          acc?.account ??
+          "",
       ).trim();
       if (account && !account.toUpperCase().startsWith("BA")) {
         kmAccount = account;
@@ -211,7 +215,8 @@ export default function FakturaPreviewClient() {
     () => (isInoInvoice ? "EN" : isBiHSystem ? "BH" : "EN"),
     [isInoInvoice, isBiHSystem],
   );
-  const isStornoFaktura = faktura?.status === "STORNIRAN" || Number(faktura?.iznos_sa_pdv ?? 0) < 0;
+  const isStornoFaktura =
+    faktura?.status === "STORNIRAN" || Number(faktura?.iznos_sa_pdv ?? 0) < 0;
   const docTitle = useMemo(
     () =>
       isStornoFaktura
@@ -227,7 +232,8 @@ export default function FakturaPreviewClient() {
   const invoiceDateISO = faktura?.datum_izdavanja || "";
   const dueDateISO = faktura?.datum_dospijeca || "";
   const ccy = (faktura?.valuta || "KM").toUpperCase();
-  const fiskNum = faktura?.broj_fiskalni != null ? Number(faktura.broj_fiskalni) : NaN;
+  const fiskNum =
+    faktura?.broj_fiskalni != null ? Number(faktura.broj_fiskalni) : NaN;
   const fisk = Number.isFinite(fiskNum) && fiskNum > 0 ? String(fiskNum) : "";
   const invoiceNumber = faktura?.broj_fakture || "—";
 
@@ -258,11 +264,19 @@ export default function FakturaPreviewClient() {
           String(p.klijent_naziv).trim() !== "" &&
           p.narucilac_id != null &&
           Number(p.krajnji_klijent_id) !== Number(p.narucilac_id);
-        const endClientName = hasEndClient ? String(p.klijent_naziv).trim() : "";
-        const title = endClientName ? `${endClientName} — ${baseTitle}` : baseTitle;
+        const endClientName = hasEndClient
+          ? String(p.klijent_naziv).trim()
+          : "";
+        const title = endClientName
+          ? `${endClientName} — ${baseTitle}`
+          : baseTitle;
 
         // Ako je krajnji klijent već u naslovu, nema potrebe da ga dupliramo u podnaslovu.
-        const sub = endClientName ? "" : (p.klijent_naziv ? `Klijent: ${p.klijent_naziv}` : "");
+        const sub = endClientName
+          ? ""
+          : p.klijent_naziv
+            ? `Klijent: ${p.klijent_naziv}`
+            : "";
         const subItems = projectSubItems[p.projekat_id] ?? [];
         const qty = 1;
         const unit = Number(p.budzet_planirani ?? 0) * stornoSign;
@@ -281,16 +295,23 @@ export default function FakturaPreviewClient() {
     [projects, projectSubItems, projectNames, stornoSign],
   );
 
-  const fakturaOsnovica = Number(faktura?.iznos_bez_pdv ?? faktura?.osnovica_km ?? 0);
+  const fakturaOsnovica = Number(
+    faktura?.iznos_bez_pdv ?? faktura?.osnovica_km ?? 0,
+  );
   const fakturaPdv = Number(faktura?.pdv_iznos ?? faktura?.pdv_iznos_km ?? 0);
-  const fakturaUkupno = Number(faktura?.iznos_sa_pdv ?? faktura?.iznos_ukupno_km ?? 0);
+  const fakturaUkupno = Number(
+    faktura?.iznos_sa_pdv ?? faktura?.iznos_ukupno_km ?? 0,
+  );
 
   const baseAmount = useMemo(() => {
     const fromItems = items.reduce(
       (s, it) => s + (Number.isFinite(it.total) ? it.total : 0),
       0,
     );
-    if ((fromItems === 0 || !Number.isFinite(fromItems)) && (fakturaOsnovica !== 0 || fakturaUkupno !== 0)) {
+    if (
+      (fromItems === 0 || !Number.isFinite(fromItems)) &&
+      (fakturaOsnovica !== 0 || fakturaUkupno !== 0)
+    ) {
       return fakturaOsnovica;
     }
     return fromItems;
@@ -301,12 +322,15 @@ export default function FakturaPreviewClient() {
     return Math.round(baseAmount * vatRate * 100) / 100;
   }, [baseAmount, vatRate, fakturaOsnovica, fakturaPdv]);
   const totalAmount = useMemo(() => {
-    if (baseAmount === fakturaOsnovica && fakturaUkupno !== 0) return fakturaUkupno;
+    if (baseAmount === fakturaOsnovica && fakturaUkupno !== 0)
+      return fakturaUkupno;
     return baseAmount + vatAmount;
   }, [baseAmount, vatAmount, fakturaOsnovica, fakturaUkupno]);
 
   const lastClosed = useMemo(() => {
-    const dates = items.map((it) => (it as { closed_at?: string | null }).closed_at).filter(Boolean) as string[];
+    const dates = items
+      .map((it) => (it as { closed_at?: string | null }).closed_at)
+      .filter(Boolean) as string[];
     if (dates.length === 0) return null;
     return dates.sort().reverse()[0];
   }, [items]);
@@ -322,7 +346,7 @@ export default function FakturaPreviewClient() {
   const sellerCountry = String(firma?.drzava ?? "BiH").trim();
   const isBhDoc = lang !== "EN";
   const sellerTax = isBhDoc
-    ? (String(firma?.jib ?? "").trim() || "—")
+    ? String(firma?.jib ?? "").trim() || "—"
     : String(firma?.pdv_broj ?? "").trim() ||
       String(firma?.pib ?? "").trim() ||
       String(firma?.jib ?? "").trim() ||
@@ -340,14 +364,18 @@ export default function FakturaPreviewClient() {
   const buyerCityLine = safeLineJoin([buyer?.postanski_broj, buyer?.grad], " ");
   const buyerCountry = String(buyer?.drzava ?? "—").trim();
   const buyerTax = isBhDoc
-    ? (String(buyer?.jib ?? "").trim() || "—")
+    ? String(buyer?.jib ?? "").trim() || "—"
     : String(buyer?.porezni_id ?? "—").trim();
 
   const pdfFilename = useMemo(() => {
-    const broj = String(invoiceNumber || "").replace(/\//g, "-").trim() || "faktura";
-    const narucilac = String(buyerName || "")
-      .replace(/[/\\:*?"<>|]/g, "_")
-      .trim() || "nepoznat";
+    const broj =
+      String(invoiceNumber || "")
+        .replace(/\//g, "-")
+        .trim() || "faktura";
+    const narucilac =
+      String(buyerName || "")
+        .replace(/[/\\:*?"<>|]/g, "_")
+        .trim() || "nepoznat";
     return `${broj} ${narucilac}`;
   }, [invoiceNumber, buyerName]);
 
@@ -355,7 +383,9 @@ export default function FakturaPreviewClient() {
 
   function handlePrint() {
     const prevTitle = document.title;
-    const onBeforePrint = () => { document.title = pdfFilename; };
+    const onBeforePrint = () => {
+      document.title = pdfFilename;
+    };
     const onAfterPrint = () => {
       document.title = prevTitle;
       window.removeEventListener("beforeprint", onBeforePrint);
@@ -378,7 +408,16 @@ export default function FakturaPreviewClient() {
           filename: `${pdfFilename}.pdf`,
           image: { type: "jpeg", quality: 0.98 },
           html2canvas: { scale: 2 },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait", hotfixes: ["px_scaling"] } as { unit?: string; format?: string | [number, number]; orientation?: "portrait" | "landscape" },
+          jsPDF: {
+            unit: "mm",
+            format: "a4",
+            orientation: "portrait",
+            hotfixes: ["px_scaling"],
+          } as {
+            unit?: string;
+            format?: string | [number, number];
+            orientation?: "portrait" | "landscape";
+          },
         })
         .from(el)
         .save();
@@ -390,8 +429,7 @@ export default function FakturaPreviewClient() {
 
   async function handleStorno() {
     if (stornoLoading || isStornoFaktura) return;
-    if (!window.confirm(t("fakture.stornoConfirm")))
-      return;
+    if (!window.confirm(t("fakture.stornoConfirm"))) return;
     setStornoLoading(true);
     try {
       const res = await fetch(`/api/fakture/${fakturaId}/storno`, {
@@ -422,10 +460,14 @@ export default function FakturaPreviewClient() {
         body: JSON.stringify({}),
       });
       const result = await res.json();
-      if (!result?.ok) throw new Error(result?.error || t("fakture.markAsPaidError"));
-      const fakturaRes = await fetch(`/api/fakture/${fakturaId}`, { cache: "no-store" });
+      if (!result?.ok)
+        throw new Error(result?.error || t("fakture.markAsPaidError"));
+      const fakturaRes = await fetch(`/api/fakture/${fakturaId}`, {
+        cache: "no-store",
+      });
       const fakturaData = await fakturaRes.json();
-      if (fakturaRes.ok && fakturaData?.faktura) setFaktura(fakturaData.faktura);
+      if (fakturaRes.ok && fakturaData?.faktura)
+        setFaktura(fakturaData.faktura);
     } catch (e: any) {
       alert(e?.message ?? t("fakture.markAsPaidError"));
     } finally {
@@ -437,7 +479,12 @@ export default function FakturaPreviewClient() {
     !isStornoFaktura &&
     (() => {
       const s = String((faktura as any)?.status ?? "").toUpperCase();
-      return s !== "PLACENA" && s !== "DJELIMICNO" && s !== "STORNIRAN" && s !== "ZAMIJENJEN";
+      return (
+        s !== "PLACENA" &&
+        s !== "DJELIMICNO" &&
+        s !== "STORNIRAN" &&
+        s !== "ZAMIJENJEN"
+      );
     })();
 
   useEffect(() => {
@@ -914,20 +961,31 @@ export default function FakturaPreviewClient() {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo />
+                  <span className="brandSlogan">Project & Finance Engine</span>
                 </div>
                 <div>
-                  <div className="brandTitle">📄 {t("fakture.previewTitle")} #{invoiceNumber}</div>
+                  <div className="brandTitle">
+                    📄 {t("fakture.previewTitle")} #{invoiceNumber}
+                  </div>
                   <div className="brandSub">{t("fakture.previewSub")}</div>
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+              >
                 <Link
                   href="/fakture"
                   className="btn"
                   style={{
-                    background: "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1))",
+                    background:
+                      "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1))",
                     borderColor: "rgba(59, 130, 246, 0.4)",
                     fontWeight: 700,
                   }}
@@ -935,12 +993,13 @@ export default function FakturaPreviewClient() {
                 >
                   ← {t("common.back")}
                 </Link>
-                
+
                 <button
                   className="btn"
                   onClick={handlePrint}
                   style={{
-                    background: "linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.1))",
+                    background:
+                      "linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.1))",
                     borderColor: "rgba(34, 197, 94, 0.4)",
                     fontWeight: 600,
                   }}
@@ -948,12 +1007,13 @@ export default function FakturaPreviewClient() {
                 >
                   🖨️ {t("fakture.stampaj")}
                 </button>
-                
+
                 <button
                   className="btn"
                   onClick={handleSaveAsPdf}
                   style={{
-                    background: "linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(147, 51, 234, 0.1))",
+                    background:
+                      "linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(147, 51, 234, 0.1))",
                     borderColor: "rgba(168, 85, 247, 0.4)",
                     fontWeight: 600,
                   }}
@@ -965,14 +1025,24 @@ export default function FakturaPreviewClient() {
             </div>
 
             {!isStornoFaktura && (
-              <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <div
+                style={{
+                  marginTop: 10,
+                  paddingTop: 8,
+                  borderTop: "1px solid rgba(255,255,255,0.08)",
+                  display: "flex",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
                 {canMarkAsPaid && (
                   <button
                     className="btn"
                     onClick={handleMarkPaid}
                     disabled={markPaidLoading}
                     style={{
-                      background: "linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(22, 163, 74, 0.15))",
+                      background:
+                        "linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(22, 163, 74, 0.15))",
                       color: "#86efac",
                       border: "1px solid rgba(34, 197, 94, 0.5)",
                       fontWeight: 700,
@@ -1011,15 +1081,13 @@ export default function FakturaPreviewClient() {
               <div className="invRow">
                 <div className="invHeaderLeft">
                   <img
-                    src={
-                      (() => {
-                        const p = data?.firma?.logo_path?.trim();
-                        if (!p) return "/api/firma/logo";
-                        if (p.startsWith("http://") || p.startsWith("https://"))
-                          return p;
-                        return "/api/firma/logo";
-                      })()
-                    }
+                    src={(() => {
+                      const p = data?.firma?.logo_path?.trim();
+                      if (!p) return "/api/firma/logo";
+                      if (p.startsWith("http://") || p.startsWith("https://"))
+                        return p;
+                      return "/api/firma/logo";
+                    })()}
                     alt="Company logo"
                     className="companyLogo"
                   />
@@ -1047,16 +1115,16 @@ export default function FakturaPreviewClient() {
                         {lang === "EN" ? "Due date" : "Datum dospijeća"}
                       </div>
                       <div className="v">
-                        {dueDateISO
-                          ? fmtDDMMYYYYFromISO(dueDateISO)
-                          : "—"}
+                        {dueDateISO ? fmtDDMMYYYYFromISO(dueDateISO) : "—"}
                       </div>
                     </div>
                     <div className="line">
                       <div className="k">
                         {lang === "EN" ? "Currency" : "Valuta"}
                       </div>
-                      <div className="v">{(ccy === "BAM" || ccy === "KM") ? "KM" : ccy}</div>
+                      <div className="v">
+                        {ccy === "BAM" || ccy === "KM" ? "KM" : ccy}
+                      </div>
                     </div>
                     {!fisk ? (
                       <div className="line">
@@ -1127,12 +1195,8 @@ export default function FakturaPreviewClient() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>
-                        {lang === "EN" ? "Description" : "Opis"}
-                      </th>
-                      <th className="num">
-                        {lang === "EN" ? "Qty" : "Kol."}
-                      </th>
+                      <th>{lang === "EN" ? "Description" : "Opis"}</th>
+                      <th className="num">{lang === "EN" ? "Qty" : "Kol."}</th>
                       <th className="num">
                         {lang === "EN" ? "Unit Price" : "Cijena"}
                       </th>
@@ -1146,9 +1210,7 @@ export default function FakturaPreviewClient() {
                       <tr key={it.id}>
                         <td>
                           <div className="desc">{it.title}</div>
-                          {it.sub && (
-                            <div className="mutedSmall">{it.sub}</div>
-                          )}
+                          {it.sub && <div className="mutedSmall">{it.sub}</div>}
                           {it.subItems && it.subItems.length > 0 && (
                             <ul
                               className="mutedSmall"
@@ -1166,12 +1228,8 @@ export default function FakturaPreviewClient() {
                           )}
                         </td>
                         <td className="num">{it.qty}</td>
-                        <td className="num">
-                          {fmtMoney(it.unit, ccy)}
-                        </td>
-                        <td className="num">
-                          {fmtMoney(it.total, ccy)}
-                        </td>
+                        <td className="num">{fmtMoney(it.unit, ccy)}</td>
+                        <td className="num">{fmtMoney(it.total, ccy)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1183,7 +1241,9 @@ export default function FakturaPreviewClient() {
                   <div className="fiscalSlot">
                     <div className="fiscalBlock">
                       <div className="fiscalTitle">
-                        {String((faktura as any)?.status ?? "").toUpperCase() === "DODIJELJEN"
+                        {String(
+                          (faktura as any)?.status ?? "",
+                        ).toUpperCase() === "DODIJELJEN"
                           ? "FISKALNI RAČUN JE U PRILOGU"
                           : "FISKALNI RAČUN"}
                       </div>
@@ -1220,7 +1280,11 @@ export default function FakturaPreviewClient() {
                       className="v"
                       style={
                         isInoInvoice && String(ccy).trim() === "EUR"
-                          ? { display: "flex", flexDirection: "column", alignItems: "flex-end" }
+                          ? {
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "flex-end",
+                            }
                           : undefined
                       }
                     >
@@ -1237,7 +1301,11 @@ export default function FakturaPreviewClient() {
                             width: "100%",
                           }}
                         >
-                          BAM equivalent: {(Math.round(totalAmount * EUR_TO_BAM * 100) / 100).toFixed(2)} BAM
+                          BAM equivalent:{" "}
+                          {(
+                            Math.round(totalAmount * EUR_TO_BAM * 100) / 100
+                          ).toFixed(2)}{" "}
+                          BAM
                         </div>
                       ) : null}
                     </div>
@@ -1250,7 +1318,9 @@ export default function FakturaPreviewClient() {
                   </div>
 
                   {/* INO fakture BiH: obavezna rečenica o oslobođenju PDV-a */}
-                  {lang === "EN" && isBiHSystem && (vatRate === 0 || isInoInvoice) ? (
+                  {lang === "EN" &&
+                  isBiHSystem &&
+                  (vatRate === 0 || isInoInvoice) ? (
                     <div
                       style={{
                         marginTop: 6,
@@ -1292,7 +1362,11 @@ export default function FakturaPreviewClient() {
               <div className="footer">
                 <div className="fluxaSig">
                   <img src="/fluxa/Icon.png" alt="FLUXA" />
-                  <span>{t(`wizard.previewDoc.${lang === "EN" ? "en" : "bh"}.madeByFluxa`)}</span>
+                  <span>
+                    {t(
+                      `wizard.previewDoc.${lang === "EN" ? "en" : "bh"}.madeByFluxa`,
+                    )}
+                  </span>
                 </div>
               </div>
             </div>

@@ -1,6 +1,11 @@
 import { createHmac } from "node:crypto";
 
-export type SoccsTier = "BASIC" | "BASIC_PLUS" | "PROFESSIONAL" | "ENTERPRISE";
+export type SoccsTier =
+  | "BASIC"
+  | "BASIC_PLUS"
+  | "PROFESSIONAL"
+  | "ENTERPRISE"
+  | "SWIMVOICE";
 
 export function normalizeSoccsTier(raw: string | null | undefined): SoccsTier {
   const u = String(raw ?? "BASIC")
@@ -11,7 +16,8 @@ export function normalizeSoccsTier(raw: string | null | undefined): SoccsTier {
     u === "BASIC" ||
     u === "BASIC_PLUS" ||
     u === "PROFESSIONAL" ||
-    u === "ENTERPRISE"
+    u === "ENTERPRISE" ||
+    u === "SWIMVOICE"
   ) {
     return u;
   }
@@ -27,6 +33,8 @@ export function soccsTierToModules(tier: SoccsTier): Record<string, boolean> {
     case "PROFESSIONAL":
     case "ENTERPRISE":
       return { soccs_core: true, swimvoice: true, cloud_sync: true };
+    case "SWIMVOICE":
+      return { soccs_core: false, swimvoice: true, cloud_sync: false };
     default:
       return { soccs_core: true, swimvoice: false, cloud_sync: false };
   }

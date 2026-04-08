@@ -5,12 +5,18 @@
  * Poruka: obratite se administratoru Fluxe (brand Fluxa, bez imena operatera).
  */
 import { cookies } from "next/headers";
+import { getFluxaActivationState } from "@/lib/fluxa-activation";
 import { getValidLocale } from "@/lib/i18n";
 import { getT } from "@/lib/translations";
 
 export default async function LicenceCheckWrapper({ children }) {
-  const url = process.env.LICENCE_CHECK_URL?.trim();
-  const token = process.env.LICENCE_TOKEN?.trim();
+  const envUrl = process.env.LICENCE_CHECK_URL?.trim();
+  const envToken = process.env.LICENCE_TOKEN?.trim();
+  const state = await getFluxaActivationState().catch(() => null);
+  const dbUrl = state?.licence_check_url?.trim();
+  const dbToken = state?.licence_token?.trim();
+  const url = dbUrl || envUrl;
+  const token = dbToken || envToken;
 
   if (!url || !token) {
     return children;
@@ -37,7 +43,8 @@ export default async function LicenceCheckWrapper({ children }) {
 
   if (!allowed) {
     const cookieStore = await cookies();
-    const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) ?? "sr";
+    const locale =
+      getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) ?? "sr";
     const t = getT(locale);
 
     return (

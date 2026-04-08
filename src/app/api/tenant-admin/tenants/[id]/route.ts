@@ -8,25 +8,37 @@ export const dynamic = "force-dynamic";
 /** Produži pretplatu ili promijeni plan tenanta. Samo kada je ENABLE_TENANT_ADMIN=true i korisnik ulogovan. */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   if (process.env.ENABLE_TENANT_ADMIN !== "true") {
-    return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+    return NextResponse.json(
+      { ok: false, error: "FORBIDDEN" },
+      { status: 403 },
+    );
   }
 
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) {
-    return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, error: "UNAUTHORIZED" },
+      { status: 401 },
+    );
   }
   const session = verifySessionToken(token);
   if (!session) {
-    return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, error: "UNAUTHORIZED" },
+      { status: 401 },
+    );
   }
 
   const id = Number((await params).id);
   if (!Number.isInteger(id) || id <= 0) {
-    return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "INVALID_ID" },
+      { status: 400 },
+    );
   }
 
   const MAX_USER_OPTIONS = [1, 3, 5, 10, 50, 101];
@@ -44,7 +56,10 @@ export async function PATCH(
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "INVALID_BODY" },
+      { status: 400 },
+    );
   }
 
   const updates: string[] = [];
@@ -72,7 +87,10 @@ export async function PATCH(
       paramsList.push(planId);
     }
   }
-  if (body.max_users != null && MAX_USER_OPTIONS.includes(Number(body.max_users))) {
+  if (
+    body.max_users != null &&
+    MAX_USER_OPTIONS.includes(Number(body.max_users))
+  ) {
     updates.push("max_users = ?");
     paramsList.push(Number(body.max_users));
   }
@@ -83,7 +101,11 @@ export async function PATCH(
   }
   if (body.currency !== undefined) {
     updates.push("currency = ?");
-    paramsList.push(typeof body.currency === "string" ? body.currency.trim().slice(0, 3) || null : null);
+    paramsList.push(
+      typeof body.currency === "string"
+        ? body.currency.trim().slice(0, 3) || null
+        : null,
+    );
   }
   if (body.status != null) {
     const s = String(body.status).trim().toUpperCase();
@@ -94,9 +116,20 @@ export async function PATCH(
   }
 
   if (body.soccs_tier !== undefined) {
-    const raw = body.soccs_tier == null ? "" : String(body.soccs_tier).trim().toUpperCase();
-    const allowed = ["BASIC", "BASIC_PLUS", "PROFESSIONAL", "ENTERPRISE"];
-    if (raw && allowed.includes(raw)) {
+    const raw =
+      body.soccs_tier == null
+        ? ""
+        : String(body.soccs_tier).trim().toUpperCase();
+    const allowed = [
+      "BASIC",
+      "BASIC_PLUS",
+      "PROFESSIONAL",
+      "ENTERPRISE",
+      "SWIMVOICE",
+    ];
+    if (!raw) {
+      updates.push("soccs_tier = NULL");
+    } else if (allowed.includes(raw)) {
       updates.push("soccs_tier = ?");
       paramsList.push(raw);
     }
@@ -116,7 +149,10 @@ export async function PATCH(
   }
 
   if (updates.length === 0) {
-    return NextResponse.json({ ok: false, error: "NO_VALID_UPDATES" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "NO_VALID_UPDATES" },
+      { status: 400 },
+    );
   }
 
   paramsList.push(id);
@@ -124,7 +160,7 @@ export async function PATCH(
   try {
     await query(
       `UPDATE tenants SET ${updates.join(", ")}, updated_at = NOW() WHERE tenant_id = ?`,
-      paramsList
+      paramsList,
     );
     const out: { ok: boolean; licence_token?: string } = { ok: true };
     if (newLicenceToken) out.licence_token = newLicenceToken;

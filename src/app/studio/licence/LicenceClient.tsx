@@ -6,7 +6,13 @@ import { useTranslation } from "@/components/LocaleProvider";
 const USER_LIMIT_OPTIONS = [1, 3, 5, 10, 50, 101] as const; // 101 = 100+
 const CURRENCY_OPTIONS = ["EUR", "KM"];
 
-const SOCCS_TIER_OPTIONS = ["BASIC", "BASIC_PLUS", "PROFESSIONAL", "ENTERPRISE"] as const;
+const SOCCS_TIER_OPTIONS = [
+  "BASIC",
+  "BASIC_PLUS",
+  "PROFESSIONAL",
+  "ENTERPRISE",
+  "SWIMVOICE",
+] as const;
 
 type TenantRow = {
   tenant_id: number;
@@ -24,6 +30,7 @@ type TenantRow = {
   subscription_ends_at: string;
   status: string;
   days_until_end: number;
+  meet_remaining?: number;
   licence_token?: string | null;
 };
 
@@ -38,7 +45,9 @@ export default function LicenceClient() {
   const [extendId, setExtendId] = useState<number | null>(null);
   const [extendDate, setExtendDate] = useState("");
   const [extendSaving, setExtendSaving] = useState(false);
-  const [planModalTenantId, setPlanModalTenantId] = useState<number | null>(null);
+  const [planModalTenantId, setPlanModalTenantId] = useState<number | null>(
+    null,
+  );
   const [planId, setPlanId] = useState<number | null>(null);
   const [planMaxUsers, setPlanMaxUsers] = useState<number>(5);
   const [planSaving, setPlanSaving] = useState(false);
@@ -55,10 +64,10 @@ export default function LicenceClient() {
   const [tokenModalRow, setTokenModalRow] = useState<TenantRow | null>(null);
   const [tokenRegenerating, setTokenRegenerating] = useState(false);
   const [newTenantToken, setNewTenantToken] = useState<string | null>(null);
-  const [newTenantSoccsTier, setNewTenantSoccsTier] = useState<string>("BASIC");
+  const [newTenantSoccsTier, setNewTenantSoccsTier] = useState<string>("");
 
   const [soccsModal, setSoccsModal] = useState<TenantRow | null>(null);
-  const [soccsTierDraft, setSoccsTierDraft] = useState("BASIC");
+  const [soccsTierDraft, setSoccsTierDraft] = useState("");
   const [soccsFedDraft, setSoccsFedDraft] = useState<number | "">("");
   const [soccsSaving, setSoccsSaving] = useState(false);
   const [soccsGenCode, setSoccsGenCode] = useState<string | null>(null);
@@ -116,11 +125,14 @@ export default function LicenceClient() {
     if (planId == null || planModalTenantId == null) return;
     setPlanSaving(true);
     try {
-      const res = await fetch(`/api/tenant-admin/tenants/${planModalTenantId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan_id: planId, max_users: planMaxUsers }),
-      });
+      const res = await fetch(
+        `/api/tenant-admin/tenants/${planModalTenantId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plan_id: planId, max_users: planMaxUsers }),
+        },
+      );
       const data = await res.json();
       if (data.ok) {
         setPlanModalTenantId(null);
@@ -162,7 +174,9 @@ export default function LicenceClient() {
       });
       const data = await res.json();
       if (data.ok && data.licence_token) {
-        setTokenModalRow((prev) => (prev ? { ...prev, licence_token: data.licence_token } : null));
+        setTokenModalRow((prev) =>
+          prev ? { ...prev, licence_token: data.licence_token } : null,
+        );
         await load();
       } else setError(data.error ?? t("common.error"));
     } catch (e) {
@@ -172,7 +186,10 @@ export default function LicenceClient() {
     }
   };
 
-  const handleSetStatus = async (tenantId: number, status: "SUSPENDOVAN" | "AKTIVAN") => {
+  const handleSetStatus = async (
+    tenantId: number,
+    status: "SUSPENDOVAN" | "AKTIVAN",
+  ) => {
     setStatusSavingId(tenantId);
     try {
       const res = await fetch(`/api/tenant-admin/tenants/${tenantId}`, {
@@ -218,7 +235,7 @@ export default function LicenceClient() {
         setNewTenantEnd("");
         setNewTenantPrice("");
         setNewTenantCurrency("EUR");
-        setNewTenantSoccsTier("BASIC");
+        setNewTenantSoccsTier("");
         setNewTenantToken(data.licence_token ?? null);
         await load();
       } else {
@@ -231,15 +248,32 @@ export default function LicenceClient() {
     }
   };
 
-  const formatMaxUsers = (n: number) => (n >= 101 ? t("studioLicence.users100Plus") : String(n));
+  const formatMaxUsers = (n: number) =>
+    n >= 101 ? t("studioLicence.users100Plus") : String(n);
   const formatSoccsTier = (row: TenantRow) => {
-    const s = String(row.soccs_tier ?? "BASIC").toUpperCase();
-    return SOCCS_TIER_OPTIONS.includes(s as (typeof SOCCS_TIER_OPTIONS)[number]) ? s : "BASIC";
+    const raw = String(row.soccs_tier ?? "")
+      .trim()
+      .toUpperCase();
+    if (!raw) return "—";
+    return SOCCS_TIER_OPTIONS.includes(
+      raw as (typeof SOCCS_TIER_OPTIONS)[number],
+    )
+      ? raw
+      : "—";
   };
 
   const openSoccsModal = (row: TenantRow) => {
     setSoccsModal(row);
-    setSoccsTierDraft(formatSoccsTier(row));
+    const rawTier = String(row.soccs_tier ?? "")
+      .trim()
+      .toUpperCase();
+    setSoccsTierDraft(
+      SOCCS_TIER_OPTIONS.includes(
+        rawTier as (typeof SOCCS_TIER_OPTIONS)[number],
+      )
+        ? rawTier
+        : "",
+    );
     setSoccsFedDraft(row.soccs_federation_parent_tenant_id ?? "");
     setSoccsGenCode(null);
     setSoccsMeetSponsor("");
@@ -251,17 +285,22 @@ export default function LicenceClient() {
     setSoccsSaving(true);
     setError(null);
     try {
-      const body: Record<string, unknown> = { soccs_tier: soccsTierDraft };
+      const body: Record<string, unknown> = {
+        soccs_tier: soccsTierDraft || null,
+      };
       if (soccsFedDraft === "") {
         body.soccs_federation_parent_tenant_id = null;
       } else if (typeof soccsFedDraft === "number") {
         body.soccs_federation_parent_tenant_id = soccsFedDraft;
       }
-      const res = await fetch(`/api/tenant-admin/tenants/${soccsModal.tenant_id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const res = await fetch(
+        `/api/tenant-admin/tenants/${soccsModal.tenant_id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
       const data = await res.json();
       if (data.ok) {
         await load();
@@ -271,7 +310,11 @@ export default function LicenceClient() {
             ...prev,
             soccs_tier: soccsTierDraft,
             soccs_federation_parent_tenant_id:
-              soccsFedDraft === "" ? null : typeof soccsFedDraft === "number" ? soccsFedDraft : null,
+              soccsFedDraft === ""
+                ? null
+                : typeof soccsFedDraft === "number"
+                  ? soccsFedDraft
+                  : null,
           };
         });
       } else setError(data.error ?? t("common.error"));
@@ -282,7 +325,9 @@ export default function LicenceClient() {
     }
   };
 
-  const handleGenerateSoccsCode = async (purpose: "FIRST_INSTALL" | "MEET_SESSION") => {
+  const handleGenerateSoccsCode = async (
+    purpose: "FIRST_INSTALL" | "MEET_SESSION",
+  ) => {
     if (!soccsModal) return;
     setSoccsGenBusy(true);
     setError(null);
@@ -325,11 +370,7 @@ export default function LicenceClient() {
   }
 
   if (error) {
-    return (
-      <p style={{ padding: 24, color: "var(--danger)" }}>
-        {error}
-      </p>
-    );
+    return <p style={{ padding: 24, color: "var(--danger)" }}>{error}</p>;
   }
 
   const tableStyle: React.CSSProperties = {
@@ -347,8 +388,21 @@ export default function LicenceClient() {
 
   return (
     <>
-      <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-        <button type="button" className="btn" onClick={() => setNewTenantOpen(true)}>
+      <div
+        style={{
+          marginBottom: 16,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 8,
+        }}
+      >
+        <button
+          type="button"
+          className="btn"
+          onClick={() => setNewTenantOpen(true)}
+        >
           {t("studioLicence.newTenant")}
         </button>
       </div>
@@ -357,12 +411,13 @@ export default function LicenceClient() {
           <thead>
             <tr>
               <th style={thTd}>{t("studioLicence.colNaziv")}</th>
-              <th style={thTd}>{t("studioLicence.colPlan")}</th>
-              <th style={thTd}>{t("studioLicence.colSoccs")}</th>
+              <th style={thTd}>{t("studioLicence.colFluxaVersion")}</th>
+              <th style={thTd}>{t("studioLicence.colSoccsVersion")}</th>
               <th style={thTd}>{t("studioLicence.colKorisnici")}</th>
               <th style={thTd}>{t("studioLicence.colCijena")}</th>
               <th style={thTd}>{t("studioLicence.colIstice")}</th>
               <th style={thTd}>{t("studioLicence.colDana")}</th>
+              <th style={thTd}>{t("studioLicence.colMeetRemaining")}</th>
               <th style={thTd}>{t("studioLicence.colStatus")}</th>
               <th style={thTd}>{t("studioLicence.colToken")}</th>
               <th style={thTd}>{t("studioLicence.colAkcije")}</th>
@@ -371,7 +426,7 @@ export default function LicenceClient() {
           <tbody>
             {tenants.length === 0 ? (
               <tr>
-                <td colSpan={10} style={thTd}>
+                <td colSpan={11} style={thTd}>
                   {t("studioLicence.noTenants")}
                 </td>
               </tr>
@@ -391,6 +446,11 @@ export default function LicenceClient() {
                         ? "0"
                         : t("studioLicence.expired")}
                   </td>
+                  <td style={thTd}>
+                    {Number.isFinite(Number(row.meet_remaining ?? NaN))
+                      ? Number(row.meet_remaining)
+                      : "—"}
+                  </td>
                   <td style={thTd}>{row.status}</td>
                   <td style={thTd}>
                     <button
@@ -400,19 +460,17 @@ export default function LicenceClient() {
                       onClick={() => setTokenModalRow(row)}
                       title={t("studioLicence.tokenTooltip")}
                     >
-                      {row.licence_token ? "🔑 Token" : t("studioLicence.noToken")}
+                      {row.licence_token
+                        ? "🔑 Token"
+                        : t("studioLicence.noToken")}
                     </button>
                   </td>
                   <td style={thTd}>
-                    <button
-                      type="button"
-                      className="btn"
-                      style={{ marginRight: 8, fontSize: 12 }}
-                      onClick={() => openSoccsModal(row)}
-                      title={t("studioLicence.soccsModalTitle")}
+                    <span
+                      style={{ fontSize: 11, opacity: 0.75, marginRight: 6 }}
                     >
-                      {t("studioLicence.soccsButton")}
-                    </button>
+                      {t("studioLicence.actionsFluxa")}:
+                    </span>
                     <button
                       type="button"
                       className="btn"
@@ -424,6 +482,7 @@ export default function LicenceClient() {
                     <button
                       type="button"
                       className="btn"
+                      style={{ marginRight: 8 }}
                       onClick={() => openPlanModal(row.tenant_id)}
                     >
                       {t("studioLicence.changePlan")}
@@ -434,10 +493,14 @@ export default function LicenceClient() {
                         className="btn"
                         style={{ marginLeft: 8 }}
                         disabled={statusSavingId === row.tenant_id}
-                        onClick={() => handleSetStatus(row.tenant_id, "AKTIVAN")}
+                        onClick={() =>
+                          handleSetStatus(row.tenant_id, "AKTIVAN")
+                        }
                         title={t("studioLicence.restoreAccess")}
                       >
-                        {statusSavingId === row.tenant_id ? t("common.loading") : t("studioLicence.restoreAccess")}
+                        {statusSavingId === row.tenant_id
+                          ? t("common.loading")
+                          : t("studioLicence.restoreAccess")}
                       </button>
                     ) : (
                       <button
@@ -445,12 +508,35 @@ export default function LicenceClient() {
                         className="btn"
                         style={{ marginLeft: 8 }}
                         disabled={statusSavingId === row.tenant_id}
-                        onClick={() => handleSetStatus(row.tenant_id, "SUSPENDOVAN")}
+                        onClick={() =>
+                          handleSetStatus(row.tenant_id, "SUSPENDOVAN")
+                        }
                         title={t("studioLicence.suspendAccess")}
                       >
-                        {statusSavingId === row.tenant_id ? t("common.loading") : t("studioLicence.suspend")}
+                        {statusSavingId === row.tenant_id
+                          ? t("common.loading")
+                          : t("studioLicence.suspend")}
                       </button>
                     )}
+                    <span
+                      style={{
+                        fontSize: 11,
+                        opacity: 0.75,
+                        marginLeft: 10,
+                        marginRight: 6,
+                      }}
+                    >
+                      {t("studioLicence.actionsSoccs")}:
+                    </span>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ marginLeft: 8 }}
+                      onClick={() => openSoccsModal(row)}
+                      title={t("studioLicence.soccsModalTitle")}
+                    >
+                      {t("studioLicence.soccsButton")}
+                    </button>
                   </td>
                 </tr>
               ))
@@ -461,11 +547,12 @@ export default function LicenceClient() {
 
       {/* Modal Produži */}
       {extendId != null && (
-        <div className="studio-modal" style={overlayStyle()} onClick={() => !extendSaving && setExtendId(null)}>
-          <div
-            style={modalStyle(420)}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div
+          className="studio-modal"
+          style={overlayStyle()}
+          onClick={() => !extendSaving && setExtendId(null)}
+        >
+          <div style={modalStyle(420)} onClick={(e) => e.stopPropagation()}>
             <div style={{ padding: 24 }}>
               <h3 style={{ marginTop: 0 }}>{t("studioLicence.extendTitle")}</h3>
               <label style={{ display: "block", marginBottom: 8 }}>
@@ -475,7 +562,12 @@ export default function LicenceClient() {
                 type="date"
                 value={extendDate}
                 onChange={(e) => setExtendDate(e.target.value)}
-                style={{ padding: 8, marginBottom: 16, width: "100%", maxWidth: 200 }}
+                style={{
+                  padding: 8,
+                  marginBottom: 16,
+                  width: "100%",
+                  maxWidth: 200,
+                }}
               />
               <div style={{ display: "flex", gap: 8 }}>
                 <button
@@ -502,44 +594,83 @@ export default function LicenceClient() {
 
       {/* Modal Token (prikaz / kopiraj / regeneriši) */}
       {tokenModalRow && (
-        <div className="studio-modal" style={overlayStyle()} onClick={() => !tokenRegenerating && setTokenModalRow(null)}>
+        <div
+          className="studio-modal"
+          style={overlayStyle()}
+          onClick={() => !tokenRegenerating && setTokenModalRow(null)}
+        >
           <div style={modalStyle(480)} onClick={(e) => e.stopPropagation()}>
             <div style={{ padding: 24 }}>
-              <h3 style={{ marginTop: 0 }}>{t("studioLicence.tokenTitle")} – {tokenModalRow.naziv}</h3>
+              <h3 style={{ marginTop: 0 }}>
+                {t("studioLicence.tokenTitle")} – {tokenModalRow.naziv}
+              </h3>
               {tokenModalRow.licence_token ? (
                 <>
-                  <p style={{ fontSize: 13, marginBottom: 8 }}>{t("studioLicence.tokenHint")}</p>
-                  <code style={{ display: "block", padding: 12, background: "var(--panel)", borderRadius: 8, marginBottom: 12, wordBreak: "break-all", fontSize: 12 }}>
+                  <p style={{ fontSize: 13, marginBottom: 8 }}>
+                    {t("studioLicence.tokenHint")}
+                  </p>
+                  <code
+                    style={{
+                      display: "block",
+                      padding: 12,
+                      background: "var(--panel)",
+                      borderRadius: 8,
+                      marginBottom: 12,
+                      wordBreak: "break-all",
+                      fontSize: 12,
+                    }}
+                  >
                     {tokenModalRow.licence_token}
                   </code>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button type="button" className="btn" onClick={() => copyToClipboard(tokenModalRow.licence_token!)}>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() =>
+                        copyToClipboard(tokenModalRow.licence_token!)
+                      }
+                    >
                       {t("studioLicence.copyToken")}
                     </button>
                     <button
                       type="button"
                       className="btn"
                       disabled={tokenRegenerating}
-                      onClick={() => handleRegenerateToken(tokenModalRow.tenant_id)}
+                      onClick={() =>
+                        handleRegenerateToken(tokenModalRow.tenant_id)
+                      }
                     >
-                      {tokenRegenerating ? t("common.loading") : t("studioLicence.regenerateToken")}
+                      {tokenRegenerating
+                        ? t("common.loading")
+                        : t("studioLicence.regenerateToken")}
                     </button>
                   </div>
                 </>
               ) : (
                 <>
-                  <p style={{ marginBottom: 12, opacity: 0.9 }}>{t("studioLicence.tokenMissing")}</p>
+                  <p style={{ marginBottom: 12, opacity: 0.9 }}>
+                    {t("studioLicence.tokenMissing")}
+                  </p>
                   <button
                     type="button"
                     className="btn"
                     disabled={tokenRegenerating}
-                    onClick={() => handleRegenerateToken(tokenModalRow.tenant_id)}
+                    onClick={() =>
+                      handleRegenerateToken(tokenModalRow.tenant_id)
+                    }
                   >
-                    {tokenRegenerating ? t("common.loading") : t("studioLicence.regenerateToken")}
+                    {tokenRegenerating
+                      ? t("common.loading")
+                      : t("studioLicence.regenerateToken")}
                   </button>
                 </>
               )}
-              <button type="button" className="btn" style={{ marginTop: 16 }} onClick={() => setTokenModalRow(null)}>
+              <button
+                type="button"
+                className="btn"
+                style={{ marginTop: 16 }}
+                onClick={() => setTokenModalRow(null)}
+              >
                 {t("common.close")}
               </button>
             </div>
@@ -549,18 +680,45 @@ export default function LicenceClient() {
 
       {/* Modal Novi tenant – prikaz tokena nakon kreiranja */}
       {newTenantToken && (
-        <div className="studio-modal" style={overlayStyle()} onClick={() => setNewTenantToken(null)}>
+        <div
+          className="studio-modal"
+          style={overlayStyle()}
+          onClick={() => setNewTenantToken(null)}
+        >
           <div style={modalStyle(520)} onClick={(e) => e.stopPropagation()}>
             <div style={{ padding: 24 }}>
-              <h3 style={{ marginTop: 0 }}>{t("studioLicence.newTenantTokenTitle")}</h3>
-              <p style={{ fontSize: 13, marginBottom: 12 }}>{t("studioLicence.newTenantTokenHint")}</p>
-              <code style={{ display: "block", padding: 12, background: "var(--panel)", borderRadius: 8, marginBottom: 12, wordBreak: "break-all", fontSize: 12 }}>
+              <h3 style={{ marginTop: 0 }}>
+                {t("studioLicence.newTenantTokenTitle")}
+              </h3>
+              <p style={{ fontSize: 13, marginBottom: 12 }}>
+                {t("studioLicence.newTenantTokenHint")}
+              </p>
+              <code
+                style={{
+                  display: "block",
+                  padding: 12,
+                  background: "var(--panel)",
+                  borderRadius: 8,
+                  marginBottom: 12,
+                  wordBreak: "break-all",
+                  fontSize: 12,
+                }}
+              >
                 {newTenantToken}
               </code>
-              <button type="button" className="btn" onClick={() => copyToClipboard(newTenantToken)}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => copyToClipboard(newTenantToken)}
+              >
                 {t("studioLicence.copyToken")}
               </button>
-              <button type="button" className="btn" style={{ marginLeft: 8 }} onClick={() => setNewTenantToken(null)}>
+              <button
+                type="button"
+                className="btn"
+                style={{ marginLeft: 8 }}
+                onClick={() => setNewTenantToken(null)}
+              >
                 {t("common.close")}
               </button>
             </div>
@@ -570,23 +728,43 @@ export default function LicenceClient() {
 
       {/* Modal Novi tenant */}
       {newTenantOpen && (
-        <div className="studio-modal" style={overlayStyle()} onClick={() => !newTenantSaving && setNewTenantOpen(false)}>
+        <div
+          className="studio-modal"
+          style={overlayStyle()}
+          onClick={() => !newTenantSaving && setNewTenantOpen(false)}
+        >
           <div style={modalStyle(480)} onClick={(e) => e.stopPropagation()}>
             <div style={{ padding: 24 }}>
-              <h3 style={{ marginTop: 0 }}>{t("studioLicence.newTenantTitle")}</h3>
-              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.labelNaziv")}</label>
+              <h3 style={{ marginTop: 0 }}>
+                {t("studioLicence.newTenantTitle")}
+              </h3>
+              <label style={{ display: "block", marginBottom: 4 }}>
+                {t("studioLicence.labelNaziv")}
+              </label>
               <input
                 type="text"
                 value={newTenantNaziv}
                 onChange={(e) => setNewTenantNaziv(e.target.value)}
                 placeholder={t("studioLicence.placeholderNaziv")}
-                style={{ padding: 8, marginBottom: 12, width: "100%", maxWidth: 320 }}
+                style={{
+                  padding: 8,
+                  marginBottom: 12,
+                  width: "100%",
+                  maxWidth: 320,
+                }}
               />
-              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.verzijaFluxe")}</label>
+              <label style={{ display: "block", marginBottom: 4 }}>
+                {t("studioLicence.verzijaFluxe")}
+              </label>
               <select
                 value={newTenantPlanId}
                 onChange={(e) => setNewTenantPlanId(Number(e.target.value))}
-                style={{ padding: 8, marginBottom: 12, width: "100%", maxWidth: 200 }}
+                style={{
+                  padding: 8,
+                  marginBottom: 12,
+                  width: "100%",
+                  maxWidth: 200,
+                }}
               >
                 {plans.map((p) => (
                   <option key={p.plan_id} value={p.plan_id}>
@@ -594,11 +772,18 @@ export default function LicenceClient() {
                   </option>
                 ))}
               </select>
-              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.brojKorisnika")}</label>
+              <label style={{ display: "block", marginBottom: 4 }}>
+                {t("studioLicence.brojKorisnika")}
+              </label>
               <select
                 value={newTenantMaxUsers}
                 onChange={(e) => setNewTenantMaxUsers(Number(e.target.value))}
-                style={{ padding: 8, marginBottom: 12, width: "100%", maxWidth: 200 }}
+                style={{
+                  padding: 8,
+                  marginBottom: 12,
+                  width: "100%",
+                  maxWidth: 200,
+                }}
               >
                 {USER_LIMIT_OPTIONS.map((n) => (
                   <option key={n} value={n}>
@@ -606,32 +791,66 @@ export default function LicenceClient() {
                   </option>
                 ))}
               </select>
-              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.soccsNewTenantTier")}</label>
+              <label style={{ display: "block", marginBottom: 4 }}>
+                {t("studioLicence.soccsNewTenantTier")}
+              </label>
               <select
                 value={newTenantSoccsTier}
                 onChange={(e) => setNewTenantSoccsTier(e.target.value)}
-                style={{ padding: 8, marginBottom: 12, width: "100%", maxWidth: 280 }}
+                style={{
+                  padding: 8,
+                  marginBottom: 12,
+                  width: "100%",
+                  maxWidth: 280,
+                }}
               >
+                <option value="">—</option>
                 {SOCCS_TIER_OPTIONS.map((tier) => (
-                  <option key={tier} value={tier}>{tier}</option>
+                  <option key={tier} value={tier}>
+                    {tier}
+                  </option>
                 ))}
               </select>
-              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.labelStart")}</label>
+              <label style={{ display: "block", marginBottom: 4 }}>
+                {t("studioLicence.labelStart")}
+              </label>
               <input
                 type="date"
                 value={newTenantStart}
                 onChange={(e) => setNewTenantStart(e.target.value)}
-                style={{ padding: 8, marginBottom: 12, width: "100%", maxWidth: 200 }}
+                style={{
+                  padding: 8,
+                  marginBottom: 12,
+                  width: "100%",
+                  maxWidth: 200,
+                }}
               />
-              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.labelEnd")}</label>
+              <label style={{ display: "block", marginBottom: 4 }}>
+                {t("studioLicence.labelEnd")}
+              </label>
               <input
                 type="date"
                 value={newTenantEnd}
                 onChange={(e) => setNewTenantEnd(e.target.value)}
-                style={{ padding: 8, marginBottom: 12, width: "100%", maxWidth: 200 }}
+                style={{
+                  padding: 8,
+                  marginBottom: 12,
+                  width: "100%",
+                  maxWidth: 200,
+                }}
               />
-              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.cijenaMjesečno")}</label>
-              <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+              <label style={{ display: "block", marginBottom: 4 }}>
+                {t("studioLicence.cijenaMjesečno")}
+              </label>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  marginBottom: 12,
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                }}
+              >
                 <input
                   type="number"
                   min={0}
@@ -647,7 +866,9 @@ export default function LicenceClient() {
                   style={{ padding: 8 }}
                 >
                   {CURRENCY_OPTIONS.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -655,12 +876,22 @@ export default function LicenceClient() {
                 <button
                   type="button"
                   className="btn"
-                  disabled={newTenantSaving || !newTenantNaziv.trim() || !newTenantStart || !newTenantEnd}
+                  disabled={
+                    newTenantSaving ||
+                    !newTenantNaziv.trim() ||
+                    !newTenantStart ||
+                    !newTenantEnd
+                  }
                   onClick={handleCreateTenant}
                 >
                   {newTenantSaving ? t("common.loading") : t("common.save")}
                 </button>
-                <button type="button" className="btn" disabled={newTenantSaving} onClick={() => setNewTenantOpen(false)}>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={newTenantSaving}
+                  onClick={() => setNewTenantOpen(false)}
+                >
                   {t("common.cancel")}
                 </button>
               </div>
@@ -671,36 +902,77 @@ export default function LicenceClient() {
 
       {/* Modal SOCCS / aktivacija */}
       {soccsModal && (
-        <div className="studio-modal" style={overlayStyle()} onClick={() => !soccsSaving && !soccsGenBusy && setSoccsModal(null)}>
+        <div
+          className="studio-modal"
+          style={overlayStyle()}
+          onClick={() => !soccsSaving && !soccsGenBusy && setSoccsModal(null)}
+        >
           <div style={modalStyle(560)} onClick={(e) => e.stopPropagation()}>
             <div style={{ padding: 24, maxHeight: "90vh", overflow: "auto" }}>
-              <h3 style={{ marginTop: 0 }}>{t("studioLicence.soccsModalTitle")}</h3>
-              <p style={{ fontSize: 13, opacity: 0.9, marginBottom: 8 }}>{soccsModal.naziv}</p>
-              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.soccsPublicId")}</label>
-              <code style={{ display: "block", padding: 10, background: "var(--panel)", borderRadius: 8, marginBottom: 12, wordBreak: "break-all", fontSize: 11 }}>
+              <h3 style={{ marginTop: 0 }}>
+                {t("studioLicence.soccsModalTitle")}
+              </h3>
+              <p style={{ fontSize: 13, opacity: 0.9, marginBottom: 8 }}>
+                {soccsModal.naziv}
+              </p>
+              <label style={{ display: "block", marginBottom: 4 }}>
+                {t("studioLicence.soccsPublicId")}
+              </label>
+              <code
+                style={{
+                  display: "block",
+                  padding: 10,
+                  background: "var(--panel)",
+                  borderRadius: 8,
+                  marginBottom: 12,
+                  wordBreak: "break-all",
+                  fontSize: 11,
+                }}
+              >
                 {soccsModal.tenant_public_id || "—"}
               </code>
-              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.soccsTierLabel")}</label>
+              <label style={{ display: "block", marginBottom: 4 }}>
+                {t("studioLicence.soccsTierLabel")}
+              </label>
               <select
                 value={soccsTierDraft}
                 onChange={(e) => setSoccsTierDraft(e.target.value)}
-                style={{ padding: 8, marginBottom: 12, width: "100%", maxWidth: 280 }}
+                style={{
+                  padding: 8,
+                  marginBottom: 12,
+                  width: "100%",
+                  maxWidth: 280,
+                }}
               >
+                <option value="">—</option>
                 {SOCCS_TIER_OPTIONS.map((tier) => (
-                  <option key={tier} value={tier}>{tier}</option>
+                  <option key={tier} value={tier}>
+                    {tier}
+                  </option>
                 ))}
               </select>
-              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.soccsFederationLabel")}</label>
-              <p style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>{t("studioLicence.soccsFederationHint")}</p>
+              <label style={{ display: "block", marginBottom: 4 }}>
+                {t("studioLicence.soccsFederationLabel")}
+              </label>
+              <p style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>
+                {t("studioLicence.soccsFederationHint")}
+              </p>
               <select
                 value={soccsFedDraft === "" ? "" : String(soccsFedDraft)}
                 onChange={(e) => {
                   const v = e.target.value;
                   setSoccsFedDraft(v === "" ? "" : Number(v));
                 }}
-                style={{ padding: 8, marginBottom: 12, width: "100%", maxWidth: 360 }}
+                style={{
+                  padding: 8,
+                  marginBottom: 12,
+                  width: "100%",
+                  maxWidth: 360,
+                }}
               >
-                <option value="">{t("studioLicence.soccsFederationNone")}</option>
+                <option value="">
+                  {t("studioLicence.soccsFederationNone")}
+                </option>
                 {tenants
                   .filter((x) => x.tenant_id !== soccsModal.tenant_id)
                   .map((x) => (
@@ -709,13 +981,29 @@ export default function LicenceClient() {
                     </option>
                   ))}
               </select>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-                <button type="button" className="btn" disabled={soccsSaving} onClick={handleSoccsSave}>
-                  {soccsSaving ? t("common.loading") : t("studioLicence.soccsSaveTier")}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  marginBottom: 16,
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={soccsSaving}
+                  onClick={handleSoccsSave}
+                >
+                  {soccsSaving
+                    ? t("common.loading")
+                    : t("studioLicence.soccsSaveTier")}
                 </button>
               </div>
               <hr style={{ borderColor: "var(--border)", margin: "16px 0" }} />
-              <label style={{ display: "block", marginBottom: 8 }}>{t("studioLicence.soccsGenerateFirst")}</label>
+              <label style={{ display: "block", marginBottom: 8 }}>
+                {t("studioLicence.soccsGenerateFirst")}
+              </label>
               <button
                 type="button"
                 className="btn"
@@ -723,16 +1011,25 @@ export default function LicenceClient() {
                 style={{ marginBottom: 16 }}
                 onClick={() => handleGenerateSoccsCode("FIRST_INSTALL")}
               >
-                {soccsGenBusy ? t("common.loading") : t("studioLicence.soccsGenerateFirst")}
+                {soccsGenBusy
+                  ? t("common.loading")
+                  : t("studioLicence.soccsGenerateFirst")}
               </button>
-              <label style={{ display: "block", marginBottom: 4 }}>{t("studioLicence.soccsGenerateMeet")}</label>
+              <label style={{ display: "block", marginBottom: 4 }}>
+                {t("studioLicence.soccsGenerateMeet")}
+              </label>
               <select
                 value={soccsMeetSponsor === "" ? "" : String(soccsMeetSponsor)}
                 onChange={(e) => {
                   const v = e.target.value;
                   setSoccsMeetSponsor(v === "" ? "" : Number(v));
                 }}
-                style={{ padding: 8, marginBottom: 8, width: "100%", maxWidth: 360 }}
+                style={{
+                  padding: 8,
+                  marginBottom: 8,
+                  width: "100%",
+                  maxWidth: 360,
+                }}
               >
                 <option value="">{t("studioLicence.soccsMeetSponsor")}</option>
                 {tenants
@@ -748,7 +1045,12 @@ export default function LicenceClient() {
                 value={soccsMeetNote}
                 onChange={(e) => setSoccsMeetNote(e.target.value)}
                 placeholder={t("studioLicence.soccsMeetNote")}
-                style={{ padding: 8, marginBottom: 8, width: "100%", maxWidth: 400 }}
+                style={{
+                  padding: 8,
+                  marginBottom: 8,
+                  width: "100%",
+                  maxWidth: 400,
+                }}
               />
               <button
                 type="button"
@@ -757,23 +1059,53 @@ export default function LicenceClient() {
                 style={{ marginBottom: 16 }}
                 onClick={() => handleGenerateSoccsCode("MEET_SESSION")}
               >
-                {soccsGenBusy ? t("common.loading") : t("studioLicence.soccsGenerateMeet")}
+                {soccsGenBusy
+                  ? t("common.loading")
+                  : t("studioLicence.soccsGenerateMeet")}
               </button>
               {soccsGenCode && (
                 <>
-                  <p style={{ fontSize: 13, marginBottom: 6 }}>{t("studioLicence.soccsCodeGenerated")}</p>
-                  <code style={{ display: "block", padding: 12, background: "var(--panel)", borderRadius: 8, marginBottom: 8, wordBreak: "break-all", fontSize: 12 }}>
+                  <p style={{ fontSize: 13, marginBottom: 6 }}>
+                    {t("studioLicence.soccsCodeGenerated")}
+                  </p>
+                  <code
+                    style={{
+                      display: "block",
+                      padding: 12,
+                      background: "var(--panel)",
+                      borderRadius: 8,
+                      marginBottom: 8,
+                      wordBreak: "break-all",
+                      fontSize: 12,
+                    }}
+                  >
                     {soccsGenCode}
                   </code>
-                  <button type="button" className="btn" onClick={() => copyToClipboard(soccsGenCode)}>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => copyToClipboard(soccsGenCode)}
+                  >
                     {t("studioLicence.copyToken")}
                   </button>
                 </>
               )}
-              <p style={{ fontSize: 12, opacity: 0.85, marginTop: 16, lineHeight: 1.45 }}>
+              <p
+                style={{
+                  fontSize: 12,
+                  opacity: 0.85,
+                  marginTop: 16,
+                  lineHeight: 1.45,
+                }}
+              >
                 {t("studioLicence.soccsVerifyUrlHint")}
               </p>
-              <button type="button" className="btn" style={{ marginTop: 12 }} onClick={() => setSoccsModal(null)}>
+              <button
+                type="button"
+                className="btn"
+                style={{ marginTop: 12 }}
+                onClick={() => setSoccsModal(null)}
+              >
                 {t("common.close")}
               </button>
             </div>
@@ -786,19 +1118,27 @@ export default function LicenceClient() {
         <div
           className="studio-modal"
           style={overlayStyle()}
-          onClick={() => !planSaving && (setPlanModalTenantId(null), setPlanId(null))}
+          onClick={() =>
+            !planSaving && (setPlanModalTenantId(null), setPlanId(null))
+          }
         >
-          <div
-            style={modalStyle(420)}
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div style={modalStyle(420)} onClick={(e) => e.stopPropagation()}>
             <div style={{ padding: 24 }}>
-              <h3 style={{ marginTop: 0 }}>{t("studioLicence.changePlanTitle")}</h3>
-              <label style={{ display: "block", marginBottom: 8 }}>{t("studioLicence.verzijaFluxe")}</label>
+              <h3 style={{ marginTop: 0 }}>
+                {t("studioLicence.changePlanTitle")}
+              </h3>
+              <label style={{ display: "block", marginBottom: 8 }}>
+                {t("studioLicence.verzijaFluxe")}
+              </label>
               <select
                 value={planId ?? ""}
                 onChange={(e) => setPlanId(Number(e.target.value))}
-                style={{ padding: 8, marginBottom: 12, width: "100%", maxWidth: 200 }}
+                style={{
+                  padding: 8,
+                  marginBottom: 12,
+                  width: "100%",
+                  maxWidth: 200,
+                }}
               >
                 {plans.map((p) => (
                   <option key={p.plan_id} value={p.plan_id}>
@@ -806,11 +1146,18 @@ export default function LicenceClient() {
                   </option>
                 ))}
               </select>
-              <label style={{ display: "block", marginBottom: 8 }}>{t("studioLicence.brojKorisnika")}</label>
+              <label style={{ display: "block", marginBottom: 8 }}>
+                {t("studioLicence.brojKorisnika")}
+              </label>
               <select
                 value={planMaxUsers}
                 onChange={(e) => setPlanMaxUsers(Number(e.target.value))}
-                style={{ padding: 8, marginBottom: 16, width: "100%", maxWidth: 200 }}
+                style={{
+                  padding: 8,
+                  marginBottom: 16,
+                  width: "100%",
+                  maxWidth: 200,
+                }}
               >
                 {USER_LIMIT_OPTIONS.map((n) => (
                   <option key={n} value={n}>
@@ -831,7 +1178,10 @@ export default function LicenceClient() {
                   type="button"
                   className="btn"
                   disabled={planSaving}
-                  onClick={() => { setPlanModalTenantId(null); setPlanId(null); }}
+                  onClick={() => {
+                    setPlanModalTenantId(null);
+                    setPlanId(null);
+                  }}
                 >
                   {t("common.cancel")}
                 </button>
@@ -863,7 +1213,8 @@ function modalStyle(maxW = 420): React.CSSProperties {
     width: "min(100%, " + maxW + "px)",
     border: "1px solid var(--border)",
     borderRadius: 16,
-    background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
+    background:
+      "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
     boxShadow: "var(--shadow)",
     overflow: "hidden",
   };

@@ -13,6 +13,18 @@ function hasAnyBankField(b) {
   return Boolean(b.bank_naziv || b.bank_racun || b.iban || b.swift);
 }
 
+async function hasShowOnInvoiceColumn(conn) {
+  const [rows] = await conn.query(
+    `SELECT 1 AS ok
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'firma_bank_accounts'
+       AND COLUMN_NAME = 'show_on_invoice'
+     LIMIT 1`,
+  );
+  return Array.isArray(rows) && rows.length > 0;
+}
+
 export async function POST(req) {
   const form = await req.formData().catch(() => null);
   if (!form) {
@@ -46,7 +58,10 @@ export async function POST(req) {
     pib: clean(form.get("pib")),
     pdv_broj: clean(form.get("pdv_broj")),
     broj_rjesenja: clean(form.get("broj_rjesenja")),
-    vat_rate_local: form.get("vat_rate_local") !== null && form.get("vat_rate_local") !== "" ? Number(form.get("vat_rate_local")) : null,
+    vat_rate_local:
+      form.get("vat_rate_local") !== null && form.get("vat_rate_local") !== ""
+        ? Number(form.get("vat_rate_local"))
+        : null,
 
     logo_path: clean(form.get("logo_path")),
   };
@@ -58,6 +73,7 @@ export async function POST(req) {
     bank_racun: clean(form.get(`bank_racun_${i}`)),
     iban: clean(form.get(`iban_${i}`)),
     swift: clean(form.get(`swift_${i}`)),
+    show_on_invoice: form.get(`show_on_invoice_${i}`) != null ? 1 : 0,
   }));
 
   const banksFilled = banks.filter((b) => hasAnyBankField(b));
@@ -135,26 +151,48 @@ export async function POST(req) {
     //    (UNIQUE(firma_id, primary_rank) će nas zaštititi od greške ako se desi duplikat)
     let primarySet = false;
 
+    const hasShowOnInvoice = await hasShowOnInvoiceColumn(conn);
     for (const b of banksFilled) {
       const isPrimary = Number(b.idx) === Number(primaryIdx) && !primarySet;
 
-      await conn.query(
-        `
-        INSERT INTO firma_bank_accounts (
-          firma_id, bank_naziv, bank_racun, iban, swift, primary_rank
-        ) VALUES (
-          ?, ?, ?, ?, ?, ?
-        )
-        `,
-        [
-          firmaId,
-          b.bank_naziv,
-          b.bank_racun,
-          b.iban,
-          b.swift,
-          isPrimary ? 1 : null,
-        ],
-      );
+      if (hasShowOnInvoice) {
+        await conn.query(
+          `
+          INSERT INTO firma_bank_accounts (
+            firma_id, bank_naziv, bank_racun, iban, swift, show_on_invoice, primary_rank
+          ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?
+          )
+          `,
+          [
+            firmaId,
+            b.bank_naziv,
+            b.bank_racun,
+            b.iban,
+            b.swift,
+            b.show_on_invoice,
+            isPrimary ? 1 : null,
+          ],
+        );
+      } else {
+        await conn.query(
+          `
+          INSERT INTO firma_bank_accounts (
+            firma_id, bank_naziv, bank_racun, iban, swift, primary_rank
+          ) VALUES (
+            ?, ?, ?, ?, ?, ?
+          )
+          `,
+          [
+            firmaId,
+            b.bank_naziv,
+            b.bank_racun,
+            b.iban,
+            b.swift,
+            isPrimary ? 1 : null,
+          ],
+        );
+      }
 
       if (isPrimary) primarySet = true;
     }
