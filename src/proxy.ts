@@ -43,7 +43,10 @@ export function proxy(req: NextRequest) {
     const payloadStr = Buffer.from(payloadB64 || "", "base64url").toString(
       "utf8",
     );
-    const parsed = JSON.parse(payloadStr) as { bootstrap?: boolean };
+    const parsed = JSON.parse(payloadStr) as {
+      bootstrap?: boolean;
+      mustChangePassword?: boolean;
+    };
     if (
       parsed.bootstrap === true &&
       parsed.mustChangePassword === true &&
