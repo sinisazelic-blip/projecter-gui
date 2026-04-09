@@ -71,6 +71,9 @@ export default function LicenceClient() {
   const [soccsFedDraft, setSoccsFedDraft] = useState<number | "">("");
   const [soccsSaving, setSoccsSaving] = useState(false);
   const [soccsGenCode, setSoccsGenCode] = useState<string | null>(null);
+  const [soccsGenCodes, setSoccsGenCodes] = useState<string[]>([]);
+  const [soccsMeetCountDraft, setSoccsMeetCountDraft] = useState<string>("1");
+  const [soccsMeetTargetDraft, setSoccsMeetTargetDraft] = useState<string>("");
   const [soccsMeetSponsor, setSoccsMeetSponsor] = useState<number | "">("");
   const [soccsMeetNote, setSoccsMeetNote] = useState("");
   const [soccsGenBusy, setSoccsGenBusy] = useState(false);
@@ -276,6 +279,13 @@ export default function LicenceClient() {
     );
     setSoccsFedDraft(row.soccs_federation_parent_tenant_id ?? "");
     setSoccsGenCode(null);
+    setSoccsGenCodes([]);
+    setSoccsMeetCountDraft("1");
+    setSoccsMeetTargetDraft(
+      Number.isFinite(Number(row.meet_remaining ?? NaN))
+        ? String(Number(row.meet_remaining))
+        : "",
+    );
     setSoccsMeetSponsor("");
     setSoccsMeetNote("");
   };
@@ -293,6 +303,9 @@ export default function LicenceClient() {
       } else if (typeof soccsFedDraft === "number") {
         body.soccs_federation_parent_tenant_id = soccsFedDraft;
       }
+      if (soccsMeetTargetDraft.trim() !== "") {
+        body.meet_session_target = Number(soccsMeetTargetDraft);
+      }
       const res = await fetch(
         `/api/tenant-admin/tenants/${soccsModal.tenant_id}`,
         {
@@ -306,9 +319,16 @@ export default function LicenceClient() {
         await load();
         setSoccsModal((prev) => {
           if (!prev) return null;
+          const nextMeetRemaining =
+            data?.meet_remaining != null
+              ? Number(data.meet_remaining)
+              : Number(prev.meet_remaining ?? NaN);
           return {
             ...prev,
             soccs_tier: soccsTierDraft,
+            meet_remaining: Number.isFinite(nextMeetRemaining)
+              ? nextMeetRemaining
+              : prev.meet_remaining,
             soccs_federation_parent_tenant_id:
               soccsFedDraft === ""
                 ? null
@@ -332,10 +352,15 @@ export default function LicenceClient() {
     setSoccsGenBusy(true);
     setError(null);
     try {
+      const requestedCount = Math.max(
+        1,
+        Math.min(200, Number.parseInt(soccsMeetCountDraft || "1", 10) || 1),
+      );
       const body: Record<string, unknown> = {
         tenant_id: soccsModal.tenant_id,
         purpose,
         valid_days: 365 * 5,
+        count: requestedCount,
       };
       if (purpose === "MEET_SESSION") {
         if (typeof soccsMeetSponsor === "number") {
@@ -349,8 +374,13 @@ export default function LicenceClient() {
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (data.ok && data.code) {
-        setSoccsGenCode(data.code);
+      if (data.ok && (data.code || (Array.isArray(data.codes) && data.codes.length > 0))) {
+        const list = Array.isArray(data.codes)
+          ? data.codes.filter((x: unknown) => typeof x === "string")
+          : (data.code ? [String(data.code)] : []);
+        setSoccsGenCode(list[0] ?? null);
+        setSoccsGenCodes(list);
+        await load();
       } else setError(data.error ?? t("common.error"));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -1000,6 +1030,25 @@ export default function LicenceClient() {
                     : t("studioLicence.soccsSaveTier")}
                 </button>
               </div>
+              <label style={{ display: "block", marginBottom: 4 }}>
+                {t("studioLicence.soccsMeetRemainingSetLabel")}
+              </label>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={soccsMeetTargetDraft}
+                onChange={(e) => setSoccsMeetTargetDraft(e.target.value)}
+                style={{
+                  padding: 8,
+                  marginBottom: 12,
+                  width: "100%",
+                  maxWidth: 220,
+                }}
+              />
+              <p style={{ fontSize: 12, opacity: 0.85, marginTop: -4, marginBottom: 12 }}>
+                {t("studioLicence.soccsMeetRemainingSetHint")}
+              </p>
               <hr style={{ borderColor: "var(--border)", margin: "16px 0" }} />
               <label style={{ display: "block", marginBottom: 8 }}>
                 {t("studioLicence.soccsGenerateFirst")}
@@ -1018,6 +1067,23 @@ export default function LicenceClient() {
               <label style={{ display: "block", marginBottom: 4 }}>
                 {t("studioLicence.soccsGenerateMeet")}
               </label>
+              <label style={{ display: "block", marginBottom: 4, fontSize: 12, opacity: 0.9 }}>
+                {t("studioLicence.soccsMeetCountLabel")}
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={200}
+                step={1}
+                value={soccsMeetCountDraft}
+                onChange={(e) => setSoccsMeetCountDraft(e.target.value)}
+                style={{
+                  padding: 8,
+                  marginBottom: 8,
+                  width: "100%",
+                  maxWidth: 180,
+                }}
+              />
               <select
                 value={soccsMeetSponsor === "" ? "" : String(soccsMeetSponsor)}
                 onChange={(e) => {
@@ -1088,6 +1154,16 @@ export default function LicenceClient() {
                   >
                     {t("studioLicence.copyToken")}
                   </button>
+                  {soccsGenCodes.length > 1 && (
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ marginLeft: 8 }}
+                      onClick={() => copyToClipboard(soccsGenCodes.join("\n"))}
+                    >
+                      {t("studioLicence.soccsCopyAllGenerated")}
+                    </button>
+                  )}
                 </>
               )}
               <p

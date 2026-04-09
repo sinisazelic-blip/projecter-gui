@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { query } from "@/lib/db";
 import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
+import { randomBytes } from "node:crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,7 @@ export async function PATCH(
     currency?: string | null;
     soccs_tier?: string | null;
     soccs_federation_parent_tenant_id?: number | null;
+    meet_session_target?: number | null;
   };
   try {
     body = await req.json();
@@ -65,6 +67,7 @@ export async function PATCH(
   const updates: string[] = [];
   const paramsList: (string | number | null)[] = [];
   let newLicenceToken: string | undefined;
+  let meetSessionTarget: number | null = null;
 
   if (body.regenerate_licence_token === true) {
     const crypto = await import("node:crypto");
@@ -148,7 +151,22 @@ export async function PATCH(
     }
   }
 
-  if (updates.length === 0) {
+  if (body.meet_session_target !== undefined) {
+    if (body.meet_session_target == null) {
+      meetSessionTarget = 0;
+    } else {
+      const n = Number(body.meet_session_target);
+      if (!Number.isInteger(n) || n < 0 || n > 10000) {
+        return NextResponse.json(
+          { ok: false, error: "INVALID_MEET_SESSION_TARGET" },
+          { status: 400 },
+        );
+      }
+      meetSessionTarget = n;
+    }
+  }
+
+  if (updates.length === 0 && meetSessionTarget == null) {
     return NextResponse.json(
       { ok: false, error: "NO_VALID_UPDATES" },
       { status: 400 },
@@ -158,12 +176,53 @@ export async function PATCH(
   paramsList.push(id);
 
   try {
-    await query(
-      `UPDATE tenants SET ${updates.join(", ")}, updated_at = NOW() WHERE tenant_id = ?`,
-      paramsList,
-    );
-    const out: { ok: boolean; licence_token?: string } = { ok: true };
+    if (updates.length > 0) {
+      await query(
+        `UPDATE tenants SET ${updates.join(", ")}, updated_at = NOW() WHERE tenant_id = ?`,
+        paramsList,
+      );
+    }
+
+    if (meetSessionTarget != null) {
+      const currentRows = await query<{ id: number }>(
+        `SELECT id
+         FROM soccs_activation_codes
+         WHERE tenant_id = ?
+           AND purpose = 'MEET_SESSION'
+           AND UPPER(status) = 'ISSUED'
+           AND (valid_until IS NULL OR valid_until >= NOW())
+         ORDER BY id ASC`,
+        [id],
+      );
+      const current = currentRows.length;
+      const delta = meetSessionTarget - current;
+
+      if (delta > 0) {
+        for (let i = 0; i < delta; i += 1) {
+          const code = randomBytes(18).toString("hex");
+          await query(
+            `INSERT INTO soccs_activation_codes
+              (tenant_id, sponsor_tenant_id, code, purpose, status, valid_from, valid_until, max_uses, meet_note)
+             VALUES (?, NULL, ?, 'MEET_SESSION', 'ISSUED', NOW(), DATE_ADD(NOW(), INTERVAL 5 YEAR), 1, 'manual_quota_adjust')`,
+            [id, code],
+          );
+        }
+      } else if (delta < 0) {
+        const revokeIds = currentRows.slice(0, Math.abs(delta)).map((r) => r.id);
+        for (const codeId of revokeIds) {
+          await query(
+            `UPDATE soccs_activation_codes
+             SET status = 'REVOKED', updated_at = NOW()
+             WHERE id = ?`,
+            [codeId],
+          );
+        }
+      }
+    }
+
+    const out: { ok: boolean; licence_token?: string; meet_remaining?: number } = { ok: true };
     if (newLicenceToken) out.licence_token = newLicenceToken;
+    if (meetSessionTarget != null) out.meet_remaining = meetSessionTarget;
     return NextResponse.json(out);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);

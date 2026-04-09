@@ -111,6 +111,7 @@ export async function POST(req: NextRequest) {
     sponsor_tenant_id?: number | null;
     valid_days?: number | null;
     meet_note?: string | null;
+    count?: number | null;
   };
   try {
     body = await req.json();
@@ -178,24 +179,38 @@ export async function POST(req: NextRequest) {
     typeof body?.meet_note === "string"
       ? body.meet_note.trim().slice(0, 255) || null
       : null;
-
-  const code = randomBytes(18).toString("hex");
+  const countRaw = body?.count != null ? Number(body.count) : 1;
+  const count =
+    Number.isInteger(countRaw) && countRaw > 0
+      ? Math.min(countRaw, 200)
+      : 1;
+  const codes: string[] = Array.from({ length: count }, () =>
+    randomBytes(18).toString("hex"),
+  );
 
   try {
-    await query(
-      `INSERT INTO soccs_activation_codes
-        (tenant_id, sponsor_tenant_id, code, purpose, status, valid_from, valid_until, max_uses, meet_note)
-       VALUES (?, ?, ?, ?, 'ISSUED', NOW(), DATE_ADD(NOW(), INTERVAL ? DAY), 1, ?)`,
-      [
-        tenantId,
-        purpose === "MEET_SESSION" ? sponsorTenantId : null,
-        code,
-        purpose,
-        days,
-        meetNote,
-      ],
-    );
-    return NextResponse.json({ ok: true, code, purpose });
+    for (const code of codes) {
+      await query(
+        `INSERT INTO soccs_activation_codes
+          (tenant_id, sponsor_tenant_id, code, purpose, status, valid_from, valid_until, max_uses, meet_note)
+         VALUES (?, ?, ?, ?, 'ISSUED', NOW(), DATE_ADD(NOW(), INTERVAL ? DAY), 1, ?)`,
+        [
+          tenantId,
+          purpose === "MEET_SESSION" ? sponsorTenantId : null,
+          code,
+          purpose,
+          days,
+          meetNote,
+        ],
+      );
+    }
+    return NextResponse.json({
+      ok: true,
+      code: codes[0] ?? null,
+      codes,
+      generated_count: codes.length,
+      purpose,
+    });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
