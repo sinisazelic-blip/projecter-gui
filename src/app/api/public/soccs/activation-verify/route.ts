@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import {
@@ -19,14 +20,31 @@ type VerifyBody = {
   app_version?: string;
 };
 
+/** Uklanja BOM / zero-width / krajnje razmake — često uzrok „istog” ključa koji se ne poklapa. */
+function normalizeBearerSecret(s: string): string {
+  return s
+    .replace(/^\uFEFF/, "")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .trim();
+}
+
 function requireBearer(req: NextRequest): boolean {
-  const expected = process.env.SOCCS_ACTIVATION_VERIFY_BEARER?.trim();
+  const rawExpected = process.env.SOCCS_ACTIVATION_VERIFY_BEARER;
+  const expected = rawExpected ? normalizeBearerSecret(rawExpected) : "";
   if (!expected) return true;
-  const auth = req.headers.get("authorization")?.trim();
+  const auth = req.headers.get("authorization");
   if (!auth) return false;
-  const m = /^Bearer\s+(.+)$/i.exec(auth);
-  const token = m ? m[1].trim() : null;
-  return token === expected;
+  const m = /^Bearer\s+([\s\S]+)$/i.exec(auth.trim());
+  const token = m ? normalizeBearerSecret(m[1]) : "";
+  if (!token || token.length !== expected.length) return false;
+  try {
+    return timingSafeEqual(
+      Buffer.from(expected, "utf8"),
+      Buffer.from(token, "utf8"),
+    );
+  } catch {
+    return false;
+  }
 }
 
 function todayStr(): string {
@@ -67,6 +85,25 @@ function tenantBlockReason(row: TenantRow): string | null {
   const today = todayStr();
   if (row.subscription_ends_at < today) return "subscription_expired";
   return null;
+}
+
+/**
+ * Dijagnostika (bez otkrivanja tajne): da li je env učitan i kolika je duljina nakon normalizacije.
+ * GET u browseru: …/activation-verify — ako bearerConfigured:false, DO ne injektuje varijablu u ovaj servis.
+ */
+export async function GET() {
+  const raw = process.env.SOCCS_ACTIVATION_VERIFY_BEARER;
+  const normalized = raw ? normalizeBearerSecret(raw) : "";
+  return NextResponse.json(
+    {
+      ok: true,
+      bearerConfigured: Boolean(normalized),
+      bearerCharLength: normalized.length,
+    },
+    {
+      headers: { "Cache-Control": "no-store, max-age=0" },
+    },
+  );
 }
 
 /**
