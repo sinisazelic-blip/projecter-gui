@@ -20,6 +20,8 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/_next") || pathname.startsWith("/fluxa/"))
     return true;
   if (pathname.startsWith("/api/auth/")) return true;
+  // SOCCS → Flux master (Bearer u headeru); ne smije ići na login redirect bez kolačića.
+  if (pathname.startsWith("/api/public/soccs/")) return true;
   return false;
 }
 
