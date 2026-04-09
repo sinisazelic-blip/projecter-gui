@@ -22,8 +22,10 @@ type VerifyBody = {
 function requireBearer(req: NextRequest): boolean {
   const expected = process.env.SOCCS_ACTIVATION_VERIFY_BEARER?.trim();
   if (!expected) return true;
-  const auth = req.headers.get("authorization");
-  const token = auth?.startsWith("Bearer ") ? auth.slice(7).trim() : null;
+  const auth = req.headers.get("authorization")?.trim();
+  if (!auth) return false;
+  const m = /^Bearer\s+(.+)$/i.exec(auth);
+  const token = m ? m[1].trim() : null;
   return token === expected;
 }
 
