@@ -163,6 +163,33 @@ export async function POST(req: NextRequest) {
     return await handleLicenseRefresh(installationPublicId, tenantPublicId);
   }
 
+  if (purposeRaw === "CONSUME_MEET_SLOT") {
+    if (!code || !installationPublicId) {
+      return NextResponse.json(
+        { ok: false, reason: "missing_fields", retryable: false },
+        { status: 400 },
+      );
+    }
+    const appConsume = String(body?.app ?? "")
+      .trim()
+      .toLowerCase();
+    if (appConsume && appConsume !== "soccs") {
+      return NextResponse.json(
+        { ok: false, reason: "unsupported_app", retryable: false },
+        { status: 400 },
+      );
+    }
+    try {
+      return await handleConsumeMeetSlot(code, installationPublicId);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return NextResponse.json(
+        { ok: false, reason: "server_error", message: msg, retryable: true },
+        { status: 500 },
+      );
+    }
+  }
+
   if (!code || !installationPublicId) {
     return NextResponse.json(
       { ok: false, reason: "missing_fields", retryable: false },
@@ -279,6 +306,110 @@ async function handleLicenseRefresh(
   }
 
   return jsonSuccess(tenant, "LICENSE_REFRESH", installationPublicId, null);
+}
+
+/**
+ * SOCCS: nakon lokalnog odobrenja takmičenja — potroši jedan ISSUED MEET_SESSION kod (FIFO),
+ * bez ponovnog unosa meet koda (isti installation_public_id kao kod verify-a).
+ */
+async function handleConsumeMeetSlot(tenantKey: string, installationPublicId: string) {
+  const firstRows = await query<{ tenant_id: number }>(
+    `SELECT tenant_id FROM soccs_activation_codes
+     WHERE code = ? AND purpose = 'FIRST_INSTALL'
+     LIMIT 1`,
+    [tenantKey],
+  );
+  const first = firstRows?.[0];
+  if (!first) {
+    return NextResponse.json(
+      { ok: false, reason: "invalid_tenant_code", retryable: false },
+      { status: 200 },
+    );
+  }
+
+  const bindRows = await query<{ id: number }>(
+    `SELECT ac.id FROM soccs_activation_codes ac
+     WHERE ac.tenant_id = ?
+       AND ac.purpose = 'FIRST_INSTALL'
+       AND ac.consumed_installation_id = ?
+     LIMIT 1`,
+    [first.tenant_id, installationPublicId],
+  );
+  if (!bindRows?.length) {
+    return NextResponse.json(
+      { ok: false, reason: "installation_not_bound", retryable: false },
+      { status: 200 },
+    );
+  }
+
+  const tenant = await loadTenantById(first.tenant_id);
+  if (!tenant) {
+    return NextResponse.json(
+      { ok: false, reason: "tenant_missing", retryable: false },
+      { status: 200 },
+    );
+  }
+
+  const block = tenantBlockReason(tenant);
+  if (block) {
+    return NextResponse.json({ ok: false, reason: block, retryable: false }, { status: 200 });
+  }
+
+  const slotRows = await query<{ id: number }>(
+    `SELECT id FROM soccs_activation_codes
+     WHERE tenant_id = ?
+       AND purpose = 'MEET_SESSION'
+       AND UPPER(status) = 'ISSUED'
+       AND (valid_until IS NULL OR valid_until >= NOW())
+     ORDER BY id ASC
+     LIMIT 1`,
+    [first.tenant_id],
+  );
+  const slot = slotRows?.[0];
+  if (!slot) {
+    return NextResponse.json(
+      { ok: false, reason: "no_meet_slots", retryable: false },
+      { status: 200 },
+    );
+  }
+
+  await query(
+    `UPDATE soccs_activation_codes
+     SET consumed_installation_id = ?, uses_count = uses_count + 1, status = 'CONSUMED', updated_at = NOW()
+     WHERE id = ? AND consumed_installation_id IS NULL AND UPPER(status) = 'ISSUED'`,
+    [installationPublicId, slot.id],
+  );
+
+  const verifyRows = await query<{ consumed_installation_id: string | null }>(
+    `SELECT consumed_installation_id FROM soccs_activation_codes WHERE id = ? LIMIT 1`,
+    [slot.id],
+  );
+  const consumedId = verifyRows?.[0]?.consumed_installation_id;
+  if (consumedId !== installationPublicId) {
+    return NextResponse.json(
+      { ok: false, reason: "consume_failed", retryable: true },
+      { status: 200 },
+    );
+  }
+
+  const tenantAfter = await loadTenantById(first.tenant_id);
+  if (!tenantAfter) {
+    return NextResponse.json(
+      { ok: false, reason: "tenant_missing", retryable: false },
+      { status: 200 },
+    );
+  }
+
+  return NextResponse.json(
+    {
+      ok: true,
+      tenant_id: tenantAfter.tenant_public_id,
+      meet_remaining: tenantAfter.meet_remaining,
+      code_state: "meet_slot_consumed",
+      server_time: new Date().toISOString(),
+    },
+    { status: 200 },
+  );
 }
 
 async function handleFirstInstall(code: string, installationPublicId: string) {
