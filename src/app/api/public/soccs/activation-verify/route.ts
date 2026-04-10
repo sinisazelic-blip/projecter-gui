@@ -60,6 +60,8 @@ type TenantRow = {
   subscription_ends_at: string;
   status: string;
   plan_naziv: string | null;
+  /** Preostali izdani MEET_SESSION kodovi (isti smisao kao u tenant-admin listi). */
+  meet_remaining: number;
 };
 
 async function loadTenantById(id: number): Promise<TenantRow | null> {
@@ -71,7 +73,15 @@ async function loadTenantById(id: number): Promise<TenantRow | null> {
        t.soccs_tier,
        DATE_FORMAT(t.subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
        t.status,
-       p.naziv AS plan_naziv
+       p.naziv AS plan_naziv,
+       (
+         SELECT COUNT(*)
+         FROM soccs_activation_codes sac
+         WHERE sac.tenant_id = t.tenant_id
+           AND sac.purpose = 'MEET_SESSION'
+           AND UPPER(sac.status) = 'ISSUED'
+           AND (sac.valid_until IS NULL OR sac.valid_until >= NOW())
+       ) AS meet_remaining
      FROM tenants t
      JOIN plans p ON p.plan_id = t.plan_id
      WHERE t.tenant_id = ?
@@ -410,7 +420,12 @@ function jsonSuccess(
 ) {
   const tier = normalizeSoccsTier(tenant.soccs_tier) as SoccsTier;
   const modules = soccsTierToModules(tier);
-  const limits = soccsTierToLimits(tier);
+  const limits = {
+    ...soccsTierToLimits(tier),
+    meet_quota_remaining: Number.isFinite(Number(tenant.meet_remaining))
+      ? Number(tenant.meet_remaining)
+      : 0,
+  };
   const packageDisplayName = buildSoccsPackageDisplayName({
     tier,
     planNaziv: tenant.plan_naziv,
