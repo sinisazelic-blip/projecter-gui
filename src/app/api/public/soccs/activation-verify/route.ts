@@ -429,9 +429,22 @@ async function handleMeetSession(
     );
   }
 
-  if (String(meet.status).toUpperCase() === "REVOKED") {
+  const meetStatusUpper = String(meet.status).toUpperCase();
+  if (meetStatusUpper === "REVOKED") {
     return NextResponse.json(
       { ok: false, reason: "meet_revoked", retryable: false },
+      { status: 200 },
+    );
+  }
+  if (meetStatusUpper === "CONSUMED") {
+    return NextResponse.json(
+      { ok: false, reason: "meet_code_already_used", retryable: false },
+      { status: 200 },
+    );
+  }
+  if (meetStatusUpper !== "ISSUED") {
+    return NextResponse.json(
+      { ok: false, reason: "meet_invalid_state", retryable: false },
       { status: 200 },
     );
   }
@@ -483,7 +496,46 @@ async function handleMeetSession(
     };
   }
 
-  return jsonSuccess(tenant, "MEET_SESSION", installationPublicId, sponsorMeet);
+  /** Jedno odobreno takmičenje = jedan potrošen MEET_SESSION kod (smanjuje ISSUED / meet_remaining). */
+  await query(
+    `UPDATE soccs_activation_codes
+     SET consumed_installation_id = ?, uses_count = uses_count + 1, status = 'CONSUMED', updated_at = NOW()
+     WHERE id = ? AND consumed_installation_id IS NULL AND UPPER(status) = 'ISSUED'`,
+    [installationPublicId, meet.id],
+  );
+
+  const verifyRows = await query<{ consumed_installation_id: string | null }>(
+    `SELECT consumed_installation_id FROM soccs_activation_codes WHERE id = ? LIMIT 1`,
+    [meet.id],
+  );
+  const consumedId = verifyRows?.[0]?.consumed_installation_id;
+  if (consumedId === installationPublicId) {
+    const tenantAfter = await loadTenantById(meet.tenant_id);
+    if (!tenantAfter) {
+      return NextResponse.json(
+        { ok: false, reason: "tenant_missing", retryable: false },
+        { status: 200 },
+      );
+    }
+    const blockAfter = tenantBlockReason(tenantAfter);
+    if (blockAfter) {
+      return NextResponse.json(
+        { ok: false, reason: blockAfter, retryable: false },
+        { status: 200 },
+      );
+    }
+    return jsonSuccess(tenantAfter, "MEET_SESSION", installationPublicId, sponsorMeet);
+  }
+  if (consumedId) {
+    return NextResponse.json(
+      { ok: false, reason: "meet_code_already_used", retryable: false },
+      { status: 200 },
+    );
+  }
+  return NextResponse.json(
+    { ok: false, reason: "consume_failed", retryable: true },
+    { status: 200 },
+  );
 }
 
 function jsonSuccess(
