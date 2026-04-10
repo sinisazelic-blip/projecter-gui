@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import {
   buildSoccsLicenseJwtLike,
+  buildSoccsPackageDisplayName,
   normalizeSoccsTier,
   type SoccsTier,
   soccsTierToLimits,
@@ -58,6 +59,7 @@ type TenantRow = {
   soccs_tier: string | null;
   subscription_ends_at: string;
   status: string;
+  plan_naziv: string | null;
 };
 
 async function loadTenantById(id: number): Promise<TenantRow | null> {
@@ -68,8 +70,10 @@ async function loadTenantById(id: number): Promise<TenantRow | null> {
        t.naziv,
        t.soccs_tier,
        DATE_FORMAT(t.subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
-       t.status
+       t.status,
+       p.naziv AS plan_naziv
      FROM tenants t
+     JOIN plans p ON p.plan_id = t.plan_id
      WHERE t.tenant_id = ?
      LIMIT 1`,
     [id],
@@ -407,13 +411,26 @@ function jsonSuccess(
   const tier = normalizeSoccsTier(tenant.soccs_tier) as SoccsTier;
   const modules = soccsTierToModules(tier);
   const limits = soccsTierToLimits(tier);
-  const license = buildSoccsLicenseJwtLike({
+  const packageDisplayName = buildSoccsPackageDisplayName({
+    tier,
+    planNaziv: tenant.plan_naziv,
+  });
+  const signed = buildSoccsLicenseJwtLike({
     tenantPublicId: tenant.tenant_public_id,
     tier,
     subscriptionEndsAt: tenant.subscription_ends_at,
     installationPublicId,
     purpose,
+    packageDisplayName,
   });
+
+  /** `license.kind` = čitljiv naziv paketa za SOCCS/SV; `signing_mode` = tehnički tip payloada. */
+  const license = {
+    kind: packageDisplayName,
+    signing_mode: signed.signing_mode,
+    expires_at: signed.expires_at,
+    payload: signed.payload,
+  };
 
   const payload: Record<string, unknown> = {
     tenant_id: tenant.tenant_public_id,
@@ -422,6 +439,8 @@ function jsonSuccess(
     modules,
     limits,
     license,
+    /** Isti paket za budući SwimVoice verify (paritet s SOCCS). */
+    package_name: packageDisplayName,
     code_state: purpose === "FIRST_INSTALL" ? "consumed_ok" : "meet_ok",
     server_time: new Date().toISOString(),
   };

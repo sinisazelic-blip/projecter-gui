@@ -60,6 +60,7 @@ export async function GET() {
       days_until_end: number;
       meet_remaining: number;
       licence_token: string | null;
+      soccs_first_install_consumed: number;
     }>(
       `SELECT
         t.tenant_id,
@@ -85,7 +86,15 @@ export async function GET() {
             AND UPPER(sac.status) = 'ISSUED'
             AND (sac.valid_until IS NULL OR sac.valid_until >= NOW())
         ) AS meet_remaining,
-        t.licence_token
+        t.licence_token,
+        (
+          SELECT CASE WHEN EXISTS (
+            SELECT 1 FROM soccs_activation_codes s2
+            WHERE s2.tenant_id = t.tenant_id
+              AND s2.purpose = 'FIRST_INSTALL'
+              AND s2.consumed_installation_id IS NOT NULL
+          ) THEN 1 ELSE 0 END
+        ) AS soccs_first_install_consumed
        FROM tenants t
        JOIN plans p ON p.plan_id = t.plan_id
        LEFT JOIN tenants fp ON fp.tenant_id = t.soccs_federation_parent_tenant_id

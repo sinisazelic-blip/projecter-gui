@@ -49,6 +49,24 @@ export function soccsTierToLimits(
   };
 }
 
+/**
+ * Čitljiv naziv paketa za SOCCS / SwimVoice header (šalje se u verify kao `license.kind`).
+ * Flux plan + SOCCS tier + SwimVoice kad je u modulima.
+ */
+export function buildSoccsPackageDisplayName(opts: {
+  tier: SoccsTier;
+  planNaziv?: string | null;
+}): string {
+  const modules = soccsTierToModules(opts.tier);
+  const tierLabel = opts.tier.replace(/_/g, " ");
+  const bits: string[] = [];
+  const plan = String(opts.planNaziv ?? "").trim();
+  if (plan) bits.push(plan);
+  bits.push(`SOCCS ${tierLabel}`);
+  if (modules.swimvoice) bits.push("SwimVoice");
+  return bits.join(" · ");
+}
+
 export function signSoccsLicensePayload(
   payload: Record<string, unknown>,
   secret: string,
@@ -66,11 +84,18 @@ export function buildSoccsLicenseJwtLike(opts: {
   subscriptionEndsAt: string;
   installationPublicId: string;
   purpose: "FIRST_INSTALL" | "MEET_SESSION";
-}): { kind: string; expires_at: string | null; payload: string } {
+  /** Isti string kao u verify `license.kind` — za potpis i za SV/SOCCS prikaz. */
+  packageDisplayName: string;
+}): {
+  signing_mode: "signed_bundle" | "unsigned_bundle";
+  expires_at: string | null;
+  payload: string;
+} {
   const secret = process.env.SOCCS_LICENSE_SIGNING_SECRET?.trim();
   const inner = {
     sub: opts.tenantPublicId,
     tier: opts.tier,
+    package_name: opts.packageDisplayName,
     exp: opts.subscriptionEndsAt,
     inst: opts.installationPublicId,
     purpose: opts.purpose,
@@ -78,13 +103,13 @@ export function buildSoccsLicenseJwtLike(opts: {
   };
   if (!secret) {
     return {
-      kind: "unsigned_bundle",
+      signing_mode: "unsigned_bundle",
       expires_at: opts.subscriptionEndsAt,
       payload: Buffer.from(JSON.stringify(inner), "utf8").toString("base64url"),
     };
   }
   return {
-    kind: "signed_bundle",
+    signing_mode: "signed_bundle",
     expires_at: opts.subscriptionEndsAt,
     payload: signSoccsLicensePayload(inner, secret),
   };

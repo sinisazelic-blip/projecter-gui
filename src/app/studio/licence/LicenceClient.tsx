@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useTranslation } from "@/components/LocaleProvider";
 
 const USER_LIMIT_OPTIONS = [1, 3, 5, 10, 50, 101] as const; // 101 = 100+
@@ -32,6 +32,8 @@ type TenantRow = {
   days_until_end: number;
   meet_remaining?: number;
   licence_token?: string | null;
+  /** 1 ako je FIRST_INSTALL kod potrošen (SOCCS aktiviran). */
+  soccs_first_install_consumed?: number;
 };
 
 type PlanRow = { plan_id: number; naziv: string; max_users: number };
@@ -395,6 +397,43 @@ export default function LicenceClient() {
     return `${Number(row.monthly_price)} ${curr}`;
   };
 
+  /** Zeleno: aktivan i (nema čekanja SOCCS aktivacije). Žuto: čeka prvu SOCCS aktivaciju. Crveno: suspend / isteklo. */
+  const tenantStatusLamp = (row: TenantRow) => {
+    const st = String(row.status).toUpperCase();
+    if (st === "SUSPENDOVAN" || st === "ISTEKLO") {
+      return {
+        color: "#ef4444",
+        title: t("studioLicence.lampTitleRed"),
+      };
+    }
+    if (Number(row.days_until_end) < 0) {
+      return {
+        color: "#dc2626",
+        title: t("studioLicence.lampTitleExpired"),
+      };
+    }
+    const soccs = String(row.soccs_tier ?? "").trim().toUpperCase();
+    const needsSoccsNode =
+      soccs !== "" &&
+      soccs !== "SWIMVOICE" &&
+      SOCCS_TIER_OPTIONS.includes(soccs as (typeof SOCCS_TIER_OPTIONS)[number]);
+    const consumed = Number(row.soccs_first_install_consumed ?? 0) === 1;
+    if (
+      st === "AKTIVAN" &&
+      needsSoccsNode &&
+      !consumed
+    ) {
+      return {
+        color: "#eab308",
+        title: t("studioLicence.lampTitleYellow"),
+      };
+    }
+    return {
+      color: "#22c55e",
+      title: t("studioLicence.lampTitleGreen"),
+    };
+  };
+
   if (loading) {
     return <p style={{ padding: 24 }}>{t("common.loading")}</p>;
   }
@@ -403,17 +442,47 @@ export default function LicenceClient() {
     return <p style={{ padding: 24, color: "var(--danger)" }}>{error}</p>;
   }
 
-  const tableStyle: React.CSSProperties = {
+  const tableStyle: CSSProperties = {
     width: "100%",
     borderCollapse: "collapse",
     background: "var(--panel)",
     borderRadius: 12,
     overflow: "hidden",
+    fontSize: 13,
   };
-  const thTd = {
-    padding: "12px 16px",
-    textAlign: "left" as const,
+  const thTd: CSSProperties = {
+    padding: "6px 8px",
+    textAlign: "left",
     borderBottom: "1px solid var(--border)",
+    verticalAlign: "top",
+  };
+  const thFlux: CSSProperties = {
+    ...thTd,
+    background: "rgba(59, 130, 246, 0.1)",
+    borderLeft: "2px solid rgba(59, 130, 246, 0.35)",
+  };
+  const thFluxCont: CSSProperties = {
+    ...thTd,
+    background: "rgba(59, 130, 246, 0.08)",
+  };
+  const thSoccs: CSSProperties = {
+    ...thTd,
+    background: "rgba(239, 68, 68, 0.1)",
+    borderLeft: "2px solid rgba(239, 68, 68, 0.35)",
+  };
+  const tdFlux: CSSProperties = {
+    ...thTd,
+    background: "rgba(59, 130, 246, 0.06)",
+    borderLeft: "2px solid rgba(59, 130, 246, 0.25)",
+  };
+  const tdFluxCont: CSSProperties = {
+    ...thTd,
+    background: "rgba(59, 130, 246, 0.04)",
+  };
+  const tdSoccs: CSSProperties = {
+    ...thTd,
+    background: "rgba(239, 68, 68, 0.06)",
+    borderLeft: "2px solid rgba(239, 68, 68, 0.25)",
   };
 
   return (
@@ -440,17 +509,66 @@ export default function LicenceClient() {
         <table style={tableStyle}>
           <thead>
             <tr>
+              <th
+                colSpan={6}
+                style={{
+                  ...thTd,
+                  textAlign: "center",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  opacity: 0.9,
+                  letterSpacing: "0.02em",
+                }}
+              >
+                {t("studioLicence.groupCommon")}
+              </th>
+              <th
+                colSpan={3}
+                style={{
+                  ...thFlux,
+                  textAlign: "center",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "rgba(96, 165, 250, 0.95)",
+                }}
+              >
+                {t("studioLicence.groupFluxa")}
+              </th>
+              <th
+                colSpan={1}
+                style={{
+                  ...thSoccs,
+                  textAlign: "center",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "rgba(248, 113, 113, 0.95)",
+                }}
+              >
+                {t("studioLicence.groupSoccsSv")}
+              </th>
+              <th
+                rowSpan={2}
+                style={{
+                  ...thTd,
+                  textAlign: "center",
+                  fontSize: 11,
+                  verticalAlign: "middle",
+                }}
+              >
+                {t("studioLicence.colAkcije")}
+              </th>
+            </tr>
+            <tr>
               <th style={thTd}>{t("studioLicence.colNaziv")}</th>
-              <th style={thTd}>{t("studioLicence.colFluxaVersion")}</th>
-              <th style={thTd}>{t("studioLicence.colSoccsVersion")}</th>
-              <th style={thTd}>{t("studioLicence.colKorisnici")}</th>
               <th style={thTd}>{t("studioLicence.colCijena")}</th>
               <th style={thTd}>{t("studioLicence.colIstice")}</th>
               <th style={thTd}>{t("studioLicence.colDana")}</th>
               <th style={thTd}>{t("studioLicence.colMeetRemaining")}</th>
-              <th style={thTd}>{t("studioLicence.colStatus")}</th>
-              <th style={thTd}>{t("studioLicence.colToken")}</th>
-              <th style={thTd}>{t("studioLicence.colAkcije")}</th>
+              <th style={thTd}>{t("studioLicence.colStatusLamp")}</th>
+              <th style={thFlux}>{t("studioLicence.colFluxaVersion")}</th>
+              <th style={thFluxCont}>{t("studioLicence.colKorisnici")}</th>
+              <th style={thFluxCont}>{t("studioLicence.colToken")}</th>
+              <th style={thSoccs}>{t("studioLicence.colSoccsVersion")}</th>
             </tr>
           </thead>
           <tbody>
@@ -461,115 +579,159 @@ export default function LicenceClient() {
                 </td>
               </tr>
             ) : (
-              tenants.map((row) => (
-                <tr key={row.tenant_id}>
-                  <td style={thTd}>{row.naziv}</td>
-                  <td style={thTd}>{row.plan_naziv}</td>
-                  <td style={thTd}>{formatSoccsTier(row)}</td>
-                  <td style={thTd}>{formatMaxUsers(row.max_users)}</td>
-                  <td style={thTd}>{formatPrice(row)}</td>
-                  <td style={thTd}>{row.subscription_ends_at}</td>
-                  <td style={thTd}>
-                    {row.days_until_end > 0
-                      ? row.days_until_end
-                      : row.days_until_end === 0
-                        ? "0"
-                        : t("studioLicence.expired")}
-                  </td>
-                  <td style={thTd}>
-                    {Number.isFinite(Number(row.meet_remaining ?? NaN))
-                      ? Number(row.meet_remaining)
-                      : "—"}
-                  </td>
-                  <td style={thTd}>{row.status}</td>
-                  <td style={thTd}>
-                    <button
-                      type="button"
-                      className="btn"
-                      style={{ fontSize: 12 }}
-                      onClick={() => setTokenModalRow(row)}
-                      title={t("studioLicence.tokenTooltip")}
-                    >
-                      {row.licence_token
-                        ? "🔑 Token"
-                        : t("studioLicence.noToken")}
-                    </button>
-                  </td>
-                  <td style={thTd}>
-                    <span
-                      style={{ fontSize: 11, opacity: 0.75, marginRight: 6 }}
-                    >
-                      {t("studioLicence.actionsFluxa")}:
-                    </span>
-                    <button
-                      type="button"
-                      className="btn"
-                      style={{ marginRight: 8 }}
-                      onClick={() => openExtendModal(row)}
-                    >
-                      {t("studioLicence.extend")}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn"
-                      style={{ marginRight: 8 }}
-                      onClick={() => openPlanModal(row.tenant_id)}
-                    >
-                      {t("studioLicence.changePlan")}
-                    </button>
-                    {String(row.status).toUpperCase() === "SUSPENDOVAN" ? (
+              tenants.map((row) => {
+                const lamp = tenantStatusLamp(row);
+                return (
+                  <tr key={row.tenant_id}>
+                    <td style={thTd}>{row.naziv}</td>
+                    <td style={thTd}>{formatPrice(row)}</td>
+                    <td style={thTd}>{row.subscription_ends_at}</td>
+                    <td style={thTd}>
+                      {row.days_until_end > 0
+                        ? row.days_until_end
+                        : row.days_until_end === 0
+                          ? "0"
+                          : t("studioLicence.expired")}
+                    </td>
+                    <td style={thTd}>
+                      {Number.isFinite(Number(row.meet_remaining ?? NaN))
+                        ? Number(row.meet_remaining)
+                        : "—"}
+                    </td>
+                    <td style={thTd}>
+                      <span
+                        role="img"
+                        aria-label={lamp.title}
+                        title={`${lamp.title} (${row.status})`}
+                        style={{
+                          display: "inline-block",
+                          width: 14,
+                          height: 14,
+                          borderRadius: 999,
+                          background: lamp.color,
+                          boxShadow: `0 0 0 2px rgba(255,255,255,0.2)`,
+                          verticalAlign: "middle",
+                        }}
+                      />
+                    </td>
+                    <td style={tdFlux}>{row.plan_naziv}</td>
+                    <td style={tdFluxCont}>
+                      {formatMaxUsers(row.max_users)}
+                    </td>
+                    <td style={tdFluxCont}>
                       <button
                         type="button"
                         className="btn"
-                        style={{ marginLeft: 8 }}
-                        disabled={statusSavingId === row.tenant_id}
-                        onClick={() =>
-                          handleSetStatus(row.tenant_id, "AKTIVAN")
-                        }
-                        title={t("studioLicence.restoreAccess")}
+                        style={{ fontSize: 11, padding: "4px 8px" }}
+                        onClick={() => setTokenModalRow(row)}
+                        title={t("studioLicence.tokenTooltip")}
                       >
-                        {statusSavingId === row.tenant_id
-                          ? t("common.loading")
-                          : t("studioLicence.restoreAccess")}
+                        {row.licence_token
+                          ? "🔑 Token"
+                          : t("studioLicence.noToken")}
                       </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn"
-                        style={{ marginLeft: 8 }}
-                        disabled={statusSavingId === row.tenant_id}
-                        onClick={() =>
-                          handleSetStatus(row.tenant_id, "SUSPENDOVAN")
-                        }
-                        title={t("studioLicence.suspendAccess")}
+                    </td>
+                    <td style={tdSoccs}>{formatSoccsTier(row)}</td>
+                    <td style={thTd}>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 6,
+                          alignItems: "center",
+                        }}
                       >
-                        {statusSavingId === row.tenant_id
-                          ? t("common.loading")
-                          : t("studioLicence.suspend")}
-                      </button>
-                    )}
-                    <span
-                      style={{
-                        fontSize: 11,
-                        opacity: 0.75,
-                        marginLeft: 10,
-                        marginRight: 6,
-                      }}
-                    >
-                      {t("studioLicence.actionsSoccs")}:
-                    </span>
-                    <button
-                      type="button"
-                      className="btn"
-                      style={{ marginLeft: 8 }}
-                      onClick={() => openSoccsModal(row)}
-                      title={t("studioLicence.soccsModalTitle")}
-                    >
-                      {t("studioLicence.soccsButton")}
-                    </button>
-                  </td>
-                </tr>
-              ))
+                        <button
+                          type="button"
+                          className="btn"
+                          style={{
+                            fontSize: 11,
+                            padding: "4px 8px",
+                            color: "#60a5fa",
+                            borderColor: "rgba(96, 165, 250, 0.45)",
+                            background: "rgba(59, 130, 246, 0.12)",
+                          }}
+                          onClick={() => openExtendModal(row)}
+                        >
+                          {t("studioLicence.extend")}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn"
+                          style={{
+                            fontSize: 11,
+                            padding: "4px 8px",
+                            color: "#60a5fa",
+                            borderColor: "rgba(96, 165, 250, 0.45)",
+                            background: "rgba(59, 130, 246, 0.12)",
+                          }}
+                          onClick={() => openPlanModal(row.tenant_id)}
+                        >
+                          {t("studioLicence.changePlan")}
+                        </button>
+                        {String(row.status).toUpperCase() === "SUSPENDOVAN" ? (
+                          <button
+                            type="button"
+                            className="btn"
+                            style={{
+                              fontSize: 11,
+                              padding: "4px 8px",
+                              color: "#f8fafc",
+                              borderColor: "rgba(248, 250, 252, 0.35)",
+                              background: "rgba(148, 163, 184, 0.2)",
+                            }}
+                            disabled={statusSavingId === row.tenant_id}
+                            onClick={() =>
+                              handleSetStatus(row.tenant_id, "AKTIVAN")
+                            }
+                            title={t("studioLicence.restoreAccess")}
+                          >
+                            {statusSavingId === row.tenant_id
+                              ? t("common.loading")
+                              : t("studioLicence.restoreAccess")}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn"
+                            style={{
+                              fontSize: 11,
+                              padding: "4px 8px",
+                              color: "#f8fafc",
+                              borderColor: "rgba(248, 250, 252, 0.35)",
+                              background: "rgba(148, 163, 184, 0.2)",
+                            }}
+                            disabled={statusSavingId === row.tenant_id}
+                            onClick={() =>
+                              handleSetStatus(row.tenant_id, "SUSPENDOVAN")
+                            }
+                            title={`${t("studioLicence.suspendAccess")} (${t("studioLicence.suspendAppliesToAll")})`}
+                          >
+                            {statusSavingId === row.tenant_id
+                              ? t("common.loading")
+                              : t("studioLicence.suspend")}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="btn"
+                          style={{
+                            fontSize: 11,
+                            padding: "4px 8px",
+                            color: "#f87171",
+                            borderColor: "rgba(248, 113, 113, 0.45)",
+                            background: "rgba(239, 68, 68, 0.12)",
+                          }}
+                          onClick={() => openSoccsModal(row)}
+                          title={t("studioLicence.soccsModalTitle")}
+                        >
+                          {t("studioLicence.soccsButton")}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -1270,7 +1432,7 @@ export default function LicenceClient() {
   );
 }
 
-function overlayStyle(): React.CSSProperties {
+function overlayStyle(): CSSProperties {
   return {
     position: "fixed",
     inset: 0,
@@ -1284,7 +1446,7 @@ function overlayStyle(): React.CSSProperties {
   };
 }
 
-function modalStyle(maxW = 420): React.CSSProperties {
+function modalStyle(maxW = 420): CSSProperties {
   return {
     width: "min(100%, " + maxW + "px)",
     border: "1px solid var(--border)",
