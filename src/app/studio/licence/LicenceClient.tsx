@@ -74,6 +74,13 @@ export default function LicenceClient() {
   const [soccsSaving, setSoccsSaving] = useState(false);
   const [soccsGenCode, setSoccsGenCode] = useState<string | null>(null);
   const [soccsGenCodes, setSoccsGenCodes] = useState<string[]>([]);
+  /** Polje 1 na SOCCS aktivaciji (FIRST_INSTALL); kod MEET_SESSION dolazi iz API odgovora. */
+  const [soccsGenFirstInstallCode, setSoccsGenFirstInstallCode] = useState<
+    string | null
+  >(null);
+  const [soccsLastGenPurpose, setSoccsLastGenPurpose] = useState<
+    "FIRST_INSTALL" | "MEET_SESSION" | null
+  >(null);
   const [soccsMeetCountDraft, setSoccsMeetCountDraft] = useState<string>("1");
   const [soccsMeetTargetDraft, setSoccsMeetTargetDraft] = useState<string>("");
   const [soccsMeetSponsor, setSoccsMeetSponsor] = useState<number | "">("");
@@ -282,6 +289,8 @@ export default function LicenceClient() {
     setSoccsFedDraft(row.soccs_federation_parent_tenant_id ?? "");
     setSoccsGenCode(null);
     setSoccsGenCodes([]);
+    setSoccsGenFirstInstallCode(null);
+    setSoccsLastGenPurpose(null);
     setSoccsMeetCountDraft("1");
     setSoccsMeetTargetDraft(
       Number.isFinite(Number(row.meet_remaining ?? NaN))
@@ -380,8 +389,19 @@ export default function LicenceClient() {
         const list = Array.isArray(data.codes)
           ? data.codes.filter((x: unknown) => typeof x === "string")
           : (data.code ? [String(data.code)] : []);
-        setSoccsGenCode(list[0] ?? null);
-        setSoccsGenCodes(list);
+        setSoccsLastGenPurpose(purpose);
+        if (purpose === "FIRST_INSTALL") {
+          setSoccsGenFirstInstallCode(list[0] ?? null);
+          setSoccsGenCode(null);
+          setSoccsGenCodes(list);
+        } else {
+          const fiRaw = data.first_install_code;
+          const fi =
+            typeof fiRaw === "string" && fiRaw.trim() ? fiRaw.trim() : null;
+          setSoccsGenFirstInstallCode(fi);
+          setSoccsGenCode(list[0] ?? null);
+          setSoccsGenCodes(list);
+        }
         await load();
       } else setError(data.error ?? t("common.error"));
     } catch (e) {
@@ -1291,42 +1311,111 @@ export default function LicenceClient() {
                   ? t("common.loading")
                   : t("studioLicence.soccsGenerateMeet")}
               </button>
-              {soccsGenCode && (
-                <>
-                  <p style={{ fontSize: 13, marginBottom: 6 }}>
+              {(soccsGenFirstInstallCode || soccsGenCode) && (
+                <div style={{ marginTop: 8 }}>
+                  <p style={{ fontSize: 13, marginBottom: 10 }}>
                     {t("studioLicence.soccsCodeGenerated")}
                   </p>
-                  <code
-                    style={{
-                      display: "block",
-                      padding: 12,
-                      background: "var(--panel)",
-                      borderRadius: 8,
-                      marginBottom: 8,
-                      wordBreak: "break-all",
-                      fontSize: 12,
-                    }}
-                  >
-                    {soccsGenCode}
-                  </code>
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={() => copyToClipboard(soccsGenCode)}
-                  >
-                    {t("studioLicence.copyToken")}
-                  </button>
-                  {soccsGenCodes.length > 1 && (
+                  {soccsGenFirstInstallCode ? (
+                    <div style={{ marginBottom: soccsGenCode ? 14 : 0 }}>
+                      <p style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+                        {t("studioLicence.soccsField1Label")}
+                      </p>
+                      <p style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>
+                        {t("studioLicence.soccsField1Hint")}
+                      </p>
+                      <code
+                        style={{
+                          display: "block",
+                          padding: 12,
+                          background: "var(--panel)",
+                          borderRadius: 8,
+                          marginBottom: 8,
+                          wordBreak: "break-all",
+                          fontSize: 12,
+                        }}
+                      >
+                        {soccsGenFirstInstallCode}
+                      </code>
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => copyToClipboard(soccsGenFirstInstallCode)}
+                      >
+                        {t("studioLicence.copyToken")}
+                      </button>
+                    </div>
+                  ) : null}
+                  {soccsLastGenPurpose === "MEET_SESSION" &&
+                  soccsGenCode &&
+                  !soccsGenFirstInstallCode ? (
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: "var(--destructive, #b91c1c)",
+                        marginBottom: 10,
+                      }}
+                    >
+                      {t("studioLicence.soccsMeetFirstInstallMissing")}
+                    </p>
+                  ) : null}
+                  {soccsGenCode ? (
+                    <div>
+                      <p style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+                        {t("studioLicence.soccsField2Label")}
+                      </p>
+                      <p style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>
+                        {t("studioLicence.soccsField2Hint")}
+                      </p>
+                      <code
+                        style={{
+                          display: "block",
+                          padding: 12,
+                          background: "var(--panel)",
+                          borderRadius: 8,
+                          marginBottom: 8,
+                          wordBreak: "break-all",
+                          fontSize: 12,
+                        }}
+                      >
+                        {soccsGenCode}
+                      </code>
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => copyToClipboard(soccsGenCode)}
+                      >
+                        {t("studioLicence.copyToken")}
+                      </button>
+                      {soccsGenCodes.length > 1 && (
+                        <button
+                          type="button"
+                          className="btn"
+                          style={{ marginLeft: 8 }}
+                          onClick={() =>
+                            copyToClipboard(soccsGenCodes.join("\n"))
+                          }
+                        >
+                          {t("studioLicence.soccsCopyAllGenerated")}
+                        </button>
+                      )}
+                    </div>
+                  ) : null}
+                  {soccsGenFirstInstallCode && soccsGenCode ? (
                     <button
                       type="button"
                       className="btn"
-                      style={{ marginLeft: 8 }}
-                      onClick={() => copyToClipboard(soccsGenCodes.join("\n"))}
+                      style={{ marginTop: 12, display: "block" }}
+                      onClick={() =>
+                        copyToClipboard(
+                          `${soccsGenFirstInstallCode}\n${soccsGenCode}`,
+                        )
+                      }
                     >
-                      {t("studioLicence.soccsCopyAllGenerated")}
+                      {t("studioLicence.soccsCopyBothFields")}
                     </button>
-                  )}
-                </>
+                  ) : null}
+                </div>
               )}
               <p
                 style={{

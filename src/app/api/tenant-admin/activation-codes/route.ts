@@ -204,12 +204,27 @@ export async function POST(req: NextRequest) {
         ],
       );
     }
+
+    let firstInstallCode: string | null = null;
+    if (purpose === "MEET_SESSION") {
+      const fiRows = await query<{ code: string }>(
+        `SELECT code FROM soccs_activation_codes
+         WHERE tenant_id = ? AND purpose = 'FIRST_INSTALL'
+         ORDER BY id ASC
+         LIMIT 1`,
+        [tenantId],
+      );
+      const row = Array.isArray(fiRows) ? fiRows[0] : null;
+      firstInstallCode = row?.code?.trim() ? row.code.trim() : null;
+    }
+
     return NextResponse.json({
       ok: true,
       code: codes[0] ?? null,
       codes,
       generated_count: codes.length,
       purpose,
+      first_install_code: firstInstallCode,
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
