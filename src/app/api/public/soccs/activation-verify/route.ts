@@ -16,6 +16,7 @@ type VerifyBody = {
   code?: string;
   meet_code?: string | null;
   installation_public_id?: string;
+  tenant_public_id?: string;
   purpose?: string;
   app?: string;
   app_version?: string;
@@ -151,6 +152,17 @@ export async function POST(req: NextRequest) {
     .toUpperCase();
   const meetCode = body?.meet_code != null ? String(body.meet_code).trim() : "";
 
+  if (purposeRaw === "LICENSE_REFRESH") {
+    const tenantPublicId = String(body?.tenant_public_id ?? "").trim();
+    if (!installationPublicId || !tenantPublicId) {
+      return NextResponse.json(
+        { ok: false, reason: "missing_fields", retryable: false },
+        { status: 400 },
+      );
+    }
+    return await handleLicenseRefresh(installationPublicId, tenantPublicId);
+  }
+
   if (!code || !installationPublicId) {
     return NextResponse.json(
       { ok: false, reason: "missing_fields", retryable: false },
@@ -205,6 +217,68 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+/**
+ * Ponovni sync licence za već aktiviranu instalaciju (bez aktivacionog koda).
+ * Provjerava da je instalacija vezana za ovog tenanta (FIRST_INSTALL potrošen na isti installation_public_id).
+ */
+async function handleLicenseRefresh(
+  installationPublicId: string,
+  tenantPublicId: string,
+) {
+  const tenantRows = await query<TenantRow>(
+    `SELECT
+       t.tenant_id,
+       t.tenant_public_id,
+       t.naziv,
+       t.soccs_tier,
+       DATE_FORMAT(t.subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
+       t.status,
+       p.naziv AS plan_naziv,
+       (
+         SELECT COUNT(*)
+         FROM soccs_activation_codes sac
+         WHERE sac.tenant_id = t.tenant_id
+           AND sac.purpose = 'MEET_SESSION'
+           AND UPPER(sac.status) = 'ISSUED'
+           AND (sac.valid_until IS NULL OR sac.valid_until >= NOW())
+       ) AS meet_remaining
+     FROM tenants t
+     JOIN plans p ON p.plan_id = t.plan_id
+     WHERE t.tenant_public_id = ?
+     LIMIT 1`,
+    [tenantPublicId],
+  );
+  const tenant = tenantRows?.[0];
+  if (!tenant) {
+    return NextResponse.json(
+      { ok: false, reason: "tenant_missing", retryable: false },
+      { status: 200 },
+    );
+  }
+
+  const bindRows = await query<{ id: number }>(
+    `SELECT ac.id FROM soccs_activation_codes ac
+     WHERE ac.tenant_id = ?
+       AND ac.purpose = 'FIRST_INSTALL'
+       AND ac.consumed_installation_id = ?
+     LIMIT 1`,
+    [tenant.tenant_id, installationPublicId],
+  );
+  if (!bindRows?.length) {
+    return NextResponse.json(
+      { ok: false, reason: "installation_not_bound", retryable: false },
+      { status: 200 },
+    );
+  }
+
+  const block = tenantBlockReason(tenant);
+  if (block) {
+    return NextResponse.json({ ok: false, reason: block, retryable: false }, { status: 200 });
+  }
+
+  return jsonSuccess(tenant, "LICENSE_REFRESH", installationPublicId, null);
 }
 
 async function handleFirstInstall(code: string, installationPublicId: string) {
@@ -414,7 +488,7 @@ async function handleMeetSession(
 
 function jsonSuccess(
   tenant: TenantRow,
-  purpose: "FIRST_INSTALL" | "MEET_SESSION",
+  purpose: "FIRST_INSTALL" | "MEET_SESSION" | "LICENSE_REFRESH",
   installationPublicId: string,
   meet: Record<string, unknown> | null,
 ) {
@@ -430,12 +504,15 @@ function jsonSuccess(
     tier,
     planNaziv: tenant.plan_naziv,
   });
+  const jwtPurpose: "FIRST_INSTALL" | "MEET_SESSION" =
+    purpose === "LICENSE_REFRESH" ? "FIRST_INSTALL" : purpose;
+
   const signed = buildSoccsLicenseJwtLike({
     tenantPublicId: tenant.tenant_public_id,
     tier,
     subscriptionEndsAt: tenant.subscription_ends_at,
     installationPublicId,
-    purpose,
+    purpose: jwtPurpose,
     packageDisplayName,
   });
 
@@ -456,7 +533,12 @@ function jsonSuccess(
     license,
     /** Isti paket za budući SwimVoice verify (paritet s SOCCS). */
     package_name: packageDisplayName,
-    code_state: purpose === "FIRST_INSTALL" ? "consumed_ok" : "meet_ok",
+    code_state:
+      purpose === "LICENSE_REFRESH"
+        ? "license_sync"
+        : purpose === "FIRST_INSTALL"
+          ? "consumed_ok"
+          : "meet_ok",
     server_time: new Date().toISOString(),
   };
   if (meet) {
