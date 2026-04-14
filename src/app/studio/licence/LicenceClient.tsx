@@ -527,6 +527,18 @@ export default function LicenceClient() {
     background: "rgba(239, 68, 68, 0.06)",
     borderLeft: "2px solid rgba(239, 68, 68, 0.25)",
   };
+  const popupSectionStyle: CSSProperties = {
+    border: "1px solid var(--border)",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    background: "rgba(255,255,255,0.02)",
+  };
+  const popupGrid2Style: CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 12,
+  };
 
   return (
     <>
@@ -1150,115 +1162,99 @@ export default function LicenceClient() {
               <p style={{ fontSize: 13, opacity: 0.9, marginBottom: 8 }}>
                 {soccsModal.naziv}
               </p>
-              <label style={{ display: "block", marginBottom: 4 }}>
-                {t("studioLicence.soccsPublicId")}
-              </label>
-              <code
-                style={{
-                  display: "block",
-                  padding: 10,
-                  background: "var(--panel)",
-                  borderRadius: 8,
-                  marginBottom: 12,
-                  wordBreak: "break-all",
-                  fontSize: 11,
-                }}
-              >
-                {soccsModal.tenant_public_id || "—"}
-              </code>
-              <label style={{ display: "block", marginBottom: 4 }}>
-                {t("studioLicence.soccsTierLabel")}
-              </label>
-              <select
-                value={soccsTierDraft}
-                onChange={(e) => setSoccsTierDraft(e.target.value)}
-                style={{
-                  padding: 8,
-                  marginBottom: 12,
-                  width: "100%",
-                  maxWidth: 280,
-                }}
-              >
-                <option value="">—</option>
-                {SOCCS_TIER_OPTIONS.map((tier) => (
-                  <option key={tier} value={tier}>
-                    {tier}
+              <div style={popupSectionStyle}>
+                <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: 13 }}>
+                  1) Paket i pristup
+                </p>
+                <label style={{ display: "block", marginBottom: 4 }}>
+                  {t("studioLicence.soccsPublicId")}
+                </label>
+                <code
+                  style={{
+                    display: "block",
+                    padding: 10,
+                    background: "var(--panel)",
+                    borderRadius: 8,
+                    marginBottom: 12,
+                    wordBreak: "break-all",
+                    fontSize: 11,
+                  }}
+                >
+                  {soccsModal.tenant_public_id || "—"}
+                </code>
+                <div style={popupGrid2Style}>
+                  <div>
+                    <label style={{ display: "block", marginBottom: 4 }}>
+                      {t("studioLicence.soccsTierLabel")}
+                    </label>
+                    <select
+                      value={soccsTierDraft}
+                      onChange={(e) => setSoccsTierDraft(e.target.value)}
+                      style={{ padding: 8, width: "100%", marginBottom: 8 }}
+                    >
+                      <option value="">—</option>
+                      {SOCCS_TIER_OPTIONS.map((tier) => (
+                        <option key={tier} value={tier}>
+                          {tier}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: "block", marginBottom: 4 }}>
+                      Platform role (global)
+                    </label>
+                    <select
+                      value={soccsPlatformRoleDraft}
+                      onChange={(e) =>
+                        setSoccsPlatformRoleDraft(e.target.value)
+                      }
+                      style={{ padding: 8, width: "100%", marginBottom: 8 }}
+                    >
+                      <option value="">—</option>
+                      {SOCCS_PLATFORM_ROLE_OPTIONS.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <label style={{ display: "block", marginBottom: 4 }}>
+                  Platform scope (tenant public IDs, comma-separated or *)
+                </label>
+                <input
+                  type="text"
+                  value={soccsPlatformScopeDraft}
+                  onChange={(e) => setSoccsPlatformScopeDraft(e.target.value)}
+                  placeholder="*"
+                  style={{ padding: 8, marginBottom: 12, width: "100%" }}
+                />
+                <label style={{ display: "block", marginBottom: 4 }}>
+                  {t("studioLicence.soccsFederationLabel")}
+                </label>
+                <p style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>
+                  {t("studioLicence.soccsFederationHint")}
+                </p>
+                <select
+                  value={soccsFedDraft === "" ? "" : String(soccsFedDraft)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSoccsFedDraft(v === "" ? "" : Number(v));
+                  }}
+                  style={{ padding: 8, marginBottom: 12, width: "100%" }}
+                >
+                  <option value="">
+                    {t("studioLicence.soccsFederationNone")}
                   </option>
-                ))}
-              </select>
-              <label style={{ display: "block", marginBottom: 4 }}>
-                Platform role (global)
-              </label>
-              <select
-                value={soccsPlatformRoleDraft}
-                onChange={(e) => setSoccsPlatformRoleDraft(e.target.value)}
-                style={{
-                  padding: 8,
-                  marginBottom: 8,
-                  width: "100%",
-                  maxWidth: 280,
-                }}
-              >
-                <option value="">—</option>
-                {SOCCS_PLATFORM_ROLE_OPTIONS.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </select>
-              <label style={{ display: "block", marginBottom: 4 }}>
-                Platform scope (tenant public IDs, comma-separated or *)
-              </label>
-              <input
-                type="text"
-                value={soccsPlatformScopeDraft}
-                onChange={(e) => setSoccsPlatformScopeDraft(e.target.value)}
-                placeholder="*"
-                style={{
-                  padding: 8,
-                  marginBottom: 12,
-                  width: "100%",
-                  maxWidth: 480,
-                }}
-              />
-              <label style={{ display: "block", marginBottom: 4 }}>
-                {t("studioLicence.soccsFederationLabel")}
-              </label>
-              <p style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>
-                {t("studioLicence.soccsFederationHint")}
-              </p>
-              <select
-                value={soccsFedDraft === "" ? "" : String(soccsFedDraft)}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setSoccsFedDraft(v === "" ? "" : Number(v));
-                }}
-                style={{
-                  padding: 8,
-                  marginBottom: 12,
-                  width: "100%",
-                  maxWidth: 360,
-                }}
-              >
-                <option value="">
-                  {t("studioLicence.soccsFederationNone")}
-                </option>
-                {tenants
-                  .filter((x) => x.tenant_id !== soccsModal.tenant_id)
-                  .map((x) => (
-                    <option key={x.tenant_id} value={x.tenant_id}>
-                      {x.naziv} (#{x.tenant_id})
-                    </option>
-                  ))}
-              </select>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  flexWrap: "wrap",
-                  marginBottom: 16,
-                }}
-              >
+                  {tenants
+                    .filter((x) => x.tenant_id !== soccsModal.tenant_id)
+                    .map((x) => (
+                      <option key={x.tenant_id} value={x.tenant_id}>
+                        {x.naziv} (#{x.tenant_id})
+                      </option>
+                    ))}
+                </select>
                 <button
                   type="button"
                   className="btn"
@@ -1270,119 +1266,133 @@ export default function LicenceClient() {
                     : t("studioLicence.soccsSaveTier")}
                 </button>
               </div>
-              <label style={{ display: "block", marginBottom: 4 }}>
-                {t("studioLicence.soccsMeetRemainingSetLabel")}
-              </label>
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={soccsMeetTargetDraft}
-                onChange={(e) => setSoccsMeetTargetDraft(e.target.value)}
-                style={{
-                  padding: 8,
-                  marginBottom: 12,
-                  width: "100%",
-                  maxWidth: 220,
-                }}
-              />
-              <p
-                style={{
-                  fontSize: 12,
-                  opacity: 0.85,
-                  marginTop: -4,
-                  marginBottom: 12,
-                }}
-              >
-                {t("studioLicence.soccsMeetRemainingSetHint")}
-              </p>
-              <hr style={{ borderColor: "var(--border)", margin: "16px 0" }} />
-              <label style={{ display: "block", marginBottom: 8 }}>
-                {t("studioLicence.soccsGenerateFirst")}
-              </label>
-              <button
-                type="button"
-                className="btn"
-                disabled={soccsGenBusy}
-                style={{ marginBottom: 16 }}
-                onClick={() => handleGenerateSoccsCode("FIRST_INSTALL")}
-              >
-                {soccsGenBusy
-                  ? t("common.loading")
-                  : t("studioLicence.soccsGenerateFirst")}
-              </button>
-              <label style={{ display: "block", marginBottom: 4 }}>
-                {t("studioLicence.soccsGenerateMeet")}
-              </label>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: 4,
-                  fontSize: 12,
-                  opacity: 0.9,
-                }}
-              >
-                {t("studioLicence.soccsMeetCountLabel")}
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={200}
-                step={1}
-                value={soccsMeetCountDraft}
-                onChange={(e) => setSoccsMeetCountDraft(e.target.value)}
-                style={{
-                  padding: 8,
-                  marginBottom: 8,
-                  width: "100%",
-                  maxWidth: 180,
-                }}
-              />
-              <select
-                value={soccsMeetSponsor === "" ? "" : String(soccsMeetSponsor)}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setSoccsMeetSponsor(v === "" ? "" : Number(v));
-                }}
-                style={{
-                  padding: 8,
-                  marginBottom: 8,
-                  width: "100%",
-                  maxWidth: 360,
-                }}
-              >
-                <option value="">{t("studioLicence.soccsMeetSponsor")}</option>
-                {tenants
-                  .filter((x) => x.tenant_id !== soccsModal.tenant_id)
-                  .map((x) => (
-                    <option key={x.tenant_id} value={x.tenant_id}>
-                      {x.naziv} (#{x.tenant_id})
-                    </option>
-                  ))}
-              </select>
-              <input
-                type="text"
-                value={soccsMeetNote}
-                onChange={(e) => setSoccsMeetNote(e.target.value)}
-                placeholder={t("studioLicence.soccsMeetNote")}
-                style={{
-                  padding: 8,
-                  marginBottom: 8,
-                  width: "100%",
-                  maxWidth: 400,
-                }}
-              />
-              <button
-                type="button"
-                className="btn"
-                disabled={soccsGenBusy}
-                style={{ marginBottom: 16 }}
-                onClick={() => handleGenerateSoccsCode("MEET_SESSION")}
-              >
-                {soccsGenBusy
-                  ? t("common.loading")
-                  : t("studioLicence.soccsGenerateMeet")}
-              </button>
+
+              <div style={popupSectionStyle}>
+                <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: 13 }}>
+                  2) Meet kvota
+                </p>
+                <label style={{ display: "block", marginBottom: 4 }}>
+                  {t("studioLicence.soccsMeetRemainingSetLabel")}
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={soccsMeetTargetDraft}
+                  onChange={(e) => setSoccsMeetTargetDraft(e.target.value)}
+                  style={{
+                    padding: 8,
+                    marginBottom: 8,
+                    width: 220,
+                    maxWidth: "100%",
+                  }}
+                />
+                <p
+                  style={{
+                    fontSize: 12,
+                    opacity: 0.85,
+                    margin: 0,
+                  }}
+                >
+                  {t("studioLicence.soccsMeetRemainingSetHint")}
+                </p>
+              </div>
+
+              <div style={popupSectionStyle}>
+                <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: 13 }}>
+                  3) Generisanje kodova
+                </p>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: "block", marginBottom: 8 }}>
+                    {t("studioLicence.soccsGenerateFirst")}
+                  </label>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={soccsGenBusy}
+                    onClick={() => handleGenerateSoccsCode("FIRST_INSTALL")}
+                  >
+                    {soccsGenBusy
+                      ? t("common.loading")
+                      : t("studioLicence.soccsGenerateFirst")}
+                  </button>
+                </div>
+                <label style={{ display: "block", marginBottom: 4 }}>
+                  {t("studioLicence.soccsGenerateMeet")}
+                </label>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: 4,
+                    fontSize: 12,
+                    opacity: 0.9,
+                  }}
+                >
+                  {t("studioLicence.soccsMeetCountLabel")}
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={200}
+                  step={1}
+                  value={soccsMeetCountDraft}
+                  onChange={(e) => setSoccsMeetCountDraft(e.target.value)}
+                  style={{
+                    padding: 8,
+                    marginBottom: 8,
+                    width: 180,
+                    maxWidth: "100%",
+                  }}
+                />
+                <select
+                  value={
+                    soccsMeetSponsor === "" ? "" : String(soccsMeetSponsor)
+                  }
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSoccsMeetSponsor(v === "" ? "" : Number(v));
+                  }}
+                  style={{
+                    padding: 8,
+                    marginBottom: 8,
+                    width: "100%",
+                    maxWidth: 420,
+                  }}
+                >
+                  <option value="">
+                    {t("studioLicence.soccsMeetSponsor")}
+                  </option>
+                  {tenants
+                    .filter((x) => x.tenant_id !== soccsModal.tenant_id)
+                    .map((x) => (
+                      <option key={x.tenant_id} value={x.tenant_id}>
+                        {x.naziv} (#{x.tenant_id})
+                      </option>
+                    ))}
+                </select>
+                <input
+                  type="text"
+                  value={soccsMeetNote}
+                  onChange={(e) => setSoccsMeetNote(e.target.value)}
+                  placeholder={t("studioLicence.soccsMeetNote")}
+                  style={{
+                    padding: 8,
+                    marginBottom: 8,
+                    width: "100%",
+                    maxWidth: 420,
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={soccsGenBusy}
+                  onClick={() => handleGenerateSoccsCode("MEET_SESSION")}
+                >
+                  {soccsGenBusy
+                    ? t("common.loading")
+                    : t("studioLicence.soccsGenerateMeet")}
+                </button>
+              </div>
               {(soccsGenFirstInstallCode || soccsGenCode) && (
                 <div style={{ marginTop: 8 }}>
                   <p style={{ fontSize: 13, marginBottom: 10 }}>
