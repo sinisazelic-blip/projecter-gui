@@ -7,6 +7,8 @@ export type SoccsTier =
   | "ENTERPRISE"
   | "SWIMVOICE";
 
+export type SoccsPlatformRole = "NONE" | "OWNER" | "AMBASSADOR";
+
 export function normalizeSoccsTier(raw: string | null | undefined): SoccsTier {
   const u = String(raw ?? "BASIC")
     .trim()
@@ -22,6 +24,29 @@ export function normalizeSoccsTier(raw: string | null | undefined): SoccsTier {
     return u;
   }
   return "BASIC";
+}
+
+export function normalizeSoccsPlatformRole(
+  raw: string | null | undefined,
+): SoccsPlatformRole {
+  const u = String(raw ?? "NONE")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
+  if (u === "OWNER" || u === "AMBASSADOR") return u;
+  return "NONE";
+}
+
+export function normalizePlatformScope(
+  raw: string | null | undefined,
+): string[] {
+  const txt = String(raw ?? "").trim();
+  if (!txt) return [];
+  if (txt === "*") return ["*"];
+  return txt
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
 }
 
 export function soccsTierToModules(tier: SoccsTier): Record<string, boolean> {
@@ -81,6 +106,8 @@ export function signSoccsLicensePayload(
 export function buildSoccsLicenseJwtLike(opts: {
   tenantPublicId: string;
   tier: SoccsTier;
+  platformRole: SoccsPlatformRole;
+  platformScope: string[];
   subscriptionEndsAt: string;
   installationPublicId: string;
   purpose: "FIRST_INSTALL" | "MEET_SESSION";
@@ -95,6 +122,8 @@ export function buildSoccsLicenseJwtLike(opts: {
   const inner = {
     sub: opts.tenantPublicId,
     tier: opts.tier,
+    platform_role: opts.platformRole.toLowerCase(),
+    platform_scope: opts.platformScope,
     package_name: opts.packageDisplayName,
     exp: opts.subscriptionEndsAt,
     inst: opts.installationPublicId,

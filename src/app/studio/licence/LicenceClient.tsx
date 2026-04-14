@@ -13,6 +13,7 @@ const SOCCS_TIER_OPTIONS = [
   "ENTERPRISE",
   "SWIMVOICE",
 ] as const;
+const SOCCS_PLATFORM_ROLE_OPTIONS = ["OWNER", "AMBASSADOR"] as const;
 
 type TenantRow = {
   tenant_id: number;
@@ -24,6 +25,8 @@ type TenantRow = {
   monthly_price?: number | string | null;
   currency?: string | null;
   soccs_tier?: string | null;
+  soccs_platform_role?: string | null;
+  soccs_platform_scope?: string | null;
   soccs_federation_parent_tenant_id?: number | null;
   federation_naziv?: string | null;
   subscription_starts_at: string;
@@ -70,6 +73,8 @@ export default function LicenceClient() {
 
   const [soccsModal, setSoccsModal] = useState<TenantRow | null>(null);
   const [soccsTierDraft, setSoccsTierDraft] = useState("");
+  const [soccsPlatformRoleDraft, setSoccsPlatformRoleDraft] = useState("");
+  const [soccsPlatformScopeDraft, setSoccsPlatformScopeDraft] = useState("");
   const [soccsFedDraft, setSoccsFedDraft] = useState<number | "">("");
   const [soccsSaving, setSoccsSaving] = useState(false);
   const [soccsGenCode, setSoccsGenCode] = useState<string | null>(null);
@@ -286,6 +291,17 @@ export default function LicenceClient() {
         ? rawTier
         : "",
     );
+    const rawPlatformRole = String(row.soccs_platform_role ?? "")
+      .trim()
+      .toUpperCase();
+    setSoccsPlatformRoleDraft(
+      SOCCS_PLATFORM_ROLE_OPTIONS.includes(
+        rawPlatformRole as (typeof SOCCS_PLATFORM_ROLE_OPTIONS)[number],
+      )
+        ? rawPlatformRole
+        : "",
+    );
+    setSoccsPlatformScopeDraft(String(row.soccs_platform_scope ?? ""));
     setSoccsFedDraft(row.soccs_federation_parent_tenant_id ?? "");
     setSoccsGenCode(null);
     setSoccsGenCodes([]);
@@ -308,6 +324,8 @@ export default function LicenceClient() {
     try {
       const body: Record<string, unknown> = {
         soccs_tier: soccsTierDraft || null,
+        soccs_platform_role: soccsPlatformRoleDraft || null,
+        soccs_platform_scope: soccsPlatformScopeDraft.trim() || null,
       };
       if (soccsFedDraft === "") {
         body.soccs_federation_parent_tenant_id = null;
@@ -337,6 +355,8 @@ export default function LicenceClient() {
           return {
             ...prev,
             soccs_tier: soccsTierDraft,
+            soccs_platform_role: soccsPlatformRoleDraft || null,
+            soccs_platform_scope: soccsPlatformScopeDraft.trim() || null,
             meet_remaining: Number.isFinite(nextMeetRemaining)
               ? nextMeetRemaining
               : prev.meet_remaining,
@@ -385,10 +405,15 @@ export default function LicenceClient() {
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (data.ok && (data.code || (Array.isArray(data.codes) && data.codes.length > 0))) {
+      if (
+        data.ok &&
+        (data.code || (Array.isArray(data.codes) && data.codes.length > 0))
+      ) {
         const list = Array.isArray(data.codes)
           ? data.codes.filter((x: unknown) => typeof x === "string")
-          : (data.code ? [String(data.code)] : []);
+          : data.code
+            ? [String(data.code)]
+            : [];
         setSoccsLastGenPurpose(purpose);
         if (purpose === "FIRST_INSTALL") {
           setSoccsGenFirstInstallCode(list[0] ?? null);
@@ -432,17 +457,15 @@ export default function LicenceClient() {
         title: t("studioLicence.lampTitleExpired"),
       };
     }
-    const soccs = String(row.soccs_tier ?? "").trim().toUpperCase();
+    const soccs = String(row.soccs_tier ?? "")
+      .trim()
+      .toUpperCase();
     const needsSoccsNode =
       soccs !== "" &&
       soccs !== "SWIMVOICE" &&
       SOCCS_TIER_OPTIONS.includes(soccs as (typeof SOCCS_TIER_OPTIONS)[number]);
     const consumed = Number(row.soccs_first_install_consumed ?? 0) === 1;
-    if (
-      st === "AKTIVAN" &&
-      needsSoccsNode &&
-      !consumed
-    ) {
+    if (st === "AKTIVAN" && needsSoccsNode && !consumed) {
       return {
         color: "#eab308",
         title: t("studioLicence.lampTitleYellow"),
@@ -635,9 +658,7 @@ export default function LicenceClient() {
                       />
                     </td>
                     <td style={tdFlux}>{row.plan_naziv}</td>
-                    <td style={tdFluxCont}>
-                      {formatMaxUsers(row.max_users)}
-                    </td>
+                    <td style={tdFluxCont}>{formatMaxUsers(row.max_users)}</td>
                     <td style={tdFluxCont}>
                       <button
                         type="button"
@@ -838,9 +859,11 @@ export default function LicenceClient() {
                     <button
                       type="button"
                       className="btn"
-                      onClick={() =>
-                        copyToClipboard(tokenModalRow.licence_token!)
-                      }
+                      onClick={() => {
+                        if (tokenModalRow.licence_token) {
+                          copyToClipboard(tokenModalRow.licence_token);
+                        }
+                      }}
                     >
                       {t("studioLicence.copyToken")}
                     </button>
@@ -1164,6 +1187,41 @@ export default function LicenceClient() {
                 ))}
               </select>
               <label style={{ display: "block", marginBottom: 4 }}>
+                Platform role (global)
+              </label>
+              <select
+                value={soccsPlatformRoleDraft}
+                onChange={(e) => setSoccsPlatformRoleDraft(e.target.value)}
+                style={{
+                  padding: 8,
+                  marginBottom: 8,
+                  width: "100%",
+                  maxWidth: 280,
+                }}
+              >
+                <option value="">—</option>
+                {SOCCS_PLATFORM_ROLE_OPTIONS.map((role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ))}
+              </select>
+              <label style={{ display: "block", marginBottom: 4 }}>
+                Platform scope (tenant public IDs, comma-separated or *)
+              </label>
+              <input
+                type="text"
+                value={soccsPlatformScopeDraft}
+                onChange={(e) => setSoccsPlatformScopeDraft(e.target.value)}
+                placeholder="*"
+                style={{
+                  padding: 8,
+                  marginBottom: 12,
+                  width: "100%",
+                  maxWidth: 480,
+                }}
+              />
+              <label style={{ display: "block", marginBottom: 4 }}>
                 {t("studioLicence.soccsFederationLabel")}
               </label>
               <p style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>
@@ -1228,7 +1286,14 @@ export default function LicenceClient() {
                   maxWidth: 220,
                 }}
               />
-              <p style={{ fontSize: 12, opacity: 0.85, marginTop: -4, marginBottom: 12 }}>
+              <p
+                style={{
+                  fontSize: 12,
+                  opacity: 0.85,
+                  marginTop: -4,
+                  marginBottom: 12,
+                }}
+              >
                 {t("studioLicence.soccsMeetRemainingSetHint")}
               </p>
               <hr style={{ borderColor: "var(--border)", margin: "16px 0" }} />
@@ -1249,7 +1314,14 @@ export default function LicenceClient() {
               <label style={{ display: "block", marginBottom: 4 }}>
                 {t("studioLicence.soccsGenerateMeet")}
               </label>
-              <label style={{ display: "block", marginBottom: 4, fontSize: 12, opacity: 0.9 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: 4,
+                  fontSize: 12,
+                  opacity: 0.9,
+                }}
+              >
                 {t("studioLicence.soccsMeetCountLabel")}
               </label>
               <input
@@ -1318,10 +1390,18 @@ export default function LicenceClient() {
                   </p>
                   {soccsGenFirstInstallCode ? (
                     <div style={{ marginBottom: soccsGenCode ? 14 : 0 }}>
-                      <p style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+                      <p
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          marginBottom: 6,
+                        }}
+                      >
                         {t("studioLicence.soccsField1Label")}
                       </p>
-                      <p style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>
+                      <p
+                        style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}
+                      >
                         {t("studioLicence.soccsField1Hint")}
                       </p>
                       <code
@@ -1340,7 +1420,9 @@ export default function LicenceClient() {
                       <button
                         type="button"
                         className="btn"
-                        onClick={() => copyToClipboard(soccsGenFirstInstallCode)}
+                        onClick={() =>
+                          copyToClipboard(soccsGenFirstInstallCode)
+                        }
                       >
                         {t("studioLicence.copyToken")}
                       </button>
@@ -1361,10 +1443,18 @@ export default function LicenceClient() {
                   ) : null}
                   {soccsGenCode ? (
                     <div>
-                      <p style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+                      <p
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          marginBottom: 6,
+                        }}
+                      >
                         {t("studioLicence.soccsField2Label")}
                       </p>
-                      <p style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>
+                      <p
+                        style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}
+                      >
                         {t("studioLicence.soccsField2Hint")}
                       </p>
                       <code

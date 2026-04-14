@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { type NextRequest, NextResponse } from "next/server";
+import { COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
 import { query } from "@/lib/db";
-import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +52,8 @@ export async function GET() {
       monthly_price: number | null;
       currency: string | null;
       soccs_tier: string | null;
+      soccs_platform_role: string | null;
+      soccs_platform_scope: string | null;
       soccs_federation_parent_tenant_id: number | null;
       federation_naziv: string | null;
       subscription_starts_at: string;
@@ -72,6 +74,8 @@ export async function GET() {
         t.monthly_price,
         t.currency,
         t.soccs_tier,
+        t.soccs_platform_role,
+        t.soccs_platform_scope,
         t.soccs_federation_parent_tenant_id,
         fp.naziv AS federation_naziv,
         DATE_FORMAT(t.subscription_starts_at, '%Y-%m-%d') AS subscription_starts_at,
@@ -125,6 +129,8 @@ export async function POST(req: NextRequest) {
     monthly_price?: number | string | null;
     currency?: string | null;
     soccs_tier?: string | null;
+    soccs_platform_role?: string | null;
+    soccs_platform_scope?: string | null;
   };
   try {
     body = await req.json();
@@ -205,11 +211,26 @@ export async function POST(req: NextRequest) {
       ? soccsTierRaw
       : "BASIC"
     : null;
+  const platformRoleRaw =
+    body?.soccs_platform_role != null
+      ? String(body.soccs_platform_role).trim().toUpperCase()
+      : "";
+  const platformRoleAllowed = ["OWNER", "AMBASSADOR"];
+  const soccsPlatformRole = platformRoleRaw
+    ? platformRoleAllowed.includes(platformRoleRaw)
+      ? platformRoleRaw
+      : null
+    : null;
+  const scopeRaw =
+    body?.soccs_platform_scope != null
+      ? String(body.soccs_platform_scope).trim()
+      : "";
+  const soccsPlatformScope = scopeRaw || null;
 
   try {
     const res = await query(
-      `INSERT INTO tenants (naziv, plan_id, max_users, subscription_starts_at, subscription_ends_at, status, licence_token, monthly_price, currency, tenant_public_id, soccs_tier)
-       VALUES (?, ?, ?, ?, ?, 'AKTIVAN', ?, ?, ?, ?, ?)`,
+      `INSERT INTO tenants (naziv, plan_id, max_users, subscription_starts_at, subscription_ends_at, status, licence_token, monthly_price, currency, tenant_public_id, soccs_tier, soccs_platform_role, soccs_platform_scope)
+       VALUES (?, ?, ?, ?, ?, 'AKTIVAN', ?, ?, ?, ?, ?, ?, ?)`,
       [
         naziv,
         planId,
@@ -221,6 +242,8 @@ export async function POST(req: NextRequest) {
         currency,
         tenantPublicId,
         soccsTier,
+        soccsPlatformRole,
+        soccsPlatformScope,
       ],
     );
     const header = Array.isArray(res) ? res[0] : res;

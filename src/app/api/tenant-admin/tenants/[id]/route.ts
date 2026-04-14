@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { query } from "@/lib/db";
-import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
 import { randomBytes } from "node:crypto";
+import { cookies } from "next/headers";
+import { type NextRequest, NextResponse } from "next/server";
+import { COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
+import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +52,8 @@ export async function PATCH(
     monthly_price?: number | string | null;
     currency?: string | null;
     soccs_tier?: string | null;
+    soccs_platform_role?: string | null;
+    soccs_platform_scope?: string | null;
     soccs_federation_parent_tenant_id?: number | null;
     meet_session_target?: number | null;
   };
@@ -138,6 +140,38 @@ export async function PATCH(
     }
   }
 
+  if (body.soccs_platform_role !== undefined) {
+    const raw =
+      body.soccs_platform_role == null
+        ? ""
+        : String(body.soccs_platform_role).trim().toUpperCase();
+    const allowed = ["OWNER", "AMBASSADOR"];
+    if (!raw) {
+      updates.push("soccs_platform_role = NULL");
+    } else if (allowed.includes(raw)) {
+      updates.push("soccs_platform_role = ?");
+      paramsList.push(raw);
+    } else {
+      return NextResponse.json(
+        { ok: false, error: "INVALID_SOCCS_PLATFORM_ROLE" },
+        { status: 400 },
+      );
+    }
+  }
+
+  if (body.soccs_platform_scope !== undefined) {
+    const raw =
+      body.soccs_platform_scope == null
+        ? ""
+        : String(body.soccs_platform_scope).trim();
+    if (!raw) {
+      updates.push("soccs_platform_scope = NULL");
+    } else {
+      updates.push("soccs_platform_scope = ?");
+      paramsList.push(raw);
+    }
+  }
+
   if (body.soccs_federation_parent_tenant_id !== undefined) {
     const v = body.soccs_federation_parent_tenant_id;
     if (v === null) {
@@ -208,7 +242,9 @@ export async function PATCH(
           );
         }
       } else if (delta < 0) {
-        const revokeIds = currentRows.slice(0, Math.abs(delta)).map((r) => r.id);
+        const revokeIds = currentRows
+          .slice(0, Math.abs(delta))
+          .map((r) => r.id);
         for (const codeId of revokeIds) {
           await query(
             `UPDATE soccs_activation_codes
@@ -220,7 +256,11 @@ export async function PATCH(
       }
     }
 
-    const out: { ok: boolean; licence_token?: string; meet_remaining?: number } = { ok: true };
+    const out: {
+      ok: boolean;
+      licence_token?: string;
+      meet_remaining?: number;
+    } = { ok: true };
     if (newLicenceToken) out.licence_token = newLicenceToken;
     if (meetSessionTarget != null) out.meet_remaining = meetSessionTarget;
     return NextResponse.json(out);

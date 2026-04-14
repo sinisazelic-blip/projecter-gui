@@ -4,6 +4,8 @@ import { query } from "@/lib/db";
 import {
   buildSoccsLicenseJwtLike,
   buildSoccsPackageDisplayName,
+  normalizePlatformScope,
+  normalizeSoccsPlatformRole,
   normalizeSoccsTier,
   type SoccsTier,
   soccsTierToLimits,
@@ -58,6 +60,8 @@ type TenantRow = {
   tenant_public_id: string;
   naziv: string;
   soccs_tier: string | null;
+  soccs_platform_role: string | null;
+  soccs_platform_scope: string | null;
   subscription_ends_at: string;
   status: string;
   plan_naziv: string | null;
@@ -72,6 +76,8 @@ async function loadTenantById(id: number): Promise<TenantRow | null> {
        t.tenant_public_id,
        t.naziv,
        t.soccs_tier,
+       t.soccs_platform_role,
+       t.soccs_platform_scope,
        DATE_FORMAT(t.subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
        t.status,
        p.naziv AS plan_naziv,
@@ -260,6 +266,8 @@ async function handleLicenseRefresh(
        t.tenant_public_id,
        t.naziv,
        t.soccs_tier,
+       t.soccs_platform_role,
+       t.soccs_platform_scope,
        DATE_FORMAT(t.subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
        t.status,
        p.naziv AS plan_naziv,
@@ -302,7 +310,10 @@ async function handleLicenseRefresh(
 
   const block = tenantBlockReason(tenant);
   if (block) {
-    return NextResponse.json({ ok: false, reason: block, retryable: false }, { status: 200 });
+    return NextResponse.json(
+      { ok: false, reason: block, retryable: false },
+      { status: 200 },
+    );
   }
 
   return jsonSuccess(tenant, "LICENSE_REFRESH", installationPublicId, null);
@@ -312,7 +323,10 @@ async function handleLicenseRefresh(
  * SOCCS: nakon lokalnog odobrenja takmičenja — potroši jedan ISSUED MEET_SESSION kod (FIFO),
  * bez ponovnog unosa meet koda (isti installation_public_id kao kod verify-a).
  */
-async function handleConsumeMeetSlot(tenantKey: string, installationPublicId: string) {
+async function handleConsumeMeetSlot(
+  tenantKey: string,
+  installationPublicId: string,
+) {
   const firstRows = await query<{ tenant_id: number }>(
     `SELECT tenant_id FROM soccs_activation_codes
      WHERE code = ? AND purpose = 'FIRST_INSTALL'
@@ -352,7 +366,10 @@ async function handleConsumeMeetSlot(tenantKey: string, installationPublicId: st
 
   const block = tenantBlockReason(tenant);
   if (block) {
-    return NextResponse.json({ ok: false, reason: block, retryable: false }, { status: 200 });
+    return NextResponse.json(
+      { ok: false, reason: block, retryable: false },
+      { status: 200 },
+    );
   }
 
   const slotRows = await query<{ id: number }>(
@@ -468,7 +485,10 @@ async function handleFirstInstall(code: string, installationPublicId: string) {
 
   const block = tenantBlockReason(tenant);
   if (block) {
-    return NextResponse.json({ ok: false, reason: block, retryable: false }, { status: 200 });
+    return NextResponse.json(
+      { ok: false, reason: block, retryable: false },
+      { status: 200 },
+    );
   }
 
   if (ac.consumed_installation_id) {
@@ -601,7 +621,10 @@ async function handleMeetSession(
 
   const block = tenantBlockReason(tenant);
   if (block) {
-    return NextResponse.json({ ok: false, reason: block, retryable: false }, { status: 200 });
+    return NextResponse.json(
+      { ok: false, reason: block, retryable: false },
+      { status: 200 },
+    );
   }
 
   let sponsorMeet: Record<string, unknown> | null = null;
@@ -655,7 +678,12 @@ async function handleMeetSession(
         { status: 200 },
       );
     }
-    return jsonSuccess(tenantAfter, "MEET_SESSION", installationPublicId, sponsorMeet);
+    return jsonSuccess(
+      tenantAfter,
+      "MEET_SESSION",
+      installationPublicId,
+      sponsorMeet,
+    );
   }
   if (consumedId) {
     return NextResponse.json(
@@ -676,6 +704,8 @@ function jsonSuccess(
   meet: Record<string, unknown> | null,
 ) {
   const tier = normalizeSoccsTier(tenant.soccs_tier) as SoccsTier;
+  const platformRole = normalizeSoccsPlatformRole(tenant.soccs_platform_role);
+  const platformScope = normalizePlatformScope(tenant.soccs_platform_scope);
   const modules = soccsTierToModules(tier);
   const limits = {
     ...soccsTierToLimits(tier),
@@ -693,6 +723,8 @@ function jsonSuccess(
   const signed = buildSoccsLicenseJwtLike({
     tenantPublicId: tenant.tenant_public_id,
     tier,
+    platformRole,
+    platformScope,
     subscriptionEndsAt: tenant.subscription_ends_at,
     installationPublicId,
     purpose: jwtPurpose,
@@ -716,6 +748,12 @@ function jsonSuccess(
     license,
     /** Isti paket za budući SwimVoice verify (paritet s SOCCS). */
     package_name: packageDisplayName,
+    platform_role: platformRole.toLowerCase(),
+    platform_scope: platformScope,
+    platform_access: {
+      backup: platformRole === "OWNER" || platformRole === "AMBASSADOR",
+      reports: platformRole === "OWNER" || platformRole === "AMBASSADOR",
+    },
     code_state:
       purpose === "LICENSE_REFRESH"
         ? "license_sync"
