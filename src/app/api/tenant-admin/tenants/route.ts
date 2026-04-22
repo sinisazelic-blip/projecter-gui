@@ -5,6 +5,14 @@ import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+function isMissingSoccsPlatformColumnsError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e ?? "");
+  return (
+    msg.includes("soccs_platform_role") ||
+    msg.includes("soccs_platform_scope")
+  );
+}
+
 function requireTenantAdmin(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   if (process.env.ENABLE_TENANT_ADMIN !== "true") {
     return {
@@ -107,6 +115,71 @@ export async function GET() {
 
     return NextResponse.json({ ok: true, tenants: rows ?? [] });
   } catch (e: unknown) {
+    if (isMissingSoccsPlatformColumnsError(e)) {
+      const rows = await query<{
+        tenant_id: number;
+        tenant_public_id: string | null;
+        naziv: string;
+        plan_id: number;
+        plan_naziv: string;
+        max_users: number;
+        monthly_price: number | null;
+        currency: string | null;
+        soccs_tier: string | null;
+        soccs_platform_role: string | null;
+        soccs_platform_scope: string | null;
+        soccs_federation_parent_tenant_id: number | null;
+        federation_naziv: string | null;
+        subscription_starts_at: string;
+        subscription_ends_at: string;
+        status: string;
+        days_until_end: number;
+        meet_remaining: number;
+        licence_token: string | null;
+        soccs_first_install_consumed: number;
+      }>(
+        `SELECT
+          t.tenant_id,
+          t.tenant_public_id,
+          t.naziv,
+          t.plan_id,
+          p.naziv AS plan_naziv,
+          COALESCE(t.max_users, p.max_users) AS max_users,
+          t.monthly_price,
+          t.currency,
+          t.soccs_tier,
+          NULL AS soccs_platform_role,
+          NULL AS soccs_platform_scope,
+          t.soccs_federation_parent_tenant_id,
+          fp.naziv AS federation_naziv,
+          DATE_FORMAT(t.subscription_starts_at, '%Y-%m-%d') AS subscription_starts_at,
+          DATE_FORMAT(t.subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
+          t.status,
+          DATEDIFF(t.subscription_ends_at, CURDATE()) AS days_until_end,
+          (
+            SELECT COUNT(*)
+            FROM soccs_activation_codes sac
+            WHERE sac.tenant_id = t.tenant_id
+              AND sac.purpose = 'MEET_SESSION'
+              AND UPPER(sac.status) = 'ISSUED'
+              AND (sac.valid_until IS NULL OR sac.valid_until >= NOW())
+          ) AS meet_remaining,
+          t.licence_token,
+          (
+            SELECT CASE WHEN EXISTS (
+              SELECT 1 FROM soccs_activation_codes s2
+              WHERE s2.tenant_id = t.tenant_id
+                AND s2.purpose = 'FIRST_INSTALL'
+                AND s2.consumed_installation_id IS NOT NULL
+            ) THEN 1 ELSE 0 END
+          ) AS soccs_first_install_consumed
+         FROM tenants t
+         JOIN plans p ON p.plan_id = t.plan_id
+         LEFT JOIN tenants fp ON fp.tenant_id = t.soccs_federation_parent_tenant_id
+         ORDER BY t.naziv ASC`,
+      );
+      return NextResponse.json({ ok: true, tenants: rows ?? [] });
+    }
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }

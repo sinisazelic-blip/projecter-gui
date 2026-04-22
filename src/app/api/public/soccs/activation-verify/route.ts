@@ -14,6 +14,14 @@ import {
 
 export const dynamic = "force-dynamic";
 
+function isMissingSoccsPlatformColumnsError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e ?? "");
+  return (
+    msg.includes("soccs_platform_role") ||
+    msg.includes("soccs_platform_scope")
+  );
+}
+
 type VerifyBody = {
   code?: string;
   meet_code?: string | null;
@@ -70,32 +78,64 @@ type TenantRow = {
 };
 
 async function loadTenantById(id: number): Promise<TenantRow | null> {
-  const rows = await query<TenantRow>(
-    `SELECT
-       t.tenant_id,
-       t.tenant_public_id,
-       t.naziv,
-       t.soccs_tier,
-       t.soccs_platform_role,
-       t.soccs_platform_scope,
-       DATE_FORMAT(t.subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
-       t.status,
-       p.naziv AS plan_naziv,
-       (
-         SELECT COUNT(*)
-         FROM soccs_activation_codes sac
-         WHERE sac.tenant_id = t.tenant_id
-           AND sac.purpose = 'MEET_SESSION'
-           AND UPPER(sac.status) = 'ISSUED'
-           AND (sac.valid_until IS NULL OR sac.valid_until >= NOW())
-       ) AS meet_remaining
-     FROM tenants t
-     JOIN plans p ON p.plan_id = t.plan_id
-     WHERE t.tenant_id = ?
-     LIMIT 1`,
-    [id],
-  );
-  return rows?.[0] ?? null;
+  try {
+    const rows = await query<TenantRow>(
+      `SELECT
+         t.tenant_id,
+         t.tenant_public_id,
+         t.naziv,
+         t.soccs_tier,
+         t.soccs_platform_role,
+         t.soccs_platform_scope,
+         DATE_FORMAT(t.subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
+         t.status,
+         p.naziv AS plan_naziv,
+         (
+           SELECT COUNT(*)
+           FROM soccs_activation_codes sac
+           WHERE sac.tenant_id = t.tenant_id
+             AND sac.purpose = 'MEET_SESSION'
+             AND UPPER(sac.status) = 'ISSUED'
+             AND (sac.valid_until IS NULL OR sac.valid_until >= NOW())
+         ) AS meet_remaining
+       FROM tenants t
+       JOIN plans p ON p.plan_id = t.plan_id
+       WHERE t.tenant_id = ?
+       LIMIT 1`,
+      [id],
+    );
+    return rows?.[0] ?? null;
+  } catch (e: unknown) {
+    if (!isMissingSoccsPlatformColumnsError(e)) {
+      throw e;
+    }
+    const rows = await query<TenantRow>(
+      `SELECT
+         t.tenant_id,
+         t.tenant_public_id,
+         t.naziv,
+         t.soccs_tier,
+         NULL AS soccs_platform_role,
+         NULL AS soccs_platform_scope,
+         DATE_FORMAT(t.subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
+         t.status,
+         p.naziv AS plan_naziv,
+         (
+           SELECT COUNT(*)
+           FROM soccs_activation_codes sac
+           WHERE sac.tenant_id = t.tenant_id
+             AND sac.purpose = 'MEET_SESSION'
+             AND UPPER(sac.status) = 'ISSUED'
+             AND (sac.valid_until IS NULL OR sac.valid_until >= NOW())
+         ) AS meet_remaining
+       FROM tenants t
+       JOIN plans p ON p.plan_id = t.plan_id
+       WHERE t.tenant_id = ?
+       LIMIT 1`,
+      [id],
+    );
+    return rows?.[0] ?? null;
+  }
 }
 
 /** Vraća reason ako tenant nije u redu za aktivaciju, inače null. */
@@ -260,31 +300,63 @@ async function handleLicenseRefresh(
   installationPublicId: string,
   tenantPublicId: string,
 ) {
-  const tenantRows = await query<TenantRow>(
-    `SELECT
-       t.tenant_id,
-       t.tenant_public_id,
-       t.naziv,
-       t.soccs_tier,
-       t.soccs_platform_role,
-       t.soccs_platform_scope,
-       DATE_FORMAT(t.subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
-       t.status,
-       p.naziv AS plan_naziv,
-       (
-         SELECT COUNT(*)
-         FROM soccs_activation_codes sac
-         WHERE sac.tenant_id = t.tenant_id
-           AND sac.purpose = 'MEET_SESSION'
-           AND UPPER(sac.status) = 'ISSUED'
-           AND (sac.valid_until IS NULL OR sac.valid_until >= NOW())
-       ) AS meet_remaining
-     FROM tenants t
-     JOIN plans p ON p.plan_id = t.plan_id
-     WHERE t.tenant_public_id = ?
-     LIMIT 1`,
-    [tenantPublicId],
-  );
+  let tenantRows: TenantRow[] = [];
+  try {
+    tenantRows = await query<TenantRow>(
+      `SELECT
+         t.tenant_id,
+         t.tenant_public_id,
+         t.naziv,
+         t.soccs_tier,
+         t.soccs_platform_role,
+         t.soccs_platform_scope,
+         DATE_FORMAT(t.subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
+         t.status,
+         p.naziv AS plan_naziv,
+         (
+           SELECT COUNT(*)
+           FROM soccs_activation_codes sac
+           WHERE sac.tenant_id = t.tenant_id
+             AND sac.purpose = 'MEET_SESSION'
+             AND UPPER(sac.status) = 'ISSUED'
+             AND (sac.valid_until IS NULL OR sac.valid_until >= NOW())
+         ) AS meet_remaining
+       FROM tenants t
+       JOIN plans p ON p.plan_id = t.plan_id
+       WHERE t.tenant_public_id = ?
+       LIMIT 1`,
+      [tenantPublicId],
+    );
+  } catch (e: unknown) {
+    if (!isMissingSoccsPlatformColumnsError(e)) {
+      throw e;
+    }
+    tenantRows = await query<TenantRow>(
+      `SELECT
+         t.tenant_id,
+         t.tenant_public_id,
+         t.naziv,
+         t.soccs_tier,
+         NULL AS soccs_platform_role,
+         NULL AS soccs_platform_scope,
+         DATE_FORMAT(t.subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
+         t.status,
+         p.naziv AS plan_naziv,
+         (
+           SELECT COUNT(*)
+           FROM soccs_activation_codes sac
+           WHERE sac.tenant_id = t.tenant_id
+             AND sac.purpose = 'MEET_SESSION'
+             AND UPPER(sac.status) = 'ISSUED'
+             AND (sac.valid_until IS NULL OR sac.valid_until >= NOW())
+         ) AS meet_remaining
+       FROM tenants t
+       JOIN plans p ON p.plan_id = t.plan_id
+       WHERE t.tenant_public_id = ?
+       LIMIT 1`,
+      [tenantPublicId],
+    );
+  }
   const tenant = tenantRows?.[0];
   if (!tenant) {
     return NextResponse.json(
