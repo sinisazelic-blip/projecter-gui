@@ -1,6 +1,7 @@
 // src/app/api/inicijacije/jedna/route.ts
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { assertDealEditableOrThrow } from "@/lib/projects/deal-edit-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -140,6 +141,8 @@ export async function PUT(req: Request) {
       );
     }
 
+    await assertDealEditableOrThrow(req, id);
+
     await query(
       `
       UPDATE inicijacije
@@ -171,6 +174,12 @@ export async function PUT(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
+    if (e?.status === 423) {
+      return NextResponse.json(
+        { ok: false, error: "Projekat je zaključan. Potreban je admin override." },
+        { status: 423 },
+      );
+    }
     return NextResponse.json(
       { ok: false, error: e?.message ?? "Greška (PUT /api/inicijacije/jedna)" },
       { status: 500 },

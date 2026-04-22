@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { assertDealEditableOrThrow } from "@/lib/projects/deal-edit-guard";
 
 function num(v: any) {
   const n = Number(v);
@@ -137,6 +138,7 @@ export async function PUT(req: NextRequest) {
       );
 
     const inicijacija_id = Number(cur.inicijacija_id ?? 0);
+    await assertDealEditableOrThrow(req, inicijacija_id);
 
     const newK = kolicina ?? Number(cur.kolicina ?? 1);
     const newC = cijena_jedinicna ?? Number(cur.cijena_jedinicna ?? 0);
@@ -162,6 +164,12 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json({ ok: true, line_total, sync });
   } catch (e: any) {
+    if (e?.status === 423) {
+      return NextResponse.json(
+        { ok: false, error: "Projekat je zaključan. Potreban je admin override." },
+        { status: 423 },
+      );
+    }
     return NextResponse.json(
       { ok: false, error: e?.message ?? "Greška" },
       { status: 500 },
@@ -185,6 +193,9 @@ export async function DELETE(req: NextRequest) {
     );
     const inicijacija_id =
       Array.isArray(r0) && r0.length ? Number(r0[0]?.inicijacija_id ?? 0) : 0;
+    if (inicijacija_id > 0) {
+      await assertDealEditableOrThrow(req, inicijacija_id);
+    }
 
     await pool.query(
       `DELETE FROM inicijacija_stavke WHERE inicijacija_stavka_id = ?`,
@@ -200,6 +211,12 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ ok: true, sync });
   } catch (e: any) {
+    if (e?.status === 423) {
+      return NextResponse.json(
+        { ok: false, error: "Projekat je zaključan. Potreban je admin override." },
+        { status: 423 },
+      );
+    }
     return NextResponse.json(
       { ok: false, error: e?.message ?? "Greška" },
       { status: 500 },

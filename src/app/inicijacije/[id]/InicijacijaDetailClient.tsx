@@ -86,6 +86,20 @@ type ProjectStatusRow = {
   status_name: string | null;
 };
 
+type AuthUser = {
+  user_id: number;
+  username: string;
+  nivo: number;
+};
+
+type EditOverrideState = {
+  override_id: number;
+  reason: string;
+  expires_at: string;
+  enabled_by_username: string | null;
+  enabled_by_user_id: number | null;
+} | null;
+
 const USER_LABEL = "SiNY";
 const TIMELINE_STORAGE_KEY = "fluxa_deal_timeline_open";
 
@@ -347,6 +361,11 @@ export default function InicijacijaDetailClient() {
   const [projStatus, setProjStatus] = useState<ProjectStatusRow | null>(null);
   const [projStatusLoading, setProjStatusLoading] = useState(false);
   const [projStatusError, setProjStatusError] = useState<string | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [overrideState, setOverrideState] = useState<EditOverrideState>(null);
+  const [overrideReason, setOverrideReason] = useState("");
+  const [overrideMinutes, setOverrideMinutes] = useState("30");
+  const [overrideBusy, setOverrideBusy] = useState(false);
 
   const projectStatusId = Number(projStatus?.status_id ?? 0);
   const projectStatusName = projStatus?.status_name
@@ -370,6 +389,9 @@ export default function InicijacijaDetailClient() {
       isProjectInvoiced ||
       isProjectArchived ||
       isProjectCancelled);
+  const isOwnerAdmin = Number(authUser?.nivo ?? 0) >= 10;
+  const hasOverride = !!overrideState;
+  const canEditDeal = !dealReadOnly || (isOwnerAdmin && hasOverride);
 
   const acceptedOk = useMemo(() => !!parseHumanToIso(t_accepted), [t_accepted]);
 
@@ -503,6 +525,26 @@ export default function InicijacijaDetailClient() {
     }
   }
 
+  async function loadAuthMe() {
+    try {
+      const j = (await fetchJson("/api/auth/me")) as any;
+      setAuthUser((j?.user ?? null) as AuthUser | null);
+    } catch {
+      setAuthUser(null);
+    }
+  }
+
+  async function loadEditOverride(projekatId: number) {
+    try {
+      const j = (await fetchJson(
+        `/api/projects/${projekatId}/edit-override`,
+      )) as any;
+      setOverrideState((j?.state ?? null) as EditOverrideState);
+    } catch {
+      setOverrideState(null);
+    }
+  }
+
   async function loadCloseCheck(projekatId: number) {
     setCloseError(null);
     setCloseLoading(true);
@@ -549,10 +591,15 @@ export default function InicijacijaDetailClient() {
 
       if (r?.projekat_id) {
         const pid = Number(r.projekat_id);
-        await Promise.all([loadProjectStatus(pid), loadCloseCheck(pid)]);
+        await Promise.all([
+          loadProjectStatus(pid),
+          loadCloseCheck(pid),
+          loadEditOverride(pid),
+        ]);
       } else {
         setProjStatus(null);
         setCloseData(null);
+        setOverrideState(null);
       }
     } catch (e: any) {
       setError(e?.message ?? t("common.error"));
@@ -580,6 +627,7 @@ export default function InicijacijaDetailClient() {
 
   useEffect(() => {
     if (!Number.isFinite(id) || id <= 0) return;
+    loadAuthMe();
     loadKlijenti();
     loadPickerItems();
     load();
@@ -588,7 +636,7 @@ export default function InicijacijaDetailClient() {
 
   async function handleStorno() {
     if (!row) return;
-    if (dealReadOnly) return;
+    if (!canEditDeal) return;
     if (row.status_id === 4) return; // već odbijeno
     if (!window.confirm(t("dealDetail.confirmStornoDeal"))) return;
 
@@ -623,7 +671,7 @@ export default function InicijacijaDetailClient() {
 
   async function saveDeal() {
     if (!row) return;
-    if (dealReadOnly) return;
+    if (!canEditDeal) return;
 
     setSaving(true);
     setError(null);
@@ -656,7 +704,7 @@ export default function InicijacijaDetailClient() {
   }
 
   async function saveTimeline() {
-    if (dealReadOnly) return;
+    if (!canEditDeal) return;
 
     setSavingTimeline(true);
     setError(null);
@@ -704,7 +752,7 @@ export default function InicijacijaDetailClient() {
   }
 
   async function addItem() {
-    if (dealReadOnly) return;
+    if (!canEditDeal) return;
     if (!selected) return;
 
     setAddingItem(true);
@@ -755,7 +803,7 @@ export default function InicijacijaDetailClient() {
   }
 
   async function stornoItem(inicijacija_stavka_id: number) {
-    if (dealReadOnly) return;
+    if (!canEditDeal) return;
 
     const ok = window.confirm(t("dealDetail.confirmStornoItem"));
     if (!ok) return;
@@ -781,7 +829,7 @@ export default function InicijacijaDetailClient() {
   }
 
   function startEdit(s: StavkaRow) {
-    if (dealReadOnly) return;
+    if (!canEditDeal) return;
     setEditId(s.inicijacija_stavka_id);
     setEditSelected(null);
     setEditKolicina(String(s.kolicina ?? ""));
@@ -801,7 +849,7 @@ export default function InicijacijaDetailClient() {
   }
 
   async function saveEdit() {
-    if (dealReadOnly) return;
+    if (!canEditDeal) return;
     if (!editId) return;
 
     const k = asNum(editKolicina);
@@ -869,6 +917,52 @@ export default function InicijacijaDetailClient() {
       setError(e?.message ?? t("common.error"));
     } finally {
       setOpeningProject(false);
+    }
+  }
+
+  async function enableOverride() {
+    const pid = Number(row?.projekat_id ?? 0);
+    if (!isOwnerAdmin || !pid) return;
+    const reason = overrideReason.trim();
+    const minutes = Number(overrideMinutes);
+    if (!reason) {
+      setError("Unesi razlog za admin override.");
+      return;
+    }
+    setOverrideBusy(true);
+    setError(null);
+    setMsg(null);
+    try {
+      await fetchJson(`/api/projects/${pid}/edit-override`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason, minutes }),
+      });
+      setMsg("Admin override je aktivan.");
+      await loadEditOverride(pid);
+    } catch (e: any) {
+      setError(e?.message ?? "Ne mogu aktivirati override.");
+    } finally {
+      setOverrideBusy(false);
+    }
+  }
+
+  async function disableOverride() {
+    const pid = Number(row?.projekat_id ?? 0);
+    if (!isOwnerAdmin || !pid) return;
+    setOverrideBusy(true);
+    setError(null);
+    setMsg(null);
+    try {
+      await fetchJson(`/api/projects/${pid}/edit-override`, {
+        method: "DELETE",
+      });
+      setMsg("Admin override je isključen.");
+      await loadEditOverride(pid);
+    } catch (e: any) {
+      setError(e?.message ?? "Ne mogu ugasiti override.");
+    } finally {
+      setOverrideBusy(false);
     }
   }
 
@@ -1489,11 +1583,11 @@ onClick={() => setCloseOpen(false)}
                         color: "rgba(255, 214, 102, .95)",
                       }}
                     >
-                      · 🔒 {t("dealDetail.dealReadOnly")}
+                      · 🔒 {hasOverride ? "Deal je otključan preko admin override moda" : t("dealDetail.dealReadOnly")}
                     </span>
                   ) : null}
 
-                  {!loading && row && row.status_id !== 4 && !dealReadOnly ? (
+                  {!loading && row && row.status_id !== 4 && canEditDeal ? (
                     <button
                       type="button"
                       className="stornoBtn"
@@ -1587,6 +1681,70 @@ onClick={() => setCloseOpen(false)}
             </div>
           ) : null}
 
+          {!loading && row?.projekat_id && dealReadOnly && isOwnerAdmin ? (
+            <div
+              className="cardLike"
+              style={{
+                border: "1px solid rgba(80, 170, 255, .45)",
+                background: "rgba(80, 170, 255, .10)",
+              }}
+            >
+              <div style={{ fontWeight: 850, marginBottom: 8 }}>
+                Admin override za zaključani projekat
+              </div>
+              {hasOverride ? (
+                <div style={{ fontSize: 13, opacity: 0.95, marginBottom: 10 }}>
+                  Aktivno do: <b>{overrideState?.expires_at ?? "—"}</b>
+                  {" · "}
+                  razlog: <b>{overrideState?.reason ?? "—"}</b>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 120px auto",
+                    gap: 8,
+                    alignItems: "center",
+                  }}
+                >
+                  <input
+                    value={overrideReason}
+                    onChange={(e) => setOverrideReason(e.target.value)}
+                    placeholder="Razlog otključavanja"
+                    style={inputStyle}
+                  />
+                  <input
+                    value={overrideMinutes}
+                    onChange={(e) => setOverrideMinutes(e.target.value)}
+                    placeholder="min"
+                    style={inputStyle}
+                    inputMode="numeric"
+                  />
+                  <button
+                    type="button"
+                    className="glassbtn actionBtn"
+                    onClick={enableOverride}
+                    disabled={overrideBusy}
+                  >
+                    {overrideBusy ? "Aktiviram..." : "Uključi override"}
+                  </button>
+                </div>
+              )}
+              {hasOverride ? (
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    type="button"
+                    className="glassbtn actionBtn"
+                    onClick={disableOverride}
+                    disabled={overrideBusy}
+                  >
+                    {overrideBusy ? "Gasim..." : "Isključi override"}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {loading && <div className="cardLike">{t("common.loading")}</div>}
           {!!error && !loading && (
             <div className="cardLike msgErr">{t("dealDetail.error")}: {error}</div>
@@ -1598,7 +1756,7 @@ onClick={() => setCloseOpen(false)}
 
       {/* SCROLL */}
       <div className="scrollWrap">
-        <div className="container" style={{ opacity: dealReadOnly ? 0.92 : 1 }}>
+        <div className="container" style={{ opacity: canEditDeal ? 1 : 0.92 }}>
           {/* TIMELINE */}
           {!loading && (
             <div className="cardLike">
@@ -1658,8 +1816,8 @@ onClick={() => setCloseOpen(false)}
               <div
                 style={{
                   marginTop: 4,
-                  opacity: dealReadOnly ? 0.65 : 1,
-                  pointerEvents: dealReadOnly ? "none" : "auto",
+                  opacity: canEditDeal ? 1 : 0.65,
+                  pointerEvents: canEditDeal ? "auto" : "none",
                 }}
               >
                 <div className="label deadlineLabel">
@@ -1696,8 +1854,8 @@ onClick={() => setCloseOpen(false)}
                   className="grid2"
                   style={{
                     marginTop: 14,
-                    opacity: dealReadOnly ? 0.65 : 1,
-                    pointerEvents: dealReadOnly ? "none" : "auto",
+                    opacity: canEditDeal ? 1 : 0.65,
+                    pointerEvents: canEditDeal ? "auto" : "none",
                   }}
                 >
                   <div className="label">{t("dealDetail.via")}</div>
@@ -1732,17 +1890,17 @@ onClick={() => setCloseOpen(false)}
               >
                 <button
                   onClick={saveTimeline}
-                  disabled={savingTimeline || dealReadOnly}
+                  disabled={savingTimeline || !canEditDeal}
                   className="glassbtn actionBtn"
                   type="button"
                   style={{
-                    opacity: savingTimeline ? 0.7 : dealReadOnly ? 0.55 : 1,
-                    pointerEvents: dealReadOnly ? "none" : "auto",
+                    opacity: savingTimeline ? 0.7 : !canEditDeal ? 0.55 : 1,
+                    pointerEvents: !canEditDeal ? "none" : "auto",
                     background: "linear-gradient(135deg, rgba(55, 214, 122, 0.2), rgba(34, 197, 94, 0.15))",
                     border: "1px solid rgba(55, 214, 122, 0.45)",
                   }}
                   title={
-                    dealReadOnly
+                    !canEditDeal
                       ? t("dealDetail.dealReadOnlyTooltip")
                       : t("dealDetail.saveTimelineTooltip")
                   }
@@ -1759,8 +1917,8 @@ onClick={() => setCloseOpen(false)}
               className="cardLike"
               data-onboarding="deal-stavke"
               style={{
-                opacity: dealReadOnly ? 0.65 : 1,
-                pointerEvents: dealReadOnly ? "none" : "auto",
+                opacity: canEditDeal ? 1 : 0.65,
+                pointerEvents: canEditDeal ? "auto" : "none",
               }}
             >
               <div
@@ -1776,7 +1934,7 @@ onClick={() => setCloseOpen(false)}
                   {t("dealDetail.budgetTitle")}
                 </div>
 
-                {!dealReadOnly && (
+                {canEditDeal && (
                   <Link
                     href={`/studio/strategic-core?inicijacija_id=${id}`}
                     className="btn btn-sc-strategic"
@@ -2226,8 +2384,8 @@ onClick={() => setCloseOpen(false)}
             <div
               className="cardLike"
               style={{
-                opacity: dealReadOnly ? 0.65 : 1,
-                pointerEvents: dealReadOnly ? "none" : "auto",
+                opacity: canEditDeal ? 1 : 0.65,
+                pointerEvents: canEditDeal ? "auto" : "none",
               }}
             >
               <div style={{ fontWeight: 750, fontSize: 16, marginBottom: 10 }}>
@@ -2281,8 +2439,8 @@ onClick={() => setCloseOpen(false)}
             <div
               className="cardLike"
               style={{
-                opacity: dealReadOnly ? 0.65 : 1,
-                pointerEvents: dealReadOnly ? "none" : "auto",
+                opacity: canEditDeal ? 1 : 0.65,
+                pointerEvents: canEditDeal ? "auto" : "none",
               }}
             >
               <div style={{ fontWeight: 750, fontSize: 16, marginBottom: 10 }}>

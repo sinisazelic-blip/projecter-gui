@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { assertDealEditableOrThrow } from "@/lib/projects/deal-edit-guard";
 
 function num(v: any) {
   if (v === null || v === undefined) return null;
@@ -223,6 +224,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    await assertDealEditableOrThrow(req, inicijacija_id);
+
     const hasInoPrice = await hasColumn("cjenovnik_stavke", "cijena_ino_eur");
     const { is_ino } = await getDealCurrencyMode(inicijacija_id);
 
@@ -305,6 +308,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, sync });
   } catch (e: any) {
+    if (e?.status === 423) {
+      return NextResponse.json(
+        { ok: false, error: "Projekat je zaključan. Potreban je admin override." },
+        { status: 423 },
+      );
+    }
     return NextResponse.json(
       { ok: false, error: e?.message ?? "Greška" },
       { status: 500 },
@@ -336,6 +345,8 @@ export async function PUT(req: NextRequest) {
         { status: 404 },
       );
     }
+
+    await assertDealEditableOrThrow(req, inicijacija_id);
 
     const k = num(body?.kolicina);
     const cij = num(body?.cijena_jedinicna);
@@ -455,6 +466,12 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json({ ok: true, sync });
   } catch (e: any) {
+    if (e?.status === 423) {
+      return NextResponse.json(
+        { ok: false, error: "Projekat je zaključan. Potreban je admin override." },
+        { status: 423 },
+      );
+    }
     return NextResponse.json(
       { ok: false, error: e?.message ?? "Greška" },
       { status: 500 },
@@ -505,6 +522,8 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    await assertDealEditableOrThrow(req, inicijacija_id);
+
     await pool.query(
       `
       UPDATE inicijacija_stavke
@@ -520,6 +539,12 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json({ ok: true, stornirano, sync });
   } catch (e: any) {
+    if (e?.status === 423) {
+      return NextResponse.json(
+        { ok: false, error: "Projekat je zaključan. Potreban je admin override." },
+        { status: 423 },
+      );
+    }
     return NextResponse.json(
       { ok: false, error: e?.message ?? "Greška" },
       { status: 500 },

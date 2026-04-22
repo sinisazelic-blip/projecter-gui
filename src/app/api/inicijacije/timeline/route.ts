@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { assertDealEditableOrThrow } from "@/lib/projects/deal-edit-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -149,6 +150,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    await assertDealEditableOrThrow(req, inicijacija_id);
+
     const required_deadline = toMySqlDateTime(body?.required_deadline);
     const studio_estimate = toMySqlDateTime(body?.studio_estimate);
     const accepted_deadline = toMySqlDateTime(body?.accepted_deadline);
@@ -199,6 +202,12 @@ export async function POST(req: NextRequest) {
       resync,
     });
   } catch (e: any) {
+    if (e?.status === 423) {
+      return NextResponse.json(
+        { ok: false, error: "Projekat je zaključan. Potreban je admin override." },
+        { status: 423 },
+      );
+    }
     return NextResponse.json(
       { ok: false, error: e?.message ?? "Greška" },
       { status: 500 },
