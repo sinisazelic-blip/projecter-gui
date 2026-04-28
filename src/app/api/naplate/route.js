@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import mysql from "mysql2/promise";
+import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req) {
-  let conn;
   try {
     const url = new URL(req.url);
 
@@ -22,25 +21,14 @@ export async function GET(req) {
     const upcomingDaysRaw = url.searchParams.get("upcoming_days");
     const upcomingDays = upcomingDaysRaw ? Number(upcomingDaysRaw) : 14;
 
-    conn = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      port: Number(process.env.DB_PORT || "25060"),
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      ssl: { rejectUnauthorized: false },
-      connectTimeout: 8000,
-    });
-
     const where = [];
     const args = [];
 
-    // Naplate: fakturisane fakture (status_id = 9 = FAKTURISAN)
-    where.push("p.status_id = 9");
+    // Naplate: oslanjamo se na fakture, ne na status projekta.
+    // status_id projekta je često van sync-a sa stvarnim stanjem faktura.
 
-    // nije plaćeno (default logika naplate) - fakture koje nisu plaćene
-    // Fakture sa status_id = 9 su fakturisane, prikaži sve koje nisu eksplicitno plaćene
-    // Možda fakture nemaju eksplicitni status plaćanja u fiskalni_status, pa prikažimo sve fakturisane
+    // izostavi stornirane/zamijenjene fakture
+    where.push("(f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))");
 
     // ✅ NOVO: projekat filter (ako je došao u URL-u)
     if (projekatIdRaw && Number.isFinite(Number(projekatIdRaw))) {
@@ -72,6 +60,12 @@ export async function GET(req) {
       args.push(dueTo);
     }
 
+    // upcoming window (kad nije onlyLate i nije eksplicitno postavljen range)
+    if (!onlyLate && !dueFrom && !dueTo && Number.isFinite(upcomingDays)) {
+      where.push("f.datum_dospijeca <= DATE_ADD(CURDATE(), INTERVAL ? DAY)");
+      args.push(Math.max(0, Math.floor(upcomingDays)));
+    }
+
     // ✅ Direktno uzmi podatke iz fakture tabele za fakturisane fakture
     // Umjesto view-a vw_naplate, direktno uzimamo iz faktura_projekti -> fakture -> projekti
     // Datum dospijeća se računa dinamički: datum_izdavanja + rok_placanja_dana
@@ -91,6 +85,14 @@ export async function GET(req) {
         f.iznos_ukupno_km AS iznos,
         f.valuta,
         f.fiskalni_status AS faktura_status,
+        CASE
+          WHEN f.fiskalni_status IN ('PLACENA', 'DJELIMICNO') THEN f.iznos_ukupno_km
+          ELSE 0
+        END AS naplaceno,
+        CASE
+          WHEN f.fiskalni_status IN ('PLACENA', 'DJELIMICNO') THEN 0
+          ELSE f.iznos_ukupno_km
+        END AS neplaceno,
         -- Izračunaj dane do valute ili dane kašnjenja
         CASE
           WHEN f.datum_izdavanja IS NULL THEN NULL
@@ -131,7 +133,7 @@ export async function GET(req) {
       LIMIT 500;
     `;
 
-    const [rows] = await conn.query(sql, args);
+    const rows = await query(sql, args);
 
     return NextResponse.json({ ok: true, success: true, data: rows });
   } catch (e) {
@@ -144,7 +146,5 @@ export async function GET(req) {
       },
       { status: 500 },
     );
-  } finally {
-    if (conn) await conn.end();
   }
 }

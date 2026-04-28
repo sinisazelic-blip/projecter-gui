@@ -5,6 +5,8 @@ type Row = Record<string, unknown>;
 export type PocetnaStanjaRow = {
   napomena: string | null;
   iznos_km: number;
+  paid_km?: number;
+  remaining_km?: number;
   otpisano?: boolean;
   otpis_razlog?: string | null;
   otpis_datum?: string | null;
@@ -71,6 +73,45 @@ async function getDugovanjaByTalent(): Promise<{ talent_id: number; naziv: strin
 export async function getPocetnaStanja(): Promise<PocetnaStanja> {
   const out: PocetnaStanja = { klijenti: [], dobavljaci: [], talenti: [] };
 
+  // --- Uplate/izmirenja početnih stanja (računa "plaćeno" i "preostalo") ---
+  // Ako tabela ne postoji (još nije migrirano), tretiraj kao 0.
+  const paidByKey = new Map<string, number>();
+  try {
+    const sums = (await query(
+      `
+      SELECT tip, ref_id, ROUND(SUM(COALESCE(amount_km, 0)), 2) AS paid_km
+      FROM pocetno_stanje_uplate
+      WHERE aktivan = 1
+      GROUP BY tip, ref_id
+      `,
+      [],
+    )) as Row[];
+    for (const r of sums || []) {
+      const tip = String(r.tip || "");
+      const ref = Number(r.ref_id);
+      const paid = Number(r.paid_km || 0);
+      if (!tip || !Number.isFinite(ref)) continue;
+      paidByKey.set(`${tip}:${ref}`, paid);
+    }
+  } catch {
+    // ignore (tabela možda ne postoji)
+  }
+
+  const attachPaid = <T extends { iznos_km: number; napomena?: string | null }>(
+    tip: "klijent" | "dobavljac" | "talent",
+    refId: number,
+    row: T,
+    opts?: { skip?: boolean },
+  ) => {
+    if (opts?.skip) {
+      return { ...row, paid_km: 0, remaining_km: Number(row.iznos_km || 0) };
+    }
+    const paid = paidByKey.get(`${tip}:${refId}`) ?? 0;
+    const iznos = Number(row.iznos_km || 0);
+    const remaining = Math.max(0, Number((iznos - paid).toFixed(2)));
+    return { ...row, paid_km: paid, remaining_km: remaining };
+  };
+
   // --- Klijenti (samo iz klijent_pocetno_stanje) ---
   try {
     const rows = (await query(
@@ -84,13 +125,19 @@ export async function getPocetnaStanja(): Promise<PocetnaStanja> {
       `,
     )) as Row[];
     out.klijenti = (rows || []).map((r) => ({
-      klijent_id: Number(r.klijent_id),
-      naziv: String(r.naziv ?? ""),
-      iznos_km: Number(r.iznos_km ?? 0),
-      napomena: r.napomena != null ? String(r.napomena) : null,
-      otpisano: Number(r.otpisano) === 1,
-      otpis_razlog: r.otpis_razlog != null ? String(r.otpis_razlog) : null,
-      otpis_datum: r.otpis_datum != null ? String(r.otpis_datum) : null,
+      ...attachPaid(
+        "klijent",
+        Number(r.klijent_id),
+        {
+          klijent_id: Number(r.klijent_id),
+          naziv: String(r.naziv ?? ""),
+          iznos_km: Number(r.iznos_km ?? 0),
+          napomena: r.napomena != null ? String(r.napomena) : null,
+          otpisano: Number(r.otpisano) === 1,
+          otpis_razlog: r.otpis_razlog != null ? String(r.otpis_razlog) : null,
+          otpis_datum: r.otpis_datum != null ? String(r.otpis_datum) : null,
+        },
+      ),
     }));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -102,10 +149,16 @@ export async function getPocetnaStanja(): Promise<PocetnaStanja> {
           [],
         )) as Row[];
         out.klijenti = (rows || []).map((r) => ({
-          klijent_id: Number(r.klijent_id),
-          naziv: String(r.naziv ?? ""),
-          iznos_km: Number(r.iznos_km ?? 0),
-          napomena: r.napomena != null ? String(r.napomena) : null,
+          ...attachPaid(
+            "klijent",
+            Number(r.klijent_id),
+            {
+              klijent_id: Number(r.klijent_id),
+              naziv: String(r.naziv ?? ""),
+              iznos_km: Number(r.iznos_km ?? 0),
+              napomena: r.napomena != null ? String(r.napomena) : null,
+            },
+          ),
         }));
       } catch {
         console.error("[pocetna-stanja] klijent_pocetno_stanje:", msg);
@@ -128,13 +181,19 @@ export async function getPocetnaStanja(): Promise<PocetnaStanja> {
       `,
     )) as Row[];
     out.dobavljaci = (rows || []).map((r) => ({
-      dobavljac_id: Number(r.dobavljac_id),
-      naziv: String(r.naziv ?? ""),
-      iznos_km: Number(r.iznos_km ?? 0),
-      napomena: r.napomena != null ? String(r.napomena) : null,
-      otpisano: Number(r.otpisano) === 1,
-      otpis_razlog: r.otpis_razlog != null ? String(r.otpis_razlog) : null,
-      otpis_datum: r.otpis_datum != null ? String(r.otpis_datum) : null,
+      ...attachPaid(
+        "dobavljac",
+        Number(r.dobavljac_id),
+        {
+          dobavljac_id: Number(r.dobavljac_id),
+          naziv: String(r.naziv ?? ""),
+          iznos_km: Number(r.iznos_km ?? 0),
+          napomena: r.napomena != null ? String(r.napomena) : null,
+          otpisano: Number(r.otpisano) === 1,
+          otpis_razlog: r.otpis_razlog != null ? String(r.otpis_razlog) : null,
+          otpis_datum: r.otpis_datum != null ? String(r.otpis_datum) : null,
+        },
+      ),
     }));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -146,10 +205,16 @@ export async function getPocetnaStanja(): Promise<PocetnaStanja> {
           [],
         )) as Row[];
         out.dobavljaci = (rows || []).map((r) => ({
-          dobavljac_id: Number(r.dobavljac_id),
-          naziv: String(r.naziv ?? ""),
-          iznos_km: Number(r.iznos_km ?? 0),
-          napomena: r.napomena != null ? String(r.napomena) : null,
+          ...attachPaid(
+            "dobavljac",
+            Number(r.dobavljac_id),
+            {
+              dobavljac_id: Number(r.dobavljac_id),
+              naziv: String(r.naziv ?? ""),
+              iznos_km: Number(r.iznos_km ?? 0),
+              napomena: r.napomena != null ? String(r.napomena) : null,
+            },
+          ),
         }));
       } catch {
         console.error("[pocetna-stanja] dobavljac_pocetno_stanje:", msg);
@@ -167,6 +232,8 @@ export async function getPocetnaStanja(): Promise<PocetnaStanja> {
       dobavljac_id: r.dobavljac_id,
       naziv: r.naziv,
       iznos_km: r.iznos_km,
+      paid_km: 0,
+      remaining_km: r.iznos_km,
       napomena: "Tekuće dugovanje (projekt_dugovanja)",
       otpisano: false,
     });
@@ -187,13 +254,19 @@ export async function getPocetnaStanja(): Promise<PocetnaStanja> {
       `,
     )) as Row[];
     out.talenti = (rows || []).map((r) => ({
-      talent_id: Number(r.talent_id),
-      naziv: String(r.naziv ?? ""),
-      iznos_km: Number(r.iznos_km ?? 0),
-      napomena: r.napomena != null ? String(r.napomena) : null,
-      otpisano: Number(r.otpisano) === 1,
-      otpis_razlog: r.otpis_razlog != null ? String(r.otpis_razlog) : null,
-      otpis_datum: r.otpis_datum != null ? String(r.otpis_datum) : null,
+      ...attachPaid(
+        "talent",
+        Number(r.talent_id),
+        {
+          talent_id: Number(r.talent_id),
+          naziv: String(r.naziv ?? ""),
+          iznos_km: Number(r.iznos_km ?? 0),
+          napomena: r.napomena != null ? String(r.napomena) : null,
+          otpisano: Number(r.otpisano) === 1,
+          otpis_razlog: r.otpis_razlog != null ? String(r.otpis_razlog) : null,
+          otpis_datum: r.otpis_datum != null ? String(r.otpis_datum) : null,
+        },
+      ),
     }));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -205,10 +278,16 @@ export async function getPocetnaStanja(): Promise<PocetnaStanja> {
           [],
         )) as Row[];
         out.talenti = (rows || []).map((r) => ({
-          talent_id: Number(r.talent_id),
-          naziv: String(r.naziv ?? ""),
-          iznos_km: Number(r.iznos_km ?? 0),
-          napomena: r.napomena != null ? String(r.napomena) : null,
+          ...attachPaid(
+            "talent",
+            Number(r.talent_id),
+            {
+              talent_id: Number(r.talent_id),
+              naziv: String(r.naziv ?? ""),
+              iznos_km: Number(r.iznos_km ?? 0),
+              napomena: r.napomena != null ? String(r.napomena) : null,
+            },
+          ),
         }));
       } catch {
         console.error("[pocetna-stanja] talent_pocetno_stanje:", msg);
@@ -226,6 +305,8 @@ export async function getPocetnaStanja(): Promise<PocetnaStanja> {
       talent_id: r.talent_id,
       naziv: r.naziv,
       iznos_km: r.iznos_km,
+      paid_km: 0,
+      remaining_km: r.iznos_km,
       napomena: "Tekuće dugovanje (projekt_dugovanja)",
       otpisano: false,
     });

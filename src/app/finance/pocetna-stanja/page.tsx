@@ -6,14 +6,19 @@ import { formatAmount } from "@/lib/format";
 import { getPocetnaStanja } from "@/lib/pocetna-stanja";
 import PocetnaStanjaImport from "./PocetnaStanjaImport";
 import OtpisPocetnoStanjeButton from "./OtpisPocetnoStanjeButton";
+import EvidentirajUplatuButton from "./EvidentirajUplatuButton";
 import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
 
 
 /** Suma samo aktivnih (ne otpisanih) stavki */
-function sumAktivno<T extends { iznos_km: number; otpisano?: boolean }>(rows: T[]): number {
-  return rows.reduce((s, r) => (r.otpisano ? s : s + r.iznos_km), 0);
+function sumAktivno<T extends { iznos_km: number; remaining_km?: number; otpisano?: boolean }>(rows: T[]): number {
+  return rows.reduce((s, r) => {
+    if (r.otpisano) return s;
+    const v = Number.isFinite(Number(r.remaining_km)) ? Number(r.remaining_km) : Number(r.iznos_km);
+    return s + (Number(v) || 0);
+  }, 0);
 }
 
 export default async function PocetnaStanjaPage() {
@@ -85,15 +90,19 @@ export default async function PocetnaStanjaPage() {
           <div className="pocetna-stanja-table-wrap">
             <table className="table pocetna-stanja-table" style={{ width: "100%", tableLayout: "fixed" }}>
                 <colgroup>
-                  <col style={{ width: "34%" }} />
+                  <col style={{ width: "28%" }} />
                   <col style={{ width: "12%" }} />
-                  <col style={{ width: "10%" }} />
-                  <col style={{ width: "34%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "24%" }} />
                 </colgroup>
                 <thead>
                   <tr>
                     <th style={{ textAlign: "left", padding: "10px 14px" }}>{t("pocetnaStanja.colNaziv")}</th>
                     <th style={{ textAlign: "right", padding: "10px 14px" }}>{t("pocetnaStanja.colIznosKm")}</th>
+                    <th style={{ textAlign: "right", padding: "10px 14px" }}>{t("pocetnaStanja.colPlaceno")}</th>
+                    <th style={{ textAlign: "right", padding: "10px 14px" }}>{t("pocetnaStanja.colPreostalo")}</th>
                     <th style={{ textAlign: "center", padding: "10px 14px" }}>{t("pocetnaStanja.colAkcija")}</th>
                     <th style={{ textAlign: "left", padding: "10px 14px" }}>{t("pocetnaStanja.colNapomena")}</th>
                   </tr>
@@ -101,7 +110,7 @@ export default async function PocetnaStanjaPage() {
                 <tbody>
                   {data.klijenti.length === 0 ? (
                     <tr>
-                      <td colSpan={4} style={{ padding: 20, color: "var(--muted)" }}>
+                      <td colSpan={6} style={{ padding: 20, color: "var(--muted)" }}>
                         {t("pocetnaStanja.noResults")}
                       </td>
                     </tr>
@@ -122,10 +131,27 @@ export default async function PocetnaStanjaPage() {
                         <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>
                           {formatAmount(r.iznos_km, locale)}
                         </td>
+                        <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>
+                          {formatAmount(Number(r.paid_km || 0), locale)}
+                        </td>
+                        <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700 }}>
+                          {formatAmount(Number(r.remaining_km ?? r.iznos_km), locale)}
+                        </td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                          {!r.otpisano && (
-                            <OtpisPocetnoStanjeButton tip="klijent" refId={r.klijent_id} />
-                          )}
+                          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                            {!r.otpisano && (
+                              <OtpisPocetnoStanjeButton tip="klijent" refId={r.klijent_id} />
+                            )}
+                            {!r.otpisano && Number(r.remaining_km ?? r.iznos_km) > 0.001 && (
+                              <EvidentirajUplatuButton
+                                tip="klijent"
+                                refId={r.klijent_id}
+                                defaultAmountKm={Number(r.remaining_km ?? r.iznos_km)}
+                              >
+                                Uplata
+                              </EvidentirajUplatuButton>
+                            )}
+                          </div>
                         </td>
                         <td style={{ padding: "10px 14px", color: "var(--muted)", fontSize: 13, whiteSpace: "normal", wordBreak: "break-word" }}>
                           {r.napomena ?? "—"}
@@ -140,6 +166,8 @@ export default async function PocetnaStanjaPage() {
                     <td style={{ padding: "12px 14px", textAlign: "right" }}>
                       {formatAmount(sumKlijenti, locale)}
                     </td>
+                    <td style={{ padding: "12px 14px" }} />
+                    <td style={{ padding: "12px 14px" }} />
                     <td style={{ padding: "12px 14px" }} />
                     <td style={{ padding: "12px 14px" }} />
                   </tr>
@@ -170,15 +198,19 @@ export default async function PocetnaStanjaPage() {
           <div className="pocetna-stanja-table-wrap">
             <table className="table pocetna-stanja-table" style={{ width: "100%", tableLayout: "fixed" }}>
                 <colgroup>
-                  <col style={{ width: "34%" }} />
+                  <col style={{ width: "28%" }} />
                   <col style={{ width: "12%" }} />
-                  <col style={{ width: "10%" }} />
-                  <col style={{ width: "44%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "24%" }} />
                 </colgroup>
                 <thead>
                   <tr>
                     <th style={{ textAlign: "left", padding: "10px 14px" }}>{t("pocetnaStanja.colNaziv")}</th>
                     <th style={{ textAlign: "right", padding: "10px 14px" }}>{t("pocetnaStanja.colIznosKm")}</th>
+                    <th style={{ textAlign: "right", padding: "10px 14px" }}>{t("pocetnaStanja.colPlaceno")}</th>
+                    <th style={{ textAlign: "right", padding: "10px 14px" }}>{t("pocetnaStanja.colPreostalo")}</th>
                     <th style={{ textAlign: "center", padding: "10px 14px" }}>{t("pocetnaStanja.colAkcija")}</th>
                     <th style={{ textAlign: "left", padding: "10px 14px" }}>{t("pocetnaStanja.colNapomena")}</th>
                   </tr>
@@ -186,13 +218,14 @@ export default async function PocetnaStanjaPage() {
                 <tbody>
                   {data.dobavljaci.length === 0 ? (
                     <tr>
-                      <td colSpan={4} style={{ padding: 20, color: "var(--muted)" }}>
+                      <td colSpan={6} style={{ padding: 20, color: "var(--muted)" }}>
                         {t("pocetnaStanja.noResultsDobavljaci")}
                       </td>
                     </tr>
                   ) : (
                     data.dobavljaci.map((r) => {
                       const fromPocetno = r.napomena !== "Tekuće dugovanje (projekt_dugovanja)";
+                      const rem = Number(r.remaining_km ?? r.iznos_km);
                       return (
                         <tr key={r.dobavljac_id} style={r.otpisano ? { opacity: 0.75 } : undefined}>
                           <td style={{ padding: "10px 14px", whiteSpace: "normal", wordBreak: "break-word" }}>
@@ -209,10 +242,27 @@ export default async function PocetnaStanjaPage() {
                           <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>
                             {formatAmount(r.iznos_km, locale)}
                           </td>
+                          <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>
+                            {formatAmount(Number(r.paid_km || 0), locale)}
+                          </td>
+                          <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700 }}>
+                            {formatAmount(rem, locale)}
+                          </td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                            {!r.otpisano && fromPocetno && (
-                              <OtpisPocetnoStanjeButton tip="dobavljac" refId={r.dobavljac_id} />
-                            )}
+                            <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                              {!r.otpisano && fromPocetno && (
+                                <OtpisPocetnoStanjeButton tip="dobavljac" refId={r.dobavljac_id} />
+                              )}
+                              {!r.otpisano && fromPocetno && rem > 0.001 && (
+                                <EvidentirajUplatuButton
+                                  tip="dobavljac"
+                                  refId={r.dobavljac_id}
+                                  defaultAmountKm={rem}
+                                >
+                                  Isplata
+                                </EvidentirajUplatuButton>
+                              )}
+                            </div>
                           </td>
                           <td style={{ padding: "10px 14px", color: "var(--muted)", fontSize: 13, whiteSpace: "normal", wordBreak: "break-word" }}>
                             {r.napomena ?? "—"}
@@ -228,6 +278,8 @@ export default async function PocetnaStanjaPage() {
                     <td style={{ padding: "12px 14px", textAlign: "right" }}>
                       {formatAmount(sumDobavljaci, locale)}
                     </td>
+                    <td style={{ padding: "12px 14px" }} />
+                    <td style={{ padding: "12px 14px" }} />
                     <td style={{ padding: "12px 14px" }} />
                     <td style={{ padding: "12px 14px" }} />
                   </tr>
@@ -258,15 +310,19 @@ export default async function PocetnaStanjaPage() {
           <div className="pocetna-stanja-table-wrap">
             <table className="table pocetna-stanja-table" style={{ width: "100%", tableLayout: "fixed" }}>
                 <colgroup>
-                  <col style={{ width: "34%" }} />
+                  <col style={{ width: "28%" }} />
                   <col style={{ width: "12%" }} />
-                  <col style={{ width: "10%" }} />
-                  <col style={{ width: "44%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "24%" }} />
                 </colgroup>
                 <thead>
                   <tr>
                     <th style={{ textAlign: "left", padding: "10px 14px" }}>{t("pocetnaStanja.colImePrezime")}</th>
                     <th style={{ textAlign: "right", padding: "10px 14px" }}>{t("pocetnaStanja.colIznosKm")}</th>
+                    <th style={{ textAlign: "right", padding: "10px 14px" }}>{t("pocetnaStanja.colPlaceno")}</th>
+                    <th style={{ textAlign: "right", padding: "10px 14px" }}>{t("pocetnaStanja.colPreostalo")}</th>
                     <th style={{ textAlign: "center", padding: "10px 14px" }}>{t("pocetnaStanja.colAkcija")}</th>
                     <th style={{ textAlign: "left", padding: "10px 14px" }}>{t("pocetnaStanja.colNapomena")}</th>
                   </tr>
@@ -274,13 +330,14 @@ export default async function PocetnaStanjaPage() {
                 <tbody>
                   {data.talenti.length === 0 ? (
                     <tr>
-                      <td colSpan={4} style={{ padding: 20, color: "var(--muted)" }}>
+                      <td colSpan={6} style={{ padding: 20, color: "var(--muted)" }}>
                         {t("pocetnaStanja.noResults")}
                       </td>
                     </tr>
                   ) : (
                     data.talenti.map((r) => {
                       const fromPocetno = r.napomena !== "Tekuće dugovanje (projekt_dugovanja)";
+                      const rem = Number(r.remaining_km ?? r.iznos_km);
                       return (
                         <tr key={r.talent_id} style={r.otpisano ? { opacity: 0.75 } : undefined}>
                           <td style={{ padding: "10px 14px", whiteSpace: "normal", wordBreak: "break-word" }}>
@@ -297,10 +354,27 @@ export default async function PocetnaStanjaPage() {
                           <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>
                             {formatAmount(r.iznos_km, locale)}
                           </td>
+                          <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>
+                            {formatAmount(Number(r.paid_km || 0), locale)}
+                          </td>
+                          <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700 }}>
+                            {formatAmount(rem, locale)}
+                          </td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                            {!r.otpisano && fromPocetno && (
-                              <OtpisPocetnoStanjeButton tip="talent" refId={r.talent_id} />
-                            )}
+                            <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                              {!r.otpisano && fromPocetno && (
+                                <OtpisPocetnoStanjeButton tip="talent" refId={r.talent_id} />
+                              )}
+                              {!r.otpisano && fromPocetno && rem > 0.001 && (
+                                <EvidentirajUplatuButton
+                                  tip="talent"
+                                  refId={r.talent_id}
+                                  defaultAmountKm={rem}
+                                >
+                                  Isplata
+                                </EvidentirajUplatuButton>
+                              )}
+                            </div>
                           </td>
                           <td style={{ padding: "10px 14px", color: "var(--muted)", fontSize: 13, whiteSpace: "normal", wordBreak: "break-word" }}>
                             {r.napomena ?? "—"}
@@ -316,6 +390,8 @@ export default async function PocetnaStanjaPage() {
                     <td style={{ padding: "12px 14px", textAlign: "right" }}>
                       {formatAmount(sumTalenti, locale)}
                     </td>
+                    <td style={{ padding: "12px 14px" }} />
+                    <td style={{ padding: "12px 14px" }} />
                     <td style={{ padding: "12px 14px" }} />
                     <td style={{ padding: "12px 14px" }} />
                   </tr>

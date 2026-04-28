@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { apiGet } from "@/lib/api";
 import { query } from "@/lib/db";
 import { getPocetnaStanja } from "@/lib/pocetna-stanja";
@@ -54,6 +55,7 @@ function daysCell(r) {
 
 export default async function Page({ searchParams }) {
   const cookieStore = await cookies();
+  const headerStore = await headers();
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value ?? "sr");
   const t = getT(locale);
   const sp = await Promise.resolve(searchParams);
@@ -64,6 +66,11 @@ export default async function Page({ searchParams }) {
   } catch {
     // ignore
   }
+  const aktivnaPocetnaKlijenti = (pocetnaStanja.klijenti || []).filter(
+    (r) =>
+      !r?.otpisano &&
+      Number(r?.remaining_km ?? r?.iznos_km ?? 0) > 0.001,
+  );
 
   // ✅ projekat filter iz URL-a
   const projekatIdRaw = sp?.projekat_id ?? "";
@@ -74,7 +81,7 @@ export default async function Page({ searchParams }) {
   const narId = sp?.narucilac_id ?? "";
   const dueFrom = sp?.due_from ?? "";
   const dueTo = sp?.due_to ?? "";
-  const upcomingDays = sp?.upcoming_days ?? "14";
+  const upcomingDays = sp?.upcoming_days ?? "";
 
   const narucioci = await query(`
     SELECT klijent_id, naziv_klijenta
@@ -94,11 +101,36 @@ export default async function Page({ searchParams }) {
   if (narId) params.set("narucilac_id", narId);
   if (dueFrom) params.set("due_from", dueFrom);
   if (dueTo) params.set("due_to", dueTo);
-  if (!onlyLate) params.set("upcoming_days", String(upcomingDays || "14"));
+  if (!onlyLate && String(upcomingDays).trim() !== "") {
+    params.set("upcoming_days", String(upcomingDays));
+  }
 
   const qs = params.toString() ? `?${params.toString()}` : "";
-  const json = await apiGet(`/api/naplate${qs}`);
-  const rows = json.data ?? [];
+  let rows = [];
+  let apiError = null;
+  try {
+    const proto =
+      headerStore.get("x-forwarded-proto") ||
+      (process.env.NODE_ENV === "production" ? "https" : "http");
+    const host = headerStore.get("x-forwarded-host") || headerStore.get("host");
+    const cookieHeader = headerStore.get("cookie") || "";
+    const apiPath = `/api/naplate${qs}`;
+    const apiUrl = host ? `${proto}://${host}${apiPath}` : apiPath;
+    const json = await apiGet(apiUrl, {
+      headers: cookieHeader ? { cookie: cookieHeader } : undefined,
+    });
+    if (!json || typeof json !== "object" || !Array.isArray(json.data)) {
+      throw new Error("Naplata API nije vratio očekivani JSON format.");
+    }
+    rows = json.data;
+  } catch (e) {
+    apiError = e?.message || String(e);
+    rows = [];
+  }
+
+  const unpaidRows = rows.filter((r) => Number(r?.neplaceno ?? r?.iznos ?? 0) > 0.0001);
+  const paidRows = rows.filter((r) => Number(r?.naplaceno ?? 0) > 0.0001);
+  const tableRows = unpaidRows.length > 0 ? unpaidRows : paidRows;
 
   // ✅ Reset: ako si u projektu, resetuj filtere ali ostani na projektu
   const resetHref = projekatId
@@ -114,9 +146,13 @@ export default async function Page({ searchParams }) {
     const toTxt = dueTo ? fmtDateDMY(dueTo) : "—";
     periodText = t("naplatePage.periodFromTo").replace("{{from}}", fromTxt).replace("{{to}}", toTxt);
   } else {
-    const today = new Date();
-    const to = addDays(today, Number(upcomingDays || 14));
-    periodText = t("naplatePage.periodFromTo").replace("{{from}}", fmtDateDMY(today)).replace("{{to}}", fmtDateDMY(to));
+    if (String(upcomingDays || "").trim() === "") {
+      periodText = t("naplatePage.all") || "Svi rokovi";
+    } else {
+      const today = new Date();
+      const to = addDays(today, Number(upcomingDays || 14));
+      periodText = t("naplatePage.periodFromTo").replace("{{from}}", fmtDateDMY(today)).replace("{{to}}", fmtDateDMY(to));
+    }
   }
 
   return (
@@ -162,6 +198,16 @@ export default async function Page({ searchParams }) {
         </div>
 
         <div className="bodyWrap">
+      {apiError && (
+        <div className="card" style={{ marginBottom: 12, borderColor: "rgba(248,113,113,.35)" }}>
+          <div style={{ padding: "12px 16px" }}>
+            <div style={{ fontWeight: 700, color: "#f87171" }}>{t("common.error") || "Greška"}</div>
+            <div className="muted" style={{ marginTop: 6 }}>
+              {String(apiError)}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="card">
       <form method="GET">
         {/* da projekat_id ostane kad filtriraš */}
@@ -222,6 +268,7 @@ export default async function Page({ searchParams }) {
                     defaultValue={String(upcomingDays)}
                     style={inputStyle}
                   >
+                    <option value="">{t("naplatePage.all")}</option>
                     <option value="7">{t("naplatePage.days7")}</option>
                     <option value="14">{t("naplatePage.days14")}</option>
                     <option value="30">{t("naplatePage.days30")}</option>
@@ -319,7 +366,7 @@ export default async function Page({ searchParams }) {
       </div>
 
       {/* Početna stanja — potraživanja od klijenata */}
-      {pocetnaStanja.klijenti?.length > 0 && (
+      {aktivnaPocetnaKlijenti.length > 0 && (
         <div className="card" style={{ marginTop: 12, marginBottom: 12 }}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <span style={{ fontWeight: 700, fontSize: 15 }}>{t("naplatePage.pocetnaStanjaTitle")}</span>
@@ -337,10 +384,12 @@ export default async function Page({ searchParams }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {pocetnaStanja.klijenti.map((r) => (
+                  {aktivnaPocetnaKlijenti.map((r) => (
                     <tr key={r.klijent_id} style={r.otpisano ? { opacity: 0.6 } : undefined}>
                       <td style={{ padding: "6px 10px" }}>{r.naziv}{r.otpisano ? ` ${t("naplatePage.writtenOff")}` : ""}</td>
-                      <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 600 }}>{fmtMoney(r.iznos_km, "KM")}</td>
+                      <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 600 }}>
+                        {fmtMoney(r.remaining_km ?? r.iznos_km, "KM")}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -348,7 +397,13 @@ export default async function Page({ searchParams }) {
                   <tr style={{ borderTop: "1px solid var(--border)", fontWeight: 700 }}>
                     <td style={{ padding: "8px 10px" }}>{t("naplatePage.totalActive")}</td>
                     <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                      {fmtMoney(pocetnaStanja.klijenti.filter((x) => !x.otpisano).reduce((s, x) => s + x.iznos_km, 0), "KM")}
+                      {fmtMoney(
+                        aktivnaPocetnaKlijenti.reduce(
+                          (s, x) => s + Number(x.remaining_km ?? x.iznos_km ?? 0),
+                          0,
+                        ),
+                        "KM",
+                      )}
                     </td>
                   </tr>
                 </tfoot>
@@ -360,12 +415,27 @@ export default async function Page({ searchParams }) {
 
       <div className="card" style={{ marginTop: 12 }}>
       <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-        <span className="muted">{t("naplatePage.shownCount").replace("{{count}}", String(rows.length))}</span>
+        <span className="muted">
+          {(t("naplatePage.shownCount") || "").replace("{{count}}", String(tableRows.length))}
+          {paidRows.length ? ` · ${t("naplatePage.paidLabel") || "plaćeno"}: ${paidRows.length}` : ""}
+        </span>
         <ExportExcelButton
           filename="naplate"
           sheetName={t("naplatePage.title")}
-          headers={[t("naplatePage.projectId"), t("naplatePage.project"), t("naplatePage.narucilac"), t("naplatePage.krajnjiKlijent"), t("naplatePage.amount"), t("naplatePage.currency"), t("naplatePage.dueDate"), t("naplatePage.days"), t("naplatePage.status")]}
-          rows={rows.map((r) => [
+          headers={[
+            t("naplatePage.projectId"),
+            t("naplatePage.project"),
+            t("naplatePage.narucilac"),
+            t("naplatePage.krajnjiKlijent"),
+            t("naplatePage.amount"),
+            t("naplatePage.currency"),
+            t("naplatePage.dueDate"),
+            t("naplatePage.days"),
+            t("naplatePage.status"),
+            t("naplatePage.paidLabel") || "Plaćeno",
+            t("naplatePage.unpaidLabel") || "Neplaćeno",
+          ]}
+          rows={tableRows.map((r) => [
             r.projekat_id ?? "",
             r.radni_naziv ?? "",
             r.narucilac_naziv ?? "—",
@@ -375,6 +445,8 @@ export default async function Page({ searchParams }) {
             r.datum_valute ? fmtDateDMY(r.datum_valute) : "—",
             r.dana_do_valute ?? r.dana_kasni ?? "—",
             r.naplata_status ?? "",
+            r.naplaceno ?? 0,
+            r.neplaceno ?? r.iznos ?? 0,
           ])}
         />
       </div>
@@ -382,20 +454,20 @@ export default async function Page({ searchParams }) {
       <table className="table">
         <thead>
           <tr>
-            <th>{t("naplatePage.project")}</th>
+            <th style={{ textAlign: "left" }}>{t("naplatePage.project")}</th>
             <th>{t("naplatePage.narucilac")}</th>
             <th>{t("naplatePage.krajnjiKlijent")}</th>
             <th className="num">{t("naplatePage.amount")}</th>
-            <th>{t("naplatePage.currency")}</th>
+            <th>{t("naplatePage.dueDate")}</th>
             <th className="num">{t("naplatePage.days")}</th>
             <th>{t("naplatePage.status")}</th>
           </tr>
         </thead>
 
         <tbody>
-          {rows.map((r, i) => (
+          {tableRows.map((r, i) => (
             <tr key={r.faktura_id != null ? `${r.projekat_id}-${r.faktura_id}` : `row-${i}`}>
-              <td className="cell-wrap">
+              <td className="cell-wrap" style={{ textAlign: "left" }}>
                 <span style={{ opacity: 0.7, marginRight: 6 }}>
                   #{r.projekat_id}
                 </span>
@@ -415,7 +487,7 @@ export default async function Page({ searchParams }) {
       </table>
       </div>
 
-      {rows.length === 0 && (
+      {tableRows.length === 0 && (
         <div className="muted" style={{ marginTop: 12, padding: 12 }}>
           {t("naplatePage.noItems")}
         </div>
