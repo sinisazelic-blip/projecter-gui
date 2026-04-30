@@ -62,7 +62,7 @@ export default function PonudaWizardPage() {
     d.setDate(d.getDate() + 30);
     return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
   });
-  const [valuta, setValuta] = useState<string>("EUR");
+  const [valuta, setValuta] = useState<string>("KM");
   const [popustKm, setPopustKm] = useState<string>("");
 
   const [nameOverrides, setNameOverrides] = useState<Record<number, string>>({});
@@ -92,7 +92,8 @@ export default function PonudaWizardPage() {
         if (alive) {
           setDeal(data.deal ?? null);
           setStavke(Array.isArray(data.stavke) ? data.stavke : []);
-          setValuta("EUR");
+          const dealCcy = String(data?.deal?.valuta ?? "").trim().toUpperCase();
+          setValuta(dealCcy === "EUR" ? "EUR" : "KM");
         }
       } catch (e: any) {
         if (alive) setError(e?.message ?? t("common.error"));
@@ -118,7 +119,7 @@ export default function PonudaWizardPage() {
   }, [projectGroups]);
 
   function buildFinalStavke(): Array<{ naziv_snapshot: string; jedinica_snapshot: string; kolicina: number; cijena_jedinicna: number; valuta: string; opis: string | null; line_total: number }> {
-    const ccy = valuta === "BAM" ? "EUR" : (valuta || "EUR").slice(0, 3);
+    const ccy = (valuta || "KM").toUpperCase() === "EUR" ? "EUR" : "KM";
     const out: Array<{ naziv_snapshot: string; jedinica_snapshot: string; kolicina: number; cijena_jedinicna: number; valuta: string; opis: string | null; line_total: number }> = [];
 
     Object.values(projectGroups).forEach((g) => {
@@ -197,7 +198,7 @@ export default function PonudaWizardPage() {
           inicijacija_id: id,
           datum_izdavanja: isoIzdavanja,
           datum_vazenja: isoVazenja,
-          valuta: valuta === "BAM" ? "EUR" : (valuta || "EUR"),
+          valuta: (valuta || "KM").toUpperCase() === "EUR" ? "EUR" : "KM",
           popust_km: popust_km > 0 ? popust_km : undefined,
           stavke: finalStavke,
         }),
@@ -236,7 +237,7 @@ export default function PonudaWizardPage() {
     );
   }
 
-  const displayCcy = valuta === "BAM" ? "EUR" : (valuta || "EUR");
+  const displayCcy = (valuta || "KM").toUpperCase() === "EUR" ? "EUR" : "KM";
 
   return (
     <div className="container">
@@ -311,7 +312,8 @@ export default function PonudaWizardPage() {
                   placeholder={t("ponudaWizard.placeholderDate")}
                 />
                 <div className="label">{t("ponudaWizard.currency")}</div>
-                <select className="input" value={valuta} onChange={(e) => setValuta(e.target.value)}>
+                <select className="input" value={valuta} disabled title={t("ponudaWizard.currencyAutoRule") || ""}>
+                  <option value="KM">{t("ponudaWizard.currencyKm")}</option>
                   <option value="EUR">{t("ponudaWizard.currencyEur")}</option>
                 </select>
                 <div className="label">{(t("ponudaWizard.discountLabel") || "").replace("{{ccy}}", displayCcy)}</div>

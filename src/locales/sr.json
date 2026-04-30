@@ -1209,6 +1209,7 @@
     "currency": "Valuta",
     "currencyKm": "KM (BAM)",
     "currencyEur": "EUR",
+    "currencyAutoRule": "Valuta se automatski bira: lokalni klijent = KM, INO klijent = EUR.",
     "discountLabel": "Popust prije PDV-a ({{ccy}})",
     "discountPlaceholder": "0",
     "discountTitle": "Opciono — umanjenje osnovice prije PDV-a",
