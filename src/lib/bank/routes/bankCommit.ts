@@ -147,20 +147,26 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
           const datum = valueDate ? String(valueDate).slice(0, 10) : null;
           if (!datum || !/^\d{4}-\d{2}-\d{2}$/.test(datum)) continue;
 
+          const opisPrihoda = (
+            String(row?.description ?? "").trim() ||
+            haystack ||
+            "Uplata po izvodu"
+          ).slice(0, 255);
+
           const amountKm = Math.round(amount * 100) / 100;
           let prihodId: number | null = null;
           try {
             const [ins]: any = await conn.execute(
               `INSERT INTO projektni_prihodi (projekat_id, faktura_id, datum, iznos_km, opis, status)
                VALUES (?, ?, ?, ?, ?, 'NASTALO')`,
-              [fakturaMatch.projekat_id, fakturaMatch.faktura_id, datum, amountKm, (description || "Uplata po izvodu").slice(0, 255)],
+              [fakturaMatch.projekat_id, fakturaMatch.faktura_id, datum, amountKm, opisPrihoda],
             );
             prihodId = ins?.insertId ?? null;
           } catch {
             try {
               const [ins2]: any = await conn.execute(
                 `INSERT INTO projektni_prihodi (projekat_id, datum, iznos_km, opis) VALUES (?, ?, ?, ?)`,
-                [fakturaMatch.projekat_id, datum, amountKm, description.slice(0, 255) || "Uplata po izvodu"],
+                [fakturaMatch.projekat_id, datum, amountKm, opisPrihoda || "Uplata po izvodu"],
               );
               prihodId = ins2?.insertId ?? null;
             } catch {
