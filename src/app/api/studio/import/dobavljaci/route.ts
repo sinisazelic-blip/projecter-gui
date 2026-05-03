@@ -62,13 +62,22 @@ export async function POST(req: Request) {
         const email = cleanStr(r.email);
         const telefon = cleanStr(r.telefon);
         const napomena = cleanStr(r.napomena);
+        const jibRaw = str(r, "jib").replace(/\D/g, "");
+        const jib = jibRaw.length === 13 ? jibRaw : null;
+        const bank_broj_racuna = cleanStr(str(r, "bank_broj_racuna") || str(r, "bank_racun"));
+        const bank_iban = cleanStr(str(r, "bank_iban"));
+        const bank_swift = cleanStr(str(r, "bank_swift") || str(r, "swift"));
+        const bank_naziv = cleanStr(str(r, "bank_naziv"));
+        const bank_adresa = cleanStr(str(r, "bank_adresa"));
         const aktivan =
           r.aktivan === false || r.aktivan === 0 || r.aktivan === "0" ? 0 : 1;
 
         await query(
           `INSERT INTO dobavljaci
-            (naziv, vrsta, pravno_lice, drzava_iso2, grad, postanski_broj, email, telefon, adresa, napomena, aktivan, created_at, updated_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?, NOW(), NOW())`,
+            (naziv, vrsta, pravno_lice, drzava_iso2, grad, postanski_broj, email, telefon, adresa, napomena,
+             jib, bank_broj_racuna, bank_iban, bank_swift, bank_naziv, bank_adresa,
+             aktivan, created_at, updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, NOW(), NOW())`,
           [
             naziv,
             vrstaVal,
@@ -80,6 +89,12 @@ export async function POST(req: Request) {
             telefon,
             adresa,
             napomena,
+            jib,
+            bank_broj_racuna,
+            bank_iban,
+            bank_swift,
+            bank_naziv,
+            bank_adresa,
             aktivan,
           ],
         );

@@ -46,6 +46,12 @@ type FormState = {
   email: string;
   telefon: string;
   adresa: string;
+  jib: string;
+  bank_broj_racuna: string;
+  bank_iban: string;
+  bank_swift: string;
+  bank_naziv: string;
+  bank_adresa: string;
   napomena: string;
   aktivan: boolean;
   created_at?: string | null;
@@ -62,6 +68,12 @@ const emptyForm = (): FormState => ({
   email: "",
   telefon: "",
   adresa: "",
+  jib: "",
+  bank_broj_racuna: "",
+  bank_iban: "",
+  bank_swift: "",
+  bank_naziv: "",
+  bank_adresa: "",
   napomena: "",
   aktivan: true,
 });
@@ -239,6 +251,9 @@ export default function DobavljaciClient({
         it.grad ?? "",
         it.drzava_iso2 ?? "",
         it.adresa ?? "",
+        it.jib ?? "",
+        it.bank_broj_racuna ?? "",
+        it.bank_swift ?? "",
       ]
         .join(" ")
         .toLowerCase();
@@ -294,6 +309,12 @@ export default function DobavljaciClient({
       email: it.email ?? "",
       telefon: it.telefon ?? "",
       adresa: it.adresa ?? "",
+      jib: it.jib ?? "",
+      bank_broj_racuna: it.bank_broj_racuna ?? "",
+      bank_iban: it.bank_iban ?? "",
+      bank_swift: it.bank_swift ?? "",
+      bank_naziv: it.bank_naziv ?? "",
+      bank_adresa: it.bank_adresa ?? "",
       napomena: it.napomena ?? "",
       aktivan: Number(it.aktivan) === 1,
       created_at: it.created_at,
@@ -307,6 +328,11 @@ export default function DobavljaciClient({
       (x) => Number(x.dobavljac_id) === Number(selectedId),
     );
   }, [filtered, selectedId]);
+
+  const isDomesticBa = useMemo(() => {
+    const iso = form.drzava_iso2.trim().toUpperCase();
+    return !iso || iso === "BA";
+  }, [form.drzava_iso2]);
 
   const canPrev = modalMode === "edit" && editIndex > 0;
   const canNext =
@@ -376,6 +402,32 @@ export default function DobavljaciClient({
   async function onSave() {
     setError(null);
 
+    const iso = form.drzava_iso2.trim().toUpperCase();
+    const domestic = !iso || iso === "BA";
+    const jibDigitsOnly = form.jib.replace(/\D/g, "");
+    if (domestic && !/^\d{13}$/.test(jibDigitsOnly)) {
+      setError(t("studioDobavljaci.errJibDomestic"));
+      return;
+    }
+    if (!form.bank_broj_racuna.trim()) {
+      setError(t("studioDobavljaci.errBankRacun"));
+      return;
+    }
+    if (!domestic) {
+      if (!form.bank_swift.trim()) {
+        setError(t("studioDobavljaci.errBankSwift"));
+        return;
+      }
+      if (!form.bank_naziv.trim()) {
+        setError(t("studioDobavljaci.errBankNaziv"));
+        return;
+      }
+      if (!form.bank_adresa.trim()) {
+        setError(t("studioDobavljaci.errBankAdresa"));
+        return;
+      }
+    }
+
     const payload = {
       naziv: form.naziv,
       vrsta: form.vrsta,
@@ -387,6 +439,12 @@ export default function DobavljaciClient({
       telefon: form.telefon || null,
       adresa: form.adresa || null,
       napomena: form.napomena || null,
+      jib: domestic ? jibDigitsOnly : "",
+      bank_broj_racuna: form.bank_broj_racuna.trim(),
+      bank_iban: form.bank_iban.trim() || null,
+      bank_swift: form.bank_swift.trim() || null,
+      bank_naziv: form.bank_naziv.trim() || null,
+      bank_adresa: form.bank_adresa.trim() || null,
       aktivan: !!form.aktivan,
     };
 
@@ -990,6 +1048,158 @@ export default function DobavljaciClient({
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
+
+                <div style={{ gridColumn: "1 / -1", marginTop: 8 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>
+                    {t("studioDobavljaci.sectionBank")}
+                  </div>
+                </div>
+
+                {isDomesticBa ? (
+                  <div>
+                    <div
+                      style={{
+                        color: "var(--muted)",
+                        fontSize: 16,
+                        marginBottom: 8,
+                      }}
+                    >
+                      {t("studioDobavljaci.labelJib")}
+                    </div>
+                    <input
+                      value={form.jib}
+                      onChange={(e) =>
+                        setForm((s) => ({
+                          ...s,
+                          jib: e.target.value.replace(/\D/g, "").slice(0, 13),
+                        }))
+                      }
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder={t("studioDobavljaci.placeholderJib")}
+                      className="input"
+                      style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.45 }}>
+                      {t("studioDobavljaci.hintJibIno")}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ gridColumn: isDomesticBa ? "span 2" : "1 / -1" }}>
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 16,
+                      marginBottom: 8,
+                    }}
+                  >
+                    {t("studioDobavljaci.labelBankRacun")}
+                  </div>
+                  <input
+                    value={form.bank_broj_racuna}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, bank_broj_racuna: e.target.value }))
+                    }
+                    placeholder={t("studioDobavljaci.placeholderBankRacun")}
+                    className="input"
+                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                  />
+                </div>
+
+                {!isDomesticBa ? (
+                  <>
+                    <div>
+                      <div
+                        style={{
+                          color: "var(--muted)",
+                          fontSize: 16,
+                          marginBottom: 8,
+                        }}
+                      >
+                        {t("studioDobavljaci.labelBankSwift")}
+                      </div>
+                      <input
+                        value={form.bank_swift}
+                        onChange={(e) =>
+                          setForm((s) => ({
+                            ...s,
+                            bank_swift: e.target.value.toUpperCase().slice(0, 11),
+                          }))
+                        }
+                        placeholder={t("studioDobavljaci.placeholderBankSwift")}
+                        className="input"
+                        style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                      />
+                    </div>
+                    <div>
+                      <div
+                        style={{
+                          color: "var(--muted)",
+                          fontSize: 16,
+                          marginBottom: 8,
+                        }}
+                      >
+                        {t("studioDobavljaci.labelBankNaziv")}
+                      </div>
+                      <input
+                        value={form.bank_naziv}
+                        onChange={(e) =>
+                          setForm((s) => ({ ...s, bank_naziv: e.target.value }))
+                        }
+                        placeholder={t("studioDobavljaci.placeholderBankNaziv")}
+                        className="input"
+                        style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                      />
+                    </div>
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <div
+                        style={{
+                          color: "var(--muted)",
+                          fontSize: 16,
+                          marginBottom: 8,
+                        }}
+                      >
+                        {t("studioDobavljaci.labelBankAdresa")}
+                      </div>
+                      <input
+                        value={form.bank_adresa}
+                        onChange={(e) =>
+                          setForm((s) => ({ ...s, bank_adresa: e.target.value }))
+                        }
+                        placeholder={t("studioDobavljaci.placeholderBankAdresa")}
+                        className="input"
+                        style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                      />
+                    </div>
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <div
+                        style={{
+                          color: "var(--muted)",
+                          fontSize: 16,
+                          marginBottom: 8,
+                        }}
+                      >
+                        {t("studioDobavljaci.labelBankIban")}
+                      </div>
+                      <input
+                        value={form.bank_iban}
+                        onChange={(e) =>
+                          setForm((s) => ({
+                            ...s,
+                            bank_iban: e.target.value.toUpperCase().replace(/\s/g, ""),
+                          }))
+                        }
+                        placeholder={t("studioDobavljaci.placeholderBankIban")}
+                        className="input"
+                        style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                      />
+                    </div>
+                  </>
+                ) : null}
 
                 <div style={{ gridColumn: "1 / -1" }}>
                   <div

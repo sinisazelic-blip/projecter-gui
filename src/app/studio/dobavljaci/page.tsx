@@ -42,6 +42,12 @@ export type DobavljacRow = {
   telefon: string | null;
   adresa: string | null;
   napomena: string | null;
+  jib?: string | null;
+  bank_broj_racuna?: string | null;
+  bank_iban?: string | null;
+  bank_swift?: string | null;
+  bank_naziv?: string | null;
+  bank_adresa?: string | null;
   aktivan: number; // 1/0
   created_at: string | null;
   updated_at: string | null;
@@ -54,7 +60,9 @@ export default async function DobavljaciPage() {
 
   const rows = await query(
     `SELECT dobavljac_id, naziv, vrsta, pravno_lice, drzava_iso2, grad, postanski_broj,
-            email, telefon, adresa, napomena, aktivan,
+            email, telefon, adresa, napomena,
+            jib, bank_broj_racuna, bank_iban, bank_swift, bank_naziv, bank_adresa,
+            aktivan,
             DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
             DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
        FROM dobavljaci
