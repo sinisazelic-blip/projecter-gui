@@ -17,7 +17,11 @@ const VANREDNI_PODTIP_KEYS = [
   { val: "POTROSNI_MATERIJAL", key: "podtipPotrosni" },
 ];
 
-const CURRENCIES = [{ code: "EUR" }, { code: "USD" }];
+const CURRENCIES = [
+  { code: "BAM", labelKey: "currencyBamKm" },
+  { code: "EUR", labelKey: "currencyEur" },
+  { code: "USD", labelKey: "currencyUsd" },
+];
 
 export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTroskovi }) {
   const router = useRouter();
@@ -30,8 +34,9 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
     klijent_id: "",
     partner_naziv: "",
     iznos: "",
-    valuta: "EUR",
+    valuta: "BAM",
     iznos_km: "",
+    pdv_iznos_km: "",
     kurs: "",
     opis: "",
     napomena: "",
@@ -64,6 +69,10 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
       fiksni_trosak_id: form.fiksni_trosak_id ? Number(form.fiksni_trosak_id) : null,
       iznos: form.iznos ? Number(form.iznos) : 0,
       iznos_km: form.iznos_km ? Number(form.iznos_km) : null,
+      pdv_iznos_km:
+        form.pdv_iznos_km !== "" && form.pdv_iznos_km != null
+          ? Number(form.pdv_iznos_km)
+          : 0,
       kurs: form.kurs ? Number(form.kurs) : null,
     };
 
@@ -90,8 +99,9 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
         klijent_id: "",
         partner_naziv: "",
         iznos: "",
-        valuta: "EUR",
+        valuta: "BAM",
         iznos_km: "",
+        pdv_iznos_km: "",
         kurs: "",
         opis: "",
         napomena: "",
@@ -219,7 +229,9 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
             onChange={handleChange}
           >
             {CURRENCIES.map((c) => (
-              <option key={c.code} value={c.code}>{c.code}</option>
+              <option key={c.code} value={c.code}>
+                {c.labelKey ? t(`kuf.${c.labelKey}`) : c.code}
+              </option>
             ))}
           </select>
         </div>
@@ -235,6 +247,20 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
             value={form.iznos_km}
             onChange={handleChange}
             placeholder={t("kuf.amountBamPlaceholder")}
+          />
+        </div>
+
+        <div className="field">
+          <span className="label">{t("kuf.amountPdv")}</span>
+          <input
+            className="input"
+            type="number"
+            step="0.01"
+            min="0"
+            name="pdv_iznos_km"
+            value={form.pdv_iznos_km}
+            onChange={handleChange}
+            placeholder={t("kuf.amountPdvPlaceholder")}
           />
         </div>
 

@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS kuf_ulazne_fakture (
   iznos DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
   valuta VARCHAR(10) NOT NULL DEFAULT 'BAM',
   iznos_km DECIMAL(12, 2) NULL,
+  pdv_iznos_km DECIMAL(12, 2) NULL COMMENT 'Ulazni PDV u KM (ručni unos; 0 = bez odbitka)',
   kurs DECIMAL(12, 6) NULL COMMENT 'Ako nije BAM',
   -- Opis
   opis VARCHAR(500) NULL COMMENT 'Opis stavke',

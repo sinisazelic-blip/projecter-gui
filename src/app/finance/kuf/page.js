@@ -10,6 +10,19 @@ import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
 
+async function kufHasPdvColumn() {
+  try {
+    const rows = await query(
+      `SELECT 1 AS ok FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'kuf_ulazne_fakture' AND COLUMN_NAME = 'pdv_iznos_km'
+       LIMIT 1`,
+    );
+    return Array.isArray(rows) && rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 const fmtDate = (d) => {
   if (!d) return "—";
   const s = String(d).slice(0, 10);
@@ -38,6 +51,8 @@ export default async function KufPage({ searchParams }) {
   let tableMissing = false;
 
   try {
+    const kufPdv = await kufHasPdvColumn();
+    const kufPdvSelect = kufPdv ? "k.pdv_iznos_km," : "NULL AS pdv_iznos_km,";
     [rows, dobavljaci, klijenti, projekti, fiksniTroskovi] = await Promise.all([
     query(
       `
@@ -52,6 +67,7 @@ export default async function KufPage({ searchParams }) {
         k.iznos,
         k.valuta,
         k.iznos_km,
+        ${kufPdvSelect}
         k.opis,
         k.tip_rasknjizavanja,
         k.projekat_id,
@@ -217,7 +233,7 @@ export default async function KufPage({ searchParams }) {
                   <ExportExcelButton
                     filename="kuf_ulazne_fakture"
                     sheetName="KUF"
-                    headers={[t("kuf.colId"), t("kuf.colBroj"), t("kuf.colDatum"), t("kuf.colDospijece"), t("kuf.colPartner"), t("kuf.colIznos"), t("kuf.colValuta"), t("kuf.colIznosKm"), t("kuf.colOpis"), t("kuf.colTip"), t("kuf.colProjekat"), t("kuf.colFiksni")]}
+                    headers={[t("kuf.colId"), t("kuf.colBroj"), t("kuf.colDatum"), t("kuf.colDospijece"), t("kuf.colPartner"), t("kuf.colIznos"), t("kuf.colValuta"), t("kuf.colIznosKm"), t("kuf.colPdvKm"), t("kuf.colOpis"), t("kuf.colTip"), t("kuf.colProjekat"), t("kuf.colFiksni")]}
                     rows={list.map((r) => [
                       r.kuf_id ?? "",
                       r.broj_fakture ?? "",
@@ -227,6 +243,7 @@ export default async function KufPage({ searchParams }) {
                       r.iznos ?? "",
                       r.valuta ?? "",
                       r.iznos_km ?? "",
+                      r.pdv_iznos_km ?? "",
                       r.opis ?? "",
                       r.tip_rasknjizavanja ?? "",
                       r.projekat_naziv ?? r.projekat_id ?? "",
@@ -247,6 +264,7 @@ export default async function KufPage({ searchParams }) {
                     <th style={{ width: 100 }}>{t("kuf.tableColDospijece")}</th>
                     <th>{t("kuf.tableColPartner")}</th>
                     <th className="num" style={{ width: 100 }}>{t("kuf.colIznos")}</th>
+                    <th className="num" style={{ width: 90 }}>{t("kuf.colPdvKm")}</th>
                     <th style={{ width: 120 }}>{t("kuf.tableColOpis")}</th>
                     <th style={{ width: 100 }}>{t("kuf.tableColRasknj")}</th>
                     <th style={{ width: 120 }}>{t("kuf.tableColVeza")}</th>
@@ -263,7 +281,10 @@ export default async function KufPage({ searchParams }) {
                           <td>{partnerName(r)}</td>
                           <td className="num">
                             {formatAmount(r.iznos_km ?? r.iznos, locale)}
-                            {r.valuta !== "BAM" ? ` (${r.valuta})` : ""}
+                            {r.valuta && r.valuta !== "BAM" ? ` (${r.valuta})` : ""}
+                          </td>
+                          <td className="num">
+                            {formatAmount(Number(r.pdv_iznos_km ?? 0), locale)}
                           </td>
                           <td>{r.opis ?? "—"}</td>
                           <td>
@@ -299,7 +320,7 @@ export default async function KufPage({ searchParams }) {
                       ))
                     : (
                         <tr>
-                          <td colSpan={9} className="muted" style={{ padding: 16 }}>
+                          <td colSpan={10} className="muted" style={{ padding: 16 }}>
                             {t("kuf.noEntries")}
                           </td>
                         </tr>

@@ -2,6 +2,19 @@
 import { query } from "@/lib/db";
 
 const LIST_LIMIT = 5000;
+
+async function kufHasPdvColumn() {
+  try {
+    const rows = await query(
+      `SELECT 1 AS ok FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'kuf_ulazne_fakture' AND COLUMN_NAME = 'pdv_iznos_km'
+       LIMIT 1`,
+    );
+    return Array.isArray(rows) && rows.length > 0;
+  } catch {
+    return false;
+  }
+}
 const ARHIVA_CUTOFF = "2025-12-31";
 
 /** Vraća datum kao YYYY-MM-DD (iz Date objekta ili stringa). */
@@ -104,9 +117,12 @@ export async function getPdvPrijavaData(from, to) {
   const pdv_izlazni_ukupno = kif.reduce((s, i) => s + i.pdv_km, 0);
 
   let kufRows = [];
+  const kufPdvCol = await kufHasPdvColumn();
   try {
+    const pdvSel = kufPdvCol ? "k.pdv_iznos_km," : "NULL AS pdv_iznos_km,";
     kufRows = await query(
-      `SELECT k.kuf_id, k.broj_fakture, k.datum_fakture, k.iznos_km, k.partner_naziv,
+      `SELECT k.kuf_id, k.broj_fakture, k.datum_fakture, k.iznos_km, ${pdvSel}
+              k.partner_naziv,
               d.naziv AS dobavljac_naziv, kl.naziv_klijenta AS klijent_naziv
        FROM kuf_ulazne_fakture k
        LEFT JOIN dobavljaci d ON d.dobavljac_id = k.dobavljac_id
@@ -123,7 +139,7 @@ export async function getPdvPrijavaData(from, to) {
 
   const kuf = (kufRows || []).map((r) => {
     const ukupno = Number(r.iznos_km) || 0;
-    const pdvUlazni = Math.round(ukupno * (17 / 117) * 100) / 100;
+    const pdvUlazni = Math.round(Number(r.pdv_iznos_km ?? 0) * 100) / 100;
     const osnovica = Math.round((ukupno - pdvUlazni) * 100) / 100;
     const partner = r.dobavljac_naziv || r.klijent_naziv || r.partner_naziv || "—";
     return {
