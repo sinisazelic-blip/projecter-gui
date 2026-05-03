@@ -1092,6 +1092,7 @@
     "narucilac": "Client",
     "svi": "All",
     "filtriraj": "Filter",
+    "neplaceneOnly": "Unpaid only",
     "reset": "Reset",
     "exportExcel": "Export to Excel",
     "loadError": "Error loading",
@@ -1436,7 +1437,12 @@
     "colPdv": "VAT (EUR)",
     "colPdvUlazni": "Input VAT (EUR)",
     "colUkupno": "Total (EUR)",
-    "noDocuments": "No documents in selected period."
+    "noDocuments": "No documents in selected period.",
+    "excludePaidKif": "Hide paid rows in the sales list (VAT totals still include all invoices in the period)",
+    "excludePaidKifHint": "The output VAT figure above includes paid invoices too — this filter only shortens the table for tracking.",
+    "colNaplata": "Payment",
+    "statusPlaceno": "Paid",
+    "statusNeplaceno": "Unpaid"
   },
   "kuf": {
     "title": "Purchase Ledger",

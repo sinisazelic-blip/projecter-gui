@@ -86,11 +86,11 @@ export async function GET(req) {
         f.valuta,
         f.fiskalni_status AS faktura_status,
         CASE
-          WHEN f.fiskalni_status IN ('PLACENA', 'DJELIMICNO') THEN f.iznos_ukupno_km
+          WHEN TRIM(UPPER(COALESCE(f.fiskalni_status,''))) IN ('PLACENA', 'DJELIMICNO', 'PAID', 'PLACENO') THEN f.iznos_ukupno_km
           ELSE 0
         END AS naplaceno,
         CASE
-          WHEN f.fiskalni_status IN ('PLACENA', 'DJELIMICNO') THEN 0
+          WHEN TRIM(UPPER(COALESCE(f.fiskalni_status,''))) IN ('PLACENA', 'DJELIMICNO', 'PAID', 'PLACENO') THEN 0
           ELSE f.iznos_ukupno_km
         END AS neplaceno,
         -- Izračunaj dane do valute ili dane kašnjenja

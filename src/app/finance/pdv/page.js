@@ -5,6 +5,7 @@ import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
 import { formatAmount } from "@/lib/format";
 import { getLastMonthRange, getPdvPrijavaData } from "@/lib/pdv-prijava";
+import { isFakturaPlacenaStatus } from "@/lib/invoicePaidStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ export default async function PdvPrijavaPage({ searchParams }) {
 
   const sp = await Promise.resolve(searchParams);
   const prosliMjesec = sp?.prosli_mjesec === "1" || sp?.prošli_mjesec === "1";
+  const excludePaidKif = sp?.exclude_paid === "1" || sp?.bez_placenih === "1";
   let from = (sp?.from ?? "").trim();
   let to = (sp?.to ?? "").trim();
   if (prosliMjesec) {
@@ -30,8 +32,8 @@ export default async function PdvPrijavaPage({ searchParams }) {
     from = range.from;
     to = range.to;
   }
-  const data = await getPdvPrijavaData(from || null, to || null);
-  const { from: dataFrom, to: dataTo, summary, kif, kuf } = data;
+  const data = await getPdvPrijavaData(from || null, to || null, { excludePaidKif });
+  const { from: dataFrom, to: dataTo, summary, kif, kuf, kif_filter_exclude_paid: kifFiltered } = data;
 
   return (
     <div className="container">
@@ -90,17 +92,36 @@ export default async function PdvPrijavaPage({ searchParams }) {
                   style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)" }}
                 />
               </label>
+              <label
+                style={{
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  paddingBottom: 4,
+                }}
+              >
+                <input type="checkbox" name="exclude_paid" value="1" defaultChecked={excludePaidKif} />
+                <span className="subtle" style={{ fontSize: 13, maxWidth: 280, lineHeight: 1.35 }}>
+                  {t("pdv.excludePaidKif")}
+                </span>
+              </label>
               <button type="submit" className="btn btn--active" style={{ padding: "8px 16px" }}>
                 {t("pdv.refresh")}
               </button>
               <Link
-                href="/finance/pdv?prosli_mjesec=1"
+                href={`/finance/pdv?prosli_mjesec=1${excludePaidKif ? "&exclude_paid=1" : ""}`}
                 className="btn"
                 style={{ padding: "8px 16px" }}
               >
                 {t("pdv.lastMonth")}
               </Link>
             </form>
+            {kifFiltered ? (
+              <div className="subtle" style={{ marginTop: 12, fontSize: 12, lineHeight: 1.45 }}>
+                {t("pdv.excludePaidKifHint")}
+              </div>
+            ) : null}
           </div>
 
           {/* Obračun – rezime */}
@@ -158,12 +179,13 @@ export default async function PdvPrijavaPage({ searchParams }) {
                     <th style={{ textAlign: "right" }}>{t("pdv.colOsnovica")}</th>
                     <th style={{ textAlign: "right" }}>{t("pdv.colPdv")}</th>
                     <th style={{ textAlign: "right" }}>{t("pdv.colUkupno")}</th>
+                    <th>{t("pdv.colNaplata")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {kif.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="subtle" style={{ padding: 24, textAlign: "center" }}>
+                      <td colSpan={7} className="subtle" style={{ padding: 24, textAlign: "center" }}>
                         {t("pdv.noDocuments")}
                       </td>
                     </tr>
@@ -176,6 +198,13 @@ export default async function PdvPrijavaPage({ searchParams }) {
                         <td style={{ textAlign: "right" }}>{formatAmount(r.osnovica_km, locale)}</td>
                         <td style={{ textAlign: "right" }}>{formatAmount(r.pdv_km, locale)}</td>
                         <td style={{ textAlign: "right" }}>{formatAmount(r.ukupno_km, locale)}</td>
+                        <td className="subtle" style={{ fontSize: 12 }}>
+                          {r.iz_arhive
+                            ? "—"
+                            : isFakturaPlacenaStatus(r.fiskalni_status)
+                              ? t("pdv.statusPlaceno")
+                              : t("pdv.statusNeplaceno")}
+                        </td>
                       </tr>
                     ))
                   )}

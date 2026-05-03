@@ -572,7 +572,7 @@ export default async function BankPostingDetailPage({ params, searchParams }) {
              k.naziv_klijenta AS narucilac_naziv
       FROM fakture f
       LEFT JOIN klijenti k ON k.klijent_id = f.bill_to_klijent_id
-      WHERE (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('PLACENA','STORNIRAN','ZAMIJENJEN'))
+      WHERE (f.fiskalni_status IS NULL OR TRIM(UPPER(f.fiskalni_status)) NOT IN ('PLACENA','DJELIMICNO','PAID','PLACENO','STORNIRAN','ZAMIJENJEN'))
       ORDER BY f.datum_izdavanja DESC, f.faktura_id DESC
       LIMIT 200
       `,

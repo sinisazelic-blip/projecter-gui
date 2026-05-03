@@ -108,8 +108,17 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
       try {
         const [postings]: any = await conn.execute(
           `
-          SELECT p.posting_id, p.description, p.amount, p.value_date
+          SELECT
+            p.posting_id,
+            p.description,
+            p.amount,
+            p.value_date,
+            p.counterparty,
+            t.reference AS staging_reference,
+            t.description AS staging_description,
+            t.full_description AS staging_full_description
           FROM bank_tx_posting p
+          LEFT JOIN bank_tx_staging t ON t.tx_id = p.tx_id
           LEFT JOIN bank_tx_posting_prihod_link l ON l.posting_id = p.posting_id AND l.aktivan = 1
           WHERE p.batch_id = ? AND p.amount > 0 AND l.link_id IS NULL
           `,
@@ -117,13 +126,22 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
         );
         const list = Array.isArray(postings) ? postings : [];
         for (const row of list) {
-          const description = row?.description ?? "";
+          const textParts = [
+            row?.staging_reference,
+            row?.staging_description,
+            row?.staging_full_description,
+            row?.description,
+            row?.counterparty,
+          ]
+            .map((x) => String(x ?? "").trim())
+            .filter(Boolean);
+          const haystack = textParts.join("\n");
           const amount = Number(row?.amount);
           const valueDate = row?.value_date;
           const postingId = row?.posting_id;
           if (!Number.isFinite(amount) || amount <= 0 || !postingId) continue;
 
-          const fakturaMatch = await findFakturaFromText(conn, description, null);
+          const fakturaMatch = await findFakturaFromText(conn, haystack, null);
           if (!fakturaMatch || fakturaMatch.projekat_id <= 0) continue;
 
           const datum = valueDate ? String(valueDate).slice(0, 10) : null;

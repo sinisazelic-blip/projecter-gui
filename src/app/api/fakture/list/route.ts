@@ -40,7 +40,9 @@ export async function GET(req: NextRequest) {
       params.push(narucilacId);
     }
     if (neplacene) {
-      whereClauses.push("(f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('PLACENA','STORNIRAN','ZAMIJENJEN'))");
+      whereClauses.push(
+        "(f.fiskalni_status IS NULL OR TRIM(UPPER(f.fiskalni_status)) NOT IN ('PLACENA','DJELIMICNO','PAID','PLACENO','STORNIRAN','ZAMIJENJEN'))",
+      );
     }
     const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(" AND ")}` : "";
 

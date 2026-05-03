@@ -16,7 +16,9 @@ export async function GET(req) {
       from = range.from;
       to = range.to;
     }
-    const data = await getPdvPrijavaData(from, to);
+    const excludePaidKif =
+      url.searchParams.get("exclude_paid") === "1" || url.searchParams.get("bez_placenih") === "1";
+    const data = await getPdvPrijavaData(from, to, { excludePaidKif });
     return NextResponse.json({ ok: true, ...data });
   } catch (e) {
     console.error("GET /api/finance/pdv-prijava", e);

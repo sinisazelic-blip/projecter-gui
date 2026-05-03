@@ -1092,6 +1092,7 @@
     "narucilac": "Naručioc",
     "svi": "Svi",
     "filtriraj": "Filtriraj",
+    "neplaceneOnly": "Samo neplaćene",
     "reset": "Reset",
     "exportExcel": "Export u Excel",
     "loadError": "Greška pri učitavanju",
@@ -1436,7 +1437,12 @@
     "colPdv": "PDV (KM)",
     "colPdvUlazni": "PDV ulazni (KM)",
     "colUkupno": "Ukupno (KM)",
-    "noDocuments": "Nema dokumenata u izabranom periodu."
+    "noDocuments": "Nema dokumenata u izabranom periodu.",
+    "excludePaidKif": "Sakrij plaćene u listi KIF (zbir PDV-a ostaje za sve fakture u periodu)",
+    "excludePaidKifHint": "Zbir izlaznog PDV-a iznad uključuje i plaćene fakture — filter samo skraćuje tabelu radi praćenja.",
+    "colNaplata": "Naplata",
+    "statusPlaceno": "Plaćeno",
+    "statusNeplaceno": "Neplaćeno"
   },
   "kuf": {
     "title": "KUF",

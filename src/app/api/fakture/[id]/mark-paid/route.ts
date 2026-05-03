@@ -50,6 +50,22 @@ export async function POST(
       [fakturaId]
     );
 
+    const verifyRows = await query(
+      `SELECT TRIM(UPPER(COALESCE(fiskalni_status,''))) AS s FROM fakture WHERE faktura_id = ? LIMIT 1`,
+      [fakturaId]
+    );
+    const vrow = Array.isArray(verifyRows) ? verifyRows[0] : (verifyRows as any)?.rows?.[0];
+    if (String(vrow?.s ?? "") !== "PLACENA") {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Status u bazi nije 'PLACENA' nakon ažuriranja. Provjeri tip kolone fiskalni_status (ENUM / dužina).",
+        },
+        { status: 500 },
+      );
+    }
+
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     console.error("[mark-paid]", e?.message);

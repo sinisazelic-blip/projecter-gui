@@ -24,8 +24,8 @@ function fmtMoney(n: number, ccy: string): string {
 
 function statusLabel(status: string | null, t: (k: string) => string): string {
   if (!status) return t("fakture.statusOther");
-  const s = status.toUpperCase();
-  if (s === "PLACENA" || s === "PAID") return t("fakture.statusPaid");
+  const s = status.trim().toUpperCase();
+  if (s === "PLACENA" || s === "PAID" || s === "PLACENO" || s === "DJELIMICNO") return t("fakture.statusPaid");
   if (s === "FAKTURISAN" || s === "KREIRANA" || s === "CREATED") return t("fakture.statusCreated");
   return t("fakture.statusOther");
 }
@@ -63,6 +63,7 @@ export default function FakturePage() {
 
   const brojFaktureFilter = sp.get("broj_fakture") || "";
   const narucilacIdFilter = sp.get("narucilac_id") || "";
+  const neplaceneOnly = sp.get("neplacene") === "1";
 
   useEffect(() => {
     async function load() {
@@ -74,6 +75,7 @@ export default function FakturePage() {
         if (brojFaktureFilter) qs.set("broj_fakture", brojFaktureFilter);
         if (narucilacIdFilter)
           qs.set("narucilac_id", narucilacIdFilter);
+        if (neplaceneOnly) qs.set("neplacene", "1");
 
         qs.set("_", String(Date.now())); // cache bust — svaki load dobija novi URL
         const res = await fetch(`/api/fakture/list?${qs.toString()}`, {
@@ -101,7 +103,7 @@ export default function FakturePage() {
     }
 
     load();
-  }, [brojFaktureFilter, narucilacIdFilter]);
+  }, [brojFaktureFilter, narucilacIdFilter, neplaceneOnly]);
 
   function handleFilter() {
     const qs = new URLSearchParams();
@@ -114,6 +116,8 @@ export default function FakturePage() {
 
     if (brojInput) qs.set("broj_fakture", brojInput);
     if (narucilacSelect) qs.set("narucilac_id", narucilacSelect);
+    const onlyUnpaid = (document.getElementById("neplacene_only") as HTMLInputElement)?.checked;
+    if (onlyUnpaid) qs.set("neplacene", "1");
 
     router.push(`/fakture?${qs.toString()}`);
   }
@@ -190,6 +194,10 @@ export default function FakturePage() {
                   </option>
                 ))}
               </select>
+              <label className="label" style={{ display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+                <input id="neplacene_only" type="checkbox" defaultChecked={neplaceneOnly} />
+                {t("fakture.neplaceneOnly")}
+              </label>
               <button type="button" className="btn" onClick={handleFilter}>
                 🔎 {t("fakture.filtriraj")}
               </button>
@@ -346,13 +354,17 @@ const headers = [
                               background:
                                 f.status === "Fakturisan" || f.status === "KREIRANA"
                                   ? "rgba(80, 170, 255, 0.15)"
-                                  : f.status === "PLACENA"
+                                  : ["PLACENA", "DJELIMICNO", "PAID", "PLACENO"].includes(
+                                        String(f.status ?? "").trim().toUpperCase(),
+                                      )
                                     ? "rgba(52, 199, 89, 0.15)"
                                     : "rgba(255, 193, 7, 0.15)",
                               borderColor:
                                 f.status === "Fakturisan" || f.status === "KREIRANA"
                                   ? "rgba(80, 170, 255, 0.3)"
-                                  : f.status === "PLACENA"
+                                  : ["PLACENA", "DJELIMICNO", "PAID", "PLACENO"].includes(
+                                        String(f.status ?? "").trim().toUpperCase(),
+                                      )
                                     ? "rgba(52, 199, 89, 0.3)"
                                     : "rgba(255, 193, 7, 0.3)",
                             }}

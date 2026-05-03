@@ -19,9 +19,7 @@ export function extractInvoiceRef(text: string | null | undefined): InvoiceRef {
   const s = String(text ?? "").trim();
   if (!s) return null;
 
-  const pozivMatch = s.match(/\b(\d{8})\b/);
-  if (pozivMatch) return { type: "poziv", value: pozivMatch[1] };
-
+  // Prvo broj fakture (NNN/GGGG) — izbjegava lažne "pozive" od 8 cifara u IBAN-u / modelu.
   const brojMatch = s.match(/\b(\d{1,4})\s*\/\s*(\d{4})\b/);
   if (brojMatch) {
     const broj = parseInt(brojMatch[1], 10);
@@ -29,6 +27,9 @@ export function extractInvoiceRef(text: string | null | undefined): InvoiceRef {
     if (Number.isFinite(broj) && Number.isFinite(godina) && godina >= 2000 && godina <= 2100)
       return { type: "broj", broj, godina };
   }
+
+  const pozivMatch = s.match(/\b(\d{8})\b/);
+  if (pozivMatch) return { type: "poziv", value: pozivMatch[1] };
 
   return null;
 }
@@ -45,7 +46,7 @@ export async function findFakturaByPoziv(
             (SELECT fp.projekat_id FROM faktura_projekti fp WHERE fp.faktura_id = f.faktura_id ORDER BY fp.projekat_id ASC LIMIT 1) AS projekat_id
      FROM fakture f
      WHERE f.poziv_na_broj = ? 
-       AND (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('PLACENA','STORNIRAN','ZAMIJENJEN'))
+       AND (f.fiskalni_status IS NULL OR TRIM(UPPER(f.fiskalni_status)) NOT IN ('PLACENA','DJELIMICNO','PAID','PLACENO','STORNIRAN','ZAMIJENJEN'))
      LIMIT 1`,
     [poziv8]
   );
@@ -70,7 +71,7 @@ export async function findFakturaByBrojGodina(
             (SELECT fp.projekat_id FROM faktura_projekti fp WHERE fp.faktura_id = f.faktura_id ORDER BY fp.projekat_id ASC LIMIT 1) AS projekat_id
      FROM fakture f
      WHERE f.broj_u_godini = ? AND f.godina = ?
-       AND (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('PLACENA','STORNIRAN','ZAMIJENJEN'))
+       AND (f.fiskalni_status IS NULL OR TRIM(UPPER(f.fiskalni_status)) NOT IN ('PLACENA','DJELIMICNO','PAID','PLACENO','STORNIRAN','ZAMIJENJEN'))
      LIMIT 1`,
     [broj, godina]
   );
@@ -90,21 +91,30 @@ export async function findFakturaFromText(
   description: string | null,
   reference?: string | null
 ): Promise<{ faktura_id: number; projekat_id: number } | null> {
-  const ref = extractInvoiceRef(description || reference || "");
-  if (!ref) return null;
+  const haystack = [description, reference]
+    .map((x) => String(x ?? "").trim())
+    .filter(Boolean)
+    .join("\n");
+  if (!haystack) return null;
 
-  if (ref.type === "poziv") {
-    try {
-      const found = await findFakturaByPoziv(conn, ref.value);
+  const brojMatch = haystack.match(/\b(\d{1,4})\s*\/\s*(\d{4})\b/);
+  if (brojMatch) {
+    const broj = parseInt(brojMatch[1], 10);
+    const godina = parseInt(brojMatch[2], 10);
+    if (Number.isFinite(broj) && Number.isFinite(godina) && godina >= 2000 && godina <= 2100) {
+      const found = await findFakturaByBrojGodina(conn, broj, godina);
       if (found) return found;
-    } catch {
-      // Kolona poziv_na_broj možda ne postoji u fakture
     }
   }
 
-  if (ref.type === "broj") {
-    const found = await findFakturaByBrojGodina(conn, ref.broj, ref.godina);
-    if (found) return found;
+  try {
+    const pozivMatch = haystack.match(/\b(\d{8})\b/);
+    if (pozivMatch) {
+      const found = await findFakturaByPoziv(conn, pozivMatch[1]);
+      if (found) return found;
+    }
+  } catch {
+    // poziv_na_broj kolona ili šema
   }
 
   return null;

@@ -1,5 +1,6 @@
 // Obračun PDV za prijavu: izlazni (KIF) − ulazni (KUF) = za prijavu. Liste dokumenata.
 import { query } from "@/lib/db";
+import { isFakturaPlacenaStatus } from "@/lib/invoicePaidStatus";
 
 const LIST_LIMIT = 5000;
 
@@ -40,14 +41,17 @@ export function getLastMonthRange() {
   };
 }
 
-export async function getPdvPrijavaData(from, to) {
+export async function getPdvPrijavaData(from, to, opts = {}) {
   if (!from || !/^\d{4}-\d{2}-\d{2}$/.test(from)) from = null;
   if (!to || !/^\d{4}-\d{2}-\d{2}$/.test(to)) to = null;
   const range = getLastMonthRange();
   from = from || range.from;
   to = to || range.to;
+  const excludePaidKif = Boolean(opts?.excludePaidKif);
 
-  const whereF = ["(f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))"];
+  const whereF = [
+    "(f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))",
+  ];
   const paramsF = [from, to];
   whereF.push("f.datum_izdavanja >= ?", "f.datum_izdavanja <= ?");
 
@@ -56,6 +60,7 @@ export async function getPdvPrijavaData(from, to) {
     kifRows = await query(
       `SELECT f.faktura_id, f.broj_fakture_puni AS broj_fakture, f.datum_izdavanja,
               f.osnovica_km, f.pdv_iznos_km AS pdv_iznos, f.iznos_ukupno_km,
+              f.fiskalni_status,
               c.naziv_klijenta AS kupac
        FROM fakture f
        LEFT JOIN klijenti c ON c.klijent_id = f.bill_to_klijent_id
@@ -77,6 +82,7 @@ export async function getPdvPrijavaData(from, to) {
     osnovica_km: Number(r.osnovica_km) || 0,
     pdv_km: Number(r.pdv_iznos) || 0,
     ukupno_km: Number(r.iznos_ukupno_km) || 0,
+    fiskalni_status: r.fiskalni_status ?? null,
     iz_arhive: false,
   }));
 
@@ -106,6 +112,7 @@ export async function getPdvPrijavaData(from, to) {
         osnovica_km: osn,
         pdv_km: pdv,
         ukupno_km: uk,
+        fiskalni_status: null,
         iz_arhive: true,
       });
     }
@@ -115,6 +122,12 @@ export async function getPdvPrijavaData(from, to) {
   kif.sort((a, b) => (a.datum || "").localeCompare(b.datum || ""));
 
   const pdv_izlazni_ukupno = kif.reduce((s, i) => s + i.pdv_km, 0);
+
+  const kifDisplay = excludePaidKif
+    ? kif.filter(
+        (row) => row.iz_arhive || !isFakturaPlacenaStatus(row.fiskalni_status),
+      )
+    : kif;
 
   let kufRows = [];
   const kufPdvCol = await kufHasPdvColumn();
@@ -141,7 +154,8 @@ export async function getPdvPrijavaData(from, to) {
     const ukupno = Number(r.iznos_km) || 0;
     const pdvUlazni = Math.round(Number(r.pdv_iznos_km ?? 0) * 100) / 100;
     const osnovica = Math.round((ukupno - pdvUlazni) * 100) / 100;
-    const partner = r.dobavljac_naziv || r.klijent_naziv || r.partner_naziv || "—";
+    const partner =
+      r.dobavljac_naziv || r.klijent_naziv || r.partner_naziv || "—";
     return {
       tip: "KUF",
       id: r.kuf_id,
@@ -155,7 +169,8 @@ export async function getPdvPrijavaData(from, to) {
   });
 
   const pdv_ulazni_ukupno = kuf.reduce((s, i) => s + i.pdv_km, 0);
-  const za_prijavu = Math.round((pdv_izlazni_ukupno - pdv_ulazni_ukupno) * 100) / 100;
+  const za_prijavu =
+    Math.round((pdv_izlazni_ukupno - pdv_ulazni_ukupno) * 100) / 100;
 
   return {
     from,
@@ -165,7 +180,8 @@ export async function getPdvPrijavaData(from, to) {
       pdv_ulazni_km: Math.round(pdv_ulazni_ukupno * 100) / 100,
       za_prijavu_km: za_prijavu,
     },
-    kif,
+    kif: kifDisplay,
+    kif_filter_exclude_paid: excludePaidKif,
     kuf,
   };
 }
