@@ -105,12 +105,15 @@ function overlayStyle(): React.CSSProperties {
 function modalStyle(maxWidth = 980): React.CSSProperties {
   return {
     width: "min(100%, " + maxWidth + "px)",
+    maxHeight: "calc(100vh - 32px)",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
     border: "1px solid var(--border)",
     borderRadius: "16px",
     background:
       "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
     boxShadow: "var(--shadow)",
-    overflow: "hidden",
     fontSize: 16,
   };
 }
@@ -775,6 +778,7 @@ export default function DobavljaciClient({
           <div style={modalStyle(980)}>
             <div
               style={{
+                flexShrink: 0,
                 padding: 20,
                 borderBottom: "1px solid var(--border)",
                 display: "flex",
@@ -818,7 +822,16 @@ export default function DobavljaciClient({
               </button>
             </div>
 
-            <div style={{ padding: 20 }}>
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflowY: "auto",
+                overflowX: "hidden",
+                padding: 20,
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
               <div
                 className="grid"
                 style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
@@ -1272,6 +1285,7 @@ export default function DobavljaciClient({
 
             <div
               style={{
+                flexShrink: 0,
                 padding: 16,
                 borderTop: "1px solid var(--border)",
                 display: "flex",
