@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { toIsoDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -46,8 +47,8 @@ export async function GET() {
         const paid = Number(r.paid_km ?? 0) || 0;
         const preostalo = iznos - paid;
         if (preostalo < 0.01) continue;
-        const dueStr = (r.datum_dospijeca ?? r.datum) ? String(r.datum_dospijeca ?? r.datum).slice(0, 10) : null;
-        const due = dueStr ? new Date(dueStr) : null;
+        const dueStr = toIsoDate((r.datum_dospijeca ?? r.datum) as string | Date | null);
+        const due = dueStr ? new Date(`${dueStr}T12:00:00`) : null;
         const kasni = due && !Number.isNaN(due.getTime())
           ? Math.floor((Date.now() - due.getTime()) / (24 * 60 * 60 * 1000))
           : 0;
@@ -74,8 +75,8 @@ export async function GET() {
       for (const r of fiksniRows || []) {
         const iznos = Number(r.iznos_km ?? r.amount_km ?? 0) || 0;
         if (iznos < 0.01) continue;
-        const dueStr = (r.due_date ?? r.datum_dospijeca) ? String(r.due_date ?? r.datum_dospijeca).slice(0, 10) : null;
-        const due = dueStr ? new Date(dueStr) : null;
+        const dueStr = toIsoDate((r.due_date ?? r.datum_dospijeca) as string | Date | null);
+        const due = dueStr ? new Date(`${dueStr}T12:00:00`) : null;
         const kasni = due && !Number.isNaN(due.getTime())
           ? Math.floor((Date.now() - due.getTime()) / (24 * 60 * 60 * 1000))
           : 0;
@@ -107,7 +108,7 @@ export async function GET() {
            LIMIT 1) AS radni_naziv
         FROM fakture f
         LEFT JOIN klijenti kn ON kn.klijent_id = f.bill_to_klijent_id
-        WHERE (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('PLACENA', 'DJELIMICNO', 'STORNIRAN', 'ZAMIJENJEN'))
+        WHERE (f.fiskalni_status IS NULL OR TRIM(UPPER(f.fiskalni_status)) NOT IN ('PLACENA', 'DJELIMICNO', 'PAID', 'PLACENO', 'STORNIRAN', 'ZAMIJENJEN'))
           AND f.datum_izdavanja IS NOT NULL
           AND DATE(f.datum_izdavanja) >= '2000-01-01'
           AND DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(kn.rok_placanja_dana, 30) DAY) < CURDATE()
@@ -119,8 +120,8 @@ export async function GET() {
       for (const r of recRows || []) {
         const iznos = Number(r.iznos ?? 0) || 0;
         if (iznos < 0.01) continue;
-        const dueStr = r.datum_dospijeca ? String(r.datum_dospijeca).slice(0, 10) : null;
-        const due = dueStr ? new Date(dueStr) : null;
+        const dueStr = toIsoDate(r.datum_dospijeca as string | Date | null);
+        const due = dueStr ? new Date(`${dueStr}T12:00:00`) : null;
         const kasni = due && !Number.isNaN(due.getTime())
           ? Math.floor((Date.now() - due.getTime()) / (24 * 60 * 60 * 1000))
           : 0;
