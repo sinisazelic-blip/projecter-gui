@@ -400,14 +400,20 @@ export default function FakturaPreviewClient() {
   async function handleSaveAsPdf() {
     const el = paperRef.current;
     if (!el) return;
+    const origMinHeight = (el as HTMLElement).style.minHeight;
     try {
       const html2pdf = (await import("html2pdf.js")).default;
+      (el as HTMLElement).style.minHeight = "auto";
       await html2pdf()
         .set({
           margin: 0,
           filename: `${pdfFilename}.pdf`,
           image: { type: "jpeg", quality: 0.98 },
           html2canvas: { scale: 2 },
+          pagebreak: {
+            mode: ["css", "legacy"],
+            avoid: ["tr", ".totalsRow", ".totalsBox", ".footer", ".invRow", ".cols2"],
+          },
           jsPDF: {
             unit: "mm",
             format: "a4",
@@ -424,6 +430,8 @@ export default function FakturaPreviewClient() {
     } catch (err: any) {
       console.error("PDF greška:", err);
       alert(err?.message || t("fakture.pdfError"));
+    } finally {
+      (el as HTMLElement).style.minHeight = origMinHeight || "297mm";
     }
   }
 
@@ -670,12 +678,12 @@ export default function FakturaPreviewClient() {
 
         .tblWrap{
           overflow:hidden;
-          margin-top: 14px;
+          margin-top: 10px;
         }
         table{ width:100%; border-collapse:collapse; }
         thead tr{ background: #F7F7F7 !important; }
         th{
-          padding: 10px 10px !important;
+          padding: 7px 8px !important;
           font-size: 11px !important;
           text-transform: uppercase !important;
           letter-spacing: .35px !important;
@@ -687,14 +695,15 @@ export default function FakturaPreviewClient() {
           background: #F7F7F7 !important;
         }
         td{
-          padding: 10px 10px !important;
+          padding: 6px 8px !important;
           font-size: 12px !important;
           vertical-align: top !important;
           color:#000 !important;
+          line-height: 1.25 !important;
         }
         .num{ text-align:right !important; white-space:nowrap !important; color:#000 !important; }
-        .desc{ color:#000 !important; font-weight: 650 !important; }
-        .mutedSmall{ font-size: 11px !important; color:#000 !important; margin-top: 2px !important; }
+        .desc{ color:#000 !important; font-weight: 650 !important; line-height: 1.22 !important; }
+        .mutedSmall{ font-size: 10px !important; color:#000 !important; margin-top: 1px !important; line-height: 1.2 !important; }
 
         .totalsRow{
           display:flex;
@@ -920,12 +929,18 @@ export default function FakturaPreviewClient() {
           tr {
             page-break-inside: avoid;
             page-break-after: auto;
+            break-inside: avoid;
           }
 
           /* Safe zone (kao wizard preview): ne cijepati logičke cjeline; flex totals u štampi fragmentira */
           .invRow, .cols2, .footer {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
+          }
+
+          .tblWrap {
+            page-break-inside: auto !important;
+            break-inside: auto !important;
           }
 
           .totalsRow {
@@ -1195,19 +1210,21 @@ export default function FakturaPreviewClient() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>{lang === "EN" ? "Description" : "Opis"}</th>
-                      <th className="num">{lang === "EN" ? "Qty" : "Kol."}</th>
-                      <th className="num">
-                        {lang === "EN" ? "Unit Price" : "Cijena"}
+                      <th style={{ width: 44 }}>#</th>
+                      <th>{lang === "EN" ? "Service / Project" : "Usluga / Projekat"}</th>
+                      <th className="num" style={{ width: 72 }}>{lang === "EN" ? "Qty" : "Kol."}</th>
+                      <th className="num" style={{ width: 120 }}>
+                        {lang === "EN" ? "Unit Price" : "Jed. cijena"}
                       </th>
-                      <th className="num">
+                      <th className="num" style={{ width: 120 }}>
                         {lang === "EN" ? "Total" : "Ukupno"}
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((it) => (
+                    {items.map((it, idx) => (
                       <tr key={it.id}>
+                        <td>{idx + 1}</td>
                         <td>
                           <div className="desc">{it.title}</div>
                           {it.sub && <div className="mutedSmall">{it.sub}</div>}
@@ -1215,10 +1232,10 @@ export default function FakturaPreviewClient() {
                             <ul
                               className="mutedSmall"
                               style={{
-                                margin: "6px 0 0 0",
+                                margin: "3px 0 0 0",
                                 paddingLeft: 18,
                                 listStyle: "disc",
-                                lineHeight: 1.4,
+                                lineHeight: 1.2,
                               }}
                             >
                               {it.subItems.map((s, i) => (

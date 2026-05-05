@@ -969,12 +969,12 @@ export default function Page() {
 
         .tblWrap{
           overflow:hidden;
-          margin-top: 14px;
+          margin-top: 10px;
         }
         table{ width:100%; border-collapse:collapse; }
         thead tr{ background: #F7F7F7 !important; }
         th{
-          padding: 10px 10px !important;
+          padding: 7px 8px !important;
           font-size: 11px !important;
           text-transform: uppercase !important;
           letter-spacing: .35px !important;
@@ -986,14 +986,15 @@ export default function Page() {
           background: #F7F7F7 !important;
         }
         td{
-          padding: 10px 10px !important;
+          padding: 6px 8px !important;
           font-size: 12px !important;
           vertical-align: top !important;
           color:#000 !important;
+          line-height: 1.25 !important;
         }
         .num{ text-align:right !important; white-space:nowrap !important; color:#000 !important; }
-        .desc{ color:#000 !important; font-weight: 650 !important; }
-        .mutedSmall{ font-size: 11px !important; color:#000 !important; margin-top: 2px !important; }
+        .desc{ color:#000 !important; font-weight: 650 !important; line-height: 1.22 !important; }
+        .mutedSmall{ font-size: 10px !important; color:#000 !important; margin-top: 1px !important; line-height: 1.2 !important; }
 
         .totalsRow{
           display:flex;
@@ -1609,10 +1610,10 @@ export default function Page() {
                               <ul
                                 className="mutedSmall"
                                 style={{
-                                  margin: "6px 0 0 0",
+                                  margin: "3px 0 0 0",
                                   paddingLeft: 18,
                                   listStyle: "disc",
-                                  lineHeight: 1.4,
+                                  lineHeight: 1.2,
                                 }}
                               >
                                 {it.subItems.map((s, i) => (

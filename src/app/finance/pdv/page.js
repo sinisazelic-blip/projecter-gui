@@ -192,7 +192,16 @@ export default async function PdvPrijavaPage({ searchParams }) {
                   ) : (
                     kif.map((r) => (
                       <tr key={r.id ?? r.broj}>
-                        <td>{r.broj}{r.iz_arhive ? " (arh.)" : ""}</td>
+                        <td>
+                          {r.id && !r.iz_arhive ? (
+                            <Link href={`/fakture/${r.id}/preview`} className="link">
+                              {r.broj}
+                            </Link>
+                          ) : (
+                            <>{r.broj}</>
+                          )}
+                          {r.iz_arhive ? " (arh.)" : ""}
+                        </td>
                         <td>{fmtDate(r.datum)}</td>
                         <td>{r.kupac}</td>
                         <td style={{ textAlign: "right" }}>{formatAmount(r.osnovica_km, locale)}</td>
