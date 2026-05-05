@@ -778,7 +778,7 @@ export default function FakturaPreviewClient() {
         @media print {
           @page {
             size: A4;
-            margin: 0;
+            margin: 8mm;
           }
           
           * {
@@ -846,16 +846,16 @@ export default function FakturaPreviewClient() {
           }
           
           .paper {
-            width: 210mm !important;
+            width: auto !important;
             min-height: auto !important;
-            max-width: 210mm !important;
+            max-width: none !important;
             box-sizing: border-box !important;
             overflow-x: hidden !important;
             border: none !important;
             box-shadow: none !important;
             border-radius: 0 !important;
-            padding: 18mm 16mm !important;
-            margin: 0 auto !important;
+            padding: 10mm 8mm !important;
+            margin: 0 !important;
             background: #ffffff !important;
             background-color: #ffffff !important;
             color: #000000 !important;
