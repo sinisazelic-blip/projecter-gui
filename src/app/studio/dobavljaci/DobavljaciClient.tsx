@@ -5,40 +5,18 @@ import { useRouter } from "next/navigation";
 import type { DobavljacRow } from "./page";
 import {
   createDobavljac,
+  getDobavljacVrste,
+  saveDobavljacVrste,
   setDobavljacActive,
   updateDobavljac,
 } from "./actions";
 import ImportSection from "../ImportSection";
 import { useTranslation } from "@/components/LocaleProvider";
 
-type VrstaDobavljaca =
-  | "studio"
-  | "freelancer"
-  | "servis"
-  | "ostalo"
-  | "rental"
-  | "video_produkcija"
-  | "organizacija_dogadaja"
-  | "restoran"
-  | "transport"
-  | "rasvjeta"
-  | "bina"
-  | "led_video"
-  | "bilbordi"
-  | "novine"
-  | "web_portali"
-  | "socijalne_mreze"
-  | "developing"
-  | "web_developing"
-  | "tv"
-  | "radio"
-  | "oglasivaci"
-  | "agencije";
-
 type FormState = {
   dobavljac_id?: number;
   naziv: string;
-  vrsta: VrstaDobavljaca;
+  vrsta: string;
   pravno_lice: boolean;
   drzava_iso2: string;
   grad: string;
@@ -158,7 +136,7 @@ const pageTitleRowStyle: React.CSSProperties = {
   gap: 10,
 };
 
-const VRSTA_KEYS: Record<VrstaDobavljaca, string> = {
+const VRSTA_KEYS: Record<string, string> = {
   studio: "vrstaStudio",
   freelancer: "vrstaFreelancer",
   servis: "vrstaServis",
@@ -183,7 +161,7 @@ const VRSTA_KEYS: Record<VrstaDobavljaca, string> = {
   agencije: "vrstaAgencije",
 };
 
-const VRSTA_LIST: VrstaDobavljaca[] = [
+const DEFAULT_VRSTA_LIST: string[] = [
   "agencije",
   "bina",
   "bilbordi",
@@ -229,9 +207,24 @@ export default function DobavljaciClient({
   const [error, setError] = useState<string | null>(null);
 
   const [items, setItems] = useState<DobavljacRow[]>(initialItems ?? []);
+  const [vrstaList, setVrstaList] = useState<string[]>(DEFAULT_VRSTA_LIST);
+  const [vrstaModalOpen, setVrstaModalOpen] = useState(false);
+  const [vrstaEditorText, setVrstaEditorText] = useState("");
   useEffect(() => {
     setItems(initialItems ?? []);
   }, [initialItems]);
+  useEffect(() => {
+    let alive = true;
+    getDobavljacVrste()
+      .then((list) => {
+        if (!alive) return;
+        if (Array.isArray(list) && list.length) setVrstaList(list);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const counts = useMemo(() => {
     const total = items.length;
@@ -276,7 +269,13 @@ export default function DobavljaciClient({
     ? Number(selectedItem.aktivan) === 1
     : false;
 
-  function badgeVrsta(v: VrstaDobavljaca) {
+  function getVrstaLabel(v: string) {
+    const key = VRSTA_KEYS[v];
+    if (key) return t(`studioDobavljaci.${key}`);
+    return v.replace(/_/g, " ");
+  }
+
+  function badgeVrsta(v: string) {
     const status =
       v === "studio"
         ? "active"
@@ -287,7 +286,7 @@ export default function DobavljaciClient({
             : "unknown";
     return (
       <span className="badge" data-status={status}>
-        {t(`studioDobavljaci.${VRSTA_KEYS[v]}`)}
+        {getVrstaLabel(v)}
       </span>
     );
   }
@@ -304,7 +303,7 @@ export default function DobavljaciClient({
     setForm({
       dobavljac_id: it.dobavljac_id,
       naziv: it.naziv ?? "",
-      vrsta: (it.vrsta ?? "ostalo") as VrstaDobavljaca,
+      vrsta: String(it.vrsta ?? "ostalo"),
       pravno_lice: Number(it.pravno_lice) === 1,
       drzava_iso2: it.drzava_iso2 ?? "",
       grad: it.grad ?? "",
@@ -388,6 +387,43 @@ export default function DobavljaciClient({
   function closeAllModals() {
     setModalOpen(false);
     setConfirmOpen(false);
+    setVrstaModalOpen(false);
+  }
+
+  function openVrsteModal() {
+    setError(null);
+    setVrstaEditorText(vrstaList.join("\n"));
+    setVrstaModalOpen(true);
+  }
+
+  function normalizeVrsteInput(text: string) {
+    return Array.from(
+      new Set(
+        String(text || "")
+          .split(/\r?\n|,/g)
+          .map((x) =>
+            x
+              .trim()
+              .toLowerCase()
+              .replace(/\s+/g, "_")
+              .replace(/[^a-z0-9_]/g, ""),
+          )
+          .filter(Boolean),
+      ),
+    );
+  }
+
+  function saveVrsteFromModal() {
+    const clean = normalizeVrsteInput(vrstaEditorText);
+    startTransition(async () => {
+      try {
+        await saveDobavljacVrste(clean);
+        setVrstaList(clean.length ? clean : DEFAULT_VRSTA_LIST);
+        setVrstaModalOpen(false);
+      } catch (e: any) {
+        setError(e?.message || "Greška pri snimanju vrsta.");
+      }
+    });
   }
 
   function onClosePage() {
@@ -554,6 +590,15 @@ export default function DobavljaciClient({
             style={btnDisabled(isPending)}
           >
             <span style={{ marginRight: 6 }}>➕</span> {t("studioDobavljaci.new")}
+          </button>
+
+          <button
+            className="btn"
+            onClick={openVrsteModal}
+            disabled={isPending}
+            style={btnDisabled(isPending)}
+          >
+            <span style={{ marginRight: 6 }}>🧩</span> {t("studioDobavljaci.editTypes")}
           </button>
 
           <button
@@ -873,21 +918,19 @@ export default function DobavljaciClient({
                     onChange={(e) =>
                       setForm((s) => ({
                         ...s,
-                        vrsta: e.target.value as VrstaDobavljaca,
+                        vrsta: e.target.value,
                       }))
                     }
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   >
-                    {[...VRSTA_LIST]
+                    {[...vrstaList]
                       .sort((a, b) =>
-                        t(`studioDobavljaci.${VRSTA_KEYS[a]}`).localeCompare(
-                          t(`studioDobavljaci.${VRSTA_KEYS[b]}`),
-                        )
+                        getVrstaLabel(a).localeCompare(getVrstaLabel(b))
                       )
                       .map((v) => (
                         <option key={v} value={v}>
-                          {t(`studioDobavljaci.${VRSTA_KEYS[v]}`)}
+                          {getVrstaLabel(v)}
                         </option>
                       ))}
                   </select>
@@ -1414,6 +1457,39 @@ export default function DobavljaciClient({
                   : selectedIsActive
                     ? t("studioDobavljaci.deactivate")
                     : t("studioDobavljaci.activate")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {vrstaModalOpen ? (
+        <div className="studio-modal" style={overlayStyle()} role="dialog" aria-modal="true">
+          <div style={modalStyle(640)}>
+            <div style={{ padding: 16, borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>{t("studioDobavljaci.editTypesTitle")}</div>
+                <div style={{ marginTop: 4, color: "var(--muted)", fontSize: 14 }}>
+                  {t("studioDobavljaci.editTypesHint")}
+                </div>
+              </div>
+              <button className="btn" onClick={closeAllModals}>✖</button>
+            </div>
+            <div style={{ padding: 16 }}>
+              <textarea
+                className="input"
+                value={vrstaEditorText}
+                onChange={(e) => setVrstaEditorText(e.target.value)}
+                rows={12}
+                style={{ width: "100%", resize: "vertical" }}
+              />
+            </div>
+            <div style={{ padding: 16, borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button className="btn" onClick={closeAllModals} disabled={isPending} style={btnDisabled(isPending)}>
+                {t("studioDobavljaci.cancel")}
+              </button>
+              <button className="btn btn--active" onClick={saveVrsteFromModal} disabled={isPending} style={btnDisabled(isPending)}>
+                {isPending ? t("studioDobavljaci.saving") : t("studioDobavljaci.save")}
               </button>
             </div>
           </div>

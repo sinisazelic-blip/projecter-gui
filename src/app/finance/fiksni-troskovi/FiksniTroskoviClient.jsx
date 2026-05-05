@@ -8,6 +8,7 @@ import {
   createFiksniTrosak,
   updateFiksniTrosak,
   setFiksniTrosakActive,
+  deleteFiksniTrosak,
 } from "./actions";
 
 const FREQUENCIES = [
@@ -15,7 +16,9 @@ const FREQUENCIES = [
   { value: "GODISNJE", key: "freqYearly" },
   { value: "JEDNOKRATNO", key: "freqOnce" },
 ];
-const VALUTE = ["BAM", "EUR"];
+const VALUTE = ["BAM", "EUR", "USD"];
+const NACINI_PLACANJA = ["POSLOVNI_RACUN", "PRIVATNI_RACUN"];
+const SUMMARY_CURRENCIES = ["BAM", "EUR", "USD"];
 
 function emptyForm() {
   return {
@@ -26,8 +29,20 @@ function emptyForm() {
     datum_dospijeca: "",
     iznos: "",
     valuta: "BAM",
+    nacin_placanja: "POSLOVNI_RACUN",
+    napomena: "",
     aktivan: true,
   };
+}
+
+function paymentMethodLabel(t, value) {
+  return value === "PRIVATNI_RACUN"
+    ? t("fiksniTroskovi.paymentPrivate")
+    : t("fiksniTroskovi.paymentBusiness");
+}
+
+function fmtSummaryCurrency(summaryObj) {
+  return SUMMARY_CURRENCIES.map((c) => `${Number(summaryObj?.[c] ?? 0).toFixed(2)} ${c}`).join(" · ");
 }
 
 const overlayStyle = {
@@ -92,6 +107,8 @@ export default function FiksniTroskoviClient({ initialRows = [] }) {
         : "",
       iznos: row.iznos != null ? String(row.iznos) : "",
       valuta: row.valuta ?? "BAM",
+      nacin_placanja: row.nacin_placanja ?? "POSLOVNI_RACUN",
+      napomena: row.napomena ?? "",
       aktivan: Number(row.aktivan) === 1,
     });
     setIsEdit(true);
@@ -152,6 +169,43 @@ export default function FiksniTroskoviClient({ initialRows = [] }) {
     });
   }
 
+  function handleDelete(id) {
+    const ok = window.confirm(t("fiksniTroskovi.confirmDelete"));
+    if (!ok) return;
+    startTransition(async () => {
+      try {
+        await deleteFiksniTrosak(id);
+        router.refresh();
+      } catch (err) {
+        setError(err?.message ?? t("common.error"));
+      }
+    });
+  }
+
+  const monthlyEstimate = (initialRows ?? []).reduce(
+    (acc, row) => {
+      if (Number(row?.aktivan) !== 1) return acc;
+      const amount = Number(row?.iznos);
+      if (!Number.isFinite(amount) || amount <= 0) return acc;
+      const freq = String(row?.frekvencija ?? "").toUpperCase();
+      const factor = freq === "MJESECNO" ? 1 : 1 / 12;
+      const monthly = amount * factor;
+      const rawCurrency = String(row?.valuta ?? "BAM").toUpperCase();
+      const currency = rawCurrency === "KM" ? "BAM" : rawCurrency;
+      const safeCurrency = SUMMARY_CURRENCIES.includes(currency) ? currency : "BAM";
+      const method = String(row?.nacin_placanja ?? "POSLOVNI_RACUN");
+      acc.total[safeCurrency] += monthly;
+      if (method === "PRIVATNI_RACUN") acc.private[safeCurrency] += monthly;
+      else acc.business[safeCurrency] += monthly;
+      return acc;
+    },
+    {
+      total: { BAM: 0, EUR: 0, USD: 0 },
+      business: { BAM: 0, EUR: 0, USD: 0 },
+      private: { BAM: 0, EUR: 0, USD: 0 },
+    },
+  );
+
   return (
     <>
       <div className="card tableCard">
@@ -197,6 +251,29 @@ export default function FiksniTroskoviClient({ initialRows = [] }) {
             />
           </span>
         </div>
+        <div
+          style={{
+            padding: "12px 16px",
+            borderBottom: "1px solid var(--border)",
+            display: "flex",
+            gap: 16,
+            flexWrap: "wrap",
+            fontSize: 13,
+          }}
+        >
+          <span>
+            <strong>{t("fiksniTroskovi.monthlyEstimateTotal")}:</strong>{" "}
+            {fmtSummaryCurrency(monthlyEstimate.total)}
+          </span>
+          <span>
+            <strong>{t("fiksniTroskovi.monthlyEstimateBusiness")}:</strong>{" "}
+            {fmtSummaryCurrency(monthlyEstimate.business)}
+          </span>
+          <span>
+            <strong>{t("fiksniTroskovi.monthlyEstimatePrivate")}:</strong>{" "}
+            {fmtSummaryCurrency(monthlyEstimate.private)}
+          </span>
+        </div>
         <div className="table-wrap">
           <table className="table" style={{ tableLayout: "fixed" }}>
             <thead>
@@ -207,9 +284,10 @@ export default function FiksniTroskoviClient({ initialRows = [] }) {
                 <th style={{ width: 70 }}>{t("fiksniTroskovi.colDay")}</th>
                 <th style={{ width: 120 }}>{t("fiksniTroskovi.colDue")}</th>
                 <th style={{ width: 100 }} className="num">{t("fiksniTroskovi.colAmount")}</th>
+                <th style={{ width: 120 }}>{t("fiksniTroskovi.colPaymentMethod")}</th>
                 <th style={{ width: 110 }}>{t("fiksniTroskovi.colLastPaid")}</th>
                 <th style={{ width: 70 }}>{t("fiksniTroskovi.colActive")}</th>
-                <th style={{ width: 200 }}>{t("fiksniTroskovi.colActions")}</th>
+                <th style={{ width: 260 }}>{t("fiksniTroskovi.colActions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -241,6 +319,9 @@ export default function FiksniTroskoviClient({ initialRows = [] }) {
                           ? `${Number(r.iznos).toFixed(2)} ${r.valuta ?? "BAM"}`
                           : "—"}
                       </td>
+                      <td style={{ width: 120 }}>
+                        {paymentMethodLabel(t, r.nacin_placanja)}
+                      </td>
                       <td style={{ width: 110 }} className="nowrap">
                         {r.zadnje_placeno
                           ? String(r.zadnje_placeno).slice(0, 10)
@@ -253,7 +334,7 @@ export default function FiksniTroskoviClient({ initialRows = [] }) {
                             : "—"
                           : "—"}
                       </td>
-                      <td style={{ width: 200 }}>
+                      <td style={{ width: 260 }}>
                         <span style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
                           <button
                             type="button"
@@ -282,13 +363,21 @@ export default function FiksniTroskoviClient({ initialRows = [] }) {
                               {t("fiksniTroskovi.reactivateButton")}
                             </button>
                           )}
+                          <button
+                            type="button"
+                            className="btn"
+                            onClick={() => handleDelete(r.trosak_id)}
+                            disabled={isPending}
+                          >
+                            {t("fiksniTroskovi.deleteButton")}
+                          </button>
                         </span>
                       </td>
                     </tr>
                   ))
                 : (
                     <tr>
-                      <td colSpan={9} className="muted" style={{ padding: 16 }}>
+                      <td colSpan={10} className="muted" style={{ padding: 16 }}>
                         {t("fiksniTroskovi.noResults")}
                       </td>
                     </tr>
@@ -381,6 +470,28 @@ export default function FiksniTroskoviClient({ initialRows = [] }) {
                     <option key={v} value={v}>{v}</option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="label">{t("fiksniTroskovi.colPaymentMethod")}</label>
+                <select
+                  className="input"
+                  value={form.nacin_placanja}
+                  onChange={(e) => setForm((f) => ({ ...f, nacin_placanja: e.target.value }))}
+                >
+                  {NACINI_PLACANJA.map((v) => (
+                    <option key={v} value={v}>{paymentMethodLabel(t, v)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">{t("fiksniTroskovi.colNote")}</label>
+                <textarea
+                  className="input"
+                  rows={3}
+                  value={form.napomena}
+                  onChange={(e) => setForm((f) => ({ ...f, napomena: e.target.value }))}
+                  placeholder={t("fiksniTroskovi.notePlaceholder")}
+                />
               </div>
               <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                 <input

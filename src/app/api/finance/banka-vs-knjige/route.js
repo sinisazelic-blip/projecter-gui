@@ -63,6 +63,61 @@ export async function GET(req) {
     }
 
     const stanjeKnjige = sumaPrihodi - sumaPlacanja;
+
+    // 2b) Kreditne obaveze (preostali dug aktivnih kredita)
+    let kreditObaveze = 0;
+    try {
+      const cols = await query(
+        `SELECT column_name
+         FROM information_schema.columns
+         WHERE table_schema = DATABASE() AND table_name = 'krediti'`,
+      ).catch(() => []);
+      const colSet = new Set((cols ?? []).map((c) => String(c.column_name)));
+      const hasIznosKredita = colSet.has("iznos_kredita");
+      const hasKamataTroskovi = colSet.has("iznos_kamata_troskovi");
+
+      const kreditiRows = await query(
+        `
+        SELECT
+          broj_rata,
+          uplaceno_rata,
+          iznos_rate,
+          ukupan_iznos,
+          ${hasIznosKredita ? "iznos_kredita" : "NULL AS iznos_kredita"},
+          ${hasKamataTroskovi ? "iznos_kamata_troskovi" : "NULL AS iznos_kamata_troskovi"}
+        FROM krediti
+        WHERE COALESCE(aktivan, 1) = 1
+        `,
+      ).catch(() => []);
+
+      kreditObaveze = (kreditiRows ?? []).reduce((sum, r) => {
+        const brojRata = Number(r?.broj_rata ?? 0);
+        const uplaceno = Number(r?.uplaceno_rata ?? 0);
+        const ostaloRata = Math.max(0, brojRata - uplaceno);
+        if (ostaloRata <= 0) return sum;
+
+        const glavnica = Number(r?.iznos_kredita ?? 0);
+        const kamataTroskovi = Number(r?.iznos_kamata_troskovi ?? 0);
+        const ukupno = Number(
+          r?.ukupan_iznos ??
+            (Number.isFinite(glavnica) && Number.isFinite(kamataTroskovi)
+              ? glavnica + kamataTroskovi
+              : 0),
+        );
+        const iznosRate =
+          r?.iznos_rate != null && Number.isFinite(Number(r.iznos_rate))
+            ? Number(r.iznos_rate)
+            : brojRata > 0
+              ? ukupno / brojRata
+              : 0;
+        const ostatak = ostaloRata * (Number.isFinite(iznosRate) ? iznosRate : 0);
+        return sum + (Number.isFinite(ostatak) ? ostatak : 0);
+      }, 0);
+    } catch {
+      kreditObaveze = 0;
+    }
+
+    const stanjeKnjigeNeto = stanjeKnjige - kreditObaveze;
     const razlika = Math.round((stanjeBanke - stanjeKnjige) * 100) / 100;
 
     // 3) Opciono: promet u periodu (from – to)
@@ -108,6 +163,8 @@ export async function GET(req) {
       from_date: fromDate || null,
       stanje_banke_km: Math.round(stanjeBanke * 100) / 100,
       stanje_knjige_km: Math.round(stanjeKnjige * 100) / 100,
+      kredit_obaveze_km: Math.round(kreditObaveze * 100) / 100,
+      stanje_knjige_neto_km: Math.round(stanjeKnjigeNeto * 100) / 100,
       suma_prihodi_km: Math.round(sumaPrihodi * 100) / 100,
       suma_placanja_km: Math.round(sumaPlacanja * 100) / 100,
       razlika_km: razlika,

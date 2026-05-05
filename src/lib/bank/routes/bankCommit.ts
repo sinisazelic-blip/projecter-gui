@@ -5,6 +5,17 @@ import { findFakturaFromText } from "@/lib/bank/matchInvoiceFromText";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function normalizeDigits(input: string): string {
+  return String(input || "").replace(/\D+/g, "");
+}
+
+function normalizeText(input: string): string {
+  return String(input || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 // handler za /api/bank/commit
 // body: { batch_id: number }
 export async function handleBankCommit(req: NextRequest): Promise<Response> {
@@ -20,6 +31,15 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
     }
 
     const result = await withTransaction(async (conn: any) => {
+      const ownerPrivateAccountRaw =
+        process.env.FLUXA_OWNER_PRIVATE_ACCOUNT?.trim() || "";
+      const ownerPrivateAccountDigits = normalizeDigits(ownerPrivateAccountRaw);
+      const ownerProjectIdRaw = Number(process.env.FLUXA_OWNER_PROJECT_ID ?? 1);
+      const ownerProjectId =
+        Number.isFinite(ownerProjectIdRaw) && ownerProjectIdRaw > 0
+          ? ownerProjectIdRaw
+          : 1;
+
       // 0) provjera batch + account_id
       const [brows]: any = await conn.execute(
         `SELECT batch_id, account_id FROM bank_import_batch WHERE batch_id = ? LIMIT 1`,
@@ -105,6 +125,7 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
 
       // 4) Auto-uparivanje uplata na fakture: iz teksta (poziv na broj ili broj fakture 001/2026)
       let matched_invoices = 0;
+      let matched_owner_transfers = 0;
       try {
         const [postings]: any = await conn.execute(
           `
@@ -185,6 +206,83 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
           );
           matched_invoices += 1;
         }
+
+        // 5) Auto-link za prenos vlasnika na privatni račun:
+        // Ako je u opisu "prenos" (ili "posudba vlasnika") i prepoznat privatni broj računa,
+        // ulazna transakcija se automatski evidentira kao projektni_prihodi.
+        if (ownerPrivateAccountDigits) {
+          const [ownerCandidates]: any = await conn.execute(
+            `
+            SELECT
+              p.posting_id,
+              p.amount,
+              p.value_date,
+              p.counterparty,
+              p.description,
+              t.reference AS staging_reference,
+              t.description AS staging_description,
+              t.full_description AS staging_full_description
+            FROM bank_tx_posting p
+            LEFT JOIN bank_tx_staging t ON t.tx_id = p.tx_id
+            LEFT JOIN bank_tx_posting_prihod_link l ON l.posting_id = p.posting_id AND l.aktivan = 1
+            WHERE p.batch_id = ? AND p.amount > 0 AND l.link_id IS NULL
+            `,
+            [batch_id],
+          );
+
+          const ownerList = Array.isArray(ownerCandidates) ? ownerCandidates : [];
+          for (const row of ownerList) {
+            const postingId = Number(row?.posting_id);
+            const amount = Number(row?.amount);
+            if (!Number.isFinite(postingId) || postingId <= 0) continue;
+            if (!Number.isFinite(amount) || amount <= 0) continue;
+
+            const textParts = [
+              row?.counterparty,
+              row?.description,
+              row?.staging_reference,
+              row?.staging_description,
+              row?.staging_full_description,
+            ]
+              .map((x) => String(x ?? "").trim())
+              .filter(Boolean);
+            const haystackRaw = textParts.join(" ");
+            const haystackNorm = normalizeText(haystackRaw);
+            const haystackDigits = normalizeDigits(haystackRaw);
+
+            const hasOwnerAccount = haystackDigits.includes(ownerPrivateAccountDigits);
+            const hasTransferKeyword =
+              haystackNorm.includes("prenos") ||
+              haystackNorm.includes("posudba vlasnika") ||
+              haystackNorm.includes("uplata vlasnika");
+
+            if (!hasOwnerAccount || !hasTransferKeyword) continue;
+
+            const datum = row?.value_date ? String(row.value_date).slice(0, 10) : null;
+            if (!datum || !/^\d{4}-\d{2}-\d{2}$/.test(datum)) continue;
+
+            const amountKm = Math.round(amount * 100) / 100;
+            const opisPrihoda = `Prenos vlasnika (auto) [posting ${postingId}]`.slice(
+              0,
+              255,
+            );
+
+            const [insOwner]: any = await conn.execute(
+              `INSERT INTO projektni_prihodi (projekat_id, datum, iznos_km, opis, status)
+               VALUES (?, ?, ?, ?, 'NASTALO')`,
+              [ownerProjectId, datum, amountKm, opisPrihoda],
+            );
+            const prihodId = insOwner?.insertId ?? null;
+            if (!prihodId) continue;
+
+            await conn.execute(
+              `INSERT INTO bank_tx_posting_prihod_link (posting_id, prihod_id, amount_km, aktivan, created_at)
+               VALUES (?, ?, ?, 1, NOW())`,
+              [postingId, prihodId, amountKm],
+            );
+            matched_owner_transfers += 1;
+          }
+        }
       } catch (autoMatchErr: any) {
         console.warn("[bankCommit] auto-match invoices:", autoMatchErr?.message);
       }
@@ -195,6 +293,7 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
         account_id,
         affected_rows,
         matched_invoices,
+        matched_owner_transfers,
         status: "posted",
         marker: "COMMIT_V2_UPSERT",
       };

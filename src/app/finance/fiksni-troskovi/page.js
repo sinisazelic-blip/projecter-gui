@@ -37,6 +37,8 @@ export default async function FiksniTroskoviPage({ searchParams }) {
       f.zadnje_placeno,
       f.iznos,
       f.valuta,
+      f.nacin_placanja,
+      f.napomena,
       f.aktivan
     FROM fiksni_troskovi f
     ${whereSql}
@@ -47,10 +49,10 @@ export default async function FiksniTroskoviPage({ searchParams }) {
   ).catch(async () => {
     return await query(
       `
-      SELECT *
-      FROM fiksni_troskovi
+      SELECT f.*
+      FROM fiksni_troskovi f
       ${whereSql}
-      ORDER BY trosak_id DESC
+      ORDER BY f.trosak_id DESC
       LIMIT 200
       `,
       params,

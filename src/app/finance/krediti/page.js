@@ -19,32 +19,44 @@ const displayValuta = (valuta, locale) => {
   return valuta ?? "";
 };
 
-const fmtDate = (d) => {
-  if (!d) return "—";
-  const s = String(d).slice(0, 10);
-  const parts = s.split("-");
-  const y = parts[0];
-  const m = parts[1]?.padStart(2, "0") ?? "";
-  const day = parts[2]?.padStart(2, "0") ?? "";
-  if (!y || !m || !day) return String(d);
-  return `${day}.${m}.${y}`;
-};
-
 function fmtMjesecGodina(d) {
   if (!d) return "—";
-  const s = String(d).slice(0, 10);
-  const [y, m] = s.split("-");
-  if (!y || !m) return String(d);
-  return `${m.padStart(2, "0")}.${y}`;
+  if (d instanceof Date) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    return `${m}.${y}`;
+  }
+  const raw = String(d).trim();
+  const isoMatch = raw.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    return `${isoMatch[2]}.${isoMatch[1]}`;
+  }
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, "0");
+    return `${m}.${y}`;
+  }
+  return raw;
 }
 
 export default async function KreditiPage({ searchParams }) {
+  const cols = await query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE() AND table_name = 'krediti'`,
+  ).catch(() => []);
+  const colSet = new Set((cols ?? []).map((c) => String(c.column_name)));
+  const hasIznosKredita = colSet.has("iznos_kredita");
+  const hasKamataTroskovi = colSet.has("iznos_kamata_troskovi");
+
   const cookieStore = await cookies();
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
   const t = getT(locale);
 
   const sp = await Promise.resolve(searchParams);
   const q = (sp?.q ?? "").trim();
+  const editId = Number(sp?.edit_id ?? 0);
 
   let rows = [];
   let tableMissing = false;
@@ -67,6 +79,8 @@ export default async function KreditiPage({ searchParams }) {
       SELECT
         kredit_id,
         naziv,
+        ${hasIznosKredita ? "iznos_kredita," : "NULL AS iznos_kredita,"}
+        ${hasKamataTroskovi ? "iznos_kamata_troskovi," : "NULL AS iznos_kamata_troskovi,"}
         ukupan_iznos,
         valuta,
         broj_rata,
@@ -100,7 +114,11 @@ export default async function KreditiPage({ searchParams }) {
   const enriched = list.map((r) => {
     const brojRata = Number(r.broj_rata ?? 0);
     const uplaceno = Number(r.uplaceno_rata ?? 0);
-    const ukupno = Number(r.ukupan_iznos ?? 0);
+    const glavnica = Number(r.iznos_kredita ?? 0);
+    const kamataTroskovi = Number(r.iznos_kamata_troskovi ?? 0);
+    const ukupno = Number(
+      r.ukupan_iznos ?? (Number.isFinite(glavnica) && Number.isFinite(kamataTroskovi) ? glavnica + kamataTroskovi : 0),
+    );
     const iznosRate = r.iznos_rate != null ? Number(r.iznos_rate) : null;
 
     const ostaloRata = Math.max(0, brojRata - uplaceno);
@@ -115,6 +133,8 @@ export default async function KreditiPage({ searchParams }) {
 
     return {
       ...r,
+      iznos_kredita: Number.isFinite(glavnica) ? glavnica : null,
+      iznos_kamata_troskovi: Number.isFinite(kamataTroskovi) ? kamataTroskovi : null,
       ostalo_rata: ostaloRata,
       ostatak_duga: ostatakDuga,
     };
@@ -123,6 +143,10 @@ export default async function KreditiPage({ searchParams }) {
   const activeList = enriched.filter((r) => r.aktivan !== 0);
   const ukupnoOstatak = activeList.reduce((s, r) => s + (r.ostatak_duga ?? 0), 0);
   const ukupnoOstalihRata = activeList.reduce((s, r) => s + (r.ostalo_rata ?? 0), 0);
+  const initialEditCredit =
+    Number.isFinite(editId) && editId > 0
+      ? enriched.find((r) => Number(r.kredit_id) === editId) ?? null
+      : null;
 
   return (
     <div className="container">
@@ -203,7 +227,7 @@ export default async function KreditiPage({ searchParams }) {
                 </div>
               </div>
 
-              <KreditForm />
+              <KreditForm initialCredit={initialEditCredit} />
 
               <div className="card tableCard" style={{ marginTop: 14, marginBottom: 14 }}>
                 <form method="GET" className="filters" style={{ flexWrap: "wrap", padding: 16 }}>
@@ -235,11 +259,13 @@ export default async function KreditiPage({ searchParams }) {
                     <ExportExcelButton
                       filename="krediti"
                       sheetName={t("krediti.excelSheetName")}
-                      headers={[t("krediti.colId"), t("krediti.colName"), t("krediti.colBanka"), t("krediti.colUkupanIznos"), t("krediti.colValuta"), t("krediti.colBrojRata"), t("krediti.colUplacenoRata"), t("krediti.colOstatakDuga"), t("krediti.colOstaloRata"), t("krediti.colPosljednjaRata"), t("krediti.colActive"), t("krediti.labelNapomena")]}
+                      headers={[t("krediti.colId"), t("krediti.colName"), t("krediti.colBanka"), t("krediti.colIznosKredita"), t("krediti.colKamataTroskovi"), t("krediti.colUkupanIznos"), t("krediti.colValuta"), t("krediti.colBrojRata"), t("krediti.colUplacenoRata"), t("krediti.colOstatakDuga"), t("krediti.colOstaloRata"), t("krediti.colPosljednjaRata"), t("krediti.colActive"), t("krediti.labelNapomena")]}
                       rows={enriched.map((r) => [
                         r.kredit_id,
                         r.naziv ?? "",
                         r.banka_naziv ?? "",
+                        r.iznos_kredita ?? "",
+                        r.iznos_kamata_troskovi ?? "",
                         r.ukupan_iznos ?? "",
                         displayValuta(r.valuta, locale),
                         r.broj_rata ?? "",
@@ -260,12 +286,15 @@ export default async function KreditiPage({ searchParams }) {
                         <th style={{ width: 70 }}>{t("krediti.colId")}</th>
                         <th>{t("krediti.colName")}</th>
                         <th>{t("krediti.colBanka")}</th>
+                        <th className="num" style={{ width: 120 }}>{t("krediti.colIznosKredita")}</th>
+                        <th className="num" style={{ width: 130 }}>{t("krediti.colKamataTroskovi")}</th>
                         <th className="num" style={{ width: 110 }}>{t("krediti.colUkupanIznos")}</th>
                         <th className="num" style={{ width: 110 }}>{t("krediti.colBrojRata")}</th>
                         <th className="num" style={{ width: 110 }}>{t("krediti.colUplacenoRata")}</th>
                         <th className="num" style={{ width: 110 }}>{t("krediti.colOstatakDuga")}</th>
                         <th style={{ width: 100 }}>{t("krediti.colOstaloRata")}</th>
                         <th style={{ width: 110 }}>{t("krediti.colPosljednjaRata")}</th>
+                        <th style={{ width: 110 }}>{t("krediti.colActions")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -277,6 +306,8 @@ export default async function KreditiPage({ searchParams }) {
                                 {r.naziv ?? "—"}
                               </td>
                               <td>{r.banka_naziv ?? "—"}</td>
+                              <td className="num">{r.iznos_kredita != null ? formatAmount(r.iznos_kredita, locale) : "—"}</td>
+                              <td className="num">{r.iznos_kamata_troskovi != null ? formatAmount(r.iznos_kamata_troskovi, locale) : "—"}</td>
                               <td className="num">{formatAmount(r.ukupan_iznos, locale)}</td>
                               <td className="num">{r.broj_rata ?? "—"}</td>
                               <td className="num">{r.uplaceno_rata ?? "—"}</td>
@@ -285,11 +316,16 @@ export default async function KreditiPage({ searchParams }) {
                               <td className="nowrap">
                                 {fmtMjesecGodina(r.datum_posljednja_rata)}
                               </td>
+                              <td>
+                                <Link className="btn" href={`/finance/krediti?edit_id=${r.kredit_id}`}>
+                                  {t("krediti.editButton")}
+                                </Link>
+                              </td>
                             </tr>
                           ))
                         : (
                             <tr>
-                              <td colSpan={9} className="muted" style={{ padding: 16 }}>
+                              <td colSpan={12} className="muted" style={{ padding: 16 }}>
                                 {t("krediti.noResults")}
                               </td>
                             </tr>

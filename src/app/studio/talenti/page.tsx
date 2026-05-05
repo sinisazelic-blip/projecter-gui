@@ -11,22 +11,7 @@ export const dynamic = "force-dynamic";
 export type TalentRow = {
   talent_id: number;
   ime_prezime: string;
-  vrsta:
-    | "spiker"
-    | "glumac"
-    | "pjevac"
-    | "dijete"
-    | "muzicar"
-    | "ostalo"
-    | "snimatelj"
-    | "kompozitor"
-    | "copywriter"
-    | "producent"
-    | "montazer"
-    | "reziser"
-    | "organizator"
-    | "account"
-    | "developer";
+  vrsta: string;
   email: string | null;
   telefon: string | null;
   napomena: string | null;

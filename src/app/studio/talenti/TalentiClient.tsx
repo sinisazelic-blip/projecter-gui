@@ -3,32 +3,20 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { TalentRow } from "./page";
-import { createTalent, setTalentActive, updateTalent } from "./actions";
+import {
+  createTalent,
+  getSaradnikVrste,
+  saveSaradnikVrste,
+  setTalentActive,
+  updateTalent,
+} from "./actions";
 import ImportSection from "../ImportSection";
 import { useTranslation } from "@/components/LocaleProvider";
-
-type VrstaTalenta =
-  | "spiker"
-  | "glumac"
-  | "pjevac"
-  | "dijete"
-  | "muzicar"
-  | "ostalo"
-  | "snimatelj"
-  | "kompozitor"
-  | "copywriter"
-  | "producent"
-  | "montazer"
-  | "reziser"
-  | "organizator"
-  | "account"
-  | "developer"
-  | "vidograf";
 
 type FormState = {
   talent_id?: number;
   ime_prezime: string;
-  vrsta: VrstaTalenta;
+  vrsta: string;
   email: string;
   telefon: string;
   napomena: string;
@@ -123,7 +111,7 @@ const pageTitleRowStyle: React.CSSProperties = {
   gap: 10,
 };
 
-const VRSTA_KEYS: Record<VrstaTalenta, string> = {
+const VRSTA_KEYS: Record<string, string> = {
   spiker: "vrstaSpiker",
   glumac: "vrstaGlumac",
   pjevac: "vrstaPjevac",
@@ -142,7 +130,7 @@ const VRSTA_KEYS: Record<VrstaTalenta, string> = {
   vidograf: "vrstaVidograf",
 };
 
-const VRSTA_LIST: VrstaTalenta[] = [
+const DEFAULT_VRSTA_LIST: string[] = [
   "account",
   "copywriter",
   "developer",
@@ -182,9 +170,24 @@ export default function TalentiClient({
   const [error, setError] = useState<string | null>(null);
 
   const [items, setItems] = useState<TalentRow[]>(initialItems ?? []);
+  const [vrstaList, setVrstaList] = useState<string[]>(DEFAULT_VRSTA_LIST);
+  const [vrstaModalOpen, setVrstaModalOpen] = useState(false);
+  const [vrstaEditorText, setVrstaEditorText] = useState("");
   useEffect(() => {
     setItems(initialItems ?? []);
   }, [initialItems]);
+  useEffect(() => {
+    let alive = true;
+    getSaradnikVrste()
+      .then((list) => {
+        if (!alive) return;
+        if (Array.isArray(list) && list.length) setVrstaList(list);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const counts = useMemo(() => {
     const total = items.length;
@@ -223,7 +226,13 @@ export default function TalentiClient({
     ? Number(selectedItem.aktivan) === 1
     : false;
 
-  function badgeVrsta(v: VrstaTalenta) {
+  function getVrstaLabel(v: string) {
+    const key = VRSTA_KEYS[v];
+    if (key) return t(`studioTalenti.${key}`);
+    return v.replace(/_/g, " ");
+  }
+
+  function badgeVrsta(v: string) {
     const status =
       v === "spiker"
         ? "planned"
@@ -239,7 +248,7 @@ export default function TalentiClient({
 
     return (
       <span className="badge" data-status={status}>
-        {t(`studioTalenti.${VRSTA_KEYS[v]}`)}
+        {getVrstaLabel(v)}
       </span>
     );
   }
@@ -256,7 +265,7 @@ export default function TalentiClient({
     setForm({
       talent_id: it.talent_id,
       ime_prezime: it.ime_prezime ?? "",
-      vrsta: (it.vrsta ?? "ostalo") as VrstaTalenta,
+      vrsta: String(it.vrsta ?? "ostalo"),
       email: it.email ?? "",
       telefon: it.telefon ?? "",
       napomena: it.napomena ?? "",
@@ -324,6 +333,43 @@ export default function TalentiClient({
   function closeAllModals() {
     setModalOpen(false);
     setConfirmOpen(false);
+    setVrstaModalOpen(false);
+  }
+
+  function openVrsteModal() {
+    setError(null);
+    setVrstaEditorText(vrstaList.join("\n"));
+    setVrstaModalOpen(true);
+  }
+
+  function normalizeVrsteInput(text: string) {
+    return Array.from(
+      new Set(
+        String(text || "")
+          .split(/\r?\n|,/g)
+          .map((x) =>
+            x
+              .trim()
+              .toLowerCase()
+              .replace(/\s+/g, "_")
+              .replace(/[^a-z0-9_]/g, ""),
+          )
+          .filter(Boolean),
+      ),
+    );
+  }
+
+  function saveVrsteFromModal() {
+    const clean = normalizeVrsteInput(vrstaEditorText);
+    startTransition(async () => {
+      try {
+        await saveSaradnikVrste(clean);
+        setVrstaList(clean.length ? clean : DEFAULT_VRSTA_LIST);
+        setVrstaModalOpen(false);
+      } catch (e: any) {
+        setError(e?.message || "Greška pri snimanju vrsta.");
+      }
+    });
   }
 
   function onClosePage() {
@@ -453,6 +499,14 @@ export default function TalentiClient({
             style={btnDisabled(isPending)}
           >
             <span style={{ marginRight: 6 }}>➕</span> {t("studioTalenti.new")}
+          </button>
+          <button
+            className="btn"
+            onClick={openVrsteModal}
+            disabled={isPending}
+            style={btnDisabled(isPending)}
+          >
+            <span style={{ marginRight: 6 }}>🧩</span> {t("studioTalenti.editTypes")}
           </button>
 
           <button
@@ -755,21 +809,19 @@ export default function TalentiClient({
                     onChange={(e) =>
                       setForm((s) => ({
                         ...s,
-                        vrsta: e.target.value as VrstaTalenta,
+                        vrsta: e.target.value,
                       }))
                     }
                     className="input"
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   >
-                    {[...VRSTA_LIST]
+                    {[...vrstaList]
                       .sort((a, b) =>
-                        t(`studioTalenti.${VRSTA_KEYS[a]}`).localeCompare(
-                          t(`studioTalenti.${VRSTA_KEYS[b]}`),
-                        )
+                        getVrstaLabel(a).localeCompare(getVrstaLabel(b))
                       )
                       .map((v) => (
                         <option key={v} value={v}>
-                          {t(`studioTalenti.${VRSTA_KEYS[v]}`)}
+                          {getVrstaLabel(v)}
                         </option>
                       ))}
                   </select>
@@ -1041,6 +1093,39 @@ export default function TalentiClient({
                   : selectedIsActive
                     ? t("studioTalenti.deactivate")
                     : t("studioTalenti.activate")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {vrstaModalOpen ? (
+        <div style={overlayStyle()} role="dialog" aria-modal="true">
+          <div style={modalStyle(640)}>
+            <div style={{ padding: 16, borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>{t("studioTalenti.editTypesTitle")}</div>
+                <div style={{ marginTop: 4, color: "var(--muted)", fontSize: 14 }}>
+                  {t("studioTalenti.editTypesHint")}
+                </div>
+              </div>
+              <button className="btn" onClick={closeAllModals}>✖</button>
+            </div>
+            <div style={{ padding: 16 }}>
+              <textarea
+                className="input"
+                value={vrstaEditorText}
+                onChange={(e) => setVrstaEditorText(e.target.value)}
+                rows={12}
+                style={{ width: "100%", resize: "vertical" }}
+              />
+            </div>
+            <div style={{ padding: 16, borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button className="btn" onClick={closeAllModals} disabled={isPending} style={btnDisabled(isPending)}>
+                {t("studioTalenti.cancel")}
+              </button>
+              <button className="btn btn--active" onClick={saveVrsteFromModal} disabled={isPending} style={btnDisabled(isPending)}>
+                {isPending ? t("studioTalenti.saving") : t("studioTalenti.save")}
               </button>
             </div>
           </div>

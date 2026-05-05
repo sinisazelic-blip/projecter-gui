@@ -3,37 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { query } from "@/lib/db";
 
-type VrstaDobavljaca =
-  | "studio"
-  | "freelancer"
-  | "servis"
-  | "ostalo"
-  | "rental"
-  | "video_produkcija"
-  | "organizacija_dogadaja"
-  | "restoran"
-  | "transport"
-  | "rasvjeta"
-  | "bina"
-  | "led_video"
-  | "bilbordi"
-  | "novine"
-  | "web_portali"
-  | "socijalne_mreze"
-  | "developing"
-  | "web_developing"
-  | "tv"
-  | "radio"
-  | "oglasivaci"
-  | "agencije";
-
-const VRSTA_VALUES: Set<string> = new Set([
+const DEFAULT_VRSTE: string[] = [
   "studio", "freelancer", "servis", "ostalo",
   "rental", "video_produkcija", "organizacija_dogadaja", "restoran",
   "transport", "rasvjeta", "bina", "led_video", "bilbordi", "novine",
   "web_portali", "socijalne_mreze", "developing", "web_developing",
   "tv", "radio", "oglasivaci", "agencije",
-]);
+];
 
 function cleanStr(v: any) {
   const s = String(v ?? "").trim();
@@ -44,12 +20,67 @@ function cleanBool01(v: any) {
   return v === true || v === 1 || v === "1" || v === "true" ? 1 : 0;
 }
 
-function normalizeVrsta(v: any): VrstaDobavljaca {
+function normalizeVrsta(v: any): string {
   const s = String(v ?? "")
     .trim()
-    .toLowerCase();
-  if (VRSTA_VALUES.has(s)) return s as VrstaDobavljaca;
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "");
+  if (s) return s;
   return "ostalo";
+}
+
+async function ensureVrsteTable() {
+  await query(
+    `CREATE TABLE IF NOT EXISTS sifarnik_vrste (
+      vrsta_id INT NOT NULL AUTO_INCREMENT,
+      sifarnik VARCHAR(80) NOT NULL,
+      value_key VARCHAR(80) NOT NULL,
+      sort_order INT NOT NULL DEFAULT 0,
+      aktivan TINYINT NOT NULL DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (vrsta_id),
+      UNIQUE KEY uq_sifarnik_value (sifarnik, value_key),
+      KEY idx_sifarnik_aktivan_sort (sifarnik, aktivan, sort_order)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  );
+}
+
+export async function getDobavljacVrste() {
+  await ensureVrsteTable();
+  const rows = await query(
+    `SELECT value_key
+     FROM sifarnik_vrste
+     WHERE sifarnik = 'dobavljaci_vrsta' AND aktivan = 1
+     ORDER BY sort_order ASC, value_key ASC`,
+  );
+  const list = (rows ?? [])
+    .map((r: any) => String(r.value_key || "").trim())
+    .filter(Boolean);
+  return list.length ? list : DEFAULT_VRSTE;
+}
+
+export async function saveDobavljacVrste(vrste: string[]) {
+  await ensureVrsteTable();
+  const clean = Array.from(
+    new Set(
+      (vrste ?? [])
+        .map((v) => normalizeVrsta(v))
+        .filter(Boolean),
+    ),
+  );
+  const finalList = clean.length ? clean : DEFAULT_VRSTE;
+  await query(`DELETE FROM sifarnik_vrste WHERE sifarnik = 'dobavljaci_vrsta'`);
+  for (let i = 0; i < finalList.length; i += 1) {
+    await query(
+      `INSERT INTO sifarnik_vrste (sifarnik, value_key, sort_order, aktivan)
+       VALUES ('dobavljaci_vrsta', ?, ?, 1)`,
+      [finalList[i], i + 1],
+    );
+  }
+  revalidatePath("/studio/dobavljaci");
+  return { ok: true };
 }
 
 function jibDigits(v: any): string {
@@ -128,7 +159,7 @@ function normalizeBankRow(
 export async function createDobavljac(
   input: {
     naziv: string;
-    vrsta: VrstaDobavljaca;
+    vrsta: string;
     pravno_lice?: boolean;
     drzava_iso2?: string | null;
     grad?: string | null;
@@ -200,7 +231,7 @@ export async function updateDobavljac(
   input: {
     dobavljac_id: number;
     naziv: string;
-    vrsta: VrstaDobavljaca;
+    vrsta: string;
     pravno_lice?: boolean;
     drzava_iso2?: string | null;
     grad?: string | null;

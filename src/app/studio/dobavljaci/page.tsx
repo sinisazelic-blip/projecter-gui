@@ -11,29 +11,7 @@ export const dynamic = "force-dynamic";
 export type DobavljacRow = {
   dobavljac_id: number;
   naziv: string;
-  vrsta:
-    | "studio"
-    | "freelancer"
-    | "servis"
-    | "ostalo"
-    | "rental"
-    | "video_produkcija"
-    | "organizacija_dogadaja"
-    | "restoran"
-    | "transport"
-    | "rasvjeta"
-    | "bina"
-    | "led_video"
-    | "bilbordi"
-    | "novine"
-    | "web_portali"
-    | "socijalne_mreze"
-    | "developing"
-    | "web_developing"
-    | "tv"
-    | "radio"
-    | "oglasivaci"
-    | "agencije";
+  vrsta: string;
   pravno_lice: number; // 1/0
   drzava_iso2: string | null;
   grad: string | null;

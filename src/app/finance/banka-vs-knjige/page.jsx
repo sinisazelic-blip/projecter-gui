@@ -136,6 +136,13 @@ export default function BankaVsKnjigePage() {
                   </div>
                 </div>
                 <div>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t("bankaVsKnjige.kreditObaveze")}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800 }}>{fmtAmount(data.kredit_obaveze_km, ccySuffix)}</div>
+                  <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+                    {t("bankaVsKnjige.kreditObavezeHint")}
+                  </div>
+                </div>
+                <div>
                   <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t("bankaVsKnjige.razlika")}</div>
                   <div
                     style={{
@@ -149,6 +156,15 @@ export default function BankaVsKnjigePage() {
                   <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
                     {data.u_ravnotezi ? t("bankaVsKnjige.uRavnotezi") : t("bankaVsKnjige.nijeURavnotezi")}
                   </div>
+                </div>
+              </div>
+
+              <div className="card" style={{ marginBottom: 16 }}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
+                  {t("bankaVsKnjige.stanjeKnjigeNeto")}
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>
+                  {fmtAmount(data.stanje_knjige_neto_km, ccySuffix)}
                 </div>
               </div>
 
