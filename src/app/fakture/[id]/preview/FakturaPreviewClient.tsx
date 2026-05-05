@@ -404,27 +404,24 @@ export default function FakturaPreviewClient() {
     try {
       const html2pdf = (await import("html2pdf.js")).default;
       (el as HTMLElement).style.minHeight = "auto";
+      const pdfOptions = {
+        margin: 0,
+        filename: `${pdfFilename}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2 },
+        pagebreak: {
+          mode: ["css", "legacy"],
+          avoid: ["tr", ".totalsRow", ".totalsBox", ".footer", ".invRow", ".cols2"],
+        },
+        jsPDF: {
+          unit: "mm",
+          format: "a4",
+          orientation: "portrait",
+          hotfixes: ["px_scaling"],
+        },
+      } as any;
       await html2pdf()
-        .set({
-          margin: 0,
-          filename: `${pdfFilename}.pdf`,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2 },
-          pagebreak: {
-            mode: ["css", "legacy"],
-            avoid: ["tr", ".totalsRow", ".totalsBox", ".footer", ".invRow", ".cols2"],
-          },
-          jsPDF: {
-            unit: "mm",
-            format: "a4",
-            orientation: "portrait",
-            hotfixes: ["px_scaling"],
-          } as {
-            unit?: string;
-            format?: string | [number, number];
-            orientation?: "portrait" | "landscape";
-          },
-        })
+        .set(pdfOptions)
         .from(el)
         .save();
     } catch (err: any) {
