@@ -46,6 +46,7 @@ export async function GET(req) {
 
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
     const pdvSelect = (await hasKufColumn("pdv_iznos_km")) ? "k.pdv_iznos_km," : "NULL AS pdv_iznos_km,";
+    const prijemSelect = (await hasKufColumn("datum_prijema")) ? "k.datum_prijema," : "NULL AS datum_prijema,";
 
     const rows = await query(
       `
@@ -54,6 +55,7 @@ export async function GET(req) {
         k.broj_fakture,
         k.datum_fakture,
         k.datum_dospijeca,
+        ${prijemSelect}
         k.dobavljac_id,
         k.klijent_id,
         k.partner_naziv,
@@ -101,6 +103,7 @@ export async function POST(req) {
       broj_fakture,
       datum_fakture,
       datum_dospijeca,
+      datum_prijema,
       dobavljac_id,
       klijent_id,
       partner_naziv,
@@ -190,20 +193,24 @@ export async function POST(req) {
       vanredni_podtip && VANREDNI_PODTIP.includes(vanredni_podtip)
         ? vanredni_podtip
         : null;
+    const hasDatumPrijema = await hasKufColumn("datum_prijema");
+    const prijemDate = datum_prijema ? String(datum_prijema).slice(0, 10) : null;
     let res;
     if (hasPdvCol) {
       res = await query(
         `
       INSERT INTO kuf_ulazne_fakture
-        (broj_fakture, datum_fakture, datum_dospijeca, dobavljac_id, klijent_id,
+        (broj_fakture, datum_fakture, datum_dospijeca, ${hasDatumPrijema ? "datum_prijema," : ""}
+         dobavljac_id, klijent_id,
          partner_naziv, iznos, valuta, iznos_km, pdv_iznos_km, kurs, opis, napomena,
          tip_rasknjizavanja, projekat_id, fiksni_trosak_id, vanredni_podtip, investicija_opis)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ${hasDatumPrijema ? "?," : ""} ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
         [
           broj_fakture || null,
           String(datum_fakture).slice(0, 10),
           datum_dospijeca ? String(datum_dospijeca).slice(0, 10) : null,
+          ...(hasDatumPrijema ? [prijemDate] : []),
           dobId,
           klId,
           partner_naziv || null,
@@ -225,15 +232,17 @@ export async function POST(req) {
       res = await query(
         `
       INSERT INTO kuf_ulazne_fakture
-        (broj_fakture, datum_fakture, datum_dospijeca, dobavljac_id, klijent_id,
+        (broj_fakture, datum_fakture, datum_dospijeca, ${hasDatumPrijema ? "datum_prijema," : ""}
+         dobavljac_id, klijent_id,
          partner_naziv, iznos, valuta, iznos_km, kurs, opis, napomena,
          tip_rasknjizavanja, projekat_id, fiksni_trosak_id, vanredni_podtip, investicija_opis)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ${hasDatumPrijema ? "?," : ""} ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
         [
           broj_fakture || null,
           String(datum_fakture).slice(0, 10),
           datum_dospijeca ? String(datum_dospijeca).slice(0, 10) : null,
+          ...(hasDatumPrijema ? [prijemDate] : []),
           dobId,
           klId,
           partner_naziv || null,
@@ -254,6 +263,223 @@ export async function POST(req) {
 
     const id = res?.insertId ?? null;
     return NextResponse.json({ ok: true, kuf_id: id });
+  } catch (e) {
+    return NextResponse.json(
+      { ok: false, error: e?.message || String(e) },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PUT(req) {
+  try {
+    const body = await req.json();
+
+    const {
+      kuf_id,
+      broj_fakture,
+      datum_fakture,
+      datum_dospijeca,
+      datum_prijema,
+      dobavljac_id,
+      klijent_id,
+      partner_naziv,
+      iznos,
+      valuta,
+      iznos_km,
+      kurs,
+      opis,
+      napomena,
+      tip_rasknjizavanja,
+      projekat_id,
+      fiksni_trosak_id,
+      vanredni_podtip,
+      investicija_opis,
+      pdv_iznos_km,
+    } = body;
+
+    const kufIdNum = Number(kuf_id);
+    if (!Number.isFinite(kufIdNum) || kufIdNum <= 0) {
+      return NextResponse.json(
+        { ok: false, error: "Neispravan kuf_id" },
+        { status: 400 },
+      );
+    }
+
+    if (!tip_rasknjizavanja || !TIP_RASKNJIZAVANJA.includes(tip_rasknjizavanja)) {
+      return NextResponse.json(
+        { ok: false, error: "Neispravan tip_rasknjizavanja" },
+        { status: 400 },
+      );
+    }
+
+    if (!datum_fakture) {
+      return NextResponse.json(
+        { ok: false, error: "Datum fakture je obavezan" },
+        { status: 400 },
+      );
+    }
+
+    const iznosNum = Number(iznos);
+    if (!Number.isFinite(iznosNum) || iznosNum < 0) {
+      return NextResponse.json(
+        { ok: false, error: "Iznos mora biti pozitivan broj" },
+        { status: 400 },
+      );
+    }
+
+    const dobId = dobavljac_id ? Number(dobavljac_id) : null;
+    const klId = klijent_id ? Number(klijent_id) : null;
+    const projId = projekat_id ? Number(projekat_id) : null;
+    const fiksId = fiksni_trosak_id ? Number(fiksni_trosak_id) : null;
+
+    const valRaw = String(valuta || "BAM").trim().toUpperCase().slice(0, 10);
+    const val = valRaw === "KM" ? "BAM" : valRaw;
+    const iznosKm =
+      iznos_km != null && Number.isFinite(Number(iznos_km))
+        ? Number(iznos_km)
+        : val === "BAM"
+          ? iznosNum
+          : null;
+
+    const hasPdvCol = await hasKufColumn("pdv_iznos_km");
+    let pdvKm = null;
+    if (hasPdvCol) {
+      let p = 0;
+      if (pdv_iznos_km != null && String(pdv_iznos_km).trim() !== "") {
+        p = Number(pdv_iznos_km);
+        if (!Number.isFinite(p) || p < 0) {
+          return NextResponse.json(
+            { ok: false, error: "Iznos PDV-a mora biti nenegativan broj" },
+            { status: 400 },
+          );
+        }
+      }
+      pdvKm = Math.round(p * 100) / 100;
+      if (pdvKm > 0 && (iznosKm == null || !Number.isFinite(iznosKm))) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "Za unos ulaznog PDV-a potrebno je ukupan iznos u KM (polje „Iznos (ekvivalent)” ili valuta KM).",
+          },
+          { status: 400 },
+        );
+      }
+      if (iznosKm != null && Number.isFinite(iznosKm) && pdvKm > iznosKm + 0.001) {
+        return NextResponse.json(
+          { ok: false, error: "Iznos PDV-a ne može biti veći od ukupnog iznosa u KM." },
+          { status: 400 },
+        );
+      }
+    }
+
+    const vanredni =
+      vanredni_podtip && VANREDNI_PODTIP.includes(vanredni_podtip)
+        ? vanredni_podtip
+        : null;
+    const hasDatumPrijema = await hasKufColumn("datum_prijema");
+    const prijemDate = datum_prijema ? String(datum_prijema).slice(0, 10) : null;
+
+    if (hasPdvCol) {
+      await query(
+        `
+      UPDATE kuf_ulazne_fakture
+      SET
+        broj_fakture = ?,
+        datum_fakture = ?,
+        datum_dospijeca = ?,
+        ${hasDatumPrijema ? "datum_prijema = ?," : ""}
+        dobavljac_id = ?,
+        klijent_id = ?,
+        partner_naziv = ?,
+        iznos = ?,
+        valuta = ?,
+        iznos_km = ?,
+        pdv_iznos_km = ?,
+        kurs = ?,
+        opis = ?,
+        napomena = ?,
+        tip_rasknjizavanja = ?,
+        projekat_id = ?,
+        fiksni_trosak_id = ?,
+        vanredni_podtip = ?,
+        investicija_opis = ?
+      WHERE kuf_id = ?
+      `,
+        [
+          broj_fakture || null,
+          String(datum_fakture).slice(0, 10),
+          datum_dospijeca ? String(datum_dospijeca).slice(0, 10) : null,
+          ...(hasDatumPrijema ? [prijemDate] : []),
+          dobId,
+          klId,
+          partner_naziv || null,
+          iznosNum,
+          val,
+          iznosKm,
+          pdvKm,
+          kurs != null ? Number(kurs) : null,
+          opis || null,
+          napomena || null,
+          tip_rasknjizavanja,
+          projId,
+          fiksId,
+          vanredni,
+          investicija_opis || null,
+          kufIdNum,
+        ],
+      );
+    } else {
+      await query(
+        `
+      UPDATE kuf_ulazne_fakture
+      SET
+        broj_fakture = ?,
+        datum_fakture = ?,
+        datum_dospijeca = ?,
+        ${hasDatumPrijema ? "datum_prijema = ?," : ""}
+        dobavljac_id = ?,
+        klijent_id = ?,
+        partner_naziv = ?,
+        iznos = ?,
+        valuta = ?,
+        iznos_km = ?,
+        kurs = ?,
+        opis = ?,
+        napomena = ?,
+        tip_rasknjizavanja = ?,
+        projekat_id = ?,
+        fiksni_trosak_id = ?,
+        vanredni_podtip = ?,
+        investicija_opis = ?
+      WHERE kuf_id = ?
+      `,
+        [
+          broj_fakture || null,
+          String(datum_fakture).slice(0, 10),
+          datum_dospijeca ? String(datum_dospijeca).slice(0, 10) : null,
+          ...(hasDatumPrijema ? [prijemDate] : []),
+          dobId,
+          klId,
+          partner_naziv || null,
+          iznosNum,
+          val,
+          iznosKm,
+          kurs != null ? Number(kurs) : null,
+          opis || null,
+          napomena || null,
+          tip_rasknjizavanja,
+          projId,
+          fiksId,
+          vanredni,
+          investicija_opis || null,
+          kufIdNum,
+        ],
+      );
+    }
+
+    return NextResponse.json({ ok: true, kuf_id: kufIdNum });
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: e?.message || String(e) },

@@ -16,6 +16,20 @@ async function kufHasPdvColumn() {
     return false;
   }
 }
+
+async function kufHasColumn(column) {
+  try {
+    const rows = await query(
+      `SELECT 1 AS ok FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'kuf_ulazne_fakture' AND COLUMN_NAME = ?
+       LIMIT 1`,
+      [column],
+    );
+    return Array.isArray(rows) && rows.length > 0;
+  } catch {
+    return false;
+  }
+}
 const ARHIVA_CUTOFF = "2025-12-31";
 
 /** Vraća datum kao YYYY-MM-DD (iz Date objekta ili stringa). */
@@ -133,6 +147,13 @@ export async function getPdvPrijavaData(from, to, opts = {}) {
   const kufPdvCol = await kufHasPdvColumn();
   try {
     const pdvSel = kufPdvCol ? "k.pdv_iznos_km," : "NULL AS pdv_iznos_km,";
+    const hasDatumPrijema = await kufHasColumn("datum_prijema");
+    const hasCreatedAt = await kufHasColumn("created_at");
+    const periodDateExpr = hasDatumPrijema
+      ? "COALESCE(k.datum_prijema, k.datum_fakture)"
+      : hasCreatedAt
+        ? "COALESCE(DATE(k.created_at), k.datum_fakture)"
+        : "k.datum_fakture";
     kufRows = await query(
       `SELECT k.kuf_id, k.broj_fakture, k.datum_fakture, k.iznos_km, ${pdvSel}
               k.partner_naziv,
@@ -140,9 +161,9 @@ export async function getPdvPrijavaData(from, to, opts = {}) {
        FROM kuf_ulazne_fakture k
        LEFT JOIN dobavljaci d ON d.dobavljac_id = k.dobavljac_id
        LEFT JOIN klijenti kl ON kl.klijent_id = k.klijent_id
-       WHERE k.datum_fakture >= ? AND k.datum_fakture <= ?
+       WHERE ${periodDateExpr} >= ? AND ${periodDateExpr} <= ?
          AND (k.status IS NULL OR k.status NOT IN ('STORNO'))
-       ORDER BY k.datum_fakture ASC, k.kuf_id ASC
+       ORDER BY ${periodDateExpr} ASC, k.kuf_id ASC
        LIMIT ${LIST_LIMIT}`,
       [from, to],
     );

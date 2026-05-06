@@ -23,28 +23,43 @@ const CURRENCIES = [
   { code: "USD", labelKey: "currencyUsd" },
 ];
 
-export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTroskovi }) {
+function toDateInputValue(v) {
+  if (!v) return "";
+  const s = String(v).trim();
+  const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTroskovi, initialEntry = null }) {
   const router = useRouter();
   const { t } = useTranslation();
+  const initialTip = initialEntry?.tip_rasknjizavanja || "PROJEKTNI_TROSAK";
   const [form, setForm] = useState({
-    broj_fakture: "",
-    datum_fakture: "",
-    datum_dospijeca: "",
-    dobavljac_id: "",
-    klijent_id: "",
-    partner_naziv: "",
-    iznos: "",
-    valuta: "BAM",
-    iznos_km: "",
-    pdv_iznos_km: "",
-    kurs: "",
-    opis: "",
-    napomena: "",
-    tip_rasknjizavanja: "PROJEKTNI_TROSAK",
-    projekat_id: "",
-    fiksni_trosak_id: "",
-    vanredni_podtip: "",
-    investicija_opis: "",
+    broj_fakture: initialEntry?.broj_fakture ?? "",
+    datum_fakture: toDateInputValue(initialEntry?.datum_fakture),
+    datum_dospijeca: toDateInputValue(initialEntry?.datum_dospijeca),
+    datum_prijema: toDateInputValue(initialEntry?.datum_prijema || initialEntry?.created_at) || toDateInputValue(new Date()),
+    dobavljac_id: initialEntry?.dobavljac_id ? String(initialEntry.dobavljac_id) : "",
+    klijent_id: initialEntry?.klijent_id ? String(initialEntry.klijent_id) : "",
+    partner_naziv: initialEntry?.partner_naziv ?? "",
+    iznos: initialEntry?.iznos != null ? String(initialEntry.iznos) : "",
+    valuta: initialEntry?.valuta || "BAM",
+    iznos_km: initialEntry?.iznos_km != null ? String(initialEntry.iznos_km) : "",
+    pdv_iznos_km: initialEntry?.pdv_iznos_km != null ? String(initialEntry.pdv_iznos_km) : "",
+    kurs: initialEntry?.kurs != null ? String(initialEntry.kurs) : "",
+    opis: initialEntry?.opis ?? "",
+    napomena: initialEntry?.napomena ?? "",
+    tip_rasknjizavanja: initialTip,
+    projekat_id: initialEntry?.projekat_id ? String(initialEntry.projekat_id) : "",
+    fiksni_trosak_id: initialEntry?.fiksni_trosak_id ? String(initialEntry.fiksni_trosak_id) : "",
+    vanredni_podtip: initialEntry?.vanredni_podtip ?? "",
+    investicija_opis: initialEntry?.investicija_opis ?? "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -77,10 +92,13 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
     };
 
     try {
+      const isEdit = Boolean(initialEntry?.kuf_id);
       const res = await fetch("/api/finance/kuf", {
-        method: "POST",
+        method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(
+          isEdit ? { ...payload, kuf_id: Number(initialEntry.kuf_id) } : payload,
+        ),
       });
       const json = await res.json();
 
@@ -89,28 +107,36 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
         return;
       }
 
-      setMsg({ type: "ok", text: `${t("kuf.msgImportedPrefix")} ${json.kuf_id}` });
-      router.refresh();
-      setForm({
-        broj_fakture: "",
-        datum_fakture: "",
-        datum_dospijeca: "",
-        dobavljac_id: "",
-        klijent_id: "",
-        partner_naziv: "",
-        iznos: "",
-        valuta: "BAM",
-        iznos_km: "",
-        pdv_iznos_km: "",
-        kurs: "",
-        opis: "",
-        napomena: "",
-        tip_rasknjizavanja: form.tip_rasknjizavanja,
-        projekat_id: "",
-        fiksni_trosak_id: "",
-        vanredni_podtip: "",
-        investicija_opis: "",
+      setMsg({
+        type: "ok",
+        text: isEdit
+          ? `${t("kuf.msgUpdatedPrefix")} ${json.kuf_id}`
+          : `${t("kuf.msgImportedPrefix")} ${json.kuf_id}`,
       });
+      router.refresh();
+      if (!isEdit) {
+        setForm({
+          broj_fakture: "",
+          datum_fakture: "",
+          datum_dospijeca: "",
+          datum_prijema: toDateInputValue(new Date()),
+          dobavljac_id: "",
+          klijent_id: "",
+          partner_naziv: "",
+          iznos: "",
+          valuta: "BAM",
+          iznos_km: "",
+          pdv_iznos_km: "",
+          kurs: "",
+          opis: "",
+          napomena: "",
+          tip_rasknjizavanja: form.tip_rasknjizavanja,
+          projekat_id: "",
+          fiksni_trosak_id: "",
+          vanredni_podtip: "",
+          investicija_opis: "",
+        });
+      }
     } catch (err) {
       setMsg({ type: "error", text: err?.message || t("kuf.errorGeneric") });
     } finally {
@@ -123,7 +149,9 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
   return (
     <form onSubmit={handleSubmit} className="card">
       <div className="cardHead">
-        <div className="cardTitle">{t("kuf.formTitle")}</div>
+        <div className="cardTitle">
+          {initialEntry?.kuf_id ? t("kuf.formTitleEdit") : t("kuf.formTitle")}
+        </div>
       </div>
 
       <div className="filters" style={{ flexWrap: "wrap", display: "flex", gap: 12 }}>
@@ -157,6 +185,17 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
             type="date"
             name="datum_dospijeca"
             value={form.datum_dospijeca}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className="field">
+          <span className="label">{t("kuf.dateReceived")}</span>
+          <input
+            className="input"
+            type="date"
+            name="datum_prijema"
+            value={form.datum_prijema}
             onChange={handleChange}
           />
         </div>
@@ -395,8 +434,13 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
 
       <div className="actions" style={{ marginTop: 12 }}>
         <button type="submit" className="btn btn--active" disabled={saving}>
-          {saving ? t("kuf.submitSaving") : t("kuf.submitButton")}
+          {saving ? t("kuf.submitSaving") : initialEntry?.kuf_id ? t("kuf.submitUpdateButton") : t("kuf.submitButton")}
         </button>
+        {initialEntry?.kuf_id && (
+          <a className="btn" href="/finance/kuf">
+            {t("common.cancel")}
+          </a>
+        )}
       </div>
     </form>
   );

@@ -25,12 +25,19 @@ async function kufHasPdvColumn() {
 
 const fmtDate = (d) => {
   if (!d) return "—";
-  const s = String(d).slice(0, 10);
-  const parts = s.split("-");
-  const y = parts[0];
-  const m = parts[1]?.padStart(2, "0") ?? "";
-  const day = parts[2]?.padStart(2, "0") ?? "";
-  if (!y || !m || !day) return String(d);
+  const raw = String(d).trim();
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const y = isoMatch[1];
+    const m = isoMatch[2];
+    const day = isoMatch[3];
+    return `${day}.${m}.${y}`;
+  }
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return raw;
+  const y = parsed.getUTCFullYear();
+  const m = String(parsed.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getUTCDate()).padStart(2, "0");
   return `${day}.${m}.${y}`;
 };
 
@@ -42,6 +49,7 @@ export default async function KufPage({ searchParams }) {
   const sp = await Promise.resolve(searchParams);
   const q = (sp?.q ?? "").trim();
   const tip = sp?.tip ?? "";
+  const editId = Number(sp?.edit_id ?? 0);
 
   let rows = [];
   let dobavljaci = [];
@@ -61,6 +69,8 @@ export default async function KufPage({ searchParams }) {
         k.broj_fakture,
         k.datum_fakture,
         k.datum_dospijeca,
+        k.datum_prijema,
+        k.created_at,
         k.dobavljac_id,
         k.klijent_id,
         k.partner_naziv,
@@ -84,7 +94,7 @@ export default async function KufPage({ searchParams }) {
       LEFT JOIN klijenti kl ON kl.klijent_id = k.klijent_id
       LEFT JOIN projekti p ON p.projekat_id = k.projekat_id
       LEFT JOIN fiksni_troskovi f ON f.trosak_id = k.fiksni_trosak_id
-      ORDER BY k.datum_fakture DESC, k.kuf_id DESC
+      ORDER BY COALESCE(k.datum_prijema, DATE(k.created_at), k.datum_fakture) DESC, k.kuf_id DESC
       LIMIT 200
       `,
       [],
@@ -131,6 +141,9 @@ export default async function KufPage({ searchParams }) {
   if (tip) {
     list = list.filter((r) => r.tip_rasknjizavanja === tip);
   }
+  const editEntry = Number.isFinite(editId) && editId > 0
+    ? (Array.isArray(rows) ? rows : []).find((r) => Number(r.kuf_id) === editId) || null
+    : null;
 
   const partnerName = (r) =>
     r.dobavljac_naziv || r.klijent_naziv || r.partner_naziv || "—";
@@ -187,6 +200,7 @@ export default async function KufPage({ searchParams }) {
               klijenti={klijenti}
               projekti={projekti}
               fiksniTroskovi={fiksniTroskovi}
+              initialEntry={editEntry}
             />
           )}
 
@@ -260,14 +274,15 @@ export default async function KufPage({ searchParams }) {
                   <tr>
                     <th style={{ width: 70 }}>{t("kuf.colId")}</th>
                     <th style={{ width: 100 }}>{t("kuf.tableColBroj")}</th>
-                    <th style={{ width: 100 }}>{t("kuf.tableColDatum")}</th>
-                    <th style={{ width: 100 }}>{t("kuf.tableColDospijece")}</th>
-                    <th>{t("kuf.tableColPartner")}</th>
-                    <th className="num" style={{ width: 100 }}>{t("kuf.colIznos")}</th>
+                    <th style={{ width: 130 }}>{t("kuf.tableColDatum")}</th>
+                    <th style={{ width: 130 }}>{t("kuf.tableColDospijece")}</th>
+                    <th style={{ minWidth: 170 }}>{t("kuf.tableColPartner")}</th>
+                    <th className="num" style={{ width: 115 }}>{t("kuf.colIznos")}</th>
                     <th className="num" style={{ width: 90 }}>{t("kuf.colPdvKm")}</th>
-                    <th style={{ width: 120 }}>{t("kuf.tableColOpis")}</th>
-                    <th style={{ width: 100 }}>{t("kuf.tableColRasknj")}</th>
-                    <th style={{ width: 120 }}>{t("kuf.tableColVeza")}</th>
+                    <th style={{ minWidth: 220 }}>{t("kuf.tableColOpis")}</th>
+                    <th style={{ minWidth: 130 }}>{t("kuf.tableColRasknj")}</th>
+                    <th style={{ minWidth: 120 }}>{t("kuf.tableColVeza")}</th>
+                    <th style={{ width: 90 }}>{t("kuf.tableColAkcije")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -316,11 +331,16 @@ export default async function KufPage({ searchParams }) {
                               "—"
                             )}
                           </td>
+                          <td>
+                            <Link className="btn" href={`/finance/kuf?edit_id=${r.kuf_id}`} style={{ fontSize: 12 }}>
+                              {t("common.edit")}
+                            </Link>
+                          </td>
                         </tr>
                       ))
                     : (
                         <tr>
-                          <td colSpan={10} className="muted" style={{ padding: 16 }}>
+                          <td colSpan={11} className="muted" style={{ padding: 16 }}>
                             {t("kuf.noEntries")}
                           </td>
                         </tr>
