@@ -332,9 +332,14 @@ export default async function KufPage({ searchParams }) {
                             )}
                           </td>
                           <td>
-                            <Link className="btn" href={`/finance/kuf?edit_id=${r.kuf_id}`} style={{ fontSize: 12 }}>
+                            <a
+                              className="btn"
+                              href={`/finance/kuf?edit_id=${r.kuf_id}`}
+                              style={{ fontSize: 12 }}
+                              title={t("common.edit")}
+                            >
                               {t("common.edit")}
-                            </Link>
+                            </a>
                           </td>
                         </tr>
                       ))
