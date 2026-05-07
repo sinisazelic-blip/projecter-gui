@@ -296,7 +296,7 @@ export default function CashClient() {
     setEntitiesLoading(true);
     try {
       const [talentsRes, suppliersRes, klijentiRes] = await Promise.all([
-        fetch("/api/izvjestaji/talenti?limit=1000", { cache: "no-store" }),
+        fetch("/api/talents?include_inactive=1", { cache: "no-store" }),
         fetch("/api/izvjestaji/dobavljaci?limit=1000", { cache: "no-store" }),
         fetch("/api/klijenti", { cache: "no-store" }),
       ]);
@@ -306,12 +306,34 @@ export default function CashClient() {
       const klijentiJson = await klijentiRes.json();
 
       if (talentsJson.ok && talentsJson.items) {
-        const filteredTalents = talentsJson.items.filter((t: any) => t.talent_id != null).map((t: any) => ({
-          talent_id: t.talent_id,
-          ime_prezime: t.talent_naziv || "",
-          vrsta: t.talent_vrsta || "",
-        }));
-        setTalents(filteredTalents);
+        const allTalents = talentsJson.items
+          .filter((t: any) => t.id != null)
+          .map((t: any) => ({
+            talent_id: Number(t.id),
+            ime_prezime: String(t.name || "").trim(),
+            vrsta: t.vrsta || "",
+            aktivan: Number(t.aktivan) === 1,
+          }));
+
+        // Prikaži samo jedan red po imenu (preferiraj aktivan zapis, zatim veći ID).
+        const byName = new Map<string, (typeof allTalents)[number]>();
+        for (const talent of allTalents) {
+          const key = talent.ime_prezime.toLocaleLowerCase("sr").replace(/\s+/g, " ").trim();
+          if (!key) continue;
+          const existing = byName.get(key);
+          if (!existing) {
+            byName.set(key, talent);
+            continue;
+          }
+          const shouldReplace =
+            (talent.aktivan && !existing.aktivan) ||
+            (talent.aktivan === existing.aktivan && talent.talent_id > existing.talent_id);
+          if (shouldReplace) byName.set(key, talent);
+        }
+
+        const dedupedTalents = Array.from(byName.values())
+          .sort((a, b) => a.ime_prezime.localeCompare(b.ime_prezime, "sr"));
+        setTalents(dedupedTalents);
       }
 
       if (suppliersJson.ok && suppliersJson.items) {

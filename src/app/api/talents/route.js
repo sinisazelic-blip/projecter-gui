@@ -3,15 +3,18 @@ import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req) {
   try {
+    const includeInactive =
+      new URL(req.url).searchParams.get("include_inactive") === "1";
     const rows = await query(
       `
-      SELECT talent_id AS id, ime_prezime AS name
+      SELECT talent_id AS id, ime_prezime AS name, vrsta, aktivan
       FROM talenti
-      WHERE aktivan = 1
+      WHERE (? = 1 OR aktivan = 1)
       ORDER BY ime_prezime
       `,
+      [includeInactive ? 1 : 0]
     );
     return NextResponse.json({ ok: true, items: rows });
   } catch (e) {
