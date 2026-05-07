@@ -129,8 +129,7 @@ export default async function Page({ searchParams }) {
   }
 
   const unpaidRows = rows.filter((r) => Number(r?.neplaceno ?? r?.iznos ?? 0) > 0.0001);
-  const paidRows = rows.filter((r) => Number(r?.naplaceno ?? 0) > 0.0001);
-  const tableRows = unpaidRows.length > 0 ? unpaidRows : paidRows;
+  const tableRows = unpaidRows;
 
   // ✅ Reset: ako si u projektu, resetuj filtere ali ostani na projektu
   const resetHref = projekatId
@@ -417,7 +416,6 @@ export default async function Page({ searchParams }) {
       <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
         <span className="muted">
           {(t("naplatePage.shownCount") || "").replace("{{count}}", String(tableRows.length))}
-          {paidRows.length ? ` · ${t("naplatePage.paidLabel") || "plaćeno"}: ${paidRows.length}` : ""}
         </span>
         <ExportExcelButton
           filename="naplate"

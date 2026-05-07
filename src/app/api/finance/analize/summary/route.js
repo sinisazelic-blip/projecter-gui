@@ -31,6 +31,21 @@ async function trosakDateExpr(alias = "t") {
   return `COALESCE(${parts.join(", ")})`;
 }
 
+async function prihodDateExpr(alias = "pr") {
+  const cols = await query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'projektni_prihodi'`,
+  ).catch(() => []);
+  const set = new Set((cols || []).map((c) => String(c.column_name)));
+  const parts = [];
+  if (set.has("datum_prihoda")) parts.push(`${alias}.datum_prihoda`);
+  if (set.has("datum")) parts.push(`${alias}.datum`);
+  parts.push(`${alias}.created_at`);
+  return `COALESCE(${parts.join(", ")})`;
+}
+
 async function loadOpeningClientById() {
   const rows = await query(
     `
@@ -85,6 +100,7 @@ async function loadOpeningPayableById(kind) {
 async function getClientSummary(year) {
   const { from, to } = yearRange(year);
   const opening = await loadOpeningClientById();
+  const prDt = await prihodDateExpr("pr");
 
   const invoicedRows = await query(
     `
@@ -101,14 +117,86 @@ async function getClientSummary(year) {
 
   const collectedRows = await query(
     `
-    SELECT COALESCE(p.narucilac_id, p.krajnji_klijent_id) AS klijent_id, ROUND(SUM(COALESCE(pr.iznos_km, 0)), 2) AS s
+    SELECT
+      COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0), NULLIF(pc.klijent_id, 0)) AS klijent_id,
+      ROUND(SUM(COALESCE(pr.iznos_km, 0)), 2) AS s
     FROM projektni_prihodi pr
+    LEFT JOIN fakture fpr ON fpr.faktura_id = pr.faktura_id
     JOIN projekti p ON p.projekat_id = pr.projekat_id
+    LEFT JOIN (
+      SELECT
+        fp.projekat_id,
+        MIN(f.bill_to_klijent_id) AS klijent_id
+      FROM faktura_projekti fp
+      JOIN fakture f ON f.faktura_id = fp.faktura_id
+      WHERE f.bill_to_klijent_id IS NOT NULL
+        AND (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))
+      GROUP BY fp.projekat_id
+    ) pc ON pc.projekat_id = pr.projekat_id
     WHERE pr.projekat_id IS NOT NULL
-      AND DATE(COALESCE(pr.datum_prihoda, pr.datum)) >= ?
-      AND DATE(COALESCE(pr.datum_prihoda, pr.datum)) <= ?
-      AND COALESCE(p.narucilac_id, p.krajnji_klijent_id) IS NOT NULL
-    GROUP BY COALESCE(p.narucilac_id, p.krajnji_klijent_id)
+      AND DATE(${prDt}) >= ?
+      AND DATE(${prDt}) <= ?
+      AND COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0), NULLIF(pc.klijent_id, 0)) IS NOT NULL
+    GROUP BY COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0), NULLIF(pc.klijent_id, 0))
+    `,
+    [from, to],
+  ).catch(() => []);
+
+  const collectedCashRows = await query(
+    `
+    SELECT
+      COALESCE(
+        CASE WHEN LOWER(COALESCE(c.entity_type, '')) IN ('klijent', 'client') THEN NULLIF(c.entity_id, 0) ELSE NULL END,
+        NULLIF(p.narucilac_id, 0),
+        NULLIF(p.krajnji_klijent_id, 0),
+        NULLIF(pc.klijent_id, 0)
+      ) AS klijent_id,
+      ROUND(SUM(COALESCE(c.iznos, 0)), 2) AS s
+    FROM blagajna_stavke c
+    LEFT JOIN projekti p ON p.projekat_id = c.project_id
+    LEFT JOIN (
+      SELECT
+        fp.projekat_id,
+        MIN(f.bill_to_klijent_id) AS klijent_id
+      FROM faktura_projekti fp
+      JOIN fakture f ON f.faktura_id = fp.faktura_id
+      WHERE f.bill_to_klijent_id IS NOT NULL
+        AND (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))
+      GROUP BY fp.projekat_id
+    ) pc ON pc.projekat_id = c.project_id
+    WHERE c.smjer = 'IN'
+      AND COALESCE(c.status, 'AKTIVAN') = 'AKTIVAN'
+      AND DATE(COALESCE(c.datum, c.created_at)) >= ?
+      AND DATE(COALESCE(c.datum, c.created_at)) <= ?
+      AND COALESCE(
+        CASE WHEN LOWER(COALESCE(c.entity_type, '')) IN ('klijent', 'client') THEN NULLIF(c.entity_id, 0) ELSE NULL END,
+        NULLIF(p.narucilac_id, 0),
+        NULLIF(p.krajnji_klijent_id, 0),
+        NULLIF(pc.klijent_id, 0)
+      ) IS NOT NULL
+    GROUP BY COALESCE(
+      CASE WHEN LOWER(COALESCE(c.entity_type, '')) IN ('klijent', 'client') THEN NULLIF(c.entity_id, 0) ELSE NULL END,
+      NULLIF(p.narucilac_id, 0),
+      NULLIF(p.krajnji_klijent_id, 0),
+      NULLIF(pc.klijent_id, 0)
+    )
+    `,
+    [from, to],
+  ).catch(() => []);
+
+  /** Dominantna valuta po klijentu prema iznosu faktura u godini (za prikaz liste, ne za konverziju). */
+  const valutaWeightedRows = await query(
+    `
+    SELECT
+      f.bill_to_klijent_id AS klijent_id,
+      COALESCE(NULLIF(TRIM(UPPER(f.valuta)), ''), 'BAM') AS valuta,
+      SUM(COALESCE(f.iznos_ukupno_km, 0)) AS w
+    FROM fakture f
+    WHERE f.bill_to_klijent_id IS NOT NULL
+      AND DATE(f.datum_izdavanja) >= ?
+      AND DATE(f.datum_izdavanja) <= ?
+      AND (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))
+    GROUP BY f.bill_to_klijent_id, valuta
     `,
     [from, to],
   ).catch(() => []);
@@ -145,6 +233,8 @@ async function getClientSummary(year) {
 
   const invoiced = new Map();
   const collected = new Map();
+  /** Najveći ponder po valuti za prikaz kolone (EUR vs KM) — ista logika kao IOS (brojevi su u jedinicama dokumenta). */
+  const prikazValutaByClient = new Map();
   const ids = new Set(opening.keys());
 
   for (const r of invoicedRows || []) {
@@ -157,14 +247,27 @@ async function getClientSummary(year) {
     const id = Number(r.klijent_id);
     if (!Number.isFinite(id)) continue;
     collected.set(id, round2(r.s));
-    ids.add(id);
+  }
+  for (const r of collectedCashRows || []) {
+    const id = Number(r.klijent_id);
+    if (!Number.isFinite(id)) continue;
+    const prev = Number(collected.get(id) || 0);
+    collected.set(id, round2(prev + Number(r.s || 0)));
   }
   for (const r of collectedBankUnmatchedRows || []) {
     const id = Number(r.klijent_id);
     if (!Number.isFinite(id)) continue;
     const prev = Number(collected.get(id) || 0);
     collected.set(id, round2(prev + Number(r.s || 0)));
-    ids.add(id);
+  }
+
+  for (const r of valutaWeightedRows || []) {
+    const id = Number(r.klijent_id);
+    if (!Number.isFinite(id)) continue;
+    const v = String(r.valuta || "BAM").trim().toUpperCase() || "BAM";
+    const w = Number(r.w || 0);
+    const prev = prikazValutaByClient.get(id);
+    if (!prev || w > prev.w) prikazValutaByClient.set(id, { valuta: v, w });
   }
 
   const idList = [...ids].filter((x) => Number.isFinite(x));
@@ -180,8 +283,10 @@ async function getClientSummary(year) {
     .map((id) => {
       const p = round2(opening.get(id) || 0);
       const f = round2(invoiced.get(id) || 0);
-      const c = round2(collected.get(id) || 0);
+      /* Plaćeno kao u IOS detalju (projektni_prihodi + neočitani prilivi), bez „max” prema punom nominalu PLACENA fakture. */
+      const c = round2(Number(collected.get(id) || 0));
       const saldo = round2(p + f - c);
+      const pv = prikazValutaByClient.get(id);
       return {
         partner_id: id,
         partner_naziv: nameMap.get(id) || "—",
@@ -189,6 +294,7 @@ async function getClientSummary(year) {
         ukupno_realizovano: f,
         ukupno_placeno: c,
         saldo,
+        prikaz_valuta: pv?.valuta || "BAM",
       };
     })
     .filter((x) => Math.abs(x.saldo) >= 0.01)

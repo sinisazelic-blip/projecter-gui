@@ -24,6 +24,31 @@ export function formatAmount(value: number | string | null | undefined, locale: 
   return n.toFixed(2) + getCurrencySuffix(locale);
 }
 
+/**
+ * IOS / dokumenti: ako je faktura ili stavka u EUR (ili drugoj valuti), prikaži tu valutu;
+ * za BAM/KM ili prazno koristi postojeće pravilo locale (sr → KM, en → EUR).
+ */
+export function formatAmountForDocumentValuta(
+  value: number | string | null | undefined,
+  locale: string = "sr",
+  documentValuta?: string | null,
+): string {
+  const n = typeof value === "string" ? Number(value) : Number(value ?? 0);
+  if (!Number.isFinite(n)) return "—";
+  const v = String(documentValuta ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
+  let suffix: string;
+  if (v === "EUR") suffix = " EUR";
+  else if (v === "USD") suffix = " USD";
+  else if (v === "GBP") suffix = " GBP";
+  else if (v === "CHF") suffix = " CHF";
+  else if (v === "BAM" || v === "KM" || v === "") suffix = getCurrencySuffix(locale);
+  else suffix = ` ${v}`;
+  return n.toFixed(2) + suffix;
+}
+
 export function formatKM(value: number | string | null | undefined) {
   const n = typeof value === "string" ? Number(value) : Number(value ?? 0);
   const safe = Number.isFinite(n) ? n : 0;

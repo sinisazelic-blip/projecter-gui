@@ -24,12 +24,28 @@ async function trosakDateExpr(alias = "t") {
   return `COALESCE(${parts.join(", ")})`;
 }
 
+async function prihodDateExpr(alias = "pr") {
+  const cols = await query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'projektni_prihodi'`,
+  ).catch(() => []);
+  const set = new Set((cols || []).map((c) => String(c.column_name)));
+  const parts = [];
+  if (set.has("datum_prihoda")) parts.push(`${alias}.datum_prihoda`);
+  if (set.has("datum")) parts.push(`${alias}.datum`);
+  parts.push(`${alias}.created_at`);
+  return `COALESCE(${parts.join(", ")})`;
+}
+
 async function clientBalances(year) {
   const { from, to } = yearRange(year);
+  const prDt = await prihodDateExpr("pr");
   const rows = await query(
     `
     SELECT k.klijent_id AS partner_id,
-      COALESCE(ps.pocetno, 0) + COALESCE(fi.fakturisano, 0) - COALESCE(na.naplaceno, 0) - COALESCE(bn.naplaceno, 0) AS saldo
+      COALESCE(ps.pocetno, 0) + COALESCE(fi.fakturisano, 0) - COALESCE(na.naplaceno, 0) - COALESCE(nc.naplaceno, 0) - COALESCE(bn.naplaceno, 0) AS saldo
     FROM klijenti k
     LEFT JOIN (
       SELECT p.klijent_id, ROUND(SUM(GREATEST(0, COALESCE(p.iznos_potrazuje,0) - COALESCE(u.paid_km,0))), 2) AS pocetno
@@ -51,13 +67,55 @@ async function clientBalances(year) {
       GROUP BY f.bill_to_klijent_id
     ) fi ON fi.klijent_id = k.klijent_id
     LEFT JOIN (
-      SELECT COALESCE(p.narucilac_id, p.krajnji_klijent_id) AS klijent_id,
+      SELECT COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0), NULLIF(pc.klijent_id, 0)) AS klijent_id,
              ROUND(SUM(COALESCE(pr.iznos_km,0)),2) AS naplaceno
       FROM projektni_prihodi pr
+      LEFT JOIN fakture fpr ON fpr.faktura_id = pr.faktura_id
       JOIN projekti p ON p.projekat_id = pr.projekat_id
-      WHERE DATE(COALESCE(pr.datum_prihoda, pr.datum)) >= ? AND DATE(COALESCE(pr.datum_prihoda, pr.datum)) <= ?
-      GROUP BY COALESCE(p.narucilac_id, p.krajnji_klijent_id)
+      LEFT JOIN (
+        SELECT
+          fp.projekat_id,
+          MIN(f.bill_to_klijent_id) AS klijent_id
+        FROM faktura_projekti fp
+        JOIN fakture f ON f.faktura_id = fp.faktura_id
+        WHERE f.bill_to_klijent_id IS NOT NULL
+          AND (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN','ZAMIJENJEN'))
+        GROUP BY fp.projekat_id
+      ) pc ON pc.projekat_id = pr.projekat_id
+      WHERE DATE(${prDt}) >= ? AND DATE(${prDt}) <= ?
+      GROUP BY COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0), NULLIF(pc.klijent_id, 0))
     ) na ON na.klijent_id = k.klijent_id
+    LEFT JOIN (
+      SELECT
+        COALESCE(
+          CASE WHEN LOWER(COALESCE(c.entity_type, '')) IN ('klijent', 'client') THEN NULLIF(c.entity_id, 0) ELSE NULL END,
+          NULLIF(p.narucilac_id, 0),
+          NULLIF(p.krajnji_klijent_id, 0),
+          NULLIF(pc.klijent_id, 0)
+        ) AS klijent_id,
+        ROUND(SUM(COALESCE(c.iznos, 0)), 2) AS naplaceno
+      FROM blagajna_stavke c
+      LEFT JOIN projekti p ON p.projekat_id = c.project_id
+      LEFT JOIN (
+        SELECT
+          fp.projekat_id,
+          MIN(f.bill_to_klijent_id) AS klijent_id
+        FROM faktura_projekti fp
+        JOIN fakture f ON f.faktura_id = fp.faktura_id
+        WHERE f.bill_to_klijent_id IS NOT NULL
+          AND (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN','ZAMIJENJEN'))
+        GROUP BY fp.projekat_id
+      ) pc ON pc.projekat_id = c.project_id
+      WHERE c.smjer = 'IN'
+        AND COALESCE(c.status, 'AKTIVAN') = 'AKTIVAN'
+        AND DATE(COALESCE(c.datum, c.created_at)) >= ? AND DATE(COALESCE(c.datum, c.created_at)) <= ?
+      GROUP BY COALESCE(
+        CASE WHEN LOWER(COALESCE(c.entity_type, '')) IN ('klijent', 'client') THEN NULLIF(c.entity_id, 0) ELSE NULL END,
+        NULLIF(p.narucilac_id, 0),
+        NULLIF(p.krajnji_klijent_id, 0),
+        NULLIF(pc.klijent_id, 0)
+      )
+    ) nc ON nc.klijent_id = k.klijent_id
     LEFT JOIN (
       SELECT
         k2.klijent_id,
@@ -83,7 +141,7 @@ async function clientBalances(year) {
       GROUP BY k2.klijent_id
     ) bn ON bn.klijent_id = k.klijent_id
     `,
-    [from, to, from, to, from, to, from, to],
+    [from, to, from, to, from, to, from, to, from, to],
   ).catch(() => []);
   return (rows || [])
     .map((r) => ({ partner_id: Number(r.partner_id), saldo: round2(r.saldo) }))

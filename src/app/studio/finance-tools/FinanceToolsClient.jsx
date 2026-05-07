@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "@/components/LocaleProvider";
-import { formatAmount } from "@/lib/format";
+import { formatAmount, formatAmountForDocumentValuta } from "@/lib/format";
 
 const fmt = (v) => {
   if (v === null || v === undefined) return "—";
@@ -147,7 +147,7 @@ export default function FinanceToolsClient() {
 
       const body = {
         posting_id: Number(posting.posting_id),
-        amount_km: Number(posting.amount),
+        amount_km: Math.abs(Number(posting.amount)),
         datum: String(posting.value_date || "").slice(0, 10),
         projekat_id: pid,
         faktura_id: useInvoice ? fidRaw : undefined,
@@ -373,9 +373,9 @@ export default function FinanceToolsClient() {
             <td>${escapeHtml(r.faktura_broj || "—")}</td>
             <td>${escapeHtml(fmtDate(r.datum_fakture))}</td>
             <td>${escapeHtml(r.opis || "—")}</td>
-            <td style="text-align:right">${escapeHtml(formatAmount(r.duguje || 0, locale))}</td>
-            <td style="text-align:right">${escapeHtml(formatAmount(r.potrazuje || 0, locale))}</td>
-            <td style="text-align:right;font-weight:700">${escapeHtml(formatAmount(r.saldo || 0, locale))}</td>
+            <td style="text-align:right">${escapeHtml(formatAmountForDocumentValuta(r.duguje || 0, locale, r.valuta))}</td>
+            <td style="text-align:right">${escapeHtml(formatAmountForDocumentValuta(r.potrazuje || 0, locale, r.valuta))}</td>
+            <td style="text-align:right;font-weight:700">${escapeHtml(formatAmountForDocumentValuta(r.saldo || 0, locale, r.valuta))}</td>
             <td>${escapeHtml(r.nacin_placanja || "—")}</td>
           </tr>`,
       )
@@ -568,10 +568,10 @@ export default function FinanceToolsClient() {
                 ) : analizeRows.map((r) => (
                   <tr key={`${analizeType}-${r.partner_id}`}>
                     <td>{r.partner_naziv}</td>
-                    <td style={{ textAlign: "right" }}>{formatAmount(r.pocetno_stanje, locale)}</td>
-                    <td style={{ textAlign: "right" }}>{formatAmount(r.ukupno_realizovano, locale)}</td>
-                    <td style={{ textAlign: "right" }}>{formatAmount(r.ukupno_placeno, locale)}</td>
-                    <td style={{ textAlign: "right", fontWeight: 700 }}>{formatAmount(r.saldo, locale)}</td>
+                    <td style={{ textAlign: "right" }}>{formatAmountForDocumentValuta(r.pocetno_stanje, locale, r.prikaz_valuta)}</td>
+                    <td style={{ textAlign: "right" }}>{formatAmountForDocumentValuta(r.ukupno_realizovano, locale, r.prikaz_valuta)}</td>
+                    <td style={{ textAlign: "right" }}>{formatAmountForDocumentValuta(r.ukupno_placeno, locale, r.prikaz_valuta)}</td>
+                    <td style={{ textAlign: "right", fontWeight: 700 }}>{formatAmountForDocumentValuta(r.saldo, locale, r.prikaz_valuta)}</td>
                     <td><button className="btn" onClick={() => openDetail(r)}>{t("financeTools.openIos")}</button></td>
                   </tr>
                 ))}
@@ -618,9 +618,9 @@ export default function FinanceToolsClient() {
                         <td>{r.faktura_broj || "—"}</td>
                         <td>{fmtDate(r.datum_fakture)}</td>
                         <td>{r.opis || "—"}</td>
-                        <td style={{ textAlign: "right" }}>{formatAmount(r.duguje || 0, locale)}</td>
-                        <td style={{ textAlign: "right" }}>{formatAmount(r.potrazuje || 0, locale)}</td>
-                        <td style={{ textAlign: "right", fontWeight: 700 }}>{formatAmount(r.saldo || 0, locale)}</td>
+                        <td style={{ textAlign: "right" }}>{formatAmountForDocumentValuta(r.duguje || 0, locale, r.valuta)}</td>
+                        <td style={{ textAlign: "right" }}>{formatAmountForDocumentValuta(r.potrazuje || 0, locale, r.valuta)}</td>
+                        <td style={{ textAlign: "right", fontWeight: 700 }}>{formatAmountForDocumentValuta(r.saldo || 0, locale, r.valuta)}</td>
                         <td>{r.nacin_placanja || "—"}</td>
                       </tr>
                     ))}

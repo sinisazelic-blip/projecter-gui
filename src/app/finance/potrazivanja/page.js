@@ -67,7 +67,7 @@ export default async function PotrazivanjaListPage({ searchParams }) {
 
   const sp = await Promise.resolve(searchParams);
   const q = (sp?.q ?? "").trim();
-  const onlyOpen = sp?.only_open === "1";
+  const onlyOpen = true;
   const showOpening = sp?.show_opening === "1";
   const dateFrom = (sp?.date_from ?? "").trim(); // YYYY-MM-DD
   const dateTo = (sp?.date_to ?? "").trim(); // YYYY-MM-DD
@@ -106,11 +106,9 @@ export default async function PotrazivanjaListPage({ searchParams }) {
     params.push(`${dateTo} 23:59:59`);
   }
 
-  if (onlyOpen) {
-    where.push(
-      "(f.fiskalni_status IS NULL OR TRIM(UPPER(f.fiskalni_status)) NOT IN ('PLACENA', 'DJELIMICNO', 'PAID', 'PLACENO'))",
-    );
-  }
+  where.push(
+    "(f.fiskalni_status IS NULL OR TRIM(UPPER(f.fiskalni_status)) NOT IN ('PLACENA', 'PAID', 'PLACENO'))",
+  );
 
   let rows = [];
   let dbError = null;
@@ -154,13 +152,13 @@ export default async function PotrazivanjaListPage({ searchParams }) {
     }
     const due = dueIso ? new Date(dueIso) : null;
     due?.setHours(0, 0, 0, 0);
+    const isPaid = isFakturaPlacenaStatus(r.fiskalni_status);
     const daysOverdue =
-      due && due < today
+      !isPaid && due && due < today
         ? Math.floor((today.getTime() - due.getTime()) / (24 * 60 * 60 * 1000))
         : 0;
 
     const iznos = Number(r.iznos_sa_pdv) || 0;
-    const isPaid = isFakturaPlacenaStatus(r.fiskalni_status);
     const paid = isPaid ? iznos : 0;
     const unpaid = isPaid ? 0 : iznos;
 
@@ -312,9 +310,9 @@ export default async function PotrazivanjaListPage({ searchParams }) {
               >
                 <input
                   type="checkbox"
-                  name="only_open"
-                  value="1"
-                  defaultChecked={onlyOpen}
+                  checked
+                  disabled
+                  readOnly
                 />
                 <span className="label" style={{ marginBottom: 0 }}>
                   {t("potrazivanja.onlyOpen")}
@@ -578,7 +576,7 @@ export default async function PotrazivanjaListPage({ searchParams }) {
                                   flexWrap: "wrap",
                                 }}
                               >
-                                {r.days_overdue > 0
+                                {r.days_overdue > 0 && (Number(r.unpaid_km) || 0) > 0
                                   ? badge(`kasni ${r.days_overdue}d`, "bad")
                                   : badge(r.aging_bucket, "neutral")}
                               </div>
