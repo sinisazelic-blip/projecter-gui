@@ -27,7 +27,7 @@ export default async function FinanceToolsPage() {
                   </div>
                   <div>
                     <div className="brandTitle">{t("dashboard.financeTools")}</div>
-                    <div className="brandSub">{t("financeTools.brandSub")}</div>
+                    <div className="brandSub" title={t("financeTools.brandSub")}>Radni panel</div>
                   </div>
                 </div>
 
@@ -41,11 +41,6 @@ export default async function FinanceToolsPage() {
           </div>
 
           <div className="bodyWrap">
-            <div className="card" style={{ marginTop: 12 }}>
-              <div className="card-title">⚠️ {t("financeTools.operativniAlati")}</div>
-              <div className="card-subtitle">{t("financeTools.toolsWarning")}</div>
-            </div>
-
             <FinanceToolsClient />
           </div>
         </div>

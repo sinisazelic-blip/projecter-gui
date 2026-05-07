@@ -9,6 +9,8 @@ export const dynamic = "force-dynamic";
 const FEE_KEYWORDS = [
   "provizija",
   "naknada",
+  "naknade",
+  "gpp naknade",
   "fee",
   "vodjenje",
   "vodenje",
@@ -17,7 +19,6 @@ const FEE_KEYWORDS = [
   "trošak naloga",
   "trosak naloga",
   "prebacivanje",
-  "prenos",
   "tekući",
   "tekuci",
   "račun",

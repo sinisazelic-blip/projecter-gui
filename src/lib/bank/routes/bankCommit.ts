@@ -126,6 +126,8 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
       // 4) Auto-uparivanje uplata na fakture: iz teksta (poziv na broj ili broj fakture 001/2026)
       let matched_invoices = 0;
       let matched_owner_transfers = 0;
+      let owner_cash_in_added = 0;
+      let matched_conversions = 0;
       try {
         const [postings]: any = await conn.execute(
           `
@@ -178,15 +180,15 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
           let prihodId: number | null = null;
           try {
             const [ins]: any = await conn.execute(
-              `INSERT INTO projektni_prihodi (projekat_id, faktura_id, datum, iznos_km, opis, status)
-               VALUES (?, ?, ?, ?, ?, 'NASTALO')`,
+              `INSERT INTO projektni_prihodi (projekat_id, faktura_id, datum_prihoda, iznos_km, opis)
+               VALUES (?, ?, ?, ?, ?)`,
               [fakturaMatch.projekat_id, fakturaMatch.faktura_id, datum, amountKm, opisPrihoda],
             );
             prihodId = ins?.insertId ?? null;
           } catch {
             try {
               const [ins2]: any = await conn.execute(
-                `INSERT INTO projektni_prihodi (projekat_id, datum, iznos_km, opis) VALUES (?, ?, ?, ?)`,
+                `INSERT INTO projektni_prihodi (projekat_id, datum_prihoda, iznos_km, opis) VALUES (?, ?, ?, ?)`,
                 [fakturaMatch.projekat_id, datum, amountKm, opisPrihoda || "Uplata po izvodu"],
               );
               prihodId = ins2?.insertId ?? null;
@@ -225,7 +227,8 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
             FROM bank_tx_posting p
             LEFT JOIN bank_tx_staging t ON t.tx_id = p.tx_id
             LEFT JOIN bank_tx_posting_prihod_link l ON l.posting_id = p.posting_id AND l.aktivan = 1
-            WHERE p.batch_id = ? AND p.amount > 0 AND l.link_id IS NULL
+            LEFT JOIN bank_tx_posting_placanje_link lp ON lp.posting_id = p.posting_id AND lp.aktivan = 1
+            WHERE p.batch_id = ? AND p.amount <> 0 AND l.link_id IS NULL AND lp.link_id IS NULL
             `,
             [batch_id],
           );
@@ -261,30 +264,166 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
             const datum = row?.value_date ? String(row.value_date).slice(0, 10) : null;
             if (!datum || !/^\d{4}-\d{2}-\d{2}$/.test(datum)) continue;
 
-            const amountKm = Math.round(amount * 100) / 100;
-            const opisPrihoda = `Prenos vlasnika (auto) [posting ${postingId}]`.slice(
-              0,
-              255,
-            );
+            const amountKm = Math.round(Math.abs(amount) * 100) / 100;
 
-            const [insOwner]: any = await conn.execute(
-              `INSERT INTO projektni_prihodi (projekat_id, datum, iznos_km, opis, status)
-               VALUES (?, ?, ?, ?, 'NASTALO')`,
-              [ownerProjectId, datum, amountKm, opisPrihoda],
+            // Vlasnički prenos na privatni račun = gotovina dostupna za blagajnu.
+            // Upisujemo kao IN u blagajna_stavke (idempotentno po posting_id).
+            const cashMarker = `owner_transfer_posting:${postingId}`;
+            const [cashExists]: any = await conn.execute(
+              `SELECT id FROM blagajna_stavke
+               WHERE transaction_details = ?
+               LIMIT 1`,
+              [cashMarker],
             );
-            const prihodId = insOwner?.insertId ?? null;
-            if (!prihodId) continue;
+            if (!Array.isArray(cashExists) || cashExists.length === 0) {
+              await conn.execute(
+                `INSERT INTO blagajna_stavke
+                  (datum, iznos, valuta, smjer, napomena, project_id, entity_type, entity_id, transaction_details, status)
+                 VALUES (?, ?, ?, 'IN', ?, ?, NULL, NULL, ?, 'AKTIVAN')`,
+                [
+                  datum,
+                  amountKm,
+                  "KM",
+                  "Automatski unos iz izvoda: prenos na privatni račun (keš).",
+                  ownerProjectId,
+                  cashMarker,
+                ],
+              );
+              owner_cash_in_added += 1;
+            }
 
-            await conn.execute(
-              `INSERT INTO bank_tx_posting_prihod_link (posting_id, prihod_id, amount_km, aktivan, created_at)
-               VALUES (?, ?, ?, 1, NOW())`,
-              [postingId, prihodId, amountKm],
-            );
+            // Ako je incoming (uplata vlasnika), zadržavamo postojeće ponašanje:
+            // evidentiramo i kao prihod projekta vlasnika + link na posting.
+            if (amount > 0) {
+              const opisPrihoda = `Prenos vlasnika (auto) [posting ${postingId}]`.slice(
+                0,
+                255,
+              );
+
+              const [insOwner]: any = await conn.execute(
+                `INSERT INTO projektni_prihodi (projekat_id, datum_prihoda, iznos_km, opis)
+                 VALUES (?, ?, ?, ?)`,
+                [ownerProjectId, datum, amountKm, opisPrihoda],
+              );
+              const prihodId = insOwner?.insertId ?? null;
+              if (prihodId) {
+                await conn.execute(
+                  `INSERT INTO bank_tx_posting_prihod_link (posting_id, prihod_id, amount_km, aktivan, created_at)
+                   VALUES (?, ?, ?, 1, NOW())`,
+                  [postingId, prihodId, amountKm],
+                );
+              }
+            }
             matched_owner_transfers += 1;
           }
         }
       } catch (autoMatchErr: any) {
         console.warn("[bankCommit] auto-match invoices:", autoMatchErr?.message);
+      }
+
+      // 6) Auto-link konverzija EUR->KM (npr. "EXCH KONVERZIJA OPERATIVNI TECAJ ...")
+      // Neutralno knjiženje: označi posting kao obrađen bez duplog prihoda/troška.
+      try {
+        const [convRows]: any = await conn.execute(
+          `
+          SELECT
+            p.posting_id,
+            p.amount,
+            p.value_date,
+            p.description,
+            p.counterparty,
+            t.description AS staging_description,
+            t.full_description AS staging_full_description
+          FROM bank_tx_posting p
+          LEFT JOIN bank_tx_staging t ON t.tx_id = p.tx_id
+          LEFT JOIN bank_tx_posting_prihod_link li ON li.posting_id = p.posting_id AND li.aktivan = 1
+          LEFT JOIN bank_tx_posting_placanje_link lp ON lp.posting_id = p.posting_id AND lp.aktivan = 1
+          WHERE p.batch_id = ?
+            AND p.amount <> 0
+            AND li.link_id IS NULL
+            AND lp.link_id IS NULL
+          `,
+          [batch_id],
+        );
+        const list = Array.isArray(convRows) ? convRows : [];
+        for (const row of list) {
+          const postingId = Number(row?.posting_id);
+          const amount = Number(row?.amount);
+          if (!Number.isFinite(postingId) || postingId <= 0) continue;
+          if (!Number.isFinite(amount) || amount === 0) continue;
+
+          const text = normalizeText(
+            [
+              row?.description,
+              row?.counterparty,
+              row?.staging_description,
+              row?.staging_full_description,
+            ]
+              .map((x) => String(x ?? "").trim())
+              .filter(Boolean)
+              .join(" "),
+          );
+          if (!text.includes("exch konverzija") || !text.includes("tecaj")) continue;
+
+          const datum = row?.value_date ? String(row.value_date).slice(0, 10) : null;
+          if (!datum || !/^\d{4}-\d{2}-\d{2}$/.test(datum)) continue;
+          const amountAbs = Math.round(Math.abs(amount) * 100) / 100;
+          if (!(amountAbs > 0)) continue;
+
+          if (amount > 0) {
+            let insPrihod: any = null;
+            try {
+              const [insA]: any = await conn.execute(
+                `INSERT INTO projektni_prihodi (projekat_id, datum_prihoda, iznos_km, opis)
+                 VALUES (?, ?, 0, ?)`,
+                [ownerProjectId, datum, `Automatska konverzija valute [posting ${postingId}]`],
+              );
+              insPrihod = insA;
+            } catch {
+              const [insB]: any = await conn.execute(
+                `INSERT INTO projektni_prihodi (projekat_id, datum, iznos_km, opis)
+                 VALUES (?, ?, 0, ?)`,
+                [ownerProjectId, datum, `Automatska konverzija valute [posting ${postingId}]`],
+              );
+              insPrihod = insB;
+            }
+            const prihodId = insPrihod?.insertId ?? null;
+            if (!prihodId) continue;
+            await conn.execute(
+              `INSERT INTO bank_tx_posting_prihod_link (posting_id, prihod_id, amount_km, aktivan, created_at)
+               VALUES (?, ?, ?, 1, NOW())`,
+              [postingId, prihodId, amountAbs],
+            );
+          } else {
+            const [insPay]: any = await conn.execute(
+              `INSERT INTO placanja
+                (datum_placanja, iznos_original, valuta_original, kurs_u_km, iznos_km, nacin_placanja, referenca, napomena)
+               VALUES
+                (?, ?, 'BAM', 1.000000, 0, 'BANK_KONVERZIJA', ?, ?)`,
+              [
+                datum,
+                amountAbs,
+                `konverzija:posting_id=${postingId}`,
+                `Automatska konverzija valute [posting ${postingId}]`,
+              ],
+            );
+            const placanjeId = insPay?.insertId ?? null;
+            if (!placanjeId) continue;
+            await conn.execute(
+              `INSERT INTO bank_tx_posting_placanje_link (posting_id, placanje_id, amount_km, aktivan)
+               VALUES (?, ?, ?, 1)`,
+              [postingId, placanjeId, amountAbs],
+            );
+          }
+
+          await conn.execute(
+            `UPDATE bank_tx_posting SET kategorija = 'konverzija' WHERE posting_id = ?`,
+            [postingId],
+          );
+          matched_conversions += 1;
+        }
+      } catch (convErr: any) {
+        console.warn("[bankCommit] auto-link conversions:", convErr?.message);
       }
 
       return {
@@ -294,6 +433,8 @@ export async function handleBankCommit(req: NextRequest): Promise<Response> {
         affected_rows,
         matched_invoices,
         matched_owner_transfers,
+        owner_cash_in_added,
+        matched_conversions,
         status: "posted",
         marker: "COMMIT_V2_UPSERT",
       };

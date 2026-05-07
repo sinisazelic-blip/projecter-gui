@@ -16,6 +16,21 @@ function round2(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
 }
 
+async function trosakDateExpr(alias = "t") {
+  const cols = await query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'projektni_troskovi'`,
+  ).catch(() => []);
+  const set = new Set((cols || []).map((c) => String(c.column_name)));
+  const parts = [];
+  if (set.has("datum_troska")) parts.push(`${alias}.datum_troska`);
+  if (set.has("datum_nastanka")) parts.push(`${alias}.datum_nastanka`);
+  parts.push(`${alias}.created_at`);
+  return `COALESCE(${parts.join(", ")})`;
+}
+
 async function loadOpeningClientById() {
   const rows = await query(
     `
@@ -98,6 +113,36 @@ async function getClientSummary(year) {
     [from, to],
   ).catch(() => []);
 
+  const collectedBankUnmatchedRows = await query(
+    `
+    SELECT
+      k.klijent_id,
+      ROUND(SUM(COALESCE(b.amount, 0)), 2) AS s
+    FROM bank_tx_posting b
+    JOIN klijenti k
+      ON (
+        LOWER(COALESCE(b.counterparty, '')) LIKE CONCAT('%', LOWER(COALESCE(k.naziv_klijenta, '')), '%')
+        OR LOWER(REPLACE(REPLACE(REPLACE(COALESCE(b.counterparty, ''), '.', ''), ',', ''), ' ', ''))
+           LIKE CONCAT('%', LOWER(REPLACE(REPLACE(REPLACE(COALESCE(k.naziv_klijenta, ''), '.', ''), ',', ''), ' ', '')), '%')
+      )
+    JOIN (
+      SELECT DISTINCT bill_to_klijent_id AS klijent_id
+      FROM fakture
+      WHERE bill_to_klijent_id IS NOT NULL
+        AND DATE(datum_izdavanja) >= ?
+        AND DATE(datum_izdavanja) <= ?
+        AND (fiskalni_status IS NULL OR fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))
+    ) inv ON inv.klijent_id = k.klijent_id
+    LEFT JOIN bank_tx_posting_prihod_link l ON l.posting_id = b.posting_id AND l.aktivan = 1
+    WHERE b.amount > 0
+      AND l.link_id IS NULL
+      AND DATE(b.value_date) >= ?
+      AND DATE(b.value_date) <= ?
+    GROUP BY k.klijent_id
+    `,
+    [from, to, from, to],
+  ).catch(() => []);
+
   const invoiced = new Map();
   const collected = new Map();
   const ids = new Set(opening.keys());
@@ -112,6 +157,13 @@ async function getClientSummary(year) {
     const id = Number(r.klijent_id);
     if (!Number.isFinite(id)) continue;
     collected.set(id, round2(r.s));
+    ids.add(id);
+  }
+  for (const r of collectedBankUnmatchedRows || []) {
+    const id = Number(r.klijent_id);
+    if (!Number.isFinite(id)) continue;
+    const prev = Number(collected.get(id) || 0);
+    collected.set(id, round2(prev + Number(r.s || 0)));
     ids.add(id);
   }
 
@@ -148,38 +200,75 @@ async function getClientSummary(year) {
 async function getPayableSummary(kind, year) {
   const { from, to } = yearRange(year);
   const opening = await loadOpeningPayableById(kind);
-  const entityType = kind === TYPE_TALENT ? "talent" : "vendor";
+  const isTalent = kind === TYPE_TALENT;
+  const dt = await trosakDateExpr("t");
   const idCol = kind === TYPE_TALENT ? "talent_id" : "dobavljac_id";
   const table = kind === TYPE_TALENT ? "talenti" : "dobavljaci";
   const nameCol = kind === TYPE_TALENT ? "ime_prezime" : "naziv";
 
   const workedRows = await query(
     `
-    SELECT t.entity_id AS partner_id, ROUND(SUM(COALESCE(t.iznos_km, 0)), 2) AS s
+    SELECT
+      CASE
+        WHEN ${isTalent ? "t.entity_type = 'talent'" : "t.entity_type = 'vendor'"} AND t.entity_id IS NOT NULL THEN t.entity_id
+        WHEN ${isTalent ? "t.talent_id IS NOT NULL" : "t.dobavljac_id IS NOT NULL"} THEN ${isTalent ? "t.talent_id" : "t.dobavljac_id"}
+        ELSE NULL
+      END AS partner_id,
+      ROUND(SUM(COALESCE(t.iznos_km, 0)), 2) AS s
     FROM projektni_troskovi t
-    WHERE t.entity_type = ?
-      AND t.entity_id IS NOT NULL
+    WHERE (
+        (${isTalent ? "t.entity_type = 'talent'" : "t.entity_type = 'vendor'"} AND t.entity_id IS NOT NULL)
+        OR (${isTalent ? "t.talent_id IS NOT NULL" : "t.dobavljac_id IS NOT NULL"})
+      )
       AND t.status <> 'STORNIRANO'
-      AND DATE(COALESCE(t.datum_troska, t.datum_nastanka, t.created_at)) >= ?
-      AND DATE(COALESCE(t.datum_troska, t.datum_nastanka, t.created_at)) <= ?
-    GROUP BY t.entity_id
+      AND DATE(${dt}) >= ?
+      AND DATE(${dt}) <= ?
+    GROUP BY partner_id
+    HAVING partner_id IS NOT NULL
     `,
-    [entityType, from, to],
+    [from, to],
   ).catch(() => []);
 
   const paidRows = await query(
     `
-    SELECT t.entity_id AS partner_id, ROUND(SUM(COALESCE(ps.iznos_km, 0)), 2) AS s
+    SELECT
+      CASE
+        WHEN ${isTalent ? "t.entity_type = 'talent'" : "t.entity_type = 'vendor'"} AND t.entity_id IS NOT NULL THEN t.entity_id
+        WHEN ${isTalent ? "t.talent_id IS NOT NULL" : "t.dobavljac_id IS NOT NULL"} THEN ${isTalent ? "t.talent_id" : "t.dobavljac_id"}
+        ELSE NULL
+      END AS partner_id,
+      ROUND(SUM(COALESCE(ps.iznos_km, 0)), 2) AS s
     FROM placanja_stavke ps
     JOIN placanja p ON p.placanje_id = ps.placanje_id
     JOIN projektni_troskovi t ON t.trosak_id = ps.trosak_id
-    WHERE t.entity_type = ?
-      AND t.entity_id IS NOT NULL
+    WHERE (
+        (${isTalent ? "t.entity_type = 'talent'" : "t.entity_type = 'vendor'"} AND t.entity_id IS NOT NULL)
+        OR (${isTalent ? "t.talent_id IS NOT NULL" : "t.dobavljac_id IS NOT NULL"})
+      )
+      AND COALESCE(LOWER(p.nacin_placanja), '') NOT IN ('keš', 'kes', 'cash', 'blagajna', 'kesh')
       AND DATE(COALESCE(p.datum_placanja, p.created_at)) >= ?
       AND DATE(COALESCE(p.datum_placanja, p.created_at)) <= ?
-    GROUP BY t.entity_id
+    GROUP BY partner_id
+    HAVING partner_id IS NOT NULL
     `,
-    [entityType, from, to],
+    [from, to],
+  ).catch(() => []);
+
+  const paidCashRows = await query(
+    `
+    SELECT
+      b.entity_id AS partner_id,
+      ROUND(SUM(COALESCE(b.iznos, 0)), 2) AS s
+    FROM blagajna_stavke b
+    WHERE b.status = 'AKTIVAN'
+      AND b.smjer = 'OUT'
+      AND b.entity_type = ?
+      AND b.entity_id IS NOT NULL
+      AND DATE(COALESCE(b.datum, b.created_at)) >= ?
+      AND DATE(COALESCE(b.datum, b.created_at)) <= ?
+    GROUP BY b.entity_id
+    `,
+    [isTalent ? "talent" : "vendor", from, to],
   ).catch(() => []);
 
   const worked = new Map();
@@ -195,6 +284,13 @@ async function getPayableSummary(kind, year) {
     const id = Number(r.partner_id);
     if (!Number.isFinite(id)) continue;
     paid.set(id, round2(r.s));
+    ids.add(id);
+  }
+  for (const r of paidCashRows || []) {
+    const id = Number(r.partner_id);
+    if (!Number.isFinite(id)) continue;
+    const prev = Number(paid.get(id) || 0);
+    paid.set(id, round2(prev + Number(r.s || 0)));
     ids.add(id);
   }
 
