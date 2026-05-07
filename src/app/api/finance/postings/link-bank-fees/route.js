@@ -11,21 +11,36 @@ const FEE_KEYWORDS = [
   "fee",
   "vodjenje",
   "vodenje",
+  "vođenje",
   "odrzavanje",
+  "odrzavanje racuna",
+  "održavanje računa",
   "trosak",
-  "prebacivanje",
-  "racun",
-  "bank",
-  "nalog",
-  "naplata",
-  "usluga",
-  "konverzija",
-  "teca",
+];
+
+const NON_FEE_HINTS = [
+  "kredit",
+  "rata",
+  "pdv",
+  "porez",
+  "fiskal",
+  "stari dug",
+  "prenos",
+  "uplata",
+  "isplata",
 ];
 
 function isLikelyBankFee(text) {
   const t = String(text || "").toLowerCase();
-  return FEE_KEYWORDS.some((k) => t.includes(k));
+  const looksLikeFee = FEE_KEYWORDS.some((k) => t.includes(k));
+  const looksLikeNonFee = NON_FEE_HINTS.some((k) => t.includes(k));
+  return looksLikeFee && !looksLikeNonFee;
+}
+
+function isServicePayment(row) {
+  const desc = String(row?.description || "").toLowerCase();
+  const counterparty = String(row?.counterparty || "").trim();
+  return desc.includes("naknada za usluge") && counterparty.length > 0;
 }
 
 function bad(msg, status = 400, extra = {}) {
@@ -77,7 +92,7 @@ export async function POST(req) {
       const ownerHit = digits.includes(ownerDigits);
       const transferHit = transferWords.some((w) => text.includes(w));
       return !(ownerHit && transferHit);
-    });
+    }).filter((r) => !isServicePayment(r));
     if (!safeCandidates.length) {
       return NextResponse.json({ ok: true, linked_count: 0, skipped_count: rows.length });
     }

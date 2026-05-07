@@ -14,21 +14,25 @@ const FEE_KEYWORDS = [
   "fee",
   "vodjenje",
   "vodenje",
+  "vođenje",
   "održavanje",
   "odrzavanje",
+  "odrzavanje racuna",
+  "održavanje računa",
   "trošak naloga",
   "trosak naloga",
-  "prebacivanje",
-  "tekući",
-  "tekuci",
-  "račun",
-  "racun",
-  "bank",
-  "nalog",
-  "skidanje",
-  "naplata",
-  "usluga",
-  "odobrenje",
+];
+
+const NON_FEE_HINTS = [
+  "kredit",
+  "rata",
+  "pdv",
+  "porez",
+  "fiskal",
+  "isplata",
+  "uplata",
+  "prenos",
+  "stari dug",
 ];
 
 function sqlLikePattern(k) {
@@ -37,22 +41,35 @@ function sqlLikePattern(k) {
 }
 
 function buildFeeCondition() {
+  const feeTextExpr =
+    "LOWER(CONCAT(COALESCE(p.description,''), ' ', COALESCE(p.counterparty,'')))";
   const conditions = [
     "p.amount < 0",
+    `LOWER(COALESCE(p.kategorija,'')) NOT IN ('kredit','pdv','porez','fiskalne','stari_dug')`,
     `(
-      ${FEE_KEYWORDS.map(
+      ${FEE_KEYWORDS.map((k) => `${feeTextExpr} LIKE ${sqlLikePattern(k)}`).join(" OR ")}
+    )`,
+    `(
+      ${NON_FEE_HINTS.map(
         (k) =>
-          `(LOWER(COALESCE(p.description,'')) LIKE ${sqlLikePattern(k)} OR LOWER(COALESCE(p.counterparty,'')) LIKE ${sqlLikePattern(k)})`
-      ).join(" OR ")}
-      OR LOWER(COALESCE(p.kategorija,'')) IN ('provizija','fee','naknada')
+          `${feeTextExpr} NOT LIKE ${sqlLikePattern(k)}`
+      ).join(" AND ")}
+    )`,
+    `NOT (
+      ${feeTextExpr} LIKE '%naknada za usluge%'
+      AND TRIM(COALESCE(p.counterparty,'')) <> ''
     )`,
   ];
   return conditions.join(" AND ");
 }
 
-export async function GET() {
+export async function GET(req) {
   try {
     const feeCondition = buildFeeCondition();
+    const { searchParams } = new URL(req.url);
+    const debug = searchParams.get("debug") === "1";
+    const debugYear = Number(searchParams.get("year"));
+    const debugMonth = Number(searchParams.get("month"));
 
     const byMonth = await query(
       `
@@ -80,7 +97,7 @@ export async function GET() {
       byYear[y] = Math.round(byYear[y] * 100) / 100;
     }
 
-    return NextResponse.json({
+    const payload = {
       ok: true,
       byMonth: rows.map((r) => ({
         year: r.year,
@@ -88,7 +105,44 @@ export async function GET() {
         total_km: Number(r.total_km) || 0,
       })),
       byYear,
-    });
+    };
+
+    if (debug && Number.isFinite(debugYear) && Number.isFinite(debugMonth)) {
+      const detailRows = await query(
+        `
+        SELECT
+          p.posting_id,
+          DATE(p.value_date) AS value_date,
+          ROUND(ABS(p.amount), 2) AS amount_km,
+          p.kategorija,
+          p.counterparty,
+          p.description
+        FROM bank_tx_posting p
+        WHERE p.value_date IS NOT NULL
+          AND YEAR(p.value_date) = ?
+          AND MONTH(p.value_date) = ?
+          AND ${feeCondition}
+        ORDER BY p.value_date ASC, p.posting_id ASC
+        `,
+        [debugYear, debugMonth]
+      );
+      const details = Array.isArray(detailRows) ? detailRows : detailRows?.rows ?? [];
+      payload.debug = {
+        year: debugYear,
+        month: debugMonth,
+        count: details.length,
+        rows: details.map((r) => ({
+          posting_id: r.posting_id,
+          value_date: r.value_date,
+          amount_km: Number(r.amount_km) || 0,
+          kategorija: r.kategorija || "",
+          counterparty: r.counterparty || "",
+          description: r.description || "",
+        })),
+      };
+    }
+
+    return NextResponse.json(payload);
   } catch (e) {
     console.error("[bank-costs]", e?.message);
     return NextResponse.json(

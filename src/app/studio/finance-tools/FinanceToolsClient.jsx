@@ -658,6 +658,9 @@ export default function FinanceToolsClient() {
             maxWidth: "90vw",
             maxHeight: "85vh",
             overflow: "auto",
+            background:
+              "linear-gradient(135deg, color-mix(in srgb, var(--bg) 96%, #0b1220 4%), color-mix(in srgb, var(--bg) 94%, #0f2a2f 6%))",
+            border: "1px solid color-mix(in srgb, var(--border, #334155) 78%, transparent 22%)",
             boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
           }}
         >
