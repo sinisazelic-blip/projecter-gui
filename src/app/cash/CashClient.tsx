@@ -35,6 +35,8 @@ type Project = {
   projekat_id: number;
   id_po: string | null;
   radni_naziv: string | null;
+  narucilac_id?: number | null;
+  krajnji_klijent_id?: number | null;
   budzet_planirani: number;
   troskovi_ukupno: number;
   planirana_zarada: number;
@@ -55,6 +57,18 @@ type Dobavljac = {
 type Klijent = {
   klijent_id: number;
   naziv_klijenta: string;
+};
+
+type EditDraft = {
+  id: string;
+  date: string;
+  amount: string;
+  currency: string;
+  direction: CashDirection;
+  note: string;
+  projectId: string;
+  entityType: string;
+  entityId: string;
 };
 
 function fmtDate(iso: string) {
@@ -110,6 +124,8 @@ export default function CashClient() {
   );
   const [note, setNote] = useState<string>("");
   const [projectId, setProjectId] = useState<string>("");
+  const [editing, setEditing] = useState<EditDraft | null>(null);
+  const clientNameById = new Map(clients.map((k) => [Number(k.klijent_id), k.naziv_klijenta || `#${k.klijent_id}`]));
 
   const localeCurrency = getCurrencyForLocale(locale);
 
@@ -373,6 +389,86 @@ export default function CashClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterDateFrom, filterDateTo, filterEntityType, filterEntityId, includeStorno]);
 
+  function startEdit(it: CashEntry) {
+    setEditing({
+      id: it.id,
+      date: String(it.date || "").slice(0, 10),
+      amount: String(Number(it.amount || 0)),
+      currency: String(it.currency || ""),
+      direction: it.direction === "IN" ? "IN" : "OUT",
+      note: it.note || "",
+      projectId: it.projectId || "",
+      entityType: it.entityType || "",
+      entityId: it.entityId != null ? String(it.entityId) : "",
+    });
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+    const amountNum = Number(editing.amount);
+    if (!Number.isFinite(amountNum) || amountNum <= 0) {
+      setErr(t("cash.errAmountPositive"));
+      return;
+    }
+    if (!editing.note.trim()) {
+      setErr(t("cash.errNoteRequired"));
+      return;
+    }
+
+    setLoading(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/cash", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: Number(editing.id),
+          date: editing.date || null,
+          amount: amountNum,
+          currency: editing.currency || null,
+          direction: editing.direction,
+          note: editing.note.trim(),
+          projectId: editing.projectId || null,
+          entityType: editing.entityType || null,
+          entityId: editing.entityId ? Number(editing.entityId) : null,
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.ok) throw new Error(j?.error || `HTTP ${res.status}`);
+      setEditing(null);
+      await fetchCash();
+    } catch (e: any) {
+      setErr(e?.message || t("cash.errSave"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function stornirajEntry(it: CashEntry) {
+    const ok = window.confirm(`Stornirati stavku #${it.id}?`);
+    if (!ok) return;
+    setLoading(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/cash", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: Number(it.id),
+          status: "STORNIRAN",
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.ok) throw new Error(j?.error || `HTTP ${res.status}`);
+      if (editing?.id === it.id) setEditing(null);
+      await fetchCash();
+    } catch (e: any) {
+      setErr(e?.message || t("cash.errSave"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="pageWrap">
       <div className="topBlock">
@@ -496,6 +592,7 @@ export default function CashClient() {
                       <tr>
                         <th style={{ width: "40px" }}></th>
                         <th>{t("cash.colId")}</th>
+                        <th>{t("cash.client")}</th>
                         <th>{t("cash.colProjectName")}</th>
                         <th style={{ textAlign: "right" }}>{t("cash.colBudget")}</th>
                         <th style={{ textAlign: "right" }}>{t("cash.colCosts")}</th>
@@ -505,7 +602,7 @@ export default function CashClient() {
                     <tbody>
                       {projects.length === 0 ? (
                         <tr>
-                          <td colSpan={6} style={{ textAlign: "center", padding: 20, opacity: 0.7 }}>
+                          <td colSpan={7} style={{ textAlign: "center", padding: 20, opacity: 0.7 }}>
                             {t("cash.loadingProjects")}
                           </td>
                         </tr>
@@ -528,6 +625,9 @@ export default function CashClient() {
                               />
                             </td>
                             <td>#{p.id_po || p.projekat_id}</td>
+                            <td>
+                              {clientNameById.get(Number(p.narucilac_id || p.krajnji_klijent_id || 0)) || "—"}
+                            </td>
                             <td>{p.radni_naziv || "—"}</td>
                             <td style={{ textAlign: "right" }}>{fmtMoney(p.budzet_planirani || 0, localeCurrency)}</td>
                             <td style={{ textAlign: "right" }}>{fmtMoney(p.troskovi_ukupno || 0, localeCurrency)}</td>
@@ -751,21 +851,119 @@ export default function CashClient() {
                 <tbody>
                   {data.items.map((it) => (
                     <tr key={it.id}>
-                      <td>{fmtDate(it.date)}</td>
-                      <td className={styles.bold}>{it.direction}</td>
-                      <td>{fmtMoney(it.amount, it.currency)}</td>
-                      <td>{it.note}</td>
                       <td>
-                        {it.projectId ? `${t("cash.projectLabel")} #${it.projectId}` : null}
-                        {it.entityType && it.entityId
-                          ? `${it.projectId ? " · " : ""}${
-                              it.entityType === "talent" ? t("cash.talent") : it.entityType === "vendor" ? t("cash.supplier") : it.entityType === "klijent" ? t("cash.client") : it.entityType
-                            } #${it.entityId}`
-                          : null}
-                        {!it.projectId && !(it.entityType && it.entityId) ? "—" : null}
+                        {editing?.id === it.id ? (
+                          <input
+                            type="date"
+                            className={styles.input}
+                            value={editing.date}
+                            onChange={(e) => setEditing((prev) => prev ? { ...prev, date: e.target.value } : prev)}
+                          />
+                        ) : (
+                          fmtDate(it.date)
+                        )}
+                      </td>
+                      <td className={styles.bold}>
+                        {editing?.id === it.id ? (
+                          <select
+                            className={styles.input}
+                            value={editing.direction}
+                            onChange={(e) => setEditing((prev) => prev ? { ...prev, direction: e.target.value as CashDirection } : prev)}
+                          >
+                            <option value="OUT">OUT</option>
+                            <option value="IN">IN</option>
+                          </select>
+                        ) : (
+                          it.direction
+                        )}
+                      </td>
+                      <td>
+                        {editing?.id === it.id ? (
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <input
+                              className={styles.input}
+                              style={{ minWidth: 110 }}
+                              value={editing.amount}
+                              onChange={(e) => setEditing((prev) => prev ? { ...prev, amount: e.target.value } : prev)}
+                            />
+                            <input
+                              className={styles.input}
+                              style={{ width: 74 }}
+                              value={editing.currency}
+                              onChange={(e) => setEditing((prev) => prev ? { ...prev, currency: e.target.value } : prev)}
+                            />
+                          </div>
+                        ) : (
+                          fmtMoney(it.amount, it.currency)
+                        )}
+                      </td>
+                      <td>
+                        {editing?.id === it.id ? (
+                          <input
+                            className={styles.input}
+                            value={editing.note}
+                            onChange={(e) => setEditing((prev) => prev ? { ...prev, note: e.target.value } : prev)}
+                          />
+                        ) : (
+                          it.note
+                        )}
+                      </td>
+                      <td>
+                        {editing?.id === it.id ? (
+                          <div style={{ display: "grid", gap: 6 }}>
+                            <input
+                              className={styles.input}
+                              placeholder={t("cash.projectId")}
+                              value={editing.projectId}
+                              onChange={(e) => setEditing((prev) => prev ? { ...prev, projectId: e.target.value } : prev)}
+                            />
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <select
+                                className={styles.input}
+                                value={editing.entityType}
+                                onChange={(e) => setEditing((prev) => prev ? { ...prev, entityType: e.target.value } : prev)}
+                              >
+                                <option value="">{t("cash.all")}</option>
+                                <option value="talent">{t("cash.typeTalent")}</option>
+                                <option value="vendor">{t("cash.typeSupplier")}</option>
+                                <option value="klijent">{t("cash.client")}</option>
+                                <option value="client">{t("cash.client")}</option>
+                              </select>
+                              <input
+                                className={styles.input}
+                                placeholder="entity_id"
+                                value={editing.entityId}
+                                onChange={(e) => setEditing((prev) => prev ? { ...prev, entityId: e.target.value } : prev)}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {it.projectId ? `${t("cash.projectLabel")} #${it.projectId}` : null}
+                            {it.entityType && it.entityId
+                              ? `${it.projectId ? " · " : ""}${
+                                  it.entityType === "talent" ? t("cash.talent") : it.entityType === "vendor" ? t("cash.supplier") : it.entityType === "klijent" ? t("cash.client") : it.entityType
+                                } #${it.entityId}`
+                              : null}
+                            {!it.projectId && !(it.entityType && it.entityId) ? "—" : null}
+                          </>
+                        )}
                       </td>
                       <td style={{ fontSize: 12, opacity: 0.85 }}>
-                        {it.transactionDetails || "—"}
+                        {editing?.id === it.id ? (
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button className={styles.btnPrimary} type="button" onClick={saveEdit} disabled={loading}>Sačuvaj</button>
+                            <button className={styles.btn} type="button" onClick={() => setEditing(null)} disabled={loading}>Otkaži</button>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            <div>{it.transactionDetails || "—"}</div>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button className={styles.btn} type="button" onClick={() => startEdit(it)} disabled={loading || it.status !== "AKTIVAN"}>Uredi</button>
+                              <button className={styles.btn} type="button" onClick={() => stornirajEntry(it)} disabled={loading || it.status !== "AKTIVAN"}>Storniraj</button>
+                            </div>
+                          </div>
+                        )}
                       </td>
                       <td>
                         {it.transactionDetails?.toLowerCase().includes("arhiviran")

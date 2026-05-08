@@ -181,3 +181,99 @@ export async function insertCashDraftDb(input: {
   if (!row) throw new Error("Blagajna: nije pronađen kreirani red");
   return rowToEntry(row);
 }
+
+/**
+ * Ažuriranje postojeće stavke blagajne iz istorije.
+ */
+export async function updateCashEntryDb(input: {
+  id: number;
+  date?: string | null;
+  amount?: number;
+  currency?: string | null;
+  direction?: CashDirection | null;
+  status?: CashStatus | null;
+  note?: string | null;
+  projectId?: string | number | null;
+  entityType?: string | null;
+  entityId?: number | null;
+}): Promise<CashEntry> {
+  const id = Number(input.id);
+  if (!Number.isFinite(id) || id <= 0) throw new Error("INVALID_ID");
+
+  const sets: string[] = [];
+  const params: Array<string | number | null> = [];
+
+  if (input.date !== undefined) {
+    const d = input.date ? String(input.date).slice(0, 10) : null;
+    sets.push("datum = ?");
+    params.push(d);
+  }
+  if (input.amount !== undefined) {
+    const amount = Number(input.amount);
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error("INVALID_AMOUNT");
+    sets.push("iznos = ?");
+    params.push(amount);
+  }
+  if (input.currency !== undefined) {
+    const valuta = input.currency == null ? null : String(input.currency).trim();
+    sets.push("valuta = ?");
+    params.push(valuta || null);
+  }
+  if (input.direction !== undefined) {
+    const smjer = input.direction;
+    if (smjer !== "IN" && smjer !== "OUT" && smjer !== null) throw new Error("INVALID_DIRECTION");
+    sets.push("smjer = ?");
+    params.push(smjer);
+  }
+  if (input.status !== undefined) {
+    const status = input.status;
+    if (status !== "AKTIVAN" && status !== "STORNIRAN" && status !== null) throw new Error("INVALID_STATUS");
+    sets.push("status = ?");
+    params.push(status);
+  }
+  if (input.note !== undefined) {
+    const napomena = input.note == null ? null : String(input.note).trim();
+    if (!napomena) throw new Error("NOTE_REQUIRED");
+    sets.push("napomena = ?");
+    params.push(napomena);
+  }
+  if (input.projectId !== undefined) {
+    const pRaw = input.projectId;
+    const p = pRaw == null || pRaw === "" ? null : Number(pRaw);
+    if (p !== null && (!Number.isFinite(p) || p <= 0)) throw new Error("INVALID_PROJECT_ID");
+    sets.push("project_id = ?");
+    params.push(p);
+  }
+  if (input.entityType !== undefined) {
+    const et = input.entityType == null ? null : String(input.entityType).trim().toLowerCase();
+    sets.push("entity_type = ?");
+    params.push(et || null);
+  }
+  if (input.entityId !== undefined) {
+    const entityId = input.entityId == null ? null : Number(input.entityId);
+    if (entityId !== null && (!Number.isFinite(entityId) || entityId <= 0)) throw new Error("INVALID_ENTITY_ID");
+    sets.push("entity_id = ?");
+    params.push(entityId);
+  }
+
+  if (!sets.length) throw new Error("NOTHING_TO_UPDATE");
+
+  await query(
+    `UPDATE blagajna_stavke
+     SET ${sets.join(", ")}
+     WHERE id = ?`,
+    [...params, id],
+  );
+
+  const rows = (await query(
+    `SELECT id, datum, iznos, valuta, smjer, napomena, project_id, entity_type, entity_id,
+            transaction_details, status, created_at
+     FROM blagajna_stavke WHERE id = ?
+     LIMIT 1`,
+    [id]
+  )) as any[];
+
+  const row = rows?.[0];
+  if (!row) throw new Error("CASH_ENTRY_NOT_FOUND");
+  return rowToEntry(row);
+}

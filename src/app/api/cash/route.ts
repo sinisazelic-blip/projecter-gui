@@ -3,6 +3,7 @@ import { assertOwner } from "@/lib/auth/owner";
 import {
   listCashFromDb,
   insertCashDraftDb,
+  updateCashEntryDb,
   computeBalanceFromItems,
   type ListCashFilters,
 } from "@/lib/cash/db";
@@ -253,6 +254,42 @@ export async function POST(req: NextRequest) {
       paymentCreated,
       paymentId,
     }, { status: 201 });
+  } catch (e: any) {
+    return jsonError(e.message || "SERVER_ERROR", e?.status || 500);
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json().catch(() => ({}));
+
+    const id = intOrNull(body?.id);
+    if (!id || id <= 0) return jsonError("INVALID_ID");
+
+    const amount = body?.amount !== undefined ? Number(body.amount) : undefined;
+    const direction = body?.direction !== undefined ? String(body.direction) : undefined;
+    const status = body?.status !== undefined ? String(body.status) : undefined;
+    const currency = body?.currency !== undefined ? String(body.currency ?? "") : undefined;
+    const note = body?.note !== undefined ? String(body.note ?? "") : undefined;
+    const date = body?.date !== undefined ? String(body.date ?? "") : undefined;
+    const projectId = body?.projectId !== undefined ? body.projectId : undefined;
+    const entityType = body?.entityType !== undefined ? String(body.entityType ?? "") : undefined;
+    const entityId = body?.entityId !== undefined ? intOrNull(body.entityId) : undefined;
+
+    const item = await updateCashEntryDb({
+      id,
+      amount,
+      direction: direction as any,
+      status: status as any,
+      currency,
+      note,
+      date,
+      projectId,
+      entityType,
+      entityId,
+    });
+
+    return NextResponse.json({ ok: true, item });
   } catch (e: any) {
     return jsonError(e.message || "SERVER_ERROR", e?.status || 500);
   }
