@@ -71,6 +71,9 @@ export default function FinanceToolsClient() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailRows, setDetailRows] = useState([]);
   const [detailPartner, setDetailPartner] = useState(null);
+  const [detailAutoWriteoff, setDetailAutoWriteoff] = useState(false);
+  const [writeoffBusy, setWriteoffBusy] = useState(false);
+  const WRITE_OFF_MAX_GAP = 25;
 
   // Quick actions inputs
   const [defaultProjectId, setDefaultProjectId] = useState("1"); // overhead by default
@@ -342,12 +345,123 @@ export default function FinanceToolsClient() {
       );
       const j = await res.json();
       if (!j?.ok) throw new Error(j?.error || "Load IOS failed");
-      setDetailRows(j.events || []);
+      setDetailAutoWriteoff(!!j.auto_writeoff_enabled);
+      if (j.auto_writeoff_enabled) {
+        await applyWriteoffClientYear(row.partner_id, analizeYear, false);
+        const res2 = await fetch(
+          `/api/finance/analize/detail?type=${encodeURIComponent(analizeType)}&year=${encodeURIComponent(analizeYear)}&partner_id=${encodeURIComponent(row.partner_id)}`,
+          { cache: "no-store" },
+        );
+        const j2 = await res2.json();
+        if (!j2?.ok) throw new Error(j2?.error || "Load IOS failed");
+        setDetailRows(j2.events || []);
+      } else {
+        setDetailRows(j.events || []);
+      }
     } catch (e) {
       setAnalizeErr(e?.message || t("financeTools.errorLabel"));
       setDetailRows([]);
     } finally {
       setDetailLoading(false);
+    }
+  }
+
+  async function applyWriteoffInvoice(fakturaId) {
+    if (!detailPartner || !Number.isFinite(Number(fakturaId)) || Number(fakturaId) <= 0) return;
+    const preview = getInvoiceWriteoffPreview(fakturaId);
+    if (!preview || preview.gap <= 0.01) return;
+    const confirmText = `Otpisati razliku ${formatAmountForDocumentValuta(preview.gap, locale, preview.valuta)} za fakturu ${preview.faktura_broj || `#${fakturaId}`}?`;
+    if (!window.confirm(confirmText)) return;
+    setWriteoffBusy(true);
+    setAnalizeErr("");
+    try {
+      const res = await fetch("/api/finance/analize/writeoff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "invoice",
+          faktura_id: Number(fakturaId),
+          max_gap: WRITE_OFF_MAX_GAP,
+        }),
+      });
+      const j = await res.json();
+      if (!j?.ok) throw new Error(j?.error || "Writeoff failed");
+      if (j?.reason === "GAP_ABOVE_LIMIT") {
+        throw new Error(`Razlika je iznad limita (${formatAmountForDocumentValuta(j?.limit_km || WRITE_OFF_MAX_GAP, locale, preview.valuta)}).`);
+      }
+      await openDetail(detailPartner);
+      await loadAnalize(analizeType, analizeYear);
+    } catch (e) {
+      setAnalizeErr(e?.message || t("financeTools.errorLabel"));
+    } finally {
+      setWriteoffBusy(false);
+    }
+  }
+
+  function getInvoiceWriteoffPreview(fakturaId) {
+    const fid = Number(fakturaId);
+    if (!Number.isFinite(fid) || fid <= 0) return null;
+    let inv = 0;
+    let paid = 0;
+    let valuta = null;
+    let faktura_broj = null;
+    for (const r of detailRows || []) {
+      if (Number(r.faktura_id) !== fid) continue;
+      if (!valuta && r.valuta) valuta = r.valuta;
+      if (!faktura_broj && r.faktura_broj) faktura_broj = r.faktura_broj;
+      if (r.opis === "Fakturisano") inv += Number(r.potrazuje || 0);
+      if (r.opis === "Naplata") paid += Number(r.duguje || 0);
+    }
+    const gap = Math.max(0, Math.round((inv - paid) * 100) / 100);
+    return { faktura_id: fid, faktura_broj, valuta, gap };
+  }
+
+  async function applyWriteoffClientYear(partnerId, year, withReload = true) {
+    setWriteoffBusy(true);
+    setAnalizeErr("");
+    try {
+      const res = await fetch("/api/finance/analize/writeoff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "client_year", partner_id: Number(partnerId), year: Number(year) }),
+      });
+      const j = await res.json();
+      if (!j?.ok) throw new Error(j?.error || "Writeoff client-year failed");
+      if (withReload && detailPartner) {
+        await openDetail(detailPartner);
+      }
+      if (withReload) await loadAnalize(analizeType, analizeYear);
+    } catch (e) {
+      setAnalizeErr(e?.message || t("financeTools.errorLabel"));
+    } finally {
+      setWriteoffBusy(false);
+    }
+  }
+
+  async function toggleAutoWriteoffClient(enabled) {
+    if (!detailPartner) return;
+    setWriteoffBusy(true);
+    setAnalizeErr("");
+    try {
+      const res = await fetch("/api/finance/analize/writeoff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "set_auto_client",
+          partner_id: Number(detailPartner.partner_id),
+          enabled: !!enabled,
+        }),
+      });
+      const j = await res.json();
+      if (!j?.ok) throw new Error(j?.error || "Set auto-writeoff failed");
+      setDetailAutoWriteoff(!!enabled);
+      if (enabled) {
+        await applyWriteoffClientYear(detailPartner.partner_id, analizeYear, true);
+      }
+    } catch (e) {
+      setAnalizeErr(e?.message || t("financeTools.errorLabel"));
+    } finally {
+      setWriteoffBusy(false);
     }
   }
 
@@ -585,9 +699,27 @@ export default function FinanceToolsClient() {
                 <div className="card-title" style={{ margin: 0 }}>
                   IOS - {detailPartner.partner_naziv} ({fmtDate(new Date().toISOString())})
                 </div>
-                <button className="btn" onClick={openDetailPrintWindow} disabled={detailRows.length === 0 || detailLoading}>
-                  Otvori za štampu
-                </button>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    className={`btn ${detailAutoWriteoff ? "btn--active" : ""}`}
+                    onClick={() => toggleAutoWriteoffClient(!detailAutoWriteoff)}
+                    disabled={writeoffBusy || detailLoading}
+                    title="Automatski otpis bankarskih razlika za ovog klijenta"
+                  >
+                    {detailAutoWriteoff ? "Auto otpis: ON" : "Auto otpis: OFF"}
+                  </button>
+                  <button
+                    className="btn"
+                    onClick={() => applyWriteoffClientYear(detailPartner.partner_id, analizeYear, true)}
+                    disabled={writeoffBusy || detailLoading}
+                    title="Ručno otpiši sve bankarske razlike za plaćene fakture u godini"
+                  >
+                    Otpiši sve razlike
+                  </button>
+                  <button className="btn" onClick={openDetailPrintWindow} disabled={detailRows.length === 0 || detailLoading}>
+                    Otvori za štampu
+                  </button>
+                </div>
               </div>
               <div style={{ overflowX: "auto" }}>
                 <table className="table">
@@ -602,13 +734,14 @@ export default function FinanceToolsClient() {
                       <th style={{ textAlign: "right" }}>{t("financeTools.colPotrazuje")}</th>
                       <th style={{ textAlign: "right" }}>{t("financeTools.colSaldo")}</th>
                       <th>{t("financeTools.colNacinPlacanja")}</th>
+                      <th>Akcija</th>
                     </tr>
                   </thead>
                   <tbody>
                     {detailLoading ? (
-                      <tr><td colSpan={9}>{t("financeTools.loading")}</td></tr>
+                      <tr><td colSpan={10}>{t("financeTools.loading")}</td></tr>
                     ) : detailRows.length === 0 ? (
-                      <tr><td colSpan={9}>—</td></tr>
+                      <tr><td colSpan={10}>—</td></tr>
                     ) : detailRows.map((r, i) => (
                       <tr key={`${i}-${r.event_date || "x"}`}>
                         <td>{fmtDate(r.event_date)}</td>
@@ -622,6 +755,29 @@ export default function FinanceToolsClient() {
                         <td style={{ textAlign: "right" }}>{formatAmountForDocumentValuta(r.potrazuje || 0, locale, r.valuta)}</td>
                         <td style={{ textAlign: "right", fontWeight: 700 }}>{formatAmountForDocumentValuta(r.saldo || 0, locale, r.valuta)}</td>
                         <td>{r.nacin_placanja || "—"}</td>
+                        <td>
+                          {analizeType === "klijenti" && r.opis === "Fakturisano" && Number(r.faktura_id) > 0 ? (() => {
+                            const p = getInvoiceWriteoffPreview(r.faktura_id);
+                            if (!p || p.gap <= 0.01) return "—";
+                            const over = p.gap > WRITE_OFF_MAX_GAP + 0.0001;
+                            return (
+                              <button
+                                className="btn"
+                                onClick={() => applyWriteoffInvoice(r.faktura_id)}
+                                disabled={writeoffBusy || detailLoading || over}
+                                title={
+                                  over
+                                    ? `Razlika je iznad limita (${formatAmountForDocumentValuta(WRITE_OFF_MAX_GAP, locale, p.valuta)})`
+                                    : "Prihvati bankarsku razliku i zatvori fakturu bez tereta prema klijentu"
+                                }
+                              >
+                                {over
+                                  ? `Prevelika razlika: ${formatAmountForDocumentValuta(p.gap, locale, p.valuta)}`
+                                  : `Otpiši ${formatAmountForDocumentValuta(p.gap, locale, p.valuta)}`}
+                              </button>
+                            );
+                          })() : "—"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

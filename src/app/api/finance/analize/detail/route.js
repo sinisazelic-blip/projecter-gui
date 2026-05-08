@@ -183,6 +183,8 @@ async function detailClient(partnerId, year) {
   const dominantValuta = await dominantClientInvoiceValuta(partnerId, from, to);
   const prDt = await prihodDateExpr("pr");
   const events = [];
+  const autoRows = await query(`SELECT COALESCE(napomena, '') AS napomena FROM klijenti WHERE klijent_id = ? LIMIT 1`, [partnerId]).catch(() => []);
+  const autoWriteoffEnabled = String(autoRows?.[0]?.napomena || "").includes("[AUTO_BANK_OTPIS]");
 
   const fakture = await query(
     `
@@ -218,6 +220,7 @@ async function detailClient(partnerId, year) {
     const valuta = String(r.valuta || "BAM").trim().toUpperCase() || "BAM";
     events.push({
       event_date: iso(r.event_date),
+      faktura_id: Number(r.faktura_id),
       projekat_id: r.projekat_id ? Number(r.projekat_id) : null,
       projekat_naziv: r.projekat_naziv || null,
       faktura_broj: r.faktura_broj || null,
@@ -273,6 +276,7 @@ async function detailClient(partnerId, year) {
     const valuta = String(r.valuta_fakture || "BAM").trim().toUpperCase() || "BAM";
     events.push({
       event_date: iso(r.event_date),
+      faktura_id: Number(r.faktura_id) || null,
       projekat_id: r.projekat_id ? Number(r.projekat_id) : null,
       projekat_naziv: r.projekat_naziv || null,
       faktura_broj: r.faktura_broj && String(r.faktura_broj).trim() !== "000/0" ? r.faktura_broj : null,
@@ -414,7 +418,7 @@ async function detailClient(partnerId, year) {
     const valuta = String(e.valuta || "BAM").trim().toUpperCase() || "BAM";
     withSaldo.push({ ...e, valuta, saldo: running });
   }
-  return withSaldo;
+  return { rows: withSaldo, auto_writeoff_enabled: autoWriteoffEnabled };
 }
 
 async function detailPayable(kind, partnerId, year) {
@@ -519,6 +523,7 @@ async function detailPayable(kind, partnerId, year) {
   for (const r of blagajna || []) {
     events.push({
       event_date: iso(r.event_date),
+      faktura_id: null,
       projekat_id: null,
       projekat_naziv: null,
       faktura_broj: null,
@@ -536,6 +541,7 @@ async function detailPayable(kind, partnerId, year) {
   const withSaldo = [
     {
       event_date: `${year}-01-01`,
+      faktura_id: null,
       projekat_id: null,
       projekat_naziv: null,
       faktura_broj: null,
@@ -567,11 +573,19 @@ export async function GET(req) {
       return NextResponse.json({ ok: false, error: "Neispravan partner_id." }, { status: 400 });
     }
 
-    const events =
-      type === TYPE_CLIENT
-        ? await detailClient(partnerId, year)
-        : await detailPayable(type, partnerId, year);
-    return NextResponse.json({ ok: true, type, year, partner_id: partnerId, events });
+    if (type === TYPE_CLIENT) {
+      const result = await detailClient(partnerId, year);
+      return NextResponse.json({
+        ok: true,
+        type,
+        year,
+        partner_id: partnerId,
+        auto_writeoff_enabled: !!result.auto_writeoff_enabled,
+        events: result.rows || [],
+      });
+    }
+    const events = await detailPayable(type, partnerId, year);
+    return NextResponse.json({ ok: true, type, year, partner_id: partnerId, events: events || [] });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e?.message || String(e) }, { status: 500 });
   }
