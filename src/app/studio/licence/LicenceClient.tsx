@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 import { useTranslation } from "@/components/LocaleProvider";
+import {
+  resolveDisplayStudioProfile,
+  STUDIO_STUB_NO_FLUXA_PLAN_NAZIV,
+  studioWizardStep3ShowsFluxaBlock,
+  type StudioLicenceProfile,
+} from "@/lib/studio-licence-profile";
 
 const USER_LIMIT_OPTIONS = [1, 3, 5, 10, 50, 101] as const; // 101 = 100+
 const CURRENCY_OPTIONS = ["EUR", "KM"];
@@ -18,6 +24,11 @@ const SOCCS_PLATFORM_ROLE_OPTIONS = ["OWNER", "AMBASSADOR"] as const;
 type TenantRow = {
   tenant_id: number;
   tenant_public_id?: string | null;
+  studio_licence_profile?: string | null;
+  billing_email?: string | null;
+  billing_phone?: string | null;
+  last_licence_alert_at?: string | null;
+  last_licence_alert_key?: string | null;
   naziv: string;
   plan_id: number;
   plan_naziv: string;
@@ -57,6 +68,9 @@ export default function LicenceClient() {
   const [planMaxUsers, setPlanMaxUsers] = useState<number>(5);
   const [planSaving, setPlanSaving] = useState(false);
   const [newTenantOpen, setNewTenantOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [wizardProfile, setWizardProfile] =
+    useState<StudioLicenceProfile | null>(null);
   const [newTenantNaziv, setNewTenantNaziv] = useState("");
   const [newTenantPlanId, setNewTenantPlanId] = useState<number>(1);
   const [newTenantMaxUsers, setNewTenantMaxUsers] = useState<number>(5);
@@ -70,6 +84,13 @@ export default function LicenceClient() {
   const [tokenRegenerating, setTokenRegenerating] = useState(false);
   const [newTenantToken, setNewTenantToken] = useState<string | null>(null);
   const [newTenantSoccsTier, setNewTenantSoccsTier] = useState<string>("");
+
+  const [contactModalRow, setContactModalRow] = useState<TenantRow | null>(
+    null,
+  );
+  const [contactEmailDraft, setContactEmailDraft] = useState("");
+  const [contactPhoneDraft, setContactPhoneDraft] = useState("");
+  const [contactSaving, setContactSaving] = useState(false);
 
   const [soccsModal, setSoccsModal] = useState<TenantRow | null>(null);
   const [soccsTierDraft, setSoccsTierDraft] = useState("");
@@ -108,6 +129,31 @@ export default function LicenceClient() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const firstNonStubPlanId = () => {
+    const nonStub = plans.find(
+      (p) => p.naziv !== STUDIO_STUB_NO_FLUXA_PLAN_NAZIV,
+    );
+    return nonStub?.plan_id ?? plans[0]?.plan_id ?? 1;
+  };
+
+  const resetTenantWizard = () => {
+    setWizardStep(1);
+    setWizardProfile(null);
+    setNewTenantNaziv("");
+    setNewTenantPlanId(firstNonStubPlanId());
+    setNewTenantMaxUsers(5);
+    setNewTenantStart("");
+    setNewTenantEnd("");
+    setNewTenantPrice("");
+    setNewTenantCurrency("EUR");
+    setNewTenantSoccsTier("");
+  };
+
+  const openNewTenantWizard = () => {
+    resetTenantWizard();
+    setNewTenantOpen(true);
   };
 
   useEffect(() => {
@@ -177,6 +223,41 @@ export default function LicenceClient() {
     setExtendDate(row.subscription_ends_at || "");
   };
 
+  const openContactModal = (row: TenantRow) => {
+    setContactModalRow(row);
+    setContactEmailDraft(String(row.billing_email ?? "").trim());
+    setContactPhoneDraft(String(row.billing_phone ?? "").trim());
+  };
+
+  const handleSaveContactModal = async () => {
+    if (!contactModalRow) return;
+    setContactSaving(true);
+    try {
+      const res = await fetch(
+        `/api/tenant-admin/tenants/${contactModalRow.tenant_id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            billing_email: contactEmailDraft.trim() || null,
+            billing_phone: contactPhoneDraft.trim() || null,
+          }),
+        },
+      );
+      const data = await res.json();
+      if (data.ok) {
+        setContactModalRow(null);
+        await load();
+      } else {
+        setError(data.error ?? t("common.error"));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setContactSaving(false);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).catch(() => {});
   };
@@ -225,7 +306,19 @@ export default function LicenceClient() {
   };
 
   const handleCreateTenant = async () => {
+    setError(null);
+    if (!wizardProfile) {
+      setError(t("studioLicence.wizardProfileRequired"));
+      return;
+    }
     if (!newTenantNaziv.trim() || !newTenantStart || !newTenantEnd) return;
+    if (
+      wizardProfile === "SOCCS_SWIMVOICE" &&
+      !String(newTenantSoccsTier).trim()
+    ) {
+      setError(t("studioLicence.wizardSoccsTierRequired"));
+      return;
+    }
     setNewTenantSaving(true);
     try {
       const res = await fetch("/api/tenant-admin/tenants", {
@@ -239,20 +332,17 @@ export default function LicenceClient() {
           subscription_ends_at: newTenantEnd,
           monthly_price: newTenantPrice.trim() ? Number(newTenantPrice) : null,
           currency: newTenantPrice.trim() ? newTenantCurrency : null,
-          soccs_tier: newTenantSoccsTier,
+          soccs_tier:
+            wizardProfile === "FLUXA_ONLY"
+              ? null
+              : newTenantSoccsTier.trim() || null,
+          studio_licence_profile: wizardProfile,
         }),
       });
       const data = await res.json();
       if (data.ok) {
         setNewTenantOpen(false);
-        setNewTenantNaziv("");
-        setNewTenantPlanId(plans[0]?.plan_id ?? 1);
-        setNewTenantMaxUsers(5);
-        setNewTenantStart("");
-        setNewTenantEnd("");
-        setNewTenantPrice("");
-        setNewTenantCurrency("EUR");
-        setNewTenantSoccsTier("");
+        resetTenantWizard();
         setNewTenantToken(data.licence_token ?? null);
         await load();
       } else {
@@ -457,10 +547,12 @@ export default function LicenceClient() {
         title: t("studioLicence.lampTitleExpired"),
       };
     }
+    const profile = resolveDisplayStudioProfile(row);
     const soccs = String(row.soccs_tier ?? "")
       .trim()
       .toUpperCase();
     const needsSoccsNode =
+      profile !== "FLUXA_ONLY" &&
       soccs !== "" &&
       soccs !== "SWIMVOICE" &&
       SOCCS_TIER_OPTIONS.includes(soccs as (typeof SOCCS_TIER_OPTIONS)[number]);
@@ -473,7 +565,10 @@ export default function LicenceClient() {
     }
     return {
       color: "#22c55e",
-      title: t("studioLicence.lampTitleGreen"),
+      title:
+        profile === "FLUXA_ONLY"
+          ? t("studioLicence.lampTitleGreenFluxaOnly")
+          : t("studioLicence.lampTitleGreen"),
     };
   };
 
@@ -552,20 +647,27 @@ export default function LicenceClient() {
           gap: 8,
         }}
       >
-        <button
-          type="button"
-          className="btn"
-          onClick={() => setNewTenantOpen(true)}
-        >
+        <button type="button" className="btn" onClick={openNewTenantWizard}>
           {t("studioLicence.newTenant")}
         </button>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 12,
+            opacity: 0.75,
+            flex: "1 1 200px",
+            textAlign: "right",
+          }}
+        >
+          {t("studioLicence.contactTableHint")}
+        </p>
       </div>
       <div style={{ overflowX: "auto" }}>
         <table style={tableStyle}>
           <thead>
             <tr>
               <th
-                colSpan={6}
+                colSpan={7}
                 style={{
                   ...thTd,
                   textAlign: "center",
@@ -615,6 +717,7 @@ export default function LicenceClient() {
             </tr>
             <tr>
               <th style={thTd}>{t("studioLicence.colNaziv")}</th>
+              <th style={thTd}>{t("studioLicence.colLicenceProfile")}</th>
               <th style={thTd}>{t("studioLicence.colCijena")}</th>
               <th style={thTd}>{t("studioLicence.colIstice")}</th>
               <th style={thTd}>{t("studioLicence.colDana")}</th>
@@ -629,16 +732,50 @@ export default function LicenceClient() {
           <tbody>
             {tenants.length === 0 ? (
               <tr>
-                <td colSpan={11} style={thTd}>
+                <td colSpan={12} style={thTd}>
                   {t("studioLicence.noTenants")}
                 </td>
               </tr>
             ) : (
               tenants.map((row) => {
                 const lamp = tenantStatusLamp(row);
+                const dp = resolveDisplayStudioProfile(row);
                 return (
-                  <tr key={row.tenant_id}>
+                  <tr
+                    key={row.tenant_id}
+                    title={t("studioLicence.contactRowDblclickTitle")}
+                    style={{ cursor: "default" }}
+                    onDoubleClick={(e) => {
+                      const el = e.target as HTMLElement;
+                      if (el.closest("button")) return;
+                      openContactModal(row);
+                    }}
+                  >
                     <td style={thTd}>{row.naziv}</td>
+                    <td style={thTd}>
+                      <span
+                        title={t(`studioLicence.profileHint.${dp}`)}
+                        style={{
+                          display: "inline-block",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: "3px 9px",
+                          borderRadius: 999,
+                          letterSpacing: "0.03em",
+                          textTransform: "uppercase",
+                          border: "1px solid var(--border)",
+                          background:
+                            dp === "FLUXA_ONLY"
+                              ? "rgba(59,130,246,0.18)"
+                              : dp === "SOCCS_SWIMVOICE"
+                                ? "rgba(239,68,68,0.18)"
+                                : "rgba(168,85,247,0.2)",
+                          color: "var(--foreground)",
+                        }}
+                      >
+                        {t(`studioLicence.profileShort.${dp}`)}
+                      </span>
+                    </td>
                     <td style={thTd}>{formatPrice(row)}</td>
                     <td style={thTd}>{row.subscription_ends_at}</td>
                     <td style={thTd}>
@@ -649,9 +786,11 @@ export default function LicenceClient() {
                           : t("studioLicence.expired")}
                     </td>
                     <td style={thTd}>
-                      {Number.isFinite(Number(row.meet_remaining ?? NaN))
-                        ? Number(row.meet_remaining)
-                        : "—"}
+                      {dp === "FLUXA_ONLY"
+                        ? "—"
+                        : Number.isFinite(Number(row.meet_remaining ?? NaN))
+                          ? Number(row.meet_remaining)
+                          : "—"}
                     </td>
                     <td style={thTd}>
                       <span
@@ -669,8 +808,22 @@ export default function LicenceClient() {
                         }}
                       />
                     </td>
-                    <td style={tdFlux}>{row.plan_naziv}</td>
-                    <td style={tdFluxCont}>{formatMaxUsers(row.max_users)}</td>
+                    <td style={tdFlux}>
+                      {dp === "SOCCS_SWIMVOICE" ? (
+                        <span style={{ opacity: 0.5 }}>
+                          {t("studioLicence.fluxaSkippedForProfile")}
+                        </span>
+                      ) : (
+                        row.plan_naziv
+                      )}
+                    </td>
+                    <td style={tdFluxCont}>
+                      {dp === "SOCCS_SWIMVOICE" ? (
+                        <span style={{ opacity: 0.5 }}>—</span>
+                      ) : (
+                        formatMaxUsers(row.max_users)
+                      )}
+                    </td>
                     <td style={tdFluxCont}>
                       <button
                         type="button"
@@ -837,6 +990,119 @@ export default function LicenceClient() {
         </div>
       )}
 
+      {/* Modal kontakt (dvoklik na red) */}
+      {contactModalRow && (
+        <div
+          className="studio-modal"
+          style={overlayStyle()}
+          onClick={() => {
+            if (contactSaving) return;
+            setContactModalRow(null);
+          }}
+        >
+          <div style={modalStyle(440)} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: 24 }}>
+              <h3 style={{ marginTop: 0 }}>
+                {t("studioLicence.contactModalTitle")}
+              </h3>
+              <p style={{ fontSize: 12, opacity: 0.85, marginTop: -4 }}>
+                {t("studioLicence.contactModalHint")}
+              </p>
+              <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
+                {contactModalRow.naziv}{" "}
+                <span style={{ opacity: 0.7, fontWeight: 400 }}>
+                  (#{contactModalRow.tenant_id})
+                </span>
+              </p>
+              <label
+                htmlFor="studio-licence-contact-email"
+                style={{ display: "block", marginBottom: 4 }}
+              >
+                {t("studioLicence.contactEmailLabel")}
+              </label>
+              <input
+                id="studio-licence-contact-email"
+                type="email"
+                autoComplete="email"
+                value={contactEmailDraft}
+                onChange={(e) => setContactEmailDraft(e.target.value)}
+                placeholder="email@primjer.ba"
+                style={{
+                  padding: 8,
+                  marginBottom: 12,
+                  width: "100%",
+                  maxWidth: 360,
+                }}
+              />
+              <label
+                htmlFor="studio-licence-contact-phone"
+                style={{ display: "block", marginBottom: 4 }}
+              >
+                {t("studioLicence.contactPhoneLabel")}
+              </label>
+              <input
+                id="studio-licence-contact-phone"
+                type="tel"
+                autoComplete="tel"
+                value={contactPhoneDraft}
+                onChange={(e) => setContactPhoneDraft(e.target.value)}
+                placeholder="+3876…"
+                style={{
+                  padding: 8,
+                  marginBottom: 12,
+                  width: "100%",
+                  maxWidth: 280,
+                }}
+              />
+              {(() => {
+                const meta: string[] = [];
+                if (contactModalRow.last_licence_alert_at) {
+                  meta.push(
+                    `${t("studioLicence.contactLastSent")}: ${contactModalRow.last_licence_alert_at}`,
+                  );
+                }
+                if (contactModalRow.last_licence_alert_key) {
+                  meta.push(
+                    `${t("studioLicence.contactLastKey")}: ${contactModalRow.last_licence_alert_key}`,
+                  );
+                }
+                if (meta.length === 0) return null;
+                return (
+                  <p
+                    style={{
+                      fontSize: 11,
+                      opacity: 0.65,
+                      marginBottom: 12,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {meta.join(" · ")}
+                  </p>
+                );
+              })()}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={contactSaving}
+                  onClick={() => void handleSaveContactModal()}
+                >
+                  {contactSaving ? t("common.loading") : t("common.save")}
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={contactSaving}
+                  onClick={() => setContactModalRow(null)}
+                >
+                  {t("common.cancel")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Token (prikaz / kopiraj / regeneriši) */}
       {tokenModalRow && (
         <div
@@ -973,175 +1239,335 @@ export default function LicenceClient() {
         </div>
       )}
 
-      {/* Modal Novi tenant */}
+      {/* Modal Novi tenant — čarobnjak (korak 3 ovisi o profilu: Fluxa / SOCCS tier; DocCentre/Farma kasnije) */}
       {newTenantOpen && (
         <div
           className="studio-modal"
           style={overlayStyle()}
-          onClick={() => !newTenantSaving && setNewTenantOpen(false)}
+          onClick={() => {
+            if (newTenantSaving) return;
+            resetTenantWizard();
+            setNewTenantOpen(false);
+          }}
         >
-          <div style={modalStyle(480)} onClick={(e) => e.stopPropagation()}>
+          <div style={modalStyle(560)} onClick={(e) => e.stopPropagation()}>
             <div style={{ padding: 24 }}>
               <h3 style={{ marginTop: 0 }}>
-                {t("studioLicence.newTenantTitle")}
+                {wizardStep === 1
+                  ? t("studioLicence.wizardTitleStep1")
+                  : wizardStep === 2
+                    ? t("studioLicence.wizardTitleStep2")
+                    : wizardProfile === "SOCCS_SWIMVOICE"
+                      ? t("studioLicence.wizardTitleStep3SoccsOnly")
+                      : wizardProfile === "FLUXA_AND_SOCCS"
+                        ? t("studioLicence.wizardTitleStep3FluxaAndSoccs")
+                        : t("studioLicence.wizardTitleStep3FluxaOnly")}
               </h3>
-              <label style={{ display: "block", marginBottom: 4 }}>
-                {t("studioLicence.labelNaziv")}
-              </label>
-              <input
-                type="text"
-                value={newTenantNaziv}
-                onChange={(e) => setNewTenantNaziv(e.target.value)}
-                placeholder={t("studioLicence.placeholderNaziv")}
-                style={{
-                  padding: 8,
-                  marginBottom: 12,
-                  width: "100%",
-                  maxWidth: 320,
-                }}
-              />
-              <label style={{ display: "block", marginBottom: 4 }}>
-                {t("studioLicence.verzijaFluxe")}
-              </label>
-              <select
-                value={newTenantPlanId}
-                onChange={(e) => setNewTenantPlanId(Number(e.target.value))}
-                style={{
-                  padding: 8,
-                  marginBottom: 12,
-                  width: "100%",
-                  maxWidth: 200,
-                }}
-              >
-                {plans.map((p) => (
-                  <option key={p.plan_id} value={p.plan_id}>
-                    {p.naziv}
-                  </option>
-                ))}
-              </select>
-              <label style={{ display: "block", marginBottom: 4 }}>
-                {t("studioLicence.brojKorisnika")}
-              </label>
-              <select
-                value={newTenantMaxUsers}
-                onChange={(e) => setNewTenantMaxUsers(Number(e.target.value))}
-                style={{
-                  padding: 8,
-                  marginBottom: 12,
-                  width: "100%",
-                  maxWidth: 200,
-                }}
-              >
-                {USER_LIMIT_OPTIONS.map((n) => (
-                  <option key={n} value={n}>
-                    {n >= 101 ? t("studioLicence.users100Plus") : n}
-                  </option>
-                ))}
-              </select>
-              <label style={{ display: "block", marginBottom: 4 }}>
-                {t("studioLicence.soccsNewTenantTier")}
-              </label>
-              <select
-                value={newTenantSoccsTier}
-                onChange={(e) => setNewTenantSoccsTier(e.target.value)}
-                style={{
-                  padding: 8,
-                  marginBottom: 12,
-                  width: "100%",
-                  maxWidth: 280,
-                }}
-              >
-                <option value="">—</option>
-                {SOCCS_TIER_OPTIONS.map((tier) => (
-                  <option key={tier} value={tier}>
-                    {tier}
-                  </option>
-                ))}
-              </select>
-              <label style={{ display: "block", marginBottom: 4 }}>
-                {t("studioLicence.labelStart")}
-              </label>
-              <input
-                type="date"
-                value={newTenantStart}
-                onChange={(e) => setNewTenantStart(e.target.value)}
-                style={{
-                  padding: 8,
-                  marginBottom: 12,
-                  width: "100%",
-                  maxWidth: 200,
-                }}
-              />
-              <label style={{ display: "block", marginBottom: 4 }}>
-                {t("studioLicence.labelEnd")}
-              </label>
-              <input
-                type="date"
-                value={newTenantEnd}
-                onChange={(e) => setNewTenantEnd(e.target.value)}
-                style={{
-                  padding: 8,
-                  marginBottom: 12,
-                  width: "100%",
-                  maxWidth: 200,
-                }}
-              />
-              <label style={{ display: "block", marginBottom: 4 }}>
-                {t("studioLicence.cijenaMjesečno")}
-              </label>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  marginBottom: 12,
-                  flexWrap: "wrap",
-                  alignItems: "center",
-                }}
-              >
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={newTenantPrice}
-                  onChange={(e) => setNewTenantPrice(e.target.value)}
-                  placeholder="—"
-                  style={{ padding: 8, width: 120 }}
-                />
-                <select
-                  value={newTenantCurrency}
-                  onChange={(e) => setNewTenantCurrency(e.target.value)}
-                  style={{ padding: 8 }}
-                >
-                  {CURRENCY_OPTIONS.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={
-                    newTenantSaving ||
-                    !newTenantNaziv.trim() ||
-                    !newTenantStart ||
-                    !newTenantEnd
-                  }
-                  onClick={handleCreateTenant}
-                >
-                  {newTenantSaving ? t("common.loading") : t("common.save")}
-                </button>
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={newTenantSaving}
-                  onClick={() => setNewTenantOpen(false)}
-                >
-                  {t("common.cancel")}
-                </button>
-              </div>
+              <p style={{ fontSize: 12, opacity: 0.85, marginTop: -6 }}>
+                {wizardStep === 1
+                  ? t("studioLicence.wizardStep1of3")
+                  : wizardStep === 2
+                    ? t("studioLicence.wizardStep2of3")
+                    : t("studioLicence.wizardStep3of3")}
+              </p>
+
+              {wizardStep === 1 && (
+                <>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 10,
+                      marginTop: 8,
+                    }}
+                  >
+                    {(
+                      [
+                        "FLUXA_ONLY",
+                        "SOCCS_SWIMVOICE",
+                        "FLUXA_AND_SOCCS",
+                      ] as const
+                    ).map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        className="btn"
+                        onClick={() => setWizardProfile(p)}
+                        style={{
+                          textAlign: "left",
+                          borderWidth: 2,
+                          borderStyle: "solid",
+                          borderColor:
+                            wizardProfile === p
+                              ? "rgba(96, 165, 250, 0.85)"
+                              : "var(--border)",
+                          background:
+                            wizardProfile === p
+                              ? "rgba(59, 130, 246, 0.12)"
+                              : "transparent",
+                          fontWeight: 700,
+                          padding: "12px 14px",
+                        }}
+                      >
+                        {t(`studioLicence.wizardProfileTitle.${p}`)}
+                      </button>
+                    ))}
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      marginTop: 18,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={!wizardProfile}
+                      onClick={() => setWizardStep(2)}
+                    >
+                      {t("studioLicence.wizardNext")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => {
+                        resetTenantWizard();
+                        setNewTenantOpen(false);
+                      }}
+                    >
+                      {t("common.cancel")}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {wizardStep === 2 && (
+                <>
+                  <label style={{ display: "block", marginBottom: 4 }}>
+                    {t("studioLicence.labelNaziv")}
+                  </label>
+                  <input
+                    type="text"
+                    value={newTenantNaziv}
+                    onChange={(e) => setNewTenantNaziv(e.target.value)}
+                    placeholder={t("studioLicence.placeholderNaziv")}
+                    style={{
+                      padding: 8,
+                      marginBottom: 12,
+                      width: "100%",
+                      maxWidth: 360,
+                    }}
+                  />
+                  <label style={{ display: "block", marginBottom: 4 }}>
+                    {t("studioLicence.labelStart")}
+                  </label>
+                  <input
+                    type="date"
+                    value={newTenantStart}
+                    onChange={(e) => setNewTenantStart(e.target.value)}
+                    style={{
+                      padding: 8,
+                      marginBottom: 12,
+                      width: "100%",
+                      maxWidth: 200,
+                    }}
+                  />
+                  <label style={{ display: "block", marginBottom: 4 }}>
+                    {t("studioLicence.labelEnd")}
+                  </label>
+                  <input
+                    type="date"
+                    value={newTenantEnd}
+                    onChange={(e) => setNewTenantEnd(e.target.value)}
+                    style={{
+                      padding: 8,
+                      marginBottom: 12,
+                      width: "100%",
+                      maxWidth: 200,
+                    }}
+                  />
+                  <label style={{ display: "block", marginBottom: 4 }}>
+                    {t("studioLicence.cijenaMjesečno")}
+                  </label>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      marginBottom: 12,
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                    }}
+                  >
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={newTenantPrice}
+                      onChange={(e) => setNewTenantPrice(e.target.value)}
+                      placeholder="—"
+                      style={{ padding: 8, width: 120 }}
+                    />
+                    <select
+                      value={newTenantCurrency}
+                      onChange={(e) => setNewTenantCurrency(e.target.value)}
+                      style={{ padding: 8 }}
+                    >
+                      {CURRENCY_OPTIONS.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => setWizardStep(1)}
+                    >
+                      {t("studioLicence.wizardBack")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={
+                        !newTenantNaziv.trim() ||
+                        !newTenantStart ||
+                        !newTenantEnd
+                      }
+                      onClick={() => setWizardStep(3)}
+                    >
+                      {t("studioLicence.wizardNext")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => {
+                        resetTenantWizard();
+                        setNewTenantOpen(false);
+                      }}
+                    >
+                      {t("common.cancel")}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {wizardStep === 3 && wizardProfile && (
+                <>
+                  {studioWizardStep3ShowsFluxaBlock(wizardProfile) && (
+                    <>
+                      <label style={{ display: "block", marginBottom: 4 }}>
+                        {t("studioLicence.verzijaFluxe")}
+                      </label>
+                      <select
+                        value={newTenantPlanId}
+                        onChange={(e) =>
+                          setNewTenantPlanId(Number(e.target.value))
+                        }
+                        style={{
+                          padding: 8,
+                          marginBottom: 12,
+                          width: "100%",
+                          maxWidth: 280,
+                        }}
+                      >
+                        {plans
+                          .filter(
+                            (p) => p.naziv !== STUDIO_STUB_NO_FLUXA_PLAN_NAZIV,
+                          )
+                          .map((p) => (
+                            <option key={p.plan_id} value={p.plan_id}>
+                              {p.naziv}
+                            </option>
+                          ))}
+                      </select>
+                      <label style={{ display: "block", marginBottom: 4 }}>
+                        {t("studioLicence.brojKorisnika")}
+                      </label>
+                      <select
+                        value={newTenantMaxUsers}
+                        onChange={(e) =>
+                          setNewTenantMaxUsers(Number(e.target.value))
+                        }
+                        style={{
+                          padding: 8,
+                          marginBottom: 12,
+                          width: "100%",
+                          maxWidth: 200,
+                        }}
+                      >
+                        {USER_LIMIT_OPTIONS.map((n) => (
+                          <option key={n} value={n}>
+                            {n >= 101 ? t("studioLicence.users100Plus") : n}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+                  {wizardProfile !== "FLUXA_ONLY" && (
+                    <>
+                      <label style={{ display: "block", marginBottom: 4 }}>
+                        {t("studioLicence.soccsNewTenantTier")}
+                      </label>
+                      <select
+                        value={newTenantSoccsTier}
+                        onChange={(e) => setNewTenantSoccsTier(e.target.value)}
+                        style={{
+                          padding: 8,
+                          marginBottom: 12,
+                          width: "100%",
+                          maxWidth: 300,
+                        }}
+                      >
+                        <option value="">—</option>
+                        {SOCCS_TIER_OPTIONS.map((tier) => (
+                          <option key={tier} value={tier}>
+                            {tier}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => setWizardStep(2)}
+                    >
+                      {t("studioLicence.wizardBack")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={
+                        newTenantSaving ||
+                        !newTenantNaziv.trim() ||
+                        !newTenantStart ||
+                        !newTenantEnd ||
+                        (wizardProfile === "SOCCS_SWIMVOICE" &&
+                          !String(newTenantSoccsTier).trim())
+                      }
+                      onClick={() => void handleCreateTenant()}
+                    >
+                      {newTenantSaving ? t("common.loading") : t("common.save")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={newTenantSaving}
+                      onClick={() => {
+                        resetTenantWizard();
+                        setNewTenantOpen(false);
+                      }}
+                    >
+                      {t("common.cancel")}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

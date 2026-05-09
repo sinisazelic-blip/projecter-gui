@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write",
-    "migrate:soccs": "node scripts/run-soccs-migration.cjs"
+    "migrate:soccs": "node scripts/run-soccs-migration.cjs",
+    "migrate:studio-licence-profile": "node scripts/run-migration-studio-licence-profile.cjs",
+    "migrate:licence-alert-contacts": "node scripts/run-migration-tenant-licence-alert-contacts.cjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

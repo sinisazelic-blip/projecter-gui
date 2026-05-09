@@ -2099,6 +2099,25 @@
     "contact": "Obratite se administratoru Fluxe za produženje ili aktivaciju licence.",
     "contactError": "Ako smatrate da je ovo greška, obratite se administratoru Fluxe."
   },
+  "licenceAlerts": {
+    "bellTitle": "Upozorenja o licenci — klik za detalje",
+    "modalTitle": "Stanje licence",
+    "modalIntro": "Dosegnuti su pragovi upozorenja. Riješite pretplatu ili SOCCS kvotu prije isteka.",
+    "metaSubscription": "Datum isteka pretplate",
+    "metaDays": "Preostalo dana",
+    "metaMeet": "Preostalih MEET kodova (SOCCS)",
+    "metaTenant": "Organizacija",
+    "close": "Razumijem",
+    "codes": {
+      "SUB_LE30": "Pretplata: 30 ili manje dana do isteka.",
+      "SUB_LE14": "Pretplata: 14 ili manje dana do isteka.",
+      "SUB_LE7": "Pretplata: 7 ili manje dana do isteka.",
+      "SUB_LE1": "Pretplata: najviše 1 dan do isteka.",
+      "SUB_D0": "Pretplata: posljednji dan važenja (danas).",
+      "MEET_0": "SOCCS: nema preostalih MEET_SESSION kodova.",
+      "MEET_1": "SOCCS: preostao je samo jedan MEET_SESSION kod."
+    }
+  },
   "subscriptionExpired": {
     "title": "Pretplata je istekla",
     "message": "Pristup je privremeno onemogućen. Produžite pretplatu da biste nastavili koristiti Fluxu.",
@@ -2123,9 +2142,18 @@
     "changePlan": "Promijeni plan",
     "extendTitle": "Produži pretplatu",
     "newEndDate": "Novi datum isteka",
-    "changePlanTitle": "Promijeni plan",
     "plan": "Plan",
     "newTenant": "Novi tenant",
+    "contactTableHint":
+      "Dvoklik na red tabele (ne na dugmad) otvara kontakt za licence alerte.",
+    "contactRowDblclickTitle": "Dvoklik — kontakt za alerte",
+    "contactModalTitle": "Kontakt za upozorenja",
+    "contactModalHint":
+      "Koristi cron licence alerta (email / kasnije SMS). Prazno polje briše vrijednost u bazi.",
+    "contactEmailLabel": "Email",
+    "contactPhoneLabel": "Telefon (SMS, kasnije)",
+    "contactLastSent": "Zadnji alert",
+    "contactLastKey": "Potpis stanja",
     "newTenantTitle": "Dodaj novog kupca licence (tenant)",
     "labelNaziv": "Naziv organizacije",
     "placeholderNaziv": "npr. Firma doo",
@@ -2190,7 +2218,37 @@
     "soccsMeetRemainingSetLabel": "Broj preostalih meet kodova (ručno postavi)",
     "soccsMeetRemainingSetHint": "Snimi paket i savez će povećati ili smanjiti broj važećih MEET_SESSION kodova na ovaj broj.",
     "soccsVerifyUrlHint": "Na SOCCS: SOCCS_FLUX_ACTIVATION_VERIFY_URL = puni URL do /api/public/soccs/activation-verify; isti Bearer kao SOCCS_ACTIVATION_VERIFY_BEARER na Fluxi.",
-    "soccsNewTenantTier": "Paket SOCCS (novi tenant)"
+    "soccsNewTenantTier": "Paket SOCCS (novi tenant)",
+    "colLicenceProfile": "Profil",
+    "fluxaSkippedForProfile": "— (nije Fluxa)",
+    "lampTitleGreenFluxaOnly": "Aktivan — samo Fluxa (SOCCS nije dio ovog tenanta)",
+    "wizardTitleStep1": "Novi tenant — šta unosimo?",
+    "wizardTitleStep2": "Novi tenant — pretplata",
+    "wizardTitleStep3FluxaOnly": "Novi tenant — Fluxa",
+    "wizardTitleStep3FluxaAndSoccs": "Novi tenant — Fluxa i SOCCS",
+    "wizardTitleStep3SoccsOnly": "Novi tenant — SOCCS / SwimVoice",
+    "wizardStep1of3": "Korak 1 od 3",
+    "wizardStep2of3": "Korak 2 od 3",
+    "wizardStep3of3": "Korak 3 od 3",
+    "wizardProfileTitle": {
+      "FLUXA_ONLY": "Samo Fluxa",
+      "SOCCS_SWIMVOICE": "Samo SOCCS / SwimVoice",
+      "FLUXA_AND_SOCCS": "Fluxa + SOCCS/SwimVoice"
+    },
+    "wizardNext": "Dalje",
+    "wizardBack": "Nazad",
+    "wizardProfileRequired": "Odaberi profil u prvom koraku čarobnjaka.",
+    "wizardSoccsTierRequired": "Za profil „samo SOCCS” odaberi SOCCS paket.",
+    "profileShort": {
+      "FLUXA_ONLY": "Fluxa",
+      "SOCCS_SWIMVOICE": "SOCCS",
+      "FLUXA_AND_SOCCS": "Fluxa+SOCCS"
+    },
+    "profileHint": {
+      "FLUXA_ONLY": "Tenant je definisan kao samo Fluxa.",
+      "SOCCS_SWIMVOICE": "Tenant je definisan kao samo SOCCS/SwimVoice.",
+      "FLUXA_AND_SOCCS": "Tenant uključuje i Fluxa i SOCCS/SwimVoice."
+    }
   },
   "studioKlijenti": {
     "title": "Klijenti",

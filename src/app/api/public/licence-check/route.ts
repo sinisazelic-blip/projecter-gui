@@ -1,76 +1,136 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { buildLicenceWarnings } from "@/lib/licence-alerts/thresholds";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Licence check za klijentske instance.
- * Klijentska Fluxa šalje LICENCE_TOKEN u Authorization: Bearer <token>.
- * Master baza ima tenants.licence_token; ako status = SUSPENDOVAN ili datum isteka prošao → allowed: false.
- * Ne zahtijeva session – ovo zovu klijentske instance (server-side).
- */
-export async function GET(req: NextRequest) {
-  const auth = req.headers.get("authorization");
-  const token =
-    (auth?.startsWith("Bearer ") ? auth.slice(7).trim() : null) ||
-    req.nextUrl.searchParams.get("token")?.trim() ||
-    null;
+type LicenceCheckTenantRow = {
+  tenant_id: number;
+  naziv: string;
+  status: string;
+  soccs_tier: string | null;
+  subscription_ends_at: string;
+  days_until_end: number;
+  meet_remaining: number;
+};
 
+function bearerToken(req: Request): string | null {
+  const raw = req.headers.get("authorization")?.trim() ?? "";
+  const m = /^Bearer\s+(\S+)/i.exec(raw);
+  return m ? m[1].trim() : null;
+}
+
+function resolveNotAllowedReason(
+  status: string,
+  daysUntilEnd: number,
+): "suspended" | "expired" | "disabled" {
+  const st = status.trim().toUpperCase();
+  if (st === "SUSPENDOVAN") return "suspended";
+  if (st === "ISTEKLO" || !Number.isFinite(daysUntilEnd) || daysUntilEnd < 0) {
+    return "expired";
+  }
+  return "disabled";
+}
+
+/**
+ * Javna provjera licence za klijentsku instancu Fluxe (Bearer = `tenants.licence_token`).
+ * Klijent: `LicenceCheckWrapper` i budući UI (koverta) čitaju `allowed`, `reason`, `warnings`.
+ */
+export async function GET(req: Request) {
+  const token = bearerToken(req);
   if (!token) {
     return NextResponse.json(
-      { ok: true, allowed: false, reason: "missing_token" },
-      { status: 200 }
+      {
+        ok: false,
+        allowed: false,
+        reason: "invalid_token",
+        warnings: [],
+      },
+      { status: 401 },
     );
   }
 
   try {
-    const rows = await query<{
-      subscription_ends_at: string;
-      status: string;
-    }>(
+    const rows = await query<LicenceCheckTenantRow>(
       `SELECT
-         DATE_FORMAT(subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
-         status
-       FROM tenants
-       WHERE licence_token = ?
+        t.tenant_id,
+        t.naziv,
+        t.status,
+        t.soccs_tier,
+        DATE_FORMAT(t.subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
+        DATEDIFF(t.subscription_ends_at, CURDATE()) AS days_until_end,
+        (
+          SELECT COUNT(*)
+          FROM soccs_activation_codes sac
+          WHERE sac.tenant_id = t.tenant_id
+            AND sac.purpose = 'MEET_SESSION'
+            AND UPPER(sac.status) = 'ISSUED'
+            AND (sac.valid_until IS NULL OR sac.valid_until >= NOW())
+        ) AS meet_remaining
+       FROM tenants t
+       WHERE t.licence_token = ?
        LIMIT 1`,
-      [token]
+      [token],
     );
-
-    const row = rows?.[0];
+    const row = rows[0];
     if (!row) {
       return NextResponse.json(
-        { ok: true, allowed: false, reason: "invalid_token" },
-        { status: 200 }
+        {
+          ok: false,
+          allowed: false,
+          reason: "invalid_token",
+          warnings: [],
+        },
+        { status: 401 },
       );
     }
 
-    const today = new Date().toISOString().slice(0, 10);
-    const expired = row.subscription_ends_at < today;
-    const suspended = String(row.status).toUpperCase() === "SUSPENDOVAN";
+    const st = String(row.status ?? "")
+      .trim()
+      .toUpperCase();
+    const days = Number(row.days_until_end);
+    const meetRem = Number(row.meet_remaining ?? 0);
+    const hasSoccs = Boolean(String(row.soccs_tier ?? "").trim());
 
-    if (suspended) {
-      return NextResponse.json(
-        { ok: true, allowed: false, reason: "suspended" },
-        { status: 200 }
-      );
-    }
-    if (expired) {
-      return NextResponse.json(
-        { ok: true, allowed: false, reason: "expired" },
-        { status: 200 }
-      );
-    }
+    const dateOk = Number.isFinite(days) && days >= 0 && st === "AKTIVAN";
+    const allowed = dateOk;
 
-    return NextResponse.json(
-      { ok: true, allowed: true },
-      { status: 200 }
-    );
-  } catch (e: unknown) {
+    const reason = allowed
+      ? null
+      : resolveNotAllowedReason(String(row.status ?? ""), days);
+
+    const warnings = allowed
+      ? buildLicenceWarnings({
+          daysUntilEnd: days,
+          meetRemaining: meetRem,
+          hasSoccsTier: hasSoccs,
+        })
+      : [];
+
+    return NextResponse.json({
+      ok: true,
+      allowed,
+      reason,
+      tenant_id: row.tenant_id,
+      naziv: row.naziv,
+      subscription_ends_at: row.subscription_ends_at,
+      days_until_end: days,
+      meet_remaining: meetRem,
+      soccs_tier: row.soccs_tier,
+      warnings,
+    });
+  } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    console.error("[licence-check]", msg);
     return NextResponse.json(
-      { ok: true, allowed: false, reason: "error", message: msg },
-      { status: 200 }
+      {
+        ok: false,
+        allowed: true,
+        reason: null,
+        warnings: [],
+        error: "LICENCE_CHECK_UNAVAILABLE",
+      },
+      { status: 503 },
     );
   }
 }

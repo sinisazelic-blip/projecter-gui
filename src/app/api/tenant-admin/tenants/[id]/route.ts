@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
 import { query } from "@/lib/db";
+import { normalizeStudioLicenceProfile } from "@/lib/studio-licence-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,9 @@ export async function PATCH(
     soccs_platform_scope?: string | null;
     soccs_federation_parent_tenant_id?: number | null;
     meet_session_target?: number | null;
+    studio_licence_profile?: string | null;
+    billing_email?: string | null;
+    billing_phone?: string | null;
   };
   try {
     body = await req.json();
@@ -182,6 +186,45 @@ export async function PATCH(
         updates.push("soccs_federation_parent_tenant_id = ?");
         paramsList.push(pid);
       }
+    }
+  }
+
+  if (body.billing_email !== undefined) {
+    const raw =
+      body.billing_email == null ? "" : String(body.billing_email).trim();
+    if (!raw) {
+      updates.push("billing_email = NULL");
+    } else if (raw.length <= 255) {
+      updates.push("billing_email = ?");
+      paramsList.push(raw);
+    }
+  }
+
+  if (body.billing_phone !== undefined) {
+    const raw =
+      body.billing_phone == null ? "" : String(body.billing_phone).trim();
+    if (!raw) {
+      updates.push("billing_phone = NULL");
+    } else if (raw.length <= 64) {
+      updates.push("billing_phone = ?");
+      paramsList.push(raw);
+    }
+  }
+
+  if (body.studio_licence_profile !== undefined) {
+    const raw = body.studio_licence_profile;
+    if (raw === null || raw === "") {
+      updates.push("studio_licence_profile = NULL");
+    } else {
+      const p = normalizeStudioLicenceProfile(String(raw));
+      if (!p) {
+        return NextResponse.json(
+          { ok: false, error: "INVALID_STUDIO_LICENCE_PROFILE" },
+          { status: 400 },
+        );
+      }
+      updates.push("studio_licence_profile = ?");
+      paramsList.push(p);
     }
   }
 

@@ -894,6 +894,24 @@ option {
   backdrop-filter: blur(8px);
 }
 
+/* Klijentska Fluxa: upozorenje o licenci (koverta u uglu) */
+@keyframes fluxa-licence-bell-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.45));
+  }
+  50% {
+    opacity: 0.72;
+    transform: scale(1.06);
+    filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.85));
+  }
+}
+.fluxa-licence-bell {
+  animation: fluxa-licence-bell-pulse 1.25s ease-in-out infinite;
+}
+
 /* Studio šifarnici: popup/modal s manje transparentnosti (lakše čitanje) */
 .studio-modal {
   background: rgba(0, 0, 0, 0.7) !important;

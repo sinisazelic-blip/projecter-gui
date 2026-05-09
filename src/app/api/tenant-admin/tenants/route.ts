@@ -2,14 +2,17 @@ import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
 import { query } from "@/lib/db";
+import {
+  normalizeStudioLicenceProfile,
+  STUDIO_STUB_NO_FLUXA_PLAN_NAZIV,
+} from "@/lib/studio-licence-profile";
 
 export const dynamic = "force-dynamic";
 
 function isMissingSoccsPlatformColumnsError(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e ?? "");
   return (
-    msg.includes("soccs_platform_role") ||
-    msg.includes("soccs_platform_scope")
+    msg.includes("soccs_platform_role") || msg.includes("soccs_platform_scope")
   );
 }
 
@@ -53,6 +56,11 @@ export async function GET() {
     const rows = await query<{
       tenant_id: number;
       tenant_public_id: string | null;
+      studio_licence_profile: string | null;
+      billing_email: string | null;
+      billing_phone: string | null;
+      last_licence_alert_at: string | null;
+      last_licence_alert_key: string | null;
       naziv: string;
       plan_id: number;
       plan_naziv: string;
@@ -75,6 +83,11 @@ export async function GET() {
       `SELECT
         t.tenant_id,
         t.tenant_public_id,
+        t.studio_licence_profile,
+        t.billing_email,
+        t.billing_phone,
+        DATE_FORMAT(t.last_licence_alert_at, '%Y-%m-%d %H:%i:%s') AS last_licence_alert_at,
+        t.last_licence_alert_key,
         t.naziv,
         t.plan_id,
         p.naziv AS plan_naziv,
@@ -119,6 +132,11 @@ export async function GET() {
       const rows = await query<{
         tenant_id: number;
         tenant_public_id: string | null;
+        studio_licence_profile: string | null;
+        billing_email: string | null;
+        billing_phone: string | null;
+        last_licence_alert_at: string | null;
+        last_licence_alert_key: string | null;
         naziv: string;
         plan_id: number;
         plan_naziv: string;
@@ -141,6 +159,11 @@ export async function GET() {
         `SELECT
           t.tenant_id,
           t.tenant_public_id,
+          t.studio_licence_profile,
+          t.billing_email,
+          t.billing_phone,
+          DATE_FORMAT(t.last_licence_alert_at, '%Y-%m-%d %H:%i:%s') AS last_licence_alert_at,
+          t.last_licence_alert_key,
           t.naziv,
           t.plan_id,
           p.naziv AS plan_naziv,
@@ -187,7 +210,7 @@ export async function GET() {
 
 const MAX_USER_OPTIONS = [1, 3, 5, 10, 50, 101] as const; // 101 = 100+
 
-/** Novi tenant (organizacija / kupac licence). Body: naziv, plan_id, max_users, subscription_starts_at, subscription_ends_at, monthly_price?, currency?. */
+/** Novi tenant. Body uključuje studio_licence_profile (čarobnjak): FLUXA_ONLY | SOCCS_SWIMVOICE | FLUXA_AND_SOCCS. */
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
   const auth = requireTenantAdmin(cookieStore);
@@ -204,6 +227,7 @@ export async function POST(req: NextRequest) {
     soccs_tier?: string | null;
     soccs_platform_role?: string | null;
     soccs_platform_scope?: string | null;
+    studio_licence_profile?: string | null;
   };
   try {
     body = await req.json();
@@ -222,8 +246,35 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const planId = Number(body?.plan_id);
-  if (!Number.isInteger(planId) || planId <= 0) {
+  const profile = normalizeStudioLicenceProfile(
+    String(body?.studio_licence_profile ?? ""),
+  );
+  if (!profile) {
+    return NextResponse.json(
+      { ok: false, error: "STUDIO_LICENCE_PROFILE_REQUIRED" },
+      { status: 400 },
+    );
+  }
+
+  let planId = Number(body?.plan_id);
+  if (profile === "SOCCS_SWIMVOICE") {
+    const stubRows = await query<{ plan_id: number }>(
+      `SELECT plan_id FROM plans WHERE naziv = ? LIMIT 1`,
+      [STUDIO_STUB_NO_FLUXA_PLAN_NAZIV],
+    );
+    const stubId = stubRows[0]?.plan_id;
+    if (!stubId) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "STUB_FLUXA_PLAN_MISSING",
+          hint: "Pokreni scripts/sql/alter-tenants-studio-licence-profile.sql na bazi.",
+        },
+        { status: 500 },
+      );
+    }
+    planId = stubId;
+  } else if (!Number.isInteger(planId) || planId <= 0) {
     return NextResponse.json(
       { ok: false, error: "PLAN_ID_REQUIRED" },
       { status: 400 },
@@ -279,17 +330,31 @@ export async function POST(req: NextRequest) {
     "ENTERPRISE",
     "SWIMVOICE",
   ];
-  const soccsTier = soccsTierRaw
-    ? allowedTier.includes(soccsTierRaw)
-      ? soccsTierRaw
-      : "BASIC"
-    : null;
+  let soccsTier: string | null = null;
+  if (profile === "FLUXA_ONLY") {
+    soccsTier = null;
+  } else if (profile === "SOCCS_SWIMVOICE") {
+    if (!soccsTierRaw || !allowedTier.includes(soccsTierRaw)) {
+      return NextResponse.json(
+        { ok: false, error: "SOCCS_TIER_REQUIRED" },
+        { status: 400 },
+      );
+    }
+    soccsTier = soccsTierRaw;
+  } else {
+    if (soccsTierRaw && allowedTier.includes(soccsTierRaw)) {
+      soccsTier = soccsTierRaw;
+    } else {
+      soccsTier = null;
+    }
+  }
+
   const platformRoleRaw =
     body?.soccs_platform_role != null
       ? String(body.soccs_platform_role).trim().toUpperCase()
       : "";
   const platformRoleAllowed = ["OWNER", "AMBASSADOR"];
-  const soccsPlatformRole = platformRoleRaw
+  let soccsPlatformRole = platformRoleRaw
     ? platformRoleAllowed.includes(platformRoleRaw)
       ? platformRoleRaw
       : null
@@ -298,12 +363,17 @@ export async function POST(req: NextRequest) {
     body?.soccs_platform_scope != null
       ? String(body.soccs_platform_scope).trim()
       : "";
-  const soccsPlatformScope = scopeRaw || null;
+  let soccsPlatformScope = scopeRaw || null;
+
+  if (profile === "FLUXA_ONLY") {
+    soccsPlatformRole = null;
+    soccsPlatformScope = null;
+  }
 
   try {
     const res = await query(
-      `INSERT INTO tenants (naziv, plan_id, max_users, subscription_starts_at, subscription_ends_at, status, licence_token, monthly_price, currency, tenant_public_id, soccs_tier, soccs_platform_role, soccs_platform_scope)
-       VALUES (?, ?, ?, ?, ?, 'AKTIVAN', ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tenants (naziv, plan_id, max_users, subscription_starts_at, subscription_ends_at, status, licence_token, monthly_price, currency, tenant_public_id, studio_licence_profile, soccs_tier, soccs_platform_role, soccs_platform_scope)
+       VALUES (?, ?, ?, ?, ?, 'AKTIVAN', ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         naziv,
         planId,
@@ -314,6 +384,7 @@ export async function POST(req: NextRequest) {
         monthlyPrice ?? null,
         currency,
         tenantPublicId,
+        profile,
         soccsTier,
         soccsPlatformRole,
         soccsPlatformScope,

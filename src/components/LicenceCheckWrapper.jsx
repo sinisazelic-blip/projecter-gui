@@ -3,8 +3,11 @@
  * poziva master API za stanje licence. Ako allowed: false → prikazuje block stranicu.
  * Na MASTER instanci ove env varijable nisu postavljene, pa se provjera preskače.
  * Poruka: obratite se administratoru Fluxe (brand Fluxa, bez imena operatera).
+ *
+ * Kada je allowed: true, odgovor se prosljeđuje u `LicenceClientAlerts` (koverta + popup + kontekst).
  */
 import { cookies } from "next/headers";
+import LicenceClientAlerts from "@/components/LicenceClientAlerts";
 import { getFluxaActivationState } from "@/lib/fluxa-activation";
 import { getValidLocale } from "@/lib/i18n";
 import { getT } from "@/lib/translations";
@@ -24,6 +27,7 @@ export default async function LicenceCheckWrapper({ children }) {
 
   let allowed = true;
   let reason = null;
+  let alertsPayload = null;
 
   try {
     const res = await fetch(url, {
@@ -36,9 +40,34 @@ export default async function LicenceCheckWrapper({ children }) {
     if (data && data.allowed === false) {
       allowed = false;
       reason = data.reason || "suspended";
+    } else if (res.ok && data && typeof data === "object") {
+      const raw = Array.isArray(data.warnings) ? data.warnings : [];
+      const warnings = raw
+        .map((x) => ({
+          code: String(x?.code ?? "").trim(),
+          severity: String(x?.severity ?? "warning").trim(),
+        }))
+        .filter((x) => x.code);
+      const days = Number(data.days_until_end);
+      const meets = Number(data.meet_remaining);
+      alertsPayload = {
+        warnings,
+        days_until_end: Number.isFinite(days) ? days : 0,
+        meet_remaining: Number.isFinite(meets) ? meets : 0,
+        subscription_ends_at:
+          typeof data.subscription_ends_at === "string"
+            ? data.subscription_ends_at
+            : null,
+        naziv: typeof data.naziv === "string" ? data.naziv : null,
+        tenant_id:
+          data.tenant_id != null && Number.isFinite(Number(data.tenant_id))
+            ? Number(data.tenant_id)
+            : null,
+      };
     }
   } catch {
     allowed = true;
+    alertsPayload = null;
   }
 
   if (!allowed) {
@@ -77,5 +106,9 @@ export default async function LicenceCheckWrapper({ children }) {
     );
   }
 
-  return children;
+  return (
+    <LicenceClientAlerts initial={alertsPayload}>
+      {children}
+    </LicenceClientAlerts>
+  );
 }

@@ -2099,6 +2099,25 @@
     "contact": "Contact the Fluxa administrator to renew or activate your licence.",
     "contactError": "If you believe this is an error, contact the Fluxa administrator."
   },
+  "licenceAlerts": {
+    "bellTitle": "Licence notices — click for details",
+    "modalTitle": "Licence status",
+    "modalIntro": "Warning thresholds are active. Renew your subscription or adjust SOCCS meet quota before expiry.",
+    "metaSubscription": "Subscription end date",
+    "metaDays": "Days remaining",
+    "metaMeet": "MEET codes remaining (SOCCS)",
+    "metaTenant": "Organisation",
+    "close": "OK",
+    "codes": {
+      "SUB_LE30": "Subscription: 30 days or less until expiry.",
+      "SUB_LE14": "Subscription: 14 days or less until expiry.",
+      "SUB_LE7": "Subscription: 7 days or less until expiry.",
+      "SUB_LE1": "Subscription: at most 1 day until expiry.",
+      "SUB_D0": "Subscription: last valid day (today).",
+      "MEET_0": "SOCCS: no remaining MEET_SESSION codes.",
+      "MEET_1": "SOCCS: only one MEET_SESSION code left."
+    }
+  },
   "subscriptionExpired": {
     "title": "Subscription expired",
     "message": "Access is temporarily disabled. Renew your subscription to continue using Fluxa.",
@@ -2123,9 +2142,18 @@
     "changePlan": "Change plan",
     "extendTitle": "Extend subscription",
     "newEndDate": "New end date",
-    "changePlanTitle": "Change plan",
     "plan": "Plan",
     "newTenant": "New tenant",
+    "contactTableHint":
+      "Double-click a table row (not on buttons) to edit licence alert contacts.",
+    "contactRowDblclickTitle": "Double-click — alert contacts",
+    "contactModalTitle": "Alert contacts",
+    "contactModalHint":
+      "Used by the licence alert cron (email / SMS later). Empty field clears the value in the database.",
+    "contactEmailLabel": "Email",
+    "contactPhoneLabel": "Phone (SMS, later)",
+    "contactLastSent": "Last alert sent",
+    "contactLastKey": "State signature",
     "newTenantTitle": "Add new license customer (tenant)",
     "labelNaziv": "Organisation name",
     "placeholderNaziv": "e.g. Company Ltd",
@@ -2161,9 +2189,39 @@
     "colStatusLamp": "State",
     "colAkcijeDetail": "Actions",
     "lampTitleGreen": "Active — SOCCS activated or not required",
+    "lampTitleGreenFluxaOnly": "Active — Fluxa only (SOCCS not part of this tenant)",
     "lampTitleYellow": "Pending — waiting for first SOCCS activation",
     "lampTitleRed": "Suspended or subscription ended (status)",
-    "lampTitleExpired": "Subscription date passed"
+    "lampTitleExpired": "Subscription date passed",
+    "colLicenceProfile": "Profile",
+    "fluxaSkippedForProfile": "— (not Fluxa)",
+    "wizardTitleStep1": "New tenant — what are we creating?",
+    "wizardTitleStep2": "New tenant — subscription",
+    "wizardTitleStep3FluxaOnly": "New tenant — Fluxa",
+    "wizardTitleStep3FluxaAndSoccs": "New tenant — Fluxa & SOCCS",
+    "wizardTitleStep3SoccsOnly": "New tenant — SOCCS / SwimVoice",
+    "wizardStep1of3": "Step 1 of 3",
+    "wizardStep2of3": "Step 2 of 3",
+    "wizardStep3of3": "Step 3 of 3",
+    "wizardProfileTitle": {
+      "FLUXA_ONLY": "Fluxa only",
+      "SOCCS_SWIMVOICE": "SOCCS / SwimVoice only",
+      "FLUXA_AND_SOCCS": "Fluxa + SOCCS/SwimVoice"
+    },
+    "wizardNext": "Next",
+    "wizardBack": "Back",
+    "wizardProfileRequired": "Select a profile in step 1 of the wizard.",
+    "wizardSoccsTierRequired": "For “SOCCS only”, select a SOCCS package.",
+    "profileShort": {
+      "FLUXA_ONLY": "Fluxa",
+      "SOCCS_SWIMVOICE": "SOCCS",
+      "FLUXA_AND_SOCCS": "Fluxa+SOCCS"
+    },
+    "profileHint": {
+      "FLUXA_ONLY": "Tenant is defined as Fluxa-only.",
+      "SOCCS_SWIMVOICE": "Tenant is defined as SOCCS/SwimVoice-only.",
+      "FLUXA_AND_SOCCS": "Tenant includes both Fluxa and SOCCS/SwimVoice."
+    }
   },
   "studioKlijenti": {
     "title": "Clients",
