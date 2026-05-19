@@ -214,8 +214,7 @@ export async function POST(req) {
 
     await conn.commit();
 
-    // Relativni redirect — req.url na hostu često je localhost:8080 (interni bind), ne javni URL.
-    return NextResponse.redirect("/studio/firma?saved=1", 303);
+    return NextResponse.json({ ok: true, firma_id: firmaId });
   } catch (e) {
     try {
       await conn.rollback();

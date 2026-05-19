@@ -8,6 +8,7 @@ import LogoUpload from "./LogoUpload";
 import FiskalModal from "./FiskalModal";
 import BrojacFakturaCard from "./BrojacFakturaCard";
 import FirmaHeader from "./FirmaHeader";
+import FirmaSaveForm from "./FirmaSaveForm";
 
 export const dynamic = "force-dynamic";
 
@@ -34,13 +35,10 @@ function isMissingShowOnInvoiceColumn(err) {
   return msg.includes("Unknown column") && msg.includes("show_on_invoice");
 }
 
-export default async function Page({ searchParams }) {
+export default async function Page() {
   const cookieStore = await cookies();
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) ?? "sr";
   const t = getT(locale);
-
-  const sp = await Promise.resolve(searchParams);
-  const saved = String(sp?.saved ?? "") === "1";
 
   const firmaRows = await query(
     `
@@ -240,11 +238,17 @@ export default async function Page({ searchParams }) {
 
         <div className="bodyWrap">
           <div className="card">
-            {saved ? <div className="ok">✅ {t("firma.savedOk")}</div> : null}
-
             <div className="sectionTitle">{t("firma.sectionBasic")}</div>
 
-            <form action="/api/firma/save" method="POST">
+            <FirmaSaveForm
+              saveLabel={t("firma.save")}
+              savingLabel={t("firma.saving")}
+              cancelLabel={t("firma.cancel")}
+              cancelHref="/dashboard"
+              savedTitle={t("firma.savedTitle")}
+              savedMessage={t("firma.savedOk")}
+              errorGeneric={t("firma.saveError")}
+            >
               <div className="twoCol" style={row2}>
                 <div>
                   <div style={labelStyle}>{t("firma.labelNaziv")}</div>
@@ -516,18 +520,8 @@ export default async function Page({ searchParams }) {
                   </div>
                 );
               })}
-
-              <div className="btnRow">
-                <button type="submit" className="btn">
-                  {t("firma.save")}
-                </button>
-                <Link href="/dashboard" className="btn">
-                  {t("firma.cancel")}
-                </Link>
-              </div>
-
               <div className="hint">{t("firma.saveHint")}</div>
-            </form>
+            </FirmaSaveForm>
 
             <div className="settingsModule">
               <h3 className="settingsModuleTitle">

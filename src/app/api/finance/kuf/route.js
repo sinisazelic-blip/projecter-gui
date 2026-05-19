@@ -23,6 +23,57 @@ const TIP_RASKNJIZAVANJA = [
 ];
 const VANREDNI_PODTIP = ["SERVIS", "REPRO_MATERIJAL", "POTROSNI_MATERIJAL"];
 
+/** Dinamički INSERT/UPDATE — izbjegava pogrešan broj ? kad kolone postoje selektivno u bazi. */
+function buildKufRowEntries(data, { hasDatumPrijema, hasPdvCol }) {
+  const entries = [
+    ["broj_fakture", data.broj_fakture],
+    ["datum_fakture", data.datum_fakture],
+    ["datum_dospijeca", data.datum_dospijeca],
+  ];
+  if (hasDatumPrijema) {
+    entries.push(["datum_prijema", data.datum_prijema]);
+  }
+  entries.push(
+    ["dobavljac_id", data.dobavljac_id],
+    ["klijent_id", data.klijent_id],
+    ["partner_naziv", data.partner_naziv],
+    ["iznos", data.iznos],
+    ["valuta", data.valuta],
+    ["iznos_km", data.iznos_km],
+  );
+  if (hasPdvCol) {
+    entries.push(["pdv_iznos_km", data.pdv_iznos_km]);
+  }
+  entries.push(
+    ["kurs", data.kurs],
+    ["opis", data.opis],
+    ["napomena", data.napomena],
+    ["tip_rasknjizavanja", data.tip_rasknjizavanja],
+    ["projekat_id", data.projekat_id],
+    ["fiksni_trosak_id", data.fiksni_trosak_id],
+    ["vanredni_podtip", data.vanredni_podtip],
+    ["investicija_opis", data.investicija_opis],
+  );
+  return entries;
+}
+
+function buildKufInsertSql(entries) {
+  const cols = entries.map(([c]) => c).join(", ");
+  const placeholders = entries.map(() => "?").join(", ");
+  return {
+    sql: `INSERT INTO kuf_ulazne_fakture (${cols}) VALUES (${placeholders})`,
+    values: entries.map(([, v]) => v),
+  };
+}
+
+function buildKufUpdateSql(entries, kufId) {
+  const setClause = entries.map(([c]) => `${c} = ?`).join(", ");
+  return {
+    sql: `UPDATE kuf_ulazne_fakture SET ${setClause} WHERE kuf_id = ?`,
+    values: [...entries.map(([, v]) => v), kufId],
+  };
+}
+
 export async function GET(req) {
   try {
     const url = new URL(req.url);
@@ -195,71 +246,32 @@ export async function POST(req) {
         : null;
     const hasDatumPrijema = await hasKufColumn("datum_prijema");
     const prijemDate = datum_prijema ? String(datum_prijema).slice(0, 10) : null;
-    let res;
-    if (hasPdvCol) {
-      res = await query(
-        `
-      INSERT INTO kuf_ulazne_fakture
-        (broj_fakture, datum_fakture, datum_dospijeca, ${hasDatumPrijema ? "datum_prijema," : ""}
-         dobavljac_id, klijent_id,
-         partner_naziv, iznos, valuta, iznos_km, pdv_iznos_km, kurs, opis, napomena,
-         tip_rasknjizavanja, projekat_id, fiksni_trosak_id, vanredni_podtip, investicija_opis)
-      VALUES (?, ?, ?, ${hasDatumPrijema ? "?," : ""} ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-        [
-          broj_fakture || null,
-          String(datum_fakture).slice(0, 10),
-          datum_dospijeca ? String(datum_dospijeca).slice(0, 10) : null,
-          ...(hasDatumPrijema ? [prijemDate] : []),
-          dobId,
-          klId,
-          partner_naziv || null,
-          iznosNum,
-          val,
-          iznosKm,
-          pdvKm,
-          kurs != null ? Number(kurs) : null,
-          opis || null,
-          napomena || null,
-          tip_rasknjizavanja,
-          projId,
-          fiksId,
-          vanredni,
-          investicija_opis || null,
-        ],
-      );
-    } else {
-      res = await query(
-        `
-      INSERT INTO kuf_ulazne_fakture
-        (broj_fakture, datum_fakture, datum_dospijeca, ${hasDatumPrijema ? "datum_prijema," : ""}
-         dobavljac_id, klijent_id,
-         partner_naziv, iznos, valuta, iznos_km, kurs, opis, napomena,
-         tip_rasknjizavanja, projekat_id, fiksni_trosak_id, vanredni_podtip, investicija_opis)
-      VALUES (?, ?, ?, ${hasDatumPrijema ? "?," : ""} ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-        [
-          broj_fakture || null,
-          String(datum_fakture).slice(0, 10),
-          datum_dospijeca ? String(datum_dospijeca).slice(0, 10) : null,
-          ...(hasDatumPrijema ? [prijemDate] : []),
-          dobId,
-          klId,
-          partner_naziv || null,
-          iznosNum,
-          val,
-          iznosKm,
-          kurs != null ? Number(kurs) : null,
-          opis || null,
-          napomena || null,
-          tip_rasknjizavanja,
-          projId,
-          fiksId,
-          vanredni,
-          investicija_opis || null,
-        ],
-      );
-    }
+    const kufOpts = { hasDatumPrijema, hasPdvCol };
+    const rowData = {
+      broj_fakture: broj_fakture || null,
+      datum_fakture: String(datum_fakture).slice(0, 10),
+      datum_dospijeca: datum_dospijeca ? String(datum_dospijeca).slice(0, 10) : null,
+      datum_prijema: prijemDate,
+      dobavljac_id: dobId,
+      klijent_id: klId,
+      partner_naziv: partner_naziv || null,
+      iznos: iznosNum,
+      valuta: val,
+      iznos_km: iznosKm,
+      pdv_iznos_km: pdvKm,
+      kurs: kurs != null ? Number(kurs) : null,
+      opis: opis || null,
+      napomena: napomena || null,
+      tip_rasknjizavanja,
+      projekat_id: projId,
+      fiksni_trosak_id: fiksId,
+      vanredni_podtip: vanredni,
+      investicija_opis: investicija_opis || null,
+    };
+    const { sql, values } = buildKufInsertSql(
+      buildKufRowEntries(rowData, kufOpts),
+    );
+    const res = await query(sql, values);
 
     const id = res?.insertId ?? null;
     return NextResponse.json({ ok: true, kuf_id: id });
@@ -380,104 +392,33 @@ export async function PUT(req) {
         : null;
     const hasDatumPrijema = await hasKufColumn("datum_prijema");
     const prijemDate = datum_prijema ? String(datum_prijema).slice(0, 10) : null;
-
-    if (hasPdvCol) {
-      await query(
-        `
-      UPDATE kuf_ulazne_fakture
-      SET
-        broj_fakture = ?,
-        datum_fakture = ?,
-        datum_dospijeca = ?,
-        ${hasDatumPrijema ? "datum_prijema = ?," : ""}
-        dobavljac_id = ?,
-        klijent_id = ?,
-        partner_naziv = ?,
-        iznos = ?,
-        valuta = ?,
-        iznos_km = ?,
-        pdv_iznos_km = ?,
-        kurs = ?,
-        opis = ?,
-        napomena = ?,
-        tip_rasknjizavanja = ?,
-        projekat_id = ?,
-        fiksni_trosak_id = ?,
-        vanredni_podtip = ?,
-        investicija_opis = ?
-      WHERE kuf_id = ?
-      `,
-        [
-          broj_fakture || null,
-          String(datum_fakture).slice(0, 10),
-          datum_dospijeca ? String(datum_dospijeca).slice(0, 10) : null,
-          ...(hasDatumPrijema ? [prijemDate] : []),
-          dobId,
-          klId,
-          partner_naziv || null,
-          iznosNum,
-          val,
-          iznosKm,
-          pdvKm,
-          kurs != null ? Number(kurs) : null,
-          opis || null,
-          napomena || null,
-          tip_rasknjizavanja,
-          projId,
-          fiksId,
-          vanredni,
-          investicija_opis || null,
-          kufIdNum,
-        ],
-      );
-    } else {
-      await query(
-        `
-      UPDATE kuf_ulazne_fakture
-      SET
-        broj_fakture = ?,
-        datum_fakture = ?,
-        datum_dospijeca = ?,
-        ${hasDatumPrijema ? "datum_prijema = ?," : ""}
-        dobavljac_id = ?,
-        klijent_id = ?,
-        partner_naziv = ?,
-        iznos = ?,
-        valuta = ?,
-        iznos_km = ?,
-        kurs = ?,
-        opis = ?,
-        napomena = ?,
-        tip_rasknjizavanja = ?,
-        projekat_id = ?,
-        fiksni_trosak_id = ?,
-        vanredni_podtip = ?,
-        investicija_opis = ?
-      WHERE kuf_id = ?
-      `,
-        [
-          broj_fakture || null,
-          String(datum_fakture).slice(0, 10),
-          datum_dospijeca ? String(datum_dospijeca).slice(0, 10) : null,
-          ...(hasDatumPrijema ? [prijemDate] : []),
-          dobId,
-          klId,
-          partner_naziv || null,
-          iznosNum,
-          val,
-          iznosKm,
-          kurs != null ? Number(kurs) : null,
-          opis || null,
-          napomena || null,
-          tip_rasknjizavanja,
-          projId,
-          fiksId,
-          vanredni,
-          investicija_opis || null,
-          kufIdNum,
-        ],
-      );
-    }
+    const kufOpts = { hasDatumPrijema, hasPdvCol };
+    const rowData = {
+      broj_fakture: broj_fakture || null,
+      datum_fakture: String(datum_fakture).slice(0, 10),
+      datum_dospijeca: datum_dospijeca ? String(datum_dospijeca).slice(0, 10) : null,
+      datum_prijema: prijemDate,
+      dobavljac_id: dobId,
+      klijent_id: klId,
+      partner_naziv: partner_naziv || null,
+      iznos: iznosNum,
+      valuta: val,
+      iznos_km: iznosKm,
+      pdv_iznos_km: pdvKm,
+      kurs: kurs != null ? Number(kurs) : null,
+      opis: opis || null,
+      napomena: napomena || null,
+      tip_rasknjizavanja,
+      projekat_id: projId,
+      fiksni_trosak_id: fiksId,
+      vanredni_podtip: vanredni,
+      investicija_opis: investicija_opis || null,
+    };
+    const { sql, values } = buildKufUpdateSql(
+      buildKufRowEntries(rowData, kufOpts),
+      kufIdNum,
+    );
+    await query(sql, values);
 
     return NextResponse.json({ ok: true, kuf_id: kufIdNum });
   } catch (e) {
