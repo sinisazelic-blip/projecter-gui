@@ -236,7 +236,7 @@ export async function POST(req) {
          dobavljac_id, klijent_id,
          partner_naziv, iznos, valuta, iznos_km, kurs, opis, napomena,
          tip_rasknjizavanja, projekat_id, fiksni_trosak_id, vanredni_podtip, investicija_opis)
-      VALUES (?, ?, ?, ${hasDatumPrijema ? "?," : ""} ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ${hasDatumPrijema ? "?," : ""} ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
         [
           broj_fakture || null,
