@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import {
+  SQL_BILL_TO_KRAJNJI_KLIJENT_ID,
+  SQL_BILL_TO_NARUCILAC_ID,
+  SQL_DEAL_JOIN,
+} from "@/lib/fakture/deal-bill-to";
 
 function parseISODateOnly(v: string | null): string | null {
   if (!v) return null;
@@ -25,7 +30,7 @@ export async function GET(req: Request) {
     where.push("(COALESCE(p.pro_bono, 0) = 0)");
 
     if (narucilac_id && Number(narucilac_id) > 0) {
-      where.push("p.narucilac_id = ?");
+      where.push(`${SQL_BILL_TO_NARUCILAC_ID} = ?`);
       params.push(Number(narucilac_id));
     }
 
@@ -43,10 +48,11 @@ export async function GET(req: Request) {
       SELECT
         p.projekat_id,
         p.radni_naziv,
-        p.narucilac_id,
+        i.inicijacija_id AS deal_id,
+        ${SQL_BILL_TO_NARUCILAC_ID} AS narucilac_id,
         kn.naziv_klijenta AS narucilac_naziv,
         kn.drzava AS narucilac_drzava,
-        p.krajnji_klijent_id,
+        ${SQL_BILL_TO_KRAJNJI_KLIJENT_ID} AS krajnji_klijent_id,
         kk.naziv_klijenta AS klijent_naziv,
         a.closed_at,
         vf.budzet_planirani,
@@ -56,14 +62,15 @@ export async function GET(req: Request) {
           ELSE ROUND(vf.budzet_planirani * 1.17, 2)
         END AS sa_pdv_km
       FROM projekti p
+      ${SQL_DEAL_JOIN}
       LEFT JOIN (
         SELECT projekat_id, MIN(created_at) AS closed_at
         FROM project_audit
         WHERE action = 'PROJECT_CLOSE'
         GROUP BY projekat_id
       ) a ON a.projekat_id = p.projekat_id
-      LEFT JOIN klijenti kn ON kn.klijent_id = p.narucilac_id
-      LEFT JOIN klijenti kk ON kk.klijent_id = p.krajnji_klijent_id
+      LEFT JOIN klijenti kn ON kn.klijent_id = ${SQL_BILL_TO_NARUCILAC_ID}
+      LEFT JOIN klijenti kk ON kk.klijent_id = ${SQL_BILL_TO_KRAJNJI_KLIJENT_ID}
       LEFT JOIN vw_projekti_finansije vf ON vf.projekat_id = p.projekat_id
       WHERE ${where.join(" AND ")}
       ORDER BY a.closed_at DESC, p.projekat_id DESC
@@ -77,9 +84,12 @@ export async function GET(req: Request) {
           k.klijent_id,
           k.naziv_klijenta,
           k.drzava
-        FROM klijenti k
-        JOIN projekti p ON p.narucilac_id = k.klijent_id
+        FROM projekti p
+        ${SQL_DEAL_JOIN}
+        JOIN klijenti k ON k.klijent_id = ${SQL_BILL_TO_NARUCILAC_ID}
         WHERE p.status_id = 8
+          AND (COALESCE(p.pro_bono, 0) = 0)
+          AND ${SQL_BILL_TO_NARUCILAC_ID} IS NOT NULL
         ORDER BY k.naziv_klijenta ASC
       `,
     );

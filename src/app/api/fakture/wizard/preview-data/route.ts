@@ -1,6 +1,11 @@
 // src/app/api/fakture/wizard/preview-data/route.ts
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import {
+  SQL_BILL_TO_KRAJNJI_KLIJENT_ID,
+  SQL_BILL_TO_NARUCILAC_ID,
+  SQL_DEAL_JOIN,
+} from "@/lib/fakture/deal-bill-to";
 
 function parseIds(idsRaw: string | null): number[] {
   if (!idsRaw) return [];
@@ -37,16 +42,18 @@ export async function GET(req: Request) {
       SELECT
         p.projekat_id,
         p.radni_naziv,
-        p.narucilac_id,
+        i.inicijacija_id AS deal_id,
+        ${SQL_BILL_TO_NARUCILAC_ID} AS narucilac_id,
         kn.naziv_klijenta AS narucilac_naziv,
         kn.drzava        AS narucilac_drzava,
-        p.krajnji_klijent_id,
+        ${SQL_BILL_TO_KRAJNJI_KLIJENT_ID} AS krajnji_klijent_id,
         kk.naziv_klijenta AS klijent_naziv,
         pf.budzet_planirani AS budzet_planirani,
         a.closed_at AS closed_at
       FROM projekti p
-      LEFT JOIN klijenti kn ON kn.klijent_id = p.narucilac_id
-      LEFT JOIN klijenti kk ON kk.klijent_id = p.krajnji_klijent_id
+      ${SQL_DEAL_JOIN}
+      LEFT JOIN klijenti kn ON kn.klijent_id = ${SQL_BILL_TO_NARUCILAC_ID}
+      LEFT JOIN klijenti kk ON kk.klijent_id = ${SQL_BILL_TO_KRAJNJI_KLIJENT_ID}
       LEFT JOIN vw_projekti_finansije pf ON pf.projekat_id = p.projekat_id
       LEFT JOIN (
         SELECT projekat_id, MIN(created_at) AS closed_at

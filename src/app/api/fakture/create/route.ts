@@ -1,6 +1,10 @@
 // src/app/api/fakture/create/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { query, pool } from "@/lib/db";
+import {
+  SQL_BILL_TO_NARUCILAC_ID,
+  SQL_DEAL_JOIN,
+} from "@/lib/fakture/deal-bill-to";
 
 export const dynamic = "force-dynamic";
 
@@ -64,13 +68,15 @@ export async function POST(req: NextRequest) {
       `
       SELECT 
         p.projekat_id,
-        p.narucilac_id,
+        i.inicijacija_id AS deal_id,
+        ${SQL_BILL_TO_NARUCILAC_ID} AS narucilac_id,
         p.status_id,
         COALESCE(p.pro_bono, 0) AS pro_bono,
         k.rok_placanja_dana,
         vf.budzet_planirani
       FROM projekti p
-      LEFT JOIN klijenti k ON k.klijent_id = p.narucilac_id
+      ${SQL_DEAL_JOIN}
+      LEFT JOIN klijenti k ON k.klijent_id = ${SQL_BILL_TO_NARUCILAC_ID}
       LEFT JOIN vw_projekti_finansije vf ON vf.projekat_id = p.projekat_id
       WHERE p.projekat_id IN (${projekatIds.map(() => "?").join(",")})
       FOR UPDATE
@@ -124,7 +130,27 @@ export async function POST(req: NextRequest) {
     if (narucioci.length !== 1) {
       await conn.rollback();
       return NextResponse.json(
-        { ok: false, error: "Svi projekti moraju imati istog naručioca" },
+        {
+          ok: false,
+          error:
+            "Svi projekti moraju imati istog naručioca na Deal-u (inicijaciji).",
+        },
+        { status: 400 },
+      );
+    }
+
+    const missingDeal = projektiRows.filter(
+      (p: any) => !p.deal_id && !p.narucilac_id,
+    );
+    if (missingDeal.length > 0) {
+      await conn.rollback();
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Neki projekti nemaju Deal niti naručioca — nije moguće fakturisati.",
+          projekti: missingDeal.map((p: any) => p.projekat_id),
+        },
         { status: 400 },
       );
     }
