@@ -31,9 +31,14 @@ export default async function FinanceToolsPage() {
                   </div>
                 </div>
 
-                <Link href="/finance" className="btn" title={t("finance.title")}>
-                  ← {t("finance.title")}
-                </Link>
+                <div className="actions">
+                  <Link href="/finance" className="btn" title={t("finance.title")}>
+                    {t("finance.title")}
+                  </Link>
+                  <Link href="/dashboard" className="btn" title={t("common.dashboard")}>
+                    <img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> {t("common.dashboard")}
+                  </Link>
+                </div>
               </div>
 
               <div className="divider" />

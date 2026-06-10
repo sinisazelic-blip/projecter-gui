@@ -243,6 +243,7 @@ export default function DashboardBody() {
             <div className="groupSubtitle">
               {t("dashboard.finansijeSubtitle")}
             </div>
+            <div className="finansijeOperativaRows">
             <div className="finansijeRow finansijeRow--2 finansijeRow--spaced">
               <PermissionGate module="Fakture" inPage="">
                 <FluxaFeature id={11}>
@@ -287,6 +288,26 @@ export default function DashboardBody() {
                 <FinanceMorePopup />
               </FluxaFeature>
             </div>
+            <div className="finansijeRow finansijeRow--3">
+              <ActionBtn
+                label={t("dashboard.pdv")}
+                href="/finance/pdv"
+                title={t("dashboard.pdvTitle")}
+              />
+              <FluxaFeature id={75}>
+                <ActionBtn
+                  label={t("dashboard.tools")}
+                  href="/studio/finance-tools"
+                  title={t("dashboard.financeTools")}
+                />
+              </FluxaFeature>
+              <ActionBtn
+                label={t("dashboard.naplata")}
+                href="/naplate"
+                title={t("dashboard.naplataTitle")}
+              />
+            </div>
+            </div>
           </CollapsibleSection>
 
           <CollapsibleSection
@@ -295,6 +316,7 @@ export default function DashboardBody() {
             pill=""
             open={open.profitAnalysis}
             onToggle={toggle}
+            className="finansijeAnalysisGroup"
             data-onboarding="profit"
           >
             <div className="finansijeSidebar" style={{ marginTop: 0 }}>

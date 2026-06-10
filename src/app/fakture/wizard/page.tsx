@@ -84,6 +84,11 @@ export default function InvoiceWizard() {
   // Fiskalizacija: ručni PFR ili automatski (Fiskalizuj). Podrazumijevano ručno dok automatski ne radi.
   const [lastPfrNumber, setLastPfrNumber] = useState<string>("");
   const [useAutoFiscal, setUseAutoFiscal] = useState<boolean>(false);
+  const [nextNumbers, setNextNumbers] = useState<{
+    next_broj_fakture: string;
+    next_pfr: number;
+  } | null>(null);
+  const [nextNumbersLoading, setNextNumbersLoading] = useState(false);
 
   // Popust prije PDV-a (KM) — prikaz samo kad postoji
   const [popustKm, setPopustKm] = useState<string>("");
@@ -220,6 +225,50 @@ export default function InvoiceWizard() {
       alive = false;
     };
   }, [ids]);
+
+  // Sljedeći broj fakture / PFR (ista logika kao pri Kreiraj račun)
+  useEffect(() => {
+    let alive = true;
+
+    async function loadNextNumbers() {
+      const iso = ddmmyyyyToISO(invoiceDateDD);
+      if (!iso) {
+        if (alive) setNextNumbers(null);
+        return;
+      }
+
+      setNextNumbersLoading(true);
+      try {
+        const qs = new URLSearchParams();
+        qs.set("date", iso);
+        const pfrTrim = String(lastPfrNumber || "").trim();
+        if (pfrTrim !== "") qs.set("pfr_last", pfrTrim);
+
+        const res = await fetch(`/api/fakture/wizard/next-numbers?${qs.toString()}`, {
+          cache: "no-store",
+        });
+        const j = await res.json();
+        if (!res.ok || !j?.ok) {
+          throw new Error(j?.error || "next-numbers");
+        }
+        if (alive) {
+          setNextNumbers({
+            next_broj_fakture: String(j.next_broj_fakture),
+            next_pfr: Number(j.next_pfr),
+          });
+        }
+      } catch {
+        if (alive) setNextNumbers(null);
+      } finally {
+        if (alive) setNextNumbersLoading(false);
+      }
+    }
+
+    loadNextNumbers();
+    return () => {
+      alive = false;
+    };
+  }, [invoiceDateDD, lastPfrNumber]);
 
   function goPreview() {
     if (ids.length === 0) return;
@@ -502,6 +551,64 @@ export default function InvoiceWizard() {
               {!isEu && (
                 <div style={{ marginTop: 10, opacity: 0.8, fontSize: 12 }}>
                   {t("wizard.lastPfrHint")}
+                </div>
+              )}
+
+              {(nextNumbersLoading || nextNumbers) && (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    border: "1px solid rgba(59, 130, 246, 0.35)",
+                    background: "rgba(59, 130, 246, 0.08)",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 24,
+                    alignItems: "flex-end",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 11, opacity: 0.78, marginBottom: 4 }}>
+                      {t("wizard.nextBrojFaktureLabel")}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 20,
+                        fontWeight: 800,
+                        fontFamily: "ui-monospace, monospace",
+                        letterSpacing: "0.02em",
+                      }}
+                    >
+                      {nextNumbersLoading ? "…" : nextNumbers?.next_broj_fakture ?? "—"}
+                    </div>
+                  </div>
+                  {!isEu && (
+                    <div>
+                      <div style={{ fontSize: 11, opacity: 0.78, marginBottom: 4 }}>
+                        {t("wizard.nextPfrLabel")}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 20,
+                          fontWeight: 800,
+                          fontFamily: "ui-monospace, monospace",
+                          letterSpacing: "0.02em",
+                        }}
+                      >
+                        {nextNumbersLoading
+                          ? "…"
+                          : nextNumbers?.next_pfr != null && Number.isFinite(nextNumbers.next_pfr)
+                            ? nextNumbers.next_pfr
+                            : "—"}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {(nextNumbersLoading || nextNumbers) && (
+                <div style={{ marginTop: 8, opacity: 0.72, fontSize: 12 }}>
+                  {t("wizard.nextNumbersHint")}
                 </div>
               )}
 

@@ -104,6 +104,7 @@ function overlayStyle(): React.CSSProperties {
 function modalStyle(maxWidth = 920): React.CSSProperties {
   return {
     width: "min(100%, " + maxWidth + "px)",
+    maxHeight: "min(90vh, 900px)",
     border: "1px solid var(--border)",
     borderRadius: "16px",
     background:
@@ -111,6 +112,8 @@ function modalStyle(maxWidth = 920): React.CSSProperties {
     boxShadow: "var(--shadow)",
     overflow: "hidden",
     fontSize: 16,
+    display: "flex",
+    flexDirection: "column",
   };
 }
 
@@ -201,6 +204,7 @@ export default function RadniciClient({
   }, [items, selectedId]);
 
   const [radnikProjekti, setRadnikProjekti] = useState<ProjekatLink[]>([]);
+  const [projectsListOpen, setProjectsListOpen] = useState(false);
   useEffect(() => {
     if (!modalOpen || !form.radnik_id) {
       setRadnikProjekti([]);
@@ -218,6 +222,10 @@ export default function RadniciClient({
       cancelled = true;
     };
   }, [modalOpen, form.radnik_id]);
+
+  useEffect(() => {
+    setProjectsListOpen(false);
+  }, [form.radnik_id]);
 
   const selectedIsActive = selectedItem
     ? Number(selectedItem.aktivan) === 1
@@ -309,6 +317,7 @@ export default function RadniciClient({
   function closeAllModals() {
     setModalOpen(false);
     setConfirmOpen(false);
+    setProjectsListOpen(false);
   }
 
   function onClosePage() {
@@ -719,7 +728,7 @@ export default function RadniciClient({
               onSubmit={(e) => onSave(e)}
               style={{ display: "contents" }}
             >
-            <div style={{ padding: 20 }}>
+            <div style={{ padding: 20, overflow: "auto", flex: 1, minHeight: 0 }}>
               <div
                 className="grid"
                 style={{
@@ -994,61 +1003,35 @@ export default function RadniciClient({
                   >
                     {t("studioRadnici.projectsEngaged")}
                   </div>
-                  <div style={{ marginTop: 10 }}>
+                  <div
+                    style={{
+                      marginTop: 10,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      flexWrap: "wrap",
+                    }}
+                  >
                     {radnikProjekti.length === 0 ? (
                       <span style={{ color: "var(--muted)", fontSize: 14 }}>
                         {t("studioRadnici.noProjectsAssigned")}
                       </span>
                     ) : (
-                      <ul
-                        style={{
-                          margin: 0,
-                          paddingLeft: 18,
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 6,
-                        }}
-                      >
-                        {radnikProjekti.map((pr) => (
-                          <li key={pr.projekat_id} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                            <Link
-                              href={`/projects/${pr.projekat_id}`}
-                              style={{
-                                color: "var(--accent)",
-                                fontWeight: 600,
-                                textDecoration: "none",
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {pr.radni_naziv}
-                            </Link>
-                            <span
-                              style={{
-                                color: "var(--muted)",
-                                fontSize: 12,
-                              }}
-                            >
-                              #{pr.projekat_id}
-                            </span>
-                            {pr.tip && (
-                              <span
-                                style={{
-                                  fontSize: 10,
-                                  padding: "2px 6px",
-                                  borderRadius: 6,
-                                  background: pr.tip === "account_manager" ? "rgba(59, 130, 246, 0.2)" : pr.tip === "crew" ? "rgba(34, 197, 94, 0.2)" : "rgba(255,255,255,0.08)",
-                                  color: pr.tip === "account_manager" ? "rgb(96, 165, 250)" : pr.tip === "crew" ? "rgb(74, 222, 128)" : "var(--muted)",
-                                  fontWeight: 600,
-                                  textTransform: "uppercase",
-                                  letterSpacing: "0.04em",
-                                }}
-                              >
-                                {pr.tip === "account_manager" ? t("studioRadnici.tipAccountManager") : pr.tip === "crew" ? t("studioRadnici.tipCrew") : t("studioRadnici.tipFaze")}
-                              </span>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
+                      <>
+                        <span style={{ color: "var(--muted)", fontSize: 14 }}>
+                          {(t("studioRadnici.projectsEngagedCount") || "").replace(
+                            "{{count}}",
+                            String(radnikProjekti.length),
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={() => setProjectsListOpen(true)}
+                        >
+                          {t("studioRadnici.showProjectsList")}
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -1115,6 +1098,152 @@ export default function RadniciClient({
               </button>
             </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Projekti radnika — poseban prozor sa scrollom */}
+      {projectsListOpen && form.radnik_id ? (
+        <div
+          style={{ ...overlayStyle(), zIndex: 10000 }}
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setProjectsListOpen(false);
+          }}
+        >
+          <div
+            style={{
+              ...modalStyle(720),
+              maxHeight: "min(85vh, 820px)",
+            }}
+          >
+            <div
+              style={{
+                padding: 16,
+                borderBottom: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+                flexShrink: 0,
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>
+                  {(t("studioRadnici.projectsListTitle") || "").replace(
+                    "{{name}}",
+                    `${form.ime} ${form.prezime}`.trim(),
+                  )}
+                </div>
+                <div style={{ marginTop: 4, color: "var(--muted)", fontSize: 14 }}>
+                  {(t("studioRadnici.projectsEngagedCount") || "").replace(
+                    "{{count}}",
+                    String(radnikProjekti.length),
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setProjectsListOpen(false)}
+              >
+                ✖
+              </button>
+            </div>
+
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflow: "auto",
+                padding: "12px 16px",
+              }}
+            >
+              <ul
+                style={{
+                  margin: 0,
+                  paddingLeft: 18,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                {radnikProjekti.map((pr) => (
+                  <li
+                    key={`${pr.projekat_id}-${pr.tip ?? "x"}`}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <Link
+                      href={`/projects/${pr.projekat_id}`}
+                      style={{
+                        color: "var(--accent)",
+                        fontWeight: 600,
+                        textDecoration: "none",
+                      }}
+                      onClick={() => setProjectsListOpen(false)}
+                    >
+                      {pr.radni_naziv}
+                    </Link>
+                    <span style={{ color: "var(--muted)", fontSize: 12 }}>
+                      #{pr.projekat_id}
+                    </span>
+                    {pr.tip ? (
+                      <span
+                        style={{
+                          fontSize: 10,
+                          padding: "2px 6px",
+                          borderRadius: 6,
+                          background:
+                            pr.tip === "account_manager"
+                              ? "rgba(59, 130, 246, 0.2)"
+                              : pr.tip === "crew"
+                                ? "rgba(34, 197, 94, 0.2)"
+                                : "rgba(255,255,255,0.08)",
+                          color:
+                            pr.tip === "account_manager"
+                              ? "rgb(96, 165, 250)"
+                              : pr.tip === "crew"
+                                ? "rgb(74, 222, 128)"
+                                : "var(--muted)",
+                          fontWeight: 600,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                        }}
+                      >
+                        {pr.tip === "account_manager"
+                          ? t("studioRadnici.tipAccountManager")
+                          : pr.tip === "crew"
+                            ? t("studioRadnici.tipCrew")
+                            : t("studioRadnici.tipFaze")}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div
+              style={{
+                padding: 16,
+                borderTop: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "flex-end",
+                flexShrink: 0,
+              }}
+            >
+              <button
+                type="button"
+                className="btn btn--active"
+                onClick={() => setProjectsListOpen(false)}
+              >
+                {t("studioRadnici.closeProjectsList")}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

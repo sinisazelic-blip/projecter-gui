@@ -67,6 +67,46 @@ export default async function Page() {
         .finansijeGroup {
           display: flex;
           flex-direction: column;
+          height: 100%;
+        }
+
+        .finansijeAnalysisGroup {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+        }
+
+        .finansijeAnalysisGroup .finansijeSidebar {
+          flex: 1;
+        }
+
+        .finansijeOperativaRows {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: clamp(14px, 1.8vh, 22px);
+          min-height: 0;
+        }
+
+        .finansijeOperativaRows .finansijeRow {
+          flex: 1;
+          margin-bottom: 0;
+          align-items: stretch;
+        }
+
+        .finansijeOperativaRows .finansijeRow > div {
+          display: flex;
+          min-height: 0;
+        }
+
+        .finansijeOperativaRows .finansijeRow .btn {
+          height: 100%;
+          min-height: 52px;
+        }
+
+        .finansijeOperativaRows .finansijeRow > div .btn {
+          flex: 1;
+          width: 100%;
         }
 
         /* Svi dugmići na Dashboardu – blago veći font naziva */
