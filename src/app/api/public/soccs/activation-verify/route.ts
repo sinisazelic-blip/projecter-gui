@@ -250,10 +250,22 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Podržane aplikacije: SOCCS (default), Pool Manager i DOCentre (isti mehanizam aktivacije).
   const app = String(body?.app ?? "")
     .trim()
     .toLowerCase();
-  if (app && app !== "soccs") {
+  const SUPPORTED_APPS = ["", "soccs", "pool_manager", "docentre"];
+  if (!SUPPORTED_APPS.includes(app)) {
+    return NextResponse.json(
+      { ok: false, reason: "unsupported_app", retryable: false },
+      { status: 400 },
+    );
+  }
+  const appNormalized = (app === "" ? "soccs" : app).toUpperCase() as
+    | "SOCCS"
+    | "POOL_MANAGER"
+    | "DOCENTRE";
+  if (purposeRaw === "MEET_SESSION" && appNormalized !== "SOCCS") {
     return NextResponse.json(
       { ok: false, reason: "unsupported_app", retryable: false },
       { status: 400 },
@@ -262,7 +274,7 @@ export async function POST(req: NextRequest) {
 
   try {
     if (purposeRaw === "FIRST_INSTALL") {
-      return await handleFirstInstall(code, installationPublicId);
+      return await handleFirstInstall(code, installationPublicId, appNormalized);
     }
     if (!meetCode) {
       return NextResponse.json(
@@ -501,7 +513,11 @@ async function handleConsumeMeetSlot(
   );
 }
 
-async function handleFirstInstall(code: string, installationPublicId: string) {
+async function handleFirstInstall(
+  code: string,
+  installationPublicId: string,
+  app: "SOCCS" | "POOL_MANAGER" | "DOCENTRE" = "SOCCS",
+) {
   type AcRow = {
     id: number;
     tenant_id: number;
@@ -510,19 +526,51 @@ async function handleFirstInstall(code: string, installationPublicId: string) {
     consumed_installation_id: string | null;
     uses_count: number;
     max_uses: number;
+    app?: string | null;
   };
 
-  const acRows = await query<AcRow>(
-    `SELECT id, tenant_id, status,
-            DATE_FORMAT(valid_until, '%Y-%m-%d %H:%i:%s') AS valid_until,
-            consumed_installation_id, uses_count, max_uses
-     FROM soccs_activation_codes
-     WHERE code = ? AND purpose = 'FIRST_INSTALL'
-     LIMIT 1`,
-    [code],
-  );
+  // Kolona app postoji tek nakon migracije — stariji master-i imaju samo SOCCS kodove.
+  let acRows: AcRow[] = [];
+  try {
+    acRows = await query<AcRow>(
+      `SELECT id, tenant_id, status,
+              DATE_FORMAT(valid_until, '%Y-%m-%d %H:%i:%s') AS valid_until,
+              consumed_installation_id, uses_count, max_uses, app
+       FROM soccs_activation_codes
+       WHERE code = ? AND purpose = 'FIRST_INSTALL'
+       LIMIT 1`,
+      [code],
+    );
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!msg.includes("Unknown column")) throw e;
+    if (app !== "SOCCS") {
+      return NextResponse.json(
+        { ok: false, reason: "unsupported_app", retryable: false },
+        { status: 200 },
+      );
+    }
+    acRows = await query<AcRow>(
+      `SELECT id, tenant_id, status,
+              DATE_FORMAT(valid_until, '%Y-%m-%d %H:%i:%s') AS valid_until,
+              consumed_installation_id, uses_count, max_uses
+       FROM soccs_activation_codes
+       WHERE code = ? AND purpose = 'FIRST_INSTALL'
+       LIMIT 1`,
+      [code],
+    );
+  }
   const ac = acRows?.[0];
   if (!ac) {
+    return NextResponse.json(
+      { ok: false, reason: "invalid_code", retryable: false },
+      { status: 200 },
+    );
+  }
+
+  // Kod mora pripadati aplikaciji koja ga koristi (SOCCS kod ne važi za Pool Manager itd.)
+  const codeApp = String(ac.app ?? "SOCCS").trim().toUpperCase() || "SOCCS";
+  if (codeApp !== app) {
     return NextResponse.json(
       { ok: false, reason: "invalid_code", retryable: false },
       { status: 200 },

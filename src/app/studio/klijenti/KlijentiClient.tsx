@@ -23,6 +23,7 @@ type FormState = {
   rok_placanja_dana: string;
   napomena: string;
   aktivan: boolean;
+  is_narucilac: boolean;
   is_ino: boolean;
   pdv_oslobodjen: boolean;
   pdv_oslobodjen_napomena: string;
@@ -43,6 +44,7 @@ const emptyForm = (): FormState => ({
   rok_placanja_dana: "0",
   napomena: "",
   aktivan: true,
+  is_narucilac: false,
   is_ino: false,
   pdv_oslobodjen: false,
   pdv_oslobodjen_napomena: "",
@@ -240,6 +242,7 @@ export default function KlijentiClient({
       rok_placanja_dana: String(it.rok_placanja_dana ?? 0),
       napomena: it.napomena ?? "",
       aktivan: Number(it.aktivan) === 1,
+      is_narucilac: Number(it.is_narucilac ?? 0) === 1,
       is_ino: Number(it.is_ino) === 1,
       pdv_oslobodjen: Number(it.pdv_oslobodjen ?? 0) === 1,
       pdv_oslobodjen_napomena: it.pdv_oslobodjen_napomena ?? "",
@@ -362,6 +365,7 @@ export default function KlijentiClient({
       rok_placanja_dana: form.rok_placanja_dana,
       napomena: form.napomena || null,
       aktivan: !!form.aktivan,
+      is_narucilac: !!form.is_narucilac,
       is_ino: !!form.is_ino,
       pdv_oslobodjen: !!form.pdv_oslobodjen,
       pdv_oslobodjen_napomena: form.pdv_oslobodjen_napomena || null,
@@ -1083,6 +1087,29 @@ export default function KlijentiClient({
                     }}
                   >
                     {t("studioKlijenti.labelAktivno")}
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <input
+                    type="checkbox"
+                    checked={form.is_narucilac}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, is_narucilac: e.target.checked }))
+                    }
+                    style={{ width: 16, height: 16 }}
+                  />
+                  <span
+                    style={{
+                      color: "var(--text)",
+                      fontSize: 14,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {t("studioKlijenti.labelNarucilac")}
+                  </span>
+                  <span style={{ color: "var(--muted)", fontSize: 13 }}>
+                    — {t("studioKlijenti.labelNarucilacHint")}
                   </span>
                 </div>
 

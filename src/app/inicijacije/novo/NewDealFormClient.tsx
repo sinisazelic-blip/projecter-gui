@@ -4,7 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/components/LocaleProvider";
 
-type Klijent = { klijent_id: number; naziv_klijenta: string; is_ino?: number };
+type Klijent = {
+  klijent_id: number;
+  naziv_klijenta: string;
+  is_ino?: number;
+  is_narucilac?: number;
+};
 
 const inputBaseStyle: React.CSSProperties = {
   width: "100%",
@@ -63,11 +68,20 @@ export default function NewDealFormClient({
       const res = await fetch("/api/klijenti", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ naziv_klijenta: naziv }),
+        body: JSON.stringify({
+          naziv_klijenta: naziv,
+          // Klijent kreiran iz polja "naručilac" odmah postaje naručilac.
+          is_narucilac: modalFor === "narucilac" ? 1 : 0,
+        }),
       });
       const j = await res.json();
       if (!j.ok) throw new Error(j.error || t("common.error"));
-      const newK: Klijent = { klijent_id: j.klijent_id, naziv_klijenta: j.naziv_klijenta, is_ino: 0 };
+      const newK: Klijent = {
+        klijent_id: j.klijent_id,
+        naziv_klijenta: j.naziv_klijenta,
+        is_ino: 0,
+        is_narucilac: modalFor === "narucilac" ? 1 : 0,
+      };
       setKlijenti((prev) => [...prev, newK].sort((a, b) => a.naziv_klijenta.localeCompare(b.naziv_klijenta)));
       if (modalFor === "narucilac") setNarucilac_id(String(j.klijent_id));
       else setKrajnji_klijent_id(String(j.klijent_id));
@@ -119,7 +133,9 @@ export default function NewDealFormClient({
             <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
               <select value={narucilac_id} onChange={(e) => setNarucilac_id(e.target.value)} required style={{ ...inputBaseStyle, flex: 1 }}>
                 <option value="" disabled>— {t("newDealForm.select")} —</option>
-                {klijenti.map((k) => <option key={k.klijent_id} value={k.klijent_id}>{k.naziv_klijenta}</option>)}
+                {klijenti
+                  .filter((k) => Number(k.is_narucilac ?? 0) === 1)
+                  .map((k) => <option key={k.klijent_id} value={k.klijent_id}>{k.naziv_klijenta}</option>)}
               </select>
               <button type="button" className="btn btn--active" onClick={() => openNoviModal("narucilac")} title={t("newDealForm.addClient")} style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>+ {t("newDealForm.new")}</button>
             </div>

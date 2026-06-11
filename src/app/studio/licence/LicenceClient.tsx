@@ -3,10 +3,14 @@
 import { type CSSProperties, useEffect, useState } from "react";
 import { useTranslation } from "@/components/LocaleProvider";
 import {
+  profileToActivationApp,
+  profileToTabs,
   resolveDisplayStudioProfile,
   STUDIO_STUB_NO_FLUXA_PLAN_NAZIV,
   studioWizardStep3ShowsFluxaBlock,
+  TENANT_PRODUCT_TABS,
   type StudioLicenceProfile,
+  type TenantProductTab,
 } from "@/lib/studio-licence-profile";
 
 const USER_LIMIT_OPTIONS = [1, 3, 5, 10, 50, 101] as const; // 101 = 100+
@@ -24,6 +28,7 @@ const SOCCS_PLATFORM_ROLE_OPTIONS = ["OWNER", "AMBASSADOR"] as const;
 type TenantRow = {
   tenant_id: number;
   tenant_public_id?: string | null;
+  klijent_id?: number | null;
   studio_licence_profile?: string | null;
   billing_email?: string | null;
   billing_phone?: string | null;
@@ -52,10 +57,19 @@ type TenantRow = {
 
 type PlanRow = { plan_id: number; naziv: string; max_users: number };
 
+type KlijentOption = {
+  klijent_id: number;
+  naziv_klijenta: string;
+  aktivan?: number;
+  is_narucilac?: number;
+};
+
 export default function LicenceClient() {
   const { t } = useTranslation();
   const [tenants, setTenants] = useState<TenantRow[]>([]);
   const [plans, setPlans] = useState<PlanRow[]>([]);
+  const [klijenti, setKlijenti] = useState<KlijentOption[]>([]);
+  const [activeTab, setActiveTab] = useState<TenantProductTab>("FLUXA");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [extendId, setExtendId] = useState<number | null>(null);
@@ -72,6 +86,7 @@ export default function LicenceClient() {
   const [wizardProfile, setWizardProfile] =
     useState<StudioLicenceProfile | null>(null);
   const [newTenantNaziv, setNewTenantNaziv] = useState("");
+  const [newTenantKlijentId, setNewTenantKlijentId] = useState<number | "">("");
   const [newTenantPlanId, setNewTenantPlanId] = useState<number>(1);
   const [newTenantMaxUsers, setNewTenantMaxUsers] = useState<number>(5);
   const [newTenantStart, setNewTenantStart] = useState("");
@@ -90,6 +105,9 @@ export default function LicenceClient() {
   );
   const [contactEmailDraft, setContactEmailDraft] = useState("");
   const [contactPhoneDraft, setContactPhoneDraft] = useState("");
+  const [contactKlijentDraft, setContactKlijentDraft] = useState<number | "">(
+    "",
+  );
   const [contactSaving, setContactSaving] = useState(false);
 
   const [soccsModal, setSoccsModal] = useState<TenantRow | null>(null);
@@ -117,13 +135,27 @@ export default function LicenceClient() {
     setLoading(true);
     setError(null);
     try {
-      const [tr, pr] = await Promise.all([
+      const [tr, pr, kr] = await Promise.all([
         fetch("/api/tenant-admin/tenants").then((r) => r.json()),
         fetch("/api/tenant-admin/plans").then((r) => r.json()),
+        fetch("/api/klijenti")
+          .then((r) => r.json())
+          .catch(() => ({ ok: false })),
       ]);
       if (tr.ok) setTenants(tr.tenants ?? []);
       else setError(tr.error ?? t("common.errorLoad"));
       if (pr.ok) setPlans(pr.plans ?? []);
+      if (kr.ok) {
+        // Tenant se naplaćuje kroz fakturisanje — nude se samo aktivni naručioci.
+        const rows = (kr.rows ?? []) as KlijentOption[];
+        setKlijenti(
+          rows.filter(
+            (k) =>
+              Number(k.is_narucilac ?? 0) === 1 &&
+              Number(k.aktivan ?? 1) === 1,
+          ),
+        );
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -142,6 +174,7 @@ export default function LicenceClient() {
     setWizardStep(1);
     setWizardProfile(null);
     setNewTenantNaziv("");
+    setNewTenantKlijentId("");
     setNewTenantPlanId(firstNonStubPlanId());
     setNewTenantMaxUsers(5);
     setNewTenantStart("");
@@ -153,6 +186,9 @@ export default function LicenceClient() {
 
   const openNewTenantWizard = () => {
     resetTenantWizard();
+    // Pool Manager / DOCentre tab: profil je jednoznačan, preskačemo izbor.
+    if (activeTab === "POOL_MANAGER") setWizardProfile("POOL_MANAGER");
+    if (activeTab === "DOCENTRE") setWizardProfile("DOCENTRE");
     setNewTenantOpen(true);
   };
 
@@ -227,21 +263,28 @@ export default function LicenceClient() {
     setContactModalRow(row);
     setContactEmailDraft(String(row.billing_email ?? "").trim());
     setContactPhoneDraft(String(row.billing_phone ?? "").trim());
+    setContactKlijentDraft(row.klijent_id ?? "");
   };
 
   const handleSaveContactModal = async () => {
     if (!contactModalRow) return;
     setContactSaving(true);
     try {
+      const payload: Record<string, unknown> = {
+        billing_email: contactEmailDraft.trim() || null,
+        billing_phone: contactPhoneDraft.trim() || null,
+      };
+      // Šalji klijent_id samo ako je promijenjen (postavlja i naziv tenanta iz šifarnika)
+      if (contactKlijentDraft !== (contactModalRow.klijent_id ?? "")) {
+        payload.klijent_id =
+          contactKlijentDraft === "" ? null : contactKlijentDraft;
+      }
       const res = await fetch(
         `/api/tenant-admin/tenants/${contactModalRow.tenant_id}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            billing_email: contactEmailDraft.trim() || null,
-            billing_phone: contactPhoneDraft.trim() || null,
-          }),
+          body: JSON.stringify(payload),
         },
       );
       const data = await res.json();
@@ -311,7 +354,7 @@ export default function LicenceClient() {
       setError(t("studioLicence.wizardProfileRequired"));
       return;
     }
-    if (!newTenantNaziv.trim() || !newTenantStart || !newTenantEnd) return;
+    if (!newTenantKlijentId || !newTenantStart || !newTenantEnd) return;
     if (
       wizardProfile === "SOCCS_SWIMVOICE" &&
       !String(newTenantSoccsTier).trim()
@@ -325,6 +368,7 @@ export default function LicenceClient() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          klijent_id: newTenantKlijentId,
           naziv: newTenantNaziv.trim(),
           plan_id: newTenantPlanId,
           max_users: newTenantMaxUsers,
@@ -480,6 +524,9 @@ export default function LicenceClient() {
       const body: Record<string, unknown> = {
         tenant_id: soccsModal.tenant_id,
         purpose,
+        app:
+          profileToActivationApp(resolveDisplayStudioProfile(soccsModal)) ??
+          "SOCCS",
         valid_days: 365 * 5,
         count: requestedCount,
       };
@@ -532,6 +579,17 @@ export default function LicenceClient() {
     return `${Number(row.monthly_price)} ${curr}`;
   };
 
+  /** Tab u kojem se red prikazuje — svaki proizvod ima svoj sloj. */
+  const rowVisibleInTab = (row: TenantRow, tab: TenantProductTab) =>
+    profileToTabs(resolveDisplayStudioProfile(row)).includes(tab);
+
+  const visibleTenants = tenants.filter((row) =>
+    rowVisibleInTab(row, activeTab),
+  );
+
+  const tabCount = (tab: TenantProductTab) =>
+    tenants.filter((row) => rowVisibleInTab(row, tab)).length;
+
   /** Zeleno: aktivan i (nema čekanja SOCCS aktivacije). Žuto: čeka prvu SOCCS aktivaciju. Crveno: suspend / isteklo. */
   const tenantStatusLamp = (row: TenantRow) => {
     const st = String(row.status).toUpperCase();
@@ -552,10 +610,15 @@ export default function LicenceClient() {
       .trim()
       .toUpperCase();
     const needsSoccsNode =
-      profile !== "FLUXA_ONLY" &&
-      soccs !== "" &&
-      soccs !== "SWIMVOICE" &&
-      SOCCS_TIER_OPTIONS.includes(soccs as (typeof SOCCS_TIER_OPTIONS)[number]);
+      (profile !== "FLUXA_ONLY" &&
+        soccs !== "" &&
+        soccs !== "SWIMVOICE" &&
+        SOCCS_TIER_OPTIONS.includes(
+          soccs as (typeof SOCCS_TIER_OPTIONS)[number],
+        )) ||
+      // Pool Manager / DOCentre čekaju potrošen FIRST_INSTALL kod (kao SOCCS).
+      profile === "POOL_MANAGER" ||
+      profile === "DOCENTRE";
     const consumed = Number(row.soccs_first_install_consumed ?? 0) === 1;
     if (st === "AKTIVAN" && needsSoccsNode && !consumed) {
       return {
@@ -637,6 +700,52 @@ export default function LicenceClient() {
 
   return (
     <>
+      {/* Tabovi proizvoda — svaki proizvod ima svoj tenant sloj */}
+      <div
+        style={{
+          display: "flex",
+          gap: 6,
+          marginBottom: 14,
+          flexWrap: "wrap",
+          borderBottom: "1px solid var(--border)",
+          paddingBottom: 0,
+        }}
+      >
+        {TENANT_PRODUCT_TABS.map((tab) => {
+          const active = activeTab === tab;
+          return (
+            <button
+              key={tab}
+              type="button"
+              className="btn"
+              onClick={() => setActiveTab(tab)}
+              style={{
+                borderRadius: "10px 10px 0 0",
+                borderBottom: active
+                  ? "2px solid rgba(96, 165, 250, 0.9)"
+                  : "2px solid transparent",
+                background: active
+                  ? "rgba(59, 130, 246, 0.14)"
+                  : "transparent",
+                fontWeight: active ? 700 : 500,
+                padding: "8px 16px",
+              }}
+            >
+              {t(`studioLicence.productTab.${tab}`)}
+              <span
+                style={{
+                  marginLeft: 8,
+                  fontSize: 11,
+                  opacity: 0.7,
+                  fontWeight: 500,
+                }}
+              >
+                ({tabCount(tab)})
+              </span>
+            </button>
+          );
+        })}
+      </div>
       <div
         style={{
           marginBottom: 16,
@@ -701,7 +810,9 @@ export default function LicenceClient() {
                   color: "rgba(248, 113, 113, 0.95)",
                 }}
               >
-                {t("studioLicence.groupSoccsSv")}
+                {activeTab === "POOL_MANAGER" || activeTab === "DOCENTRE"
+                  ? t("studioLicence.groupActivation")
+                  : t("studioLicence.groupSoccsSv")}
               </th>
               <th
                 rowSpan={2}
@@ -730,14 +841,14 @@ export default function LicenceClient() {
             </tr>
           </thead>
           <tbody>
-            {tenants.length === 0 ? (
+            {visibleTenants.length === 0 ? (
               <tr>
                 <td colSpan={12} style={thTd}>
                   {t("studioLicence.noTenants")}
                 </td>
               </tr>
             ) : (
-              tenants.map((row) => {
+              visibleTenants.map((row) => {
                 const lamp = tenantStatusLamp(row);
                 const dp = resolveDisplayStudioProfile(row);
                 return (
@@ -769,7 +880,11 @@ export default function LicenceClient() {
                               ? "rgba(59,130,246,0.18)"
                               : dp === "SOCCS_SWIMVOICE"
                                 ? "rgba(239,68,68,0.18)"
-                                : "rgba(168,85,247,0.2)",
+                                : dp === "POOL_MANAGER"
+                                  ? "rgba(20,184,166,0.2)"
+                                  : dp === "DOCENTRE"
+                                    ? "rgba(245,158,11,0.2)"
+                                    : "rgba(168,85,247,0.2)",
                           color: "var(--foreground)",
                         }}
                       >
@@ -786,7 +901,9 @@ export default function LicenceClient() {
                           : t("studioLicence.expired")}
                     </td>
                     <td style={thTd}>
-                      {dp === "FLUXA_ONLY"
+                      {dp === "FLUXA_ONLY" ||
+                      dp === "POOL_MANAGER" ||
+                      dp === "DOCENTRE"
                         ? "—"
                         : Number.isFinite(Number(row.meet_remaining ?? NaN))
                           ? Number(row.meet_remaining)
@@ -809,7 +926,9 @@ export default function LicenceClient() {
                       />
                     </td>
                     <td style={tdFlux}>
-                      {dp === "SOCCS_SWIMVOICE" ? (
+                      {dp === "SOCCS_SWIMVOICE" ||
+                      dp === "POOL_MANAGER" ||
+                      dp === "DOCENTRE" ? (
                         <span style={{ opacity: 0.5 }}>
                           {t("studioLicence.fluxaSkippedForProfile")}
                         </span>
@@ -818,7 +937,9 @@ export default function LicenceClient() {
                       )}
                     </td>
                     <td style={tdFluxCont}>
-                      {dp === "SOCCS_SWIMVOICE" ? (
+                      {dp === "SOCCS_SWIMVOICE" ||
+                      dp === "POOL_MANAGER" ||
+                      dp === "DOCENTRE" ? (
                         <span style={{ opacity: 0.5 }}>—</span>
                       ) : (
                         formatMaxUsers(row.max_users)
@@ -929,9 +1050,15 @@ export default function LicenceClient() {
                             background: "rgba(239, 68, 68, 0.12)",
                           }}
                           onClick={() => openSoccsModal(row)}
-                          title={t("studioLicence.soccsModalTitle")}
+                          title={
+                            dp === "POOL_MANAGER" || dp === "DOCENTRE"
+                              ? t("studioLicence.activationButton")
+                              : t("studioLicence.soccsModalTitle")
+                          }
                         >
-                          {t("studioLicence.soccsButton")}
+                          {dp === "POOL_MANAGER" || dp === "DOCENTRE"
+                            ? t("studioLicence.activationButton")
+                            : t("studioLicence.soccsButton")}
                         </button>
                       </div>
                     </td>
@@ -1054,6 +1181,40 @@ export default function LicenceClient() {
                   maxWidth: 280,
                 }}
               />
+              <label
+                htmlFor="studio-licence-contact-klijent"
+                style={{ display: "block", marginBottom: 4 }}
+              >
+                {t("studioLicence.labelKlijent")}
+              </label>
+              <p style={{ fontSize: 11, opacity: 0.7, margin: "0 0 6px" }}>
+                {t("studioLicence.klijentPickerHint")}
+              </p>
+              <select
+                id="studio-licence-contact-klijent"
+                value={
+                  contactKlijentDraft === "" ? "" : String(contactKlijentDraft)
+                }
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setContactKlijentDraft(v === "" ? "" : Number(v));
+                }}
+                style={{
+                  padding: 8,
+                  marginBottom: 12,
+                  width: "100%",
+                  maxWidth: 360,
+                }}
+              >
+                <option value="">
+                  — {t("studioLicence.klijentPickerEmpty")} —
+                </option>
+                {klijenti.map((k) => (
+                  <option key={k.klijent_id} value={k.klijent_id}>
+                    {k.naziv_klijenta}
+                  </option>
+                ))}
+              </select>
               {(() => {
                 const meta: string[] = [];
                 if (contactModalRow.last_licence_alert_at) {
@@ -1261,7 +1422,10 @@ export default function LicenceClient() {
                       ? t("studioLicence.wizardTitleStep3SoccsOnly")
                       : wizardProfile === "FLUXA_AND_SOCCS"
                         ? t("studioLicence.wizardTitleStep3FluxaAndSoccs")
-                        : t("studioLicence.wizardTitleStep3FluxaOnly")}
+                        : wizardProfile === "POOL_MANAGER" ||
+                            wizardProfile === "DOCENTRE"
+                          ? t("studioLicence.wizardTitleStep3Activation")
+                          : t("studioLicence.wizardTitleStep3FluxaOnly")}
               </h3>
               <p style={{ fontSize: 12, opacity: 0.85, marginTop: -6 }}>
                 {wizardStep === 1
@@ -1286,6 +1450,8 @@ export default function LicenceClient() {
                         "FLUXA_ONLY",
                         "SOCCS_SWIMVOICE",
                         "FLUXA_AND_SOCCS",
+                        "POOL_MANAGER",
+                        "DOCENTRE",
                       ] as const
                     ).map((p) => (
                       <button
@@ -1346,20 +1512,36 @@ export default function LicenceClient() {
               {wizardStep === 2 && (
                 <>
                   <label style={{ display: "block", marginBottom: 4 }}>
-                    {t("studioLicence.labelNaziv")}
+                    {t("studioLicence.labelKlijent")}
                   </label>
-                  <input
-                    type="text"
-                    value={newTenantNaziv}
-                    onChange={(e) => setNewTenantNaziv(e.target.value)}
-                    placeholder={t("studioLicence.placeholderNaziv")}
+                  <p style={{ fontSize: 12, opacity: 0.85, margin: "0 0 6px" }}>
+                    {t("studioLicence.klijentPickerHint")}
+                  </p>
+                  <select
+                    value={newTenantKlijentId === "" ? "" : String(newTenantKlijentId)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      const id = v === "" ? "" : Number(v);
+                      setNewTenantKlijentId(id);
+                      const k = klijenti.find(
+                        (x) => x.klijent_id === Number(v),
+                      );
+                      setNewTenantNaziv(k?.naziv_klijenta ?? "");
+                    }}
                     style={{
                       padding: 8,
                       marginBottom: 12,
                       width: "100%",
                       maxWidth: 360,
                     }}
-                  />
+                  >
+                    <option value="">— {t("studioLicence.klijentPickerEmpty")} —</option>
+                    {klijenti.map((k) => (
+                      <option key={k.klijent_id} value={k.klijent_id}>
+                        {k.naziv_klijenta}
+                      </option>
+                    ))}
+                  </select>
                   <label style={{ display: "block", marginBottom: 4 }}>
                     {t("studioLicence.labelStart")}
                   </label>
@@ -1433,7 +1615,7 @@ export default function LicenceClient() {
                       type="button"
                       className="btn"
                       disabled={
-                        !newTenantNaziv.trim() ||
+                        !newTenantKlijentId ||
                         !newTenantStart ||
                         !newTenantEnd
                       }
@@ -1507,7 +1689,8 @@ export default function LicenceClient() {
                       </select>
                     </>
                   )}
-                  {wizardProfile !== "FLUXA_ONLY" && (
+                  {(wizardProfile === "SOCCS_SWIMVOICE" ||
+                    wizardProfile === "FLUXA_AND_SOCCS") && (
                     <>
                       <label style={{ display: "block", marginBottom: 4 }}>
                         {t("studioLicence.soccsNewTenantTier")}
@@ -1531,6 +1714,19 @@ export default function LicenceClient() {
                       </select>
                     </>
                   )}
+                  {(wizardProfile === "POOL_MANAGER" ||
+                    wizardProfile === "DOCENTRE") && (
+                    <p
+                      style={{
+                        fontSize: 13,
+                        opacity: 0.9,
+                        lineHeight: 1.5,
+                        margin: "4px 0 12px",
+                      }}
+                    >
+                      {t("studioLicence.wizardActivationHint")}
+                    </p>
+                  )}
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button
                       type="button"
@@ -1544,7 +1740,7 @@ export default function LicenceClient() {
                       className="btn"
                       disabled={
                         newTenantSaving ||
-                        !newTenantNaziv.trim() ||
+                        !newTenantKlijentId ||
                         !newTenantStart ||
                         !newTenantEnd ||
                         (wizardProfile === "SOCCS_SWIMVOICE" &&
@@ -1573,8 +1769,12 @@ export default function LicenceClient() {
         </div>
       )}
 
-      {/* Modal SOCCS / aktivacija */}
-      {soccsModal && (
+      {/* Modal SOCCS / aktivacija (Pool Manager i DOCentre: samo public ID + FIRST_INSTALL kod) */}
+      {soccsModal && (() => {
+        const modalProfile = resolveDisplayStudioProfile(soccsModal);
+        const isActivationOnly =
+          modalProfile === "POOL_MANAGER" || modalProfile === "DOCENTRE";
+        return (
         <div
           className="studio-modal"
           style={overlayStyle()}
@@ -1583,14 +1783,19 @@ export default function LicenceClient() {
           <div style={modalStyle(560)} onClick={(e) => e.stopPropagation()}>
             <div style={{ padding: 24, maxHeight: "90vh", overflow: "auto" }}>
               <h3 style={{ marginTop: 0 }}>
-                {t("studioLicence.soccsModalTitle")}
+                {isActivationOnly
+                  ? t("studioLicence.activationModalTitle")
+                  : t("studioLicence.soccsModalTitle")}
               </h3>
               <p style={{ fontSize: 13, opacity: 0.9, marginBottom: 8 }}>
                 {soccsModal.naziv}
+                {isActivationOnly
+                  ? ` · ${t(`studioLicence.profileShort.${modalProfile}`)}`
+                  : ""}
               </p>
               <div style={popupSectionStyle}>
                 <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: 13 }}>
-                  1) Paket i pristup
+                  {isActivationOnly ? "1) Pristup" : "1) Paket i pristup"}
                 </p>
                 <label style={{ display: "block", marginBottom: 4 }}>
                   {t("studioLicence.soccsPublicId")}
@@ -1608,6 +1813,8 @@ export default function LicenceClient() {
                 >
                   {soccsModal.tenant_public_id || "—"}
                 </code>
+                {!isActivationOnly && (
+                <>
                 <div style={popupGrid2Style}>
                   <div>
                     <label style={{ display: "block", marginBottom: 4 }}>
@@ -1691,8 +1898,11 @@ export default function LicenceClient() {
                     ? t("common.loading")
                     : t("studioLicence.soccsSaveTier")}
                 </button>
+                </>
+                )}
               </div>
 
+              {!isActivationOnly && (
               <div style={popupSectionStyle}>
                 <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: 13 }}>
                   2) Meet kvota
@@ -1723,10 +1933,13 @@ export default function LicenceClient() {
                   {t("studioLicence.soccsMeetRemainingSetHint")}
                 </p>
               </div>
+              )}
 
               <div style={popupSectionStyle}>
                 <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: 13 }}>
-                  3) Generisanje kodova
+                  {isActivationOnly
+                    ? "2) Generisanje kodova"
+                    : "3) Generisanje kodova"}
                 </p>
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: "block", marginBottom: 8 }}>
@@ -1743,6 +1956,8 @@ export default function LicenceClient() {
                       : t("studioLicence.soccsGenerateFirst")}
                   </button>
                 </div>
+                {!isActivationOnly && (
+                <>
                 <label style={{ display: "block", marginBottom: 4 }}>
                   {t("studioLicence.soccsGenerateMeet")}
                 </label>
@@ -1818,6 +2033,8 @@ export default function LicenceClient() {
                     ? t("common.loading")
                     : t("studioLicence.soccsGenerateMeet")}
                 </button>
+                </>
+                )}
               </div>
               {(soccsGenFirstInstallCode || soccsGenCode) && (
                 <div style={{ marginTop: 8 }}>
@@ -1964,7 +2181,8 @@ export default function LicenceClient() {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Modal Promijeni plan */}
       {planModalTenantId != null && planId !== null && (

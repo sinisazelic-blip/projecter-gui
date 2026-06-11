@@ -60,6 +60,7 @@ export async function PATCH(
     studio_licence_profile?: string | null;
     billing_email?: string | null;
     billing_phone?: string | null;
+    klijent_id?: number | null;
   };
   try {
     body = await req.json();
@@ -225,6 +226,36 @@ export async function PATCH(
       }
       updates.push("studio_licence_profile = ?");
       paramsList.push(p);
+    }
+  }
+
+  // Veza tenant ↔ klijent: postavlja i naziv tenanta iz šifarnika klijenata.
+  if (body.klijent_id !== undefined) {
+    if (body.klijent_id === null) {
+      updates.push("klijent_id = NULL");
+    } else {
+      const kid = Number(body.klijent_id);
+      if (!Number.isInteger(kid) || kid <= 0) {
+        return NextResponse.json(
+          { ok: false, error: "INVALID_KLIJENT_ID" },
+          { status: 400 },
+        );
+      }
+      const kRows = await query<{ naziv_klijenta: string }>(
+        `SELECT naziv_klijenta FROM klijenti WHERE klijent_id = ? LIMIT 1`,
+        [kid],
+      );
+      const kNaziv = String(kRows?.[0]?.naziv_klijenta ?? "").trim();
+      if (!kNaziv) {
+        return NextResponse.json(
+          { ok: false, error: "KLIJENT_NOT_FOUND" },
+          { status: 400 },
+        );
+      }
+      updates.push("klijent_id = ?");
+      paramsList.push(kid);
+      updates.push("naziv = ?");
+      paramsList.push(kNaziv);
     }
   }
 

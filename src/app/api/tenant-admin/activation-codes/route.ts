@@ -108,6 +108,7 @@ export async function POST(req: NextRequest) {
   let body: {
     tenant_id?: number;
     purpose?: string;
+    app?: string | null;
     sponsor_tenant_id?: number | null;
     valid_days?: number | null;
     meet_note?: string | null;
@@ -136,6 +137,22 @@ export async function POST(req: NextRequest) {
   if (purpose !== "FIRST_INSTALL" && purpose !== "MEET_SESSION") {
     return NextResponse.json(
       { ok: false, error: "INVALID_PURPOSE" },
+      { status: 400 },
+    );
+  }
+
+  // Kojoj aplikaciji kod pripada (SOCCS | POOL_MANAGER | DOCENTRE).
+  const appRaw = String(body?.app ?? "SOCCS")
+    .trim()
+    .toUpperCase();
+  const ALLOWED_APPS = ["SOCCS", "POOL_MANAGER", "DOCENTRE"] as const;
+  if (!ALLOWED_APPS.includes(appRaw as (typeof ALLOWED_APPS)[number])) {
+    return NextResponse.json({ ok: false, error: "INVALID_APP" }, { status: 400 });
+  }
+  // MEET_SESSION postoji samo u SOCCS svijetu.
+  if (purpose === "MEET_SESSION" && appRaw !== "SOCCS") {
+    return NextResponse.json(
+      { ok: false, error: "MEET_SESSION_ONLY_FOR_SOCCS" },
       { status: 400 },
     );
   }
@@ -188,21 +205,61 @@ export async function POST(req: NextRequest) {
     randomBytes(18).toString("hex"),
   );
 
+  // Kolona app postoji tek nakon migracije — fallback na stari INSERT.
+  let hasAppCol = false;
+  try {
+    const colRows = await query<{ ok: number }>(
+      `SELECT 1 AS ok FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'soccs_activation_codes' AND COLUMN_NAME = 'app'
+       LIMIT 1`,
+    );
+    hasAppCol = Array.isArray(colRows) && colRows.length > 0;
+  } catch {
+    hasAppCol = false;
+  }
+  if (!hasAppCol && appRaw !== "SOCCS") {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "APP_COLUMN_MISSING",
+        hint: "Pokreni scripts/run-migration-narucilac-tenant-products.cjs na master bazi.",
+      },
+      { status: 500 },
+    );
+  }
+
   try {
     for (const code of codes) {
-      await query(
-        `INSERT INTO soccs_activation_codes
-          (tenant_id, sponsor_tenant_id, code, purpose, status, valid_from, valid_until, max_uses, meet_note)
-         VALUES (?, ?, ?, ?, 'ISSUED', NOW(), DATE_ADD(NOW(), INTERVAL ? DAY), 1, ?)`,
-        [
-          tenantId,
-          purpose === "MEET_SESSION" ? sponsorTenantId : null,
-          code,
-          purpose,
-          days,
-          meetNote,
-        ],
-      );
+      if (hasAppCol) {
+        await query(
+          `INSERT INTO soccs_activation_codes
+            (tenant_id, sponsor_tenant_id, code, purpose, app, status, valid_from, valid_until, max_uses, meet_note)
+           VALUES (?, ?, ?, ?, ?, 'ISSUED', NOW(), DATE_ADD(NOW(), INTERVAL ? DAY), 1, ?)`,
+          [
+            tenantId,
+            purpose === "MEET_SESSION" ? sponsorTenantId : null,
+            code,
+            purpose,
+            appRaw,
+            days,
+            meetNote,
+          ],
+        );
+      } else {
+        await query(
+          `INSERT INTO soccs_activation_codes
+            (tenant_id, sponsor_tenant_id, code, purpose, status, valid_from, valid_until, max_uses, meet_note)
+           VALUES (?, ?, ?, ?, 'ISSUED', NOW(), DATE_ADD(NOW(), INTERVAL ? DAY), 1, ?)`,
+          [
+            tenantId,
+            purpose === "MEET_SESSION" ? sponsorTenantId : null,
+            code,
+            purpose,
+            days,
+            meetNote,
+          ],
+        );
+      }
     }
 
     let firstInstallCode: string | null = null;

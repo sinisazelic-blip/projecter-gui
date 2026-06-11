@@ -5,9 +5,61 @@ export const STUDIO_LICENCE_PROFILES = [
   "FLUXA_ONLY",
   "SOCCS_SWIMVOICE",
   "FLUXA_AND_SOCCS",
+  "POOL_MANAGER",
+  "DOCENTRE",
 ] as const;
 
 export type StudioLicenceProfile = (typeof STUDIO_LICENCE_PROFILES)[number];
+
+/** Tabovi tenant centra — svaki proizvod ima svoj sloj (različita tržišta i klijenti). */
+export const TENANT_PRODUCT_TABS = [
+  "FLUXA",
+  "SOCCS_SV",
+  "POOL_MANAGER",
+  "DOCENTRE",
+] as const;
+
+export type TenantProductTab = (typeof TENANT_PRODUCT_TABS)[number];
+
+/** U kojim tabovima se tenant prikazuje (kombinovani Fluxa+SOCCS u oba). */
+export function profileToTabs(profile: StudioLicenceProfile): TenantProductTab[] {
+  switch (profile) {
+    case "FLUXA_ONLY":
+      return ["FLUXA"];
+    case "SOCCS_SWIMVOICE":
+      return ["SOCCS_SV"];
+    case "FLUXA_AND_SOCCS":
+      return ["FLUXA", "SOCCS_SV"];
+    case "POOL_MANAGER":
+      return ["POOL_MANAGER"];
+    case "DOCENTRE":
+      return ["DOCENTRE"];
+  }
+}
+
+/** Profili koji koriste SOCCS-ov mehanizam aktivacije (FIRST_INSTALL kod + dani do isteka). */
+export function profileUsesActivationCodes(
+  profile: StudioLicenceProfile,
+): boolean {
+  return profile !== "FLUXA_ONLY";
+}
+
+/** App vrijednost za aktivacione kodove i verify (kolona soccs_activation_codes.app). */
+export function profileToActivationApp(
+  profile: StudioLicenceProfile,
+): "SOCCS" | "POOL_MANAGER" | "DOCENTRE" | null {
+  switch (profile) {
+    case "SOCCS_SWIMVOICE":
+    case "FLUXA_AND_SOCCS":
+      return "SOCCS";
+    case "POOL_MANAGER":
+      return "POOL_MANAGER";
+    case "DOCENTRE":
+      return "DOCENTRE";
+    default:
+      return null;
+  }
+}
 
 /** Korak 3 čarobnjaka: Fluxa (plan, max korisnika). */
 export function studioWizardStep3ShowsFluxaBlock(

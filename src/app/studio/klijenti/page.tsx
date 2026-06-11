@@ -22,6 +22,7 @@ export type KlijentRow = {
   rok_placanja_dana: number;
   napomena: string | null;
   aktivan: number; // 1/0
+  is_narucilac: number; // 1/0 — nudi se kao naručilac (bill-to) u novom Dealu
   is_ino: number; // 1/0
   pdv_oslobodjen?: number; // 1/0 — oslobođen po članu 24
   pdv_oslobodjen_napomena?: string | null; // napomena za fakturu
@@ -39,11 +40,12 @@ export default async function KlijentiPage() {
        FROM INFORMATION_SCHEMA.COLUMNS
       WHERE TABLE_SCHEMA = DATABASE()
         AND LOWER(TABLE_NAME) = 'klijenti'
-        AND LOWER(COLUMN_NAME) IN ('created_at', 'updated_at', 'pdv_oslobodjen', 'email', 'jib', 'pib')`,
+        AND LOWER(COLUMN_NAME) IN ('created_at', 'updated_at', 'pdv_oslobodjen', 'email', 'jib', 'pib', 'is_narucilac')`,
   )) as any[];
 
   const colSet = new Set((cols ?? []).map((r) => String(r.COLUMN_NAME).toLowerCase()));
   const hasPdvOslobodjen = colSet.has("pdv_oslobodjen");
+  const hasIsNarucilac = colSet.has("is_narucilac");
   const hasEmail = colSet.has("email");
   // EU regional (i18n en): Firma i Klijenti nemaju JIB/PIB, samo VAT No (porezni_id). BiH ima JIB (13) i PIB (12).
   const isEuRegion = locale === "en";
@@ -57,9 +59,13 @@ export default async function KlijentiPage() {
   const jibPibCols = [hasJib && "jib", hasPib && "pib"].filter(Boolean).join(", ");
   const jibPibSelect = jibPibCols ? `, ${jibPibCols}` : ", NULL AS jib, NULL AS pib";
 
+  const narucilacCol = hasIsNarucilac
+    ? ", COALESCE(is_narucilac, 0) AS is_narucilac"
+    : ", 0 AS is_narucilac";
+
   const rows = await query(
     `SELECT klijent_id, naziv_klijenta, tip_klijenta, porezni_id${jibPibSelect}, adresa, grad, drzava${emailCol},
-            rok_placanja_dana, napomena, aktivan, is_ino${pdvCols},
+            rok_placanja_dana, napomena, aktivan${narucilacCol}, is_ino${pdvCols},
             DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
             DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
        FROM klijenti

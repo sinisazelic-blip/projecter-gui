@@ -1117,6 +1117,12 @@
     "excelSheetName": "Invoices",
     "noProjectsAlert": "Invoice has no linked projects.",
     "loadInvoiceError": "Error loading invoice.",
+    "deleteLastTitle": "Delete the last invoice (Owner only) — frees the invoice number and PFR",
+    "deleteModalTitle": "Delete the last invoice?",
+    "deleteModalBody": "The invoice is permanently deleted and its number and PFR are freed — the next invoice gets the same numbers. Linked projects are reverted to Closed. Use storno for older invoices.",
+    "deleteConfirm": "Delete invoice",
+    "deleteWorking": "Deleting…",
+    "deleteCancel": "Cancel",
     "statusCreated": "Created",
     "statusPaid": "Paid",
     "statusOther": "Other",
@@ -2214,7 +2220,9 @@
     "wizardProfileTitle": {
       "FLUXA_ONLY": "Fluxa only",
       "SOCCS_SWIMVOICE": "SOCCS / SwimVoice only",
-      "FLUXA_AND_SOCCS": "Fluxa + SOCCS/SwimVoice"
+      "FLUXA_AND_SOCCS": "Fluxa + SOCCS/SwimVoice",
+      "POOL_MANAGER": "Pool Manager",
+      "DOCENTRE": "DOCentre"
     },
     "wizardNext": "Next",
     "wizardBack": "Back",
@@ -2223,13 +2231,31 @@
     "profileShort": {
       "FLUXA_ONLY": "Fluxa",
       "SOCCS_SWIMVOICE": "SOCCS",
-      "FLUXA_AND_SOCCS": "Fluxa+SOCCS"
+      "FLUXA_AND_SOCCS": "Fluxa+SOCCS",
+      "POOL_MANAGER": "Pool Mgr",
+      "DOCENTRE": "DOCentre"
     },
     "profileHint": {
       "FLUXA_ONLY": "Tenant is defined as Fluxa-only.",
       "SOCCS_SWIMVOICE": "Tenant is defined as SOCCS/SwimVoice-only.",
-      "FLUXA_AND_SOCCS": "Tenant includes both Fluxa and SOCCS/SwimVoice."
-    }
+      "FLUXA_AND_SOCCS": "Tenant includes both Fluxa and SOCCS/SwimVoice.",
+      "POOL_MANAGER": "Tenant is Pool Manager (SOCCS-style activation — first-install code).",
+      "DOCENTRE": "Tenant is DOCentre (SOCCS-style activation — first-install code)."
+    },
+    "productTab": {
+      "FLUXA": "Fluxa",
+      "SOCCS_SV": "SOCCS / SwimVoice",
+      "POOL_MANAGER": "Pool Manager",
+      "DOCENTRE": "DOCentre"
+    },
+    "groupActivation": "Activation",
+    "activationButton": "Activation",
+    "activationModalTitle": "Activation (master)",
+    "wizardTitleStep3Activation": "New tenant — activation",
+    "wizardActivationHint": "After saving, open “Activation” on the tenant row and generate a first-install code (FIRST_INSTALL). The licence is valid until the subscription end date.",
+    "labelKlijent": "Client (from master data)",
+    "klijentPickerHint": "Only active bill-to clients from master data are offered — the tenant name is taken from the client, so licence billing can be linked to invoicing.",
+    "klijentPickerEmpty": "select a client"
   },
   "studioKlijenti": {
     "title": "Clients",
@@ -2284,6 +2310,8 @@
     "labelEmail": "Email",
     "placeholderEmail": "e.g. contact@company.ba",
     "labelAktivno": "Active",
+    "labelNarucilac": "Bill-to client",
+    "labelNarucilacHint": "the paying client — offered in field 1 when creating a new Deal",
     "labelNapomena": "Note",
     "placeholderNapomena": "Internal note",
     "placeholderPdvNapomena": "e.g. VAT not charged as [name] exempt under VAT Act, Art. 24…",

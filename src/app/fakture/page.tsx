@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { downloadExcel } from "@/lib/exportExcel";
 import { useTranslation } from "@/components/LocaleProvider";
@@ -60,6 +60,60 @@ export default function FakturePage() {
   const [narucioci, setNarucioci] = useState<Narucioc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  // Owner-only brisanje posljednje fakture
+  const [isOwner, setIsOwner] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Faktura | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const token = window.localStorage.getItem("FLUXA_OWNER_TOKEN");
+      setIsOwner(Boolean(token && token.trim().length > 0));
+    } catch {
+      setIsOwner(false);
+    }
+  }, []);
+
+  /** ID posljednje fakture (najveća godina pa najveći broj) — samo ona se smije obrisati. */
+  const lastFakturaId = useMemo(() => {
+    let best: { id: number; y: number; n: number } | null = null;
+    for (const f of fakture) {
+      const m = String(f.broj_fakture ?? "").match(/^(\d+)\s*\/\s*(\d{4})$/);
+      if (!m) continue;
+      const n = Number(m[1]);
+      const y = Number(m[2]);
+      if (!best || y > best.y || (y === best.y && n > best.n)) {
+        best = { id: f.faktura_id, y, n };
+      }
+    }
+    return best?.id ?? null;
+  }, [fakture]);
+
+  async function handleDeleteConfirmed() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const token = window.localStorage.getItem("FLUXA_OWNER_TOKEN") ?? "";
+      const res = await fetch(`/api/fakture/${deleteTarget.faktura_id}`, {
+        method: "DELETE",
+        headers: { "x-owner-token": token },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data.message || data.error || t("common.error"));
+      }
+      setDeleteTarget(null);
+      setReloadKey((k) => k + 1);
+    } catch (e: any) {
+      setDeleteError(e?.message || t("common.error"));
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const brojFaktureFilter = sp.get("broj_fakture") || "";
   const narucilacIdFilter = sp.get("narucilac_id") || "";
@@ -103,7 +157,7 @@ export default function FakturePage() {
     }
 
     load();
-  }, [brojFaktureFilter, narucilacIdFilter, neplaceneOnly]);
+  }, [brojFaktureFilter, narucilacIdFilter, neplaceneOnly, reloadKey]);
 
   function handleFilter() {
     const qs = new URLSearchParams();
@@ -279,12 +333,13 @@ const headers = [
                     <th style={{ width: "80px" }}>{t("fakture.colValuta")}</th>
                     <th className="num" style={{ width: "100px" }}>{t("fakture.colPdv")}</th>
                     <th style={{ width: "100px" }}>{t("fakture.colStatus")}</th>
+                    {isOwner && <th style={{ width: "60px" }} />}
                   </tr>
                 </thead>
                 <tbody>
                   {fakture.length === 0 ? (
                     <tr>
-                      <td colSpan={9} style={{ opacity: 0.7, padding: 20 }}>
+                      <td colSpan={isOwner ? 10 : 9} style={{ opacity: 0.7, padding: 20 }}>
                         {t("fakture.noFakture")}
                       </td>
                     </tr>
@@ -372,6 +427,30 @@ const headers = [
                             {statusLabel(f.status, t)}
                           </span>
                         </td>
+                        {isOwner && (
+                          <td style={{ width: "60px", textAlign: "center" }}>
+                            {f.faktura_id === lastFakturaId && (
+                              <button
+                                type="button"
+                                className="btn"
+                                title={t("fakture.deleteLastTitle")}
+                                style={{
+                                  padding: "4px 10px",
+                                  fontSize: 13,
+                                  borderColor: "rgba(239, 68, 68, 0.4)",
+                                  background: "rgba(239, 68, 68, 0.08)",
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteError(null);
+                                  setDeleteTarget(f);
+                                }}
+                              >
+                                🗑
+                              </button>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
@@ -381,6 +460,75 @@ const headers = [
           )}
         </div>
       </div>
+
+      {deleteTarget && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(6px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onClick={() => !deleting && setDeleteTarget(null)}
+        >
+          <div
+            className="card"
+            style={{
+              padding: 22,
+              maxWidth: 460,
+              width: "100%",
+              border: "1px solid rgba(239, 68, 68, 0.35)",
+              boxShadow: "var(--shadow)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: "0 0 10px", fontSize: 18 }}>
+              {t("fakture.deleteModalTitle")}
+            </h3>
+            <p style={{ margin: "0 0 6px", fontSize: 14 }}>
+              <strong>{deleteTarget.broj_fakture}</strong>
+              {deleteTarget.broj_fiskalni ? ` · PFR ${deleteTarget.broj_fiskalni}` : ""}
+              {deleteTarget.narucilac_naziv ? ` · ${deleteTarget.narucilac_naziv}` : ""}
+            </p>
+            <p style={{ margin: "0 0 14px", fontSize: 13, color: "var(--muted)" }}>
+              {t("fakture.deleteModalBody")}
+            </p>
+            {deleteError && (
+              <p style={{ margin: "0 0 12px", fontSize: 13, color: "#f87171" }}>
+                {deleteError}
+              </p>
+            )}
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                type="button"
+                className="btn"
+                disabled={deleting}
+                style={{
+                  borderColor: "rgba(239, 68, 68, 0.5)",
+                  background: "rgba(239, 68, 68, 0.15)",
+                  fontWeight: 700,
+                }}
+                onClick={handleDeleteConfirmed}
+              >
+                {deleting ? t("fakture.deleteWorking") : t("fakture.deleteConfirm")}
+              </button>
+              <button
+                type="button"
+                className="btn"
+                disabled={deleting}
+                onClick={() => setDeleteTarget(null)}
+              >
+                {t("fakture.deleteCancel")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

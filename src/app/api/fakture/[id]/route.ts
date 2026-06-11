@@ -1,6 +1,7 @@
 // src/app/api/fakture/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { query } from "@/lib/db";
+import { query, pool } from "@/lib/db";
+import { assertOwner } from "@/lib/auth/owner";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,166 @@ function toDateOnlyString(val: unknown): string | null {
     return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   }
   return null;
+}
+
+/**
+ * DELETE — owner-only brisanje POSLJEDNJE fakture.
+ * Oslobađa broj fakture (broj_u_godini + brojac_faktura) i PFR (MAX broj_fiskalni).
+ * Dozvoljeno samo ako je faktura zadnja u svojoj godini i (ako ima PFR) zadnji PFR —
+ * brisanje iz sredine niza pravilo bi trajnu rupu u numeraciji (za to postoji storno).
+ */
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    assertOwner(req);
+  } catch (e: any) {
+    return NextResponse.json(
+      { ok: false, error: e?.message === "OWNER_ONLY" ? "OWNER_ONLY" : "OWNER_NOT_CONFIGURED" },
+      { status: e?.status ?? 503 },
+    );
+  }
+
+  const p = await params;
+  const fakturaId = Number(p.id);
+  if (!Number.isFinite(fakturaId) || fakturaId <= 0) {
+    return NextResponse.json({ ok: false, error: "Neispravan ID fakture" }, { status: 400 });
+  }
+
+  const conn = await (pool as any).getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [rows]: any = await conn.query(
+      `SELECT faktura_id, godina, broj_u_godini, broj_fiskalni, osnovica_km, fiskalni_status
+       FROM fakture WHERE faktura_id = ? LIMIT 1 FOR UPDATE`,
+      [fakturaId],
+    );
+    if (!rows || rows.length === 0) {
+      await conn.rollback();
+      return NextResponse.json({ ok: false, error: "Faktura nije pronađena." }, { status: 404 });
+    }
+    const f = rows[0];
+    const godina = Number(f.godina);
+    const brojUGodini = Number(f.broj_u_godini);
+    const pfr = f.broj_fiskalni != null ? Number(f.broj_fiskalni) : null;
+    const isStorno = Number(f.osnovica_km ?? 0) < 0;
+
+    const status = String(f.fiskalni_status ?? "").trim().toUpperCase();
+    if (status === "PLACENA") {
+      await conn.rollback();
+      return NextResponse.json(
+        { ok: false, error: "Plaćena faktura se ne može obrisati." },
+        { status: 409 },
+      );
+    }
+
+    // Mora biti posljednja u godini
+    const [maxRows]: any = await conn.query(
+      `SELECT COALESCE(MAX(broj_u_godini), 0) AS m FROM fakture WHERE godina = ?`,
+      [godina],
+    );
+    const maxBroj = Number(maxRows?.[0]?.m ?? 0) || 0;
+    if (brojUGodini !== maxBroj) {
+      await conn.rollback();
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "NOT_LAST_INVOICE",
+          message: `Može se obrisati samo posljednja faktura u godini (posljednja je ${String(maxBroj).padStart(3, "0")}/${godina}). Za ranije fakture koristi storno.`,
+        },
+        { status: 409 },
+      );
+    }
+
+    // Ako ima PFR — mora biti i posljednji PFR
+    if (pfr != null && pfr > 0) {
+      const [pfrRows]: any = await conn.query(
+        `SELECT COALESCE(MAX(broj_fiskalni), 0) AS m FROM fakture WHERE broj_fiskalni IS NOT NULL AND broj_fiskalni > 0`,
+      );
+      const maxPfr = Number(pfrRows?.[0]?.m ?? 0) || 0;
+      if (pfr !== maxPfr) {
+        await conn.rollback();
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "NOT_LAST_PFR",
+            message: `Može se obrisati samo faktura sa posljednjim PFR brojem (posljednji je ${maxPfr}).`,
+          },
+          { status: 409 },
+        );
+      }
+    }
+
+    // Projekti vezani za fakturu (za vraćanje statusa)
+    const [fpRows]: any = await conn.query(
+      `SELECT projekat_id FROM faktura_projekti WHERE faktura_id = ?`,
+      [fakturaId],
+    );
+    const projekatIds: number[] = (fpRows ?? [])
+      .map((r: any) => Number(r.projekat_id))
+      .filter(Number.isFinite);
+
+    await conn.query(`DELETE FROM faktura_projekti WHERE faktura_id = ?`, [fakturaId]);
+    await conn.query(`DELETE FROM fakture WHERE faktura_id = ?`, [fakturaId]);
+
+    // Oslobodi broj u brojaču (sljedeća faktura ponovo dobija ovaj broj)
+    try {
+      await conn.query(
+        `UPDATE brojac_faktura SET zadnji_broj_u_godini = ? WHERE godina = ? AND zadnji_broj_u_godini >= ?`,
+        [brojUGodini - 1, godina, brojUGodini],
+      );
+    } catch {
+      // brojac_faktura ne postoji — MAX iz fakture je dovoljan
+    }
+
+    // Obična faktura: projekti se vraćaju iz Fakturisan (9) u Zatvoren (8).
+    // Storno: projekti su već vraćeni u 8 pri storniranju — ne diramo.
+    if (!isStorno && projekatIds.length > 0) {
+      await conn.query(
+        `UPDATE projekti SET status_id = 8 WHERE projekat_id IN (${projekatIds.map(() => "?").join(",")}) AND status_id = 9`,
+        projekatIds,
+      );
+    }
+
+    for (const pid of projekatIds) {
+      try {
+        await conn.query(
+          `INSERT INTO project_audit (projekat_id, action, details, user_label, ip)
+           VALUES (?, 'FAKTURA_DELETED', ?, 'OWNER', '127.0.0.1')`,
+          [
+            pid,
+            JSON.stringify({
+              faktura_id: fakturaId,
+              broj: `${String(brojUGodini).padStart(3, "0")}/${godina}`,
+              pfr,
+              storno: isStorno,
+            }),
+          ],
+        );
+      } catch {
+        // audit je best-effort
+      }
+    }
+
+    await conn.commit();
+
+    return NextResponse.json({
+      ok: true,
+      message: `Faktura ${String(brojUGodini).padStart(3, "0")}/${godina} obrisana. Broj${pfr ? " i PFR " + pfr : ""} su oslobođeni za sljedeću fakturu.`,
+      oslobodjen_broj: `${String(brojUGodini).padStart(3, "0")}/${godina}`,
+      oslobodjen_pfr: pfr,
+      projekti_ids: projekatIds,
+    });
+  } catch (err: any) {
+    try {
+      await conn.rollback();
+    } catch {}
+    return NextResponse.json(
+      { ok: false, error: err?.message ?? "Greška pri brisanju fakture" },
+      { status: 500 },
+    );
+  } finally {
+    conn.release();
+  }
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

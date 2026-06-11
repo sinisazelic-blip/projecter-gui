@@ -16,12 +16,19 @@ export async function POST(req: NextRequest) {
       }
       const tip = String(body?.tip_klijenta ?? "direktni").toLowerCase() === "agencija" ? "agencija" : "direktni";
       const hasIsINO = await hasColumn("klijenti", "is_ino");
+      const hasIsNarucilac = await hasColumn("klijenti", "is_narucilac");
       const is_ino = body?.is_ino ? 1 : 0;
-      const cols = hasIsINO
+      const is_narucilac = body?.is_narucilac ? 1 : 0;
+      let cols = hasIsINO
         ? "naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava, email, rok_placanja_dana, napomena, aktivan, is_ino, pdv_oslobodjen, pdv_oslobodjen_napomena, created_at, updated_at"
         : "naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava, email, rok_placanja_dana, napomena, aktivan, pdv_oslobodjen, pdv_oslobodjen_napomena, created_at, updated_at";
-      const vals = hasIsINO ? "?, ?, NULL, NULL, NULL, NULL, NULL, 0, NULL, 1, ?, 0, NULL, NOW(), NOW()" : "?, ?, NULL, NULL, NULL, NULL, NULL, 0, NULL, 1, 0, NULL, NOW(), NOW()";
+      let vals = hasIsINO ? "?, ?, NULL, NULL, NULL, NULL, NULL, 0, NULL, 1, ?, 0, NULL, NOW(), NOW()" : "?, ?, NULL, NULL, NULL, NULL, NULL, 0, NULL, 1, 0, NULL, NOW(), NOW()";
       const params = hasIsINO ? [naziv, tip, is_ino] : [naziv, tip];
+      if (hasIsNarucilac) {
+        cols = `is_narucilac, ${cols}`;
+        vals = `?, ${vals}`;
+        params.unshift(is_narucilac);
+      }
       const [res] = await (pool as any).query(
         `INSERT INTO klijenti (${cols}) VALUES (${vals})`,
         params,
@@ -56,23 +63,22 @@ async function hasColumn(table: string, column: string): Promise<boolean> {
 
 export async function GET() {
   try {
-    // ✅ sigurno: ne puca ako is_ino ne postoji
+    // ✅ sigurno: ne puca ako is_ino / is_narucilac ne postoje
     const hasIsINO = await hasColumn("klijenti", "is_ino");
+    const hasIsNarucilac = await hasColumn("klijenti", "is_narucilac");
 
-    const sql = hasIsINO
-      ? `
+    const inoSel = hasIsINO ? "COALESCE(is_ino, 0) AS is_ino" : "0 AS is_ino";
+    const narucilacSel = hasIsNarucilac
+      ? "COALESCE(is_narucilac, 0) AS is_narucilac"
+      : "0 AS is_narucilac";
+
+    const sql = `
         SELECT
           klijent_id,
           naziv_klijenta,
-          COALESCE(is_ino, 0) AS is_ino
-        FROM klijenti
-        ORDER BY naziv_klijenta ASC
-      `
-      : `
-        SELECT
-          klijent_id,
-          naziv_klijenta,
-          0 AS is_ino
+          COALESCE(aktivan, 1) AS aktivan,
+          ${inoSel},
+          ${narucilacSel}
         FROM klijenti
         ORDER BY naziv_klijenta ASC
       `;

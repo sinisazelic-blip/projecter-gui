@@ -46,11 +46,28 @@ function requireTenantAdmin(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return { error: null };
 }
 
+async function tenantsHasKlijentColumn(): Promise<boolean> {
+  try {
+    const rows = await query<{ ok: number }>(
+      `SELECT 1 AS ok FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tenants' AND COLUMN_NAME = 'klijent_id'
+       LIMIT 1`,
+    );
+    return Array.isArray(rows) && rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 /** Lista tenanata (organizacija / kupaca licence). Samo kada je ENABLE_TENANT_ADMIN=true i korisnik ulogovan. */
 export async function GET() {
   const cookieStore = await cookies();
   const auth = requireTenantAdmin(cookieStore);
   if (auth.error) return auth.error;
+
+  const klijentSel = (await tenantsHasKlijentColumn())
+    ? "t.klijent_id,"
+    : "NULL AS klijent_id,";
 
   try {
     const rows = await query<{
@@ -83,6 +100,7 @@ export async function GET() {
       `SELECT
         t.tenant_id,
         t.tenant_public_id,
+        ${klijentSel}
         t.studio_licence_profile,
         t.billing_email,
         t.billing_phone,
@@ -159,6 +177,7 @@ export async function GET() {
         `SELECT
           t.tenant_id,
           t.tenant_public_id,
+          ${klijentSel}
           t.studio_licence_profile,
           t.billing_email,
           t.billing_phone,
@@ -218,6 +237,7 @@ export async function POST(req: NextRequest) {
 
   let body: {
     naziv?: string;
+    klijent_id?: number | null;
     plan_id?: number;
     max_users?: number;
     subscription_starts_at?: string;
@@ -238,7 +258,27 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const naziv = String(body?.naziv ?? "").trim();
+  // Naziv vezan za klijenta iz šifarnika (naplata licence kroz Fluxa fakturisanje).
+  // Fallback na slobodan naziv samo ako klijent_id nije poslan (kompatibilnost).
+  const klijentId =
+    body?.klijent_id != null && Number.isInteger(Number(body.klijent_id)) && Number(body.klijent_id) > 0
+      ? Number(body.klijent_id)
+      : null;
+  let naziv = String(body?.naziv ?? "").trim();
+  if (klijentId) {
+    const kRows = await query<{ naziv_klijenta: string }>(
+      `SELECT naziv_klijenta FROM klijenti WHERE klijent_id = ? LIMIT 1`,
+      [klijentId],
+    );
+    const kNaziv = String(kRows?.[0]?.naziv_klijenta ?? "").trim();
+    if (!kNaziv) {
+      return NextResponse.json(
+        { ok: false, error: "KLIJENT_NOT_FOUND" },
+        { status: 400 },
+      );
+    }
+    naziv = kNaziv;
+  }
   if (!naziv) {
     return NextResponse.json(
       { ok: false, error: "NAZIV_REQUIRED" },
@@ -256,8 +296,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Profili bez Fluxa pretplate koriste stub plan (kao čisti SOCCS).
+  const usesStubPlan =
+    profile === "SOCCS_SWIMVOICE" ||
+    profile === "POOL_MANAGER" ||
+    profile === "DOCENTRE";
+
   let planId = Number(body?.plan_id);
-  if (profile === "SOCCS_SWIMVOICE") {
+  if (usesStubPlan) {
     const stubRows = await query<{ plan_id: number }>(
       `SELECT plan_id FROM plans WHERE naziv = ? LIMIT 1`,
       [STUDIO_STUB_NO_FLUXA_PLAN_NAZIV],
@@ -331,7 +377,8 @@ export async function POST(req: NextRequest) {
     "SWIMVOICE",
   ];
   let soccsTier: string | null = null;
-  if (profile === "FLUXA_ONLY") {
+  if (profile === "FLUXA_ONLY" || profile === "POOL_MANAGER" || profile === "DOCENTRE") {
+    // Pool Manager i DOCentre ne koriste SOCCS tier — samo first-install kod + dani do isteka.
     soccsTier = null;
   } else if (profile === "SOCCS_SWIMVOICE") {
     if (!soccsTierRaw || !allowedTier.includes(soccsTierRaw)) {
@@ -365,15 +412,31 @@ export async function POST(req: NextRequest) {
       : "";
   let soccsPlatformScope = scopeRaw || null;
 
-  if (profile === "FLUXA_ONLY") {
+  if (profile === "FLUXA_ONLY" || profile === "POOL_MANAGER" || profile === "DOCENTRE") {
     soccsPlatformRole = null;
     soccsPlatformScope = null;
   }
 
+  // tenants.klijent_id postoji tek nakon migracije — upiši samo ako kolona postoji.
+  let hasKlijentCol = false;
+  try {
+    const colRows = await query<{ ok: number }>(
+      `SELECT 1 AS ok FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tenants' AND COLUMN_NAME = 'klijent_id'
+       LIMIT 1`,
+    );
+    hasKlijentCol = Array.isArray(colRows) && colRows.length > 0;
+  } catch {
+    hasKlijentCol = false;
+  }
+  const klijentCol = hasKlijentCol ? ", klijent_id" : "";
+  const klijentPlc = hasKlijentCol ? ", ?" : "";
+  const klijentVals = hasKlijentCol ? [klijentId] : [];
+
   try {
     const res = await query(
-      `INSERT INTO tenants (naziv, plan_id, max_users, subscription_starts_at, subscription_ends_at, status, licence_token, monthly_price, currency, tenant_public_id, studio_licence_profile, soccs_tier, soccs_platform_role, soccs_platform_scope)
-       VALUES (?, ?, ?, ?, ?, 'AKTIVAN', ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tenants (naziv, plan_id, max_users, subscription_starts_at, subscription_ends_at, status, licence_token, monthly_price, currency, tenant_public_id, studio_licence_profile, soccs_tier, soccs_platform_role, soccs_platform_scope${klijentCol})
+       VALUES (?, ?, ?, ?, ?, 'AKTIVAN', ?, ?, ?, ?, ?, ?, ?, ?${klijentPlc})`,
       [
         naziv,
         planId,
@@ -388,6 +451,7 @@ export async function POST(req: NextRequest) {
         soccsTier,
         soccsPlatformRole,
         soccsPlatformScope,
+        ...klijentVals,
       ],
     );
     const header = Array.isArray(res) ? res[0] : res;

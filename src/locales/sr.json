@@ -1117,6 +1117,12 @@
     "excelSheetName": "Fakture",
     "noProjectsAlert": "Faktura nema povezanih projekata.",
     "loadInvoiceError": "Greška pri učitavanju fakture.",
+    "deleteLastTitle": "Obriši posljednju fakturu (samo Owner) — oslobađa broj fakture i PFR",
+    "deleteModalTitle": "Obrisati posljednju fakturu?",
+    "deleteModalBody": "Faktura se trajno briše, a njen broj i PFR se oslobađaju — sljedeća faktura dobija iste brojeve. Vezani projekti se vraćaju u status Zatvoren. Za starije fakture koristi storno.",
+    "deleteConfirm": "Obriši fakturu",
+    "deleteWorking": "Brišem…",
+    "deleteCancel": "Otkaži",
     "statusCreated": "Kreirana",
     "statusPaid": "Plaćena",
     "statusOther": "Ostalo",
@@ -2241,7 +2247,9 @@
     "wizardProfileTitle": {
       "FLUXA_ONLY": "Samo Fluxa",
       "SOCCS_SWIMVOICE": "Samo SOCCS / SwimVoice",
-      "FLUXA_AND_SOCCS": "Fluxa + SOCCS/SwimVoice"
+      "FLUXA_AND_SOCCS": "Fluxa + SOCCS/SwimVoice",
+      "POOL_MANAGER": "Pool Manager",
+      "DOCENTRE": "DOCentre"
     },
     "wizardNext": "Dalje",
     "wizardBack": "Nazad",
@@ -2250,13 +2258,31 @@
     "profileShort": {
       "FLUXA_ONLY": "Fluxa",
       "SOCCS_SWIMVOICE": "SOCCS",
-      "FLUXA_AND_SOCCS": "Fluxa+SOCCS"
+      "FLUXA_AND_SOCCS": "Fluxa+SOCCS",
+      "POOL_MANAGER": "Pool Mgr",
+      "DOCENTRE": "DOCentre"
     },
     "profileHint": {
       "FLUXA_ONLY": "Tenant je definisan kao samo Fluxa.",
       "SOCCS_SWIMVOICE": "Tenant je definisan kao samo SOCCS/SwimVoice.",
-      "FLUXA_AND_SOCCS": "Tenant uključuje i Fluxa i SOCCS/SwimVoice."
-    }
+      "FLUXA_AND_SOCCS": "Tenant uključuje i Fluxa i SOCCS/SwimVoice.",
+      "POOL_MANAGER": "Tenant je Pool Manager (aktivacija kao SOCCS — first install kod).",
+      "DOCENTRE": "Tenant je DOCentre (aktivacija kao SOCCS — first install kod)."
+    },
+    "productTab": {
+      "FLUXA": "Fluxa",
+      "SOCCS_SV": "SOCCS / SwimVoice",
+      "POOL_MANAGER": "Pool Manager",
+      "DOCENTRE": "DOCentre"
+    },
+    "groupActivation": "Aktivacija",
+    "activationButton": "Aktivacija",
+    "activationModalTitle": "Aktivacija (master)",
+    "wizardTitleStep3Activation": "Novi tenant — aktivacija",
+    "wizardActivationHint": "Nakon snimanja otvori „Aktivacija” na redu tenanta i generiši kod za prvu instalaciju (FIRST_INSTALL). Licenca važi do datuma isteka pretplate.",
+    "labelKlijent": "Klijent (iz šifarnika)",
+    "klijentPickerHint": "Nude se samo aktivni naručioci iz šifarnika — naziv tenanta se preuzima iz klijenta, pa se naplata licence može vezati za fakturisanje.",
+    "klijentPickerEmpty": "odaberi klijenta"
   },
   "studioKlijenti": {
     "title": "Klijenti",
@@ -2311,6 +2337,8 @@
     "labelEmail": "Email",
     "placeholderEmail": "npr. kontakt@firma.ba",
     "labelAktivno": "Aktivno",
+    "labelNarucilac": "Naručilac",
+    "labelNarucilacHint": "klijent koji plaća — nudi se u polju 1 kod novog Deala",
     "labelNapomena": "Napomena",
     "placeholderNapomena": "Interna napomena",
     "placeholderPdvNapomena": "npr. PDV nije obračunat jer je [naziv] oslobođeno po osnovu Zakona o PDV-u, član 24…",

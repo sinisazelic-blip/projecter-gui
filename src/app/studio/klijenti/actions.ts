@@ -28,6 +28,20 @@ function toBit(v: any): 0 | 1 {
   return v ? 1 : 0;
 }
 
+async function hasColumn(table: string, column: string): Promise<boolean> {
+  try {
+    const rows = (await query(
+      `SELECT 1 AS ok FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?
+       LIMIT 1`,
+      [table, column],
+    )) as any[];
+    return Array.isArray(rows) && rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function createKlijent(input: {
   naziv_klijenta: string;
   tip_klijenta: TipKlijenta;
@@ -41,6 +55,7 @@ export async function createKlijent(input: {
   rok_placanja_dana?: number | string;
   napomena?: string | null;
   aktivan?: boolean;
+  is_narucilac?: boolean;
   is_ino?: boolean;
   pdv_oslobodjen?: boolean;
   pdv_oslobodjen_napomena?: string | null;
@@ -68,10 +83,15 @@ export async function createKlijent(input: {
   const jibPibPlc = hasJibPib ? ", ?, ?" : "";
   const jibPibVals = hasJibPib ? [jib ?? null, pib ?? null] : [];
 
+  const hasNarucilacCol = await hasColumn("klijenti", "is_narucilac");
+  const narucilacCol = hasNarucilacCol ? ", is_narucilac" : "";
+  const narucilacPlc = hasNarucilacCol ? ", ?" : "";
+  const narucilacVals = hasNarucilacCol ? [toBit(input?.is_narucilac)] : [];
+
   await query(
     `INSERT INTO klijenti
-      (naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava, email, rok_placanja_dana, napomena, aktivan, is_ino, pdv_oslobodjen, pdv_oslobodjen_napomena${jibPibCols}, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?${jibPibPlc}, NOW(), NOW())`,
+      (naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava, email, rok_placanja_dana, napomena, aktivan, is_ino, pdv_oslobodjen, pdv_oslobodjen_napomena${jibPibCols}${narucilacCol}, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?${jibPibPlc}${narucilacPlc}, NOW(), NOW())`,
     [
       naziv,
       tip,
@@ -87,6 +107,7 @@ export async function createKlijent(input: {
       pdv_oslobodjen,
       pdv_oslobodjen_napomena,
       ...jibPibVals,
+      ...narucilacVals,
     ],
   );
 
@@ -108,6 +129,7 @@ export async function updateKlijent(input: {
   rok_placanja_dana?: number | string;
   napomena?: string | null;
   aktivan?: boolean;
+  is_narucilac?: boolean;
   is_ino?: boolean;
   pdv_oslobodjen?: boolean;
   pdv_oslobodjen_napomena?: string | null;
@@ -138,6 +160,10 @@ export async function updateKlijent(input: {
   const jibPibSet = hasJibPib ? ", jib=?, pib=?" : "";
   const jibPibVals = hasJibPib ? [jib ?? null, pib ?? null] : [];
 
+  const hasNarucilacCol = await hasColumn("klijenti", "is_narucilac");
+  const narucilacSet = hasNarucilacCol ? ", is_narucilac=?" : "";
+  const narucilacVals = hasNarucilacCol ? [toBit(input?.is_narucilac)] : [];
+
   await query(
     `UPDATE klijenti
         SET naziv_klijenta=?,
@@ -152,7 +178,7 @@ export async function updateKlijent(input: {
             aktivan=?,
             is_ino=?,
             pdv_oslobodjen=?,
-            pdv_oslobodjen_napomena=?${jibPibSet},
+            pdv_oslobodjen_napomena=?${jibPibSet}${narucilacSet},
             updated_at=NOW()
       WHERE klijent_id=?`,
     [
@@ -170,6 +196,7 @@ export async function updateKlijent(input: {
       pdv_oslobodjen,
       pdv_oslobodjen_napomena,
       ...jibPibVals,
+      ...narucilacVals,
       id,
     ],
   );
