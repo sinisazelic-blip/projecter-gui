@@ -1,7 +1,8 @@
 /**
  * Iz teksta uplatnice (description / reference) izvlači referencu na fakturu:
+ * - RNBR0242026 / UPLATA PO RNBR0242026
+ * - broj fakture NNN/GGGG
  * - 8-cifreni poziv na broj
- * - broj fakture u formatu NNN/GGGG ili N/GGGG (npr. 001/2026, 1/2026, fakturi 001/2026)
  */
 
 export type InvoiceRef =
@@ -9,17 +10,42 @@ export type InvoiceRef =
   | { type: "broj"; broj: number; godina: number }
   | null;
 
-const POZIV_8 = /\b(\d{8})\b/g;
-const BROJ_FAKTURE = /\b(\d{1,4})\s*\/\s*(\d{4})\b/g;
+/** RNBR0242026, RN:BR 024/2026, UPLATA PO RNBR0242026 */
+export function parseRnbrBrojGodina(text: string): { broj: number; godina: number } | null {
+  const s = String(text ?? "");
+  if (!s.trim()) return null;
+
+  const slash = s.match(/\bRN\s*:?\s*BR\s*0*(\d{1,4})\s*\/\s*(\d{4})\b/i);
+  if (slash) {
+    const broj = parseInt(slash[1], 10);
+    const godina = parseInt(slash[2], 10);
+    if (Number.isFinite(broj) && Number.isFinite(godina) && godina >= 2000 && godina <= 2100) {
+      return { broj, godina };
+    }
+  }
+
+  const compact = s.match(/\bRN\s*:?\s*BR\s*0*(\d{1,4})(\d{4})\b/i);
+  if (compact) {
+    const broj = parseInt(compact[1], 10);
+    const godina = parseInt(compact[2], 10);
+    if (Number.isFinite(broj) && Number.isFinite(godina) && godina >= 2000 && godina <= 2100) {
+      return { broj, godina };
+    }
+  }
+
+  return null;
+}
 
 /**
- * Iz jednog teksta vraća prvu pronađenu referencu: prvo 8-cifreni poziv, pa broj/godina.
+ * Iz jednog teksta vraća prvu pronađenu referencu.
  */
 export function extractInvoiceRef(text: string | null | undefined): InvoiceRef {
   const s = String(text ?? "").trim();
   if (!s) return null;
 
-  // Prvo broj fakture (NNN/GGGG) — izbjegava lažne "pozive" od 8 cifara u IBAN-u / modelu.
+  const rnbr = parseRnbrBrojGodina(s);
+  if (rnbr) return { type: "broj", broj: rnbr.broj, godina: rnbr.godina };
+
   const brojMatch = s.match(/\b(\d{1,4})\s*\/\s*(\d{4})\b/);
   if (brojMatch) {
     const broj = parseInt(brojMatch[1], 10);
@@ -96,6 +122,12 @@ export async function findFakturaFromText(
     .filter(Boolean)
     .join("\n");
   if (!haystack) return null;
+
+  const rnbr = parseRnbrBrojGodina(haystack);
+  if (rnbr) {
+    const found = await findFakturaByBrojGodina(conn, rnbr.broj, rnbr.godina);
+    if (found) return found;
+  }
 
   const brojMatch = haystack.match(/\b(\d{1,4})\s*\/\s*(\d{4})\b/);
   if (brojMatch) {

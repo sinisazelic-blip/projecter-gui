@@ -1,6 +1,6 @@
 {
   "name": "fluxa",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
@@ -11,7 +11,8 @@
     "format": "biome format --write",
     "migrate:soccs": "node scripts/run-soccs-migration.cjs",
     "migrate:studio-licence-profile": "node scripts/run-migration-studio-licence-profile.cjs",
-    "migrate:licence-alert-contacts": "node scripts/run-migration-tenant-licence-alert-contacts.cjs"
+    "migrate:licence-alert-contacts": "node scripts/run-migration-tenant-licence-alert-contacts.cjs",
+    "migrate:fin-rasknjizavanje": "node scripts/run-migration-fin-rasknjizavanje.cjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

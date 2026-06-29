@@ -1,7 +1,67 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { findFakturaFromText } from "@/lib/bank/matchInvoiceFromText";
 
 export const dynamic = "force-dynamic";
+
+const queryConn = {
+  execute: async (sql, params = []) => {
+    const rows = await query(sql, params);
+    return [rows];
+  },
+};
+
+async function resolveFakturaFromPosting(postingId, posting) {
+  const stagingRows = await query(
+    `SELECT t.reference, t.description, t.full_description
+     FROM bank_tx_staging t
+     JOIN bank_tx_posting p ON p.tx_id = t.tx_id
+     WHERE p.posting_id = ?
+     LIMIT 1`,
+    [postingId],
+  );
+  const st = stagingRows?.[0] || {};
+  const haystack = [
+    st.reference,
+    st.description,
+    st.full_description,
+    posting?.description,
+    posting?.counterparty,
+  ]
+    .map((x) => String(x ?? "").trim())
+    .filter(Boolean)
+    .join("\n");
+  if (!haystack) return null;
+
+  const fromText = await findFakturaFromText(queryConn, haystack, null);
+  if (fromText?.faktura_id) return fromText;
+
+  const amount = Math.abs(Number(posting?.amount));
+  if (!(amount > 0)) return null;
+  const amountKm = Math.round(amount * 100) / 100;
+  const valueDate = String(posting?.value_date || "").slice(0, 10);
+  const postingYear = /^\d{4}/.test(valueDate) ? Number(valueDate.slice(0, 4)) : null;
+  const byAmount = await query(
+    `SELECT f.faktura_id,
+            (SELECT fp.projekat_id FROM faktura_projekti fp
+             WHERE fp.faktura_id = f.faktura_id ORDER BY fp.projekat_id ASC LIMIT 1) AS projekat_id
+     FROM fakture f
+     WHERE ROUND(COALESCE(f.iznos_ukupno_km, 0), 2) = ?
+       AND (? IS NULL OR f.godina = ?)
+       AND (f.fiskalni_status IS NULL OR TRIM(UPPER(f.fiskalni_status)) NOT IN ('PLACENA','DJELIMICNO','PAID','PLACENO','STORNIRAN','ZAMIJENJEN'))
+     ORDER BY f.faktura_id DESC`,
+    [amountKm, postingYear, postingYear],
+  );
+  if (byAmount?.length === 1 && byAmount[0]?.faktura_id) {
+    return {
+      faktura_id: Number(byAmount[0].faktura_id),
+      projekat_id:
+        byAmount[0].projekat_id != null ? Number(byAmount[0].projekat_id) : 0,
+    };
+  }
+
+  return null;
+}
 
 function bad(msg, status = 400, extra = {}) {
   return NextResponse.json({ ok: false, error: msg, ...extra }, { status });
@@ -44,9 +104,6 @@ export async function POST(req) {
       }
     }
 
-    if ((!Number.isFinite(projekat_id) || projekat_id <= 0) && (!Number.isFinite(faktura_id) || faktura_id <= 0))
-      return bad("projekat_id invalid");
-
     const pRows = await query(
       `SELECT posting_id, amount, value_date, currency, counterparty, description
        FROM bank_tx_posting
@@ -56,6 +113,17 @@ export async function POST(req) {
     if (!pRows?.length) return bad("posting not found", 404);
 
     const posting = pRows[0];
+
+    if (!Number.isFinite(faktura_id) || faktura_id <= 0) {
+      const auto = await resolveFakturaFromPosting(posting_id, posting);
+      if (auto?.faktura_id) faktura_id = Number(auto.faktura_id);
+    }
+
+    if (
+      (!Number.isFinite(projekat_id) || projekat_id <= 0) &&
+      (!Number.isFinite(faktura_id) || faktura_id <= 0)
+    )
+      return bad("projekat_id invalid");
 
     // Income link only allowed for incoming postings
     if (Number(posting.amount) <= 0) {

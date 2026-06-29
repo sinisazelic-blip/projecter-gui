@@ -15,6 +15,7 @@ import UputstvoShortcut from "@/components/UputstvoShortcut";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
 import { runWithSession } from "@/lib/db";
 import { getValidLocale } from "@/lib/i18n";
+import { FLUXA_BUILD_LABEL } from "@/lib/fluxaVersion";
 
 function isDemoInstanceHost(host) {
   if (!host || typeof host !== "string") return false;
@@ -100,7 +101,7 @@ export default async function RootLayout({ children }) {
                       pointerEvents: "none",
                     }}
                   >
-                    FLUXA V2.0
+                    {FLUXA_BUILD_LABEL}
                   </div>
                 </AuthUserProvider>
               </LicenceCheckWrapper>

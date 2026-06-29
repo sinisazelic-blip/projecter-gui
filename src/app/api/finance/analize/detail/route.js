@@ -340,59 +340,8 @@ async function detailClient(partnerId, year) {
     });
   }
 
-  const invYear = await query(
-    `
-    SELECT COUNT(*) AS c
-    FROM fakture
-    WHERE bill_to_klijent_id = ?
-      AND DATE(datum_izdavanja) >= ?
-      AND DATE(datum_izdavanja) <= ?
-      AND (fiskalni_status IS NULL OR fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))
-    `,
-    [partnerId, from, to],
-  ).catch(() => [{ c: 0 }]);
-  const hasInvoiceThisYear = Number(invYear?.[0]?.c || 0) > 0;
-
-  if (hasInvoiceThisYear) {
-    const bankUnmatched = await query(
-      `
-      SELECT
-        DATE(b.value_date) AS event_date,
-        ROUND(COALESCE(b.amount, 0), 2) AS amount_km,
-        NULLIF(TRIM(UPPER(COALESCE(b.currency, ''))), '') AS valuta_postinga
-      FROM bank_tx_posting b
-      JOIN klijenti k ON k.klijent_id = ?
-      LEFT JOIN bank_tx_posting_prihod_link l ON l.posting_id = b.posting_id AND l.aktivan = 1
-      WHERE b.amount > 0
-        AND l.link_id IS NULL
-        AND DATE(b.value_date) >= ?
-        AND DATE(b.value_date) <= ?
-        AND (
-          LOWER(COALESCE(b.counterparty, '')) LIKE CONCAT('%', LOWER(COALESCE(k.naziv_klijenta, '')), '%')
-          OR LOWER(REPLACE(REPLACE(REPLACE(COALESCE(b.counterparty, ''), '.', ''), ',', ''), ' ', ''))
-             LIKE CONCAT('%', LOWER(REPLACE(REPLACE(REPLACE(COALESCE(k.naziv_klijenta, ''), '.', ''), ',', ''), ' ', '')), '%')
-        )
-      ORDER BY DATE(b.value_date) ASC, b.posting_id ASC
-      `,
-      [partnerId, from, to],
-    ).catch(() => []);
-
-    for (const r of bankUnmatched || []) {
-      const valuta = String(r.valuta_postinga || "BAM").trim().toUpperCase() || "BAM";
-      events.push({
-        event_date: iso(r.event_date),
-        projekat_id: null,
-        projekat_naziv: null,
-        faktura_broj: null,
-        datum_fakture: null,
-        opis: "Naplata (izvod - neidentifikovano)",
-        duguje: round2(r.amount_km),
-        potrazuje: 0,
-        nacin_placanja: "Banka",
-        valuta,
-      });
-    }
-  }
+  // Nealocirani bank postingi ne ulaze u IOS preko fuzzy counterparty matcha —
+  // jedini izvor naplate je projektni_prihodi (rasknjižavanje) + blagajna.
 
   events.sort((a, b) => String(a.event_date || "").localeCompare(String(b.event_date || "")));
 

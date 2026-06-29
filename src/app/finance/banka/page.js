@@ -225,6 +225,7 @@ export default async function BankaPage({ searchParams }) {
                     {t("banka.resetProject")}
                   </Link>
                 )}
+                <Link className="btn" href="/finance/rasknjizavanje">Rasknjižavanje</Link>
                 <Link className="btn" href="/finance">{t("finance.title")}</Link>
                 <Link className="btn" href="/dashboard" title={t("common.dashboard")}><img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> {t("common.dashboard")}</Link>
               </div>

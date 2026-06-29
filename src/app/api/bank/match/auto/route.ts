@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   return NextResponse.json({
     ok: true,
-    hint: "POST JSON: { batch_id: number, limit?: number }",
+    hint: "POST JSON: { batch_id: number, limit?: number } — samo isplate (amount < 0)",
   });
 }
 
@@ -124,6 +124,7 @@ export async function POST(req: NextRequest) {
         LEFT JOIN bank_tx_match m ON m.tx_id = s.tx_id
         WHERE s.batch_id = ?
           AND m.tx_id IS NULL
+          AND s.amount < 0
         ORDER BY s.tx_id ASC
         LIMIT ${limit}
         `,

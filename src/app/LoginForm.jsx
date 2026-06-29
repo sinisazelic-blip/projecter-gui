@@ -202,30 +202,6 @@ export default function LoginForm({ isDemoInstance = false }) {
       >
         {loading ? L.submitLoading : L.submit}
       </button>
-
-      {!isDemoInstance && (
-        <a
-          href="https://demo.studiotaf.xyz/"
-          className="btn"
-          style={{
-            marginTop: 4,
-            padding: "10px 20px",
-            fontSize: 14,
-            width: "100%",
-            maxWidth: 200,
-            background: "transparent",
-            border: "1px solid var(--border, #333)",
-            color: "var(--muted)",
-            textDecoration: "none",
-            textAlign: "center",
-            display: "block",
-            boxSizing: "border-box",
-          }}
-          title="View demo at demo.studiotaf.xyz (user: demo / password: demo)"
-        >
-          View demo
-        </a>
-      )}
     </form>
   );
 }

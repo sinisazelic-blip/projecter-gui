@@ -2,6 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import LoginForm from "./LoginForm";
 import FluxaLogo from "@/components/FluxaLogo";
+import { FLUXA_BUILD_LABEL } from "@/lib/fluxaVersion";
 
 function isDemoInstanceHost(host) {
   if (!host || typeof host !== "string") return false;
@@ -65,7 +66,7 @@ export default async function HomePage() {
             opacity: 0.7,
           }}
         >
-          FLUXA V2.0
+          {FLUXA_BUILD_LABEL}
         </p>
 
         <LoginForm isDemoInstance={isDemoInstance} />
@@ -73,15 +74,17 @@ export default async function HomePage() {
         <Link
           href="/owner-login"
           style={{
-            marginTop: 8,
-            fontSize: 13,
+            marginTop: 4,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.12em",
             color: "var(--muted)",
             textDecoration: "none",
-            opacity: 0.9,
+            opacity: 0.45,
           }}
-          title="Enter owner password for full Fluxa version and extra options"
+          aria-label="OA"
         >
-          Owner access
+          OA
         </Link>
         )}
       </div>

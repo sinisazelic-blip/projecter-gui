@@ -7,6 +7,7 @@ import { useAuthUser } from "@/components/AuthUserProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeToggle from "@/components/ThemeToggle";
 import FluxaLogo from "@/components/FluxaLogo";
+import { FLUXA_SLOGAN_WITH_VERSION } from "@/lib/fluxaVersion";
 
 export default function FirmaHeader() {
   const { t } = useTranslation();
@@ -23,7 +24,7 @@ export default function FirmaHeader() {
       <div className="brandWrap">
         <div className="brandLogoBlock">
           <FluxaLogo />
-          <span className="brandSlogan">Project & Finance Engine · V2.0</span>
+          <span className="brandSlogan">{FLUXA_SLOGAN_WITH_VERSION}</span>
         </div>
         <div>
           <div className="brandTitle">{t("firma.title")}</div>

@@ -338,6 +338,31 @@ option {
   white-space: nowrap;
 }
 
+/* Rasknjižavanje — red čekanja: partner i opis se prelamaju */
+.rasknjizavanje-queue-table thead th:nth-child(1),
+.rasknjizavanje-queue-table tbody td:nth-child(1) {
+  text-align: left;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.rasknjizavanje-queue-table thead th:nth-child(3),
+.rasknjizavanje-queue-table tbody td:nth-child(3),
+.rasknjizavanje-queue-table thead th:nth-child(4),
+.rasknjizavanje-queue-table tbody td:nth-child(4) {
+  text-align: left;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.rasknjizavanje-queue-table thead th:nth-child(2),
+.rasknjizavanje-queue-table tbody td:nth-child(2) {
+  text-align: right;
+  white-space: nowrap;
+}
+
 /* Evidencija početnih stanja: Naziv i Napomena mogu da se prelamaju */
 .pocetna-stanja-table thead th:nth-child(1),
 .pocetna-stanja-table tbody td:nth-child(1),

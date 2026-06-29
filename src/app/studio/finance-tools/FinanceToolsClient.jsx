@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useTranslation } from "@/components/LocaleProvider";
 import { formatAmount, formatAmountForDocumentValuta } from "@/lib/format";
+import RasknjizavanjeClient from "@/app/finance/rasknjizavanje/RasknjizavanjeClient";
 
 const fmt = (v) => {
   if (v === null || v === undefined) return "—";
@@ -44,6 +46,27 @@ const actionBtnSpecialStyle = {
   borderColor: "rgba(59, 130, 246, 0.45)",
 };
 
+function invoiceRefFromPosting(posting) {
+  const parts = [
+    posting?.description,
+    posting?.staging_description,
+    posting?.staging_full_description,
+    posting?.reference,
+  ]
+    .map((x) => String(x ?? "").trim())
+    .filter(Boolean);
+  for (const text of parts) {
+    const m = text.match(/\b(\d{1,4})\s*\/\s*(\d{4})\b/);
+    if (m) {
+      const broj = parseInt(m[1], 10);
+      const godina = parseInt(m[2], 10);
+      if (Number.isFinite(broj) && Number.isFinite(godina) && godina >= 2000)
+        return `${broj}/${godina}`;
+    }
+  }
+  return "";
+}
+
 export default function FinanceToolsClient() {
   const { t, locale } = useTranslation();
   const MJESECI = useMemo(
@@ -81,6 +104,7 @@ export default function FinanceToolsClient() {
   const [note, setNote] = useState("");
   const [deactLinkId, setDeactLinkId] = useState("");
   const [openingCandidates, setOpeningCandidates] = useState(null);
+  const [rasknjizavanjeOpen, setRasknjizavanjeOpen] = useState(false);
 
   const incoming = useMemo(
     () => rows.filter((r) => Number(r.amount) > 0),
@@ -142,7 +166,8 @@ export default function FinanceToolsClient() {
     setErr("");
     try {
       const pid = Number(defaultProjectId);
-      const fidRaw = String(defaultFakturaId || "").trim();
+      const detectedInvoice = invoiceRefFromPosting(posting);
+      const fidRaw = String(defaultFakturaId || detectedInvoice || "").trim();
       const fid = Number(fidRaw);
       const useInvoice = (Number.isFinite(fid) && fid > 0) || /^\d{1,4}\/\d{4}$/.test(fidRaw);
       if (!useInvoice && (!Number.isFinite(pid) || pid <= 0))
@@ -154,7 +179,11 @@ export default function FinanceToolsClient() {
         datum: String(posting.value_date || "").slice(0, 10),
         projekat_id: pid,
         faktura_id: useInvoice ? fidRaw : undefined,
-        opis: note || `Income link for posting ${posting.posting_id}`,
+        opis:
+          note ||
+          (detectedInvoice
+            ? `Uplata po izvodu ${detectedInvoice}`
+            : `Income link for posting ${posting.posting_id}`),
       };
 
       const res = await fetch("/api/finance/postings/link-income", {
@@ -571,6 +600,29 @@ export default function FinanceToolsClient() {
             <button type="button" className="btn" onClick={() => openAnalize("dobavljaci")}>
               {t("financeTools.tabDobavljaci")}
             </button>
+          </div>
+        </div>
+        <div className="card" style={{ marginTop: 0 }}>
+          <div className="card-title" title={t("rasknjizavanje.cardDesc")}>
+            {t("rasknjizavanje.title")}
+          </div>
+          <p className="subtle" style={{ margin: "6px 0 10px", fontSize: 12 }}>
+            {t("rasknjizavanje.cardDesc")}
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setRasknjizavanjeOpen(true)}
+            >
+              {t("rasknjizavanje.openPanel")}
+            </button>
+            <Link href="/finance/rasknjizavanje" className="btn">
+              {t("rasknjizavanje.openFullPage")}
+            </Link>
+            <Link href="/banking/import" className="btn">
+              {t("rasknjizavanje.goImport")}
+            </Link>
           </div>
         </div>
         <div className="card" style={{ marginTop: 0 }}>
@@ -1160,6 +1212,33 @@ export default function FinanceToolsClient() {
           </div>
         )}
       </div>
+
+      {rasknjizavanjeOpen && (
+        <div
+          className="card"
+          style={{
+            position: "fixed",
+            top: 12,
+            left: 12,
+            right: 12,
+            bottom: 12,
+            zIndex: 130,
+            width: "auto",
+            maxWidth: "none",
+            maxHeight: "none",
+            overflow: "auto",
+            background:
+              "linear-gradient(135deg, color-mix(in srgb, var(--bg) 92%, #0b1220 8%), color-mix(in srgb, var(--bg) 88%, #0f2a2f 12%))",
+            border: "1px solid color-mix(in srgb, var(--border, #334155) 75%, transparent 25%)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
+          }}
+        >
+          <RasknjizavanjeClient
+            embedded
+            onClose={() => setRasknjizavanjeOpen(false)}
+          />
+        </div>
+      )}
     </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "@/components/LocaleProvider";
 import FluxaLogo from "@/components/FluxaLogo";
@@ -27,20 +27,6 @@ type BatchListResponse = {
   batches: any[];
 };
 
-type MatchListResponse = {
-  ok: boolean;
-  batch_id: number;
-  matched: any[];
-  error?: string;
-};
-
-type UnmatchedResponse = {
-  ok: boolean;
-  batch_id: number;
-  unmatched: any[];
-  error?: string;
-};
-
 type AutoMatchResponse = {
   ok: boolean;
   batch_id?: number;
@@ -50,6 +36,20 @@ type AutoMatchResponse = {
   items?: any[];
   error?: string;
 };
+
+function fmtT(
+  t: (key: string) => string,
+  key: string,
+  vars?: Record<string, string | number>,
+) {
+  let s = t(key);
+  if (vars) {
+    for (const [k, v] of Object.entries(vars)) {
+      s = s.replace(new RegExp(`\\{\\{${k}\\}\\}`, "g"), String(v ?? ""));
+    }
+  }
+  return s;
+}
 
 function fmtMoney(n: number) {
   const v = Number(n);
@@ -81,40 +81,15 @@ export default function BankImportPage() {
     "ALL",
   );
 
-  // matching view
-  const [view, setView] = useState<"UNMATCHED" | "MATCHED">("UNMATCHED");
-  const [unmatchedRes, setUnmatchedRes] = useState<UnmatchedResponse | null>(
-    null,
-  );
-  const [matchedRes, setMatchedRes] = useState<MatchListResponse | null>(null);
-
-  // auto-match
   const [autoMatchRes, setAutoMatchRes] = useState<AutoMatchResponse | null>(
     null,
   );
   const [autoMatching, setAutoMatching] = useState(false);
+  const [showAdvancedOut, setShowAdvancedOut] = useState(false);
 
-  // manual match modal
-  const [manualTx, setManualTx] = useState<any | null>(null);
-  const [savingManual, setSavingManual] = useState(false);
-
-  // project search (autocomplete)
-  const [projectQuery, setProjectQuery] = useState("");
-  const [projectHits, setProjectHits] = useState<any[]>([]);
-  const [projectLoading, setProjectLoading] = useState(false);
-  const searchTimerRef = useRef<any>(null);
-
-  // Save as rule (C)
-  const [ruleText, setRuleText] = useState("");
-  const [savingRule, setSavingRule] = useState(false);
-
-  // Commit batch (2.3)
+  // Commit batch
   const [committing, setCommitting] = useState(false);
   const [commitRes, setCommitRes] = useState<any | null>(null);
-
-  // To project costs (3)
-  const [costing, setCosting] = useState(false);
-  const [costRes, setCostRes] = useState<any | null>(null);
 
   const batchId = batchRes?.batch?.batch_id
     ? Number(batchRes.batch.batch_id)
@@ -133,27 +108,12 @@ export default function BankImportPage() {
     }
   }
 
-  async function loadMatching(batch_id: number) {
-    const [u, m] = await Promise.all([
-      fetch(`/api/bank/match/unmatched?batch_id=${batch_id}`, {
-        cache: "no-store",
-      }).then((x) => x.json()),
-      fetch(`/api/bank/match/list?batch_id=${batch_id}`, {
-        cache: "no-store",
-      }).then((x) => x.json()),
-    ]);
-    setUnmatchedRes(u);
-    setMatchedRes(m);
-  }
-
   async function loadBatch(id: number) {
     const r = await fetch(`/api/bank/batch?id=${id}`, { cache: "no-store" });
     const j: BatchResponse = await r.json();
     setBatchRes(j);
-
-    if (j.ok && j.batch?.batch_id) {
-      await loadMatching(Number(j.batch.batch_id));
-    }
+    setCommitRes(null);
+    setAutoMatchRes(null);
   }
 
   async function onImport() {
@@ -232,8 +192,7 @@ export default function BankImportPage() {
       setAutoMatchRes(j);
 
       if (j.ok) {
-        await loadMatching(bid);
-        setView("UNMATCHED");
+        await loadBatch(bid);
       }
     } catch (e: any) {
       setAutoMatchRes({ ok: false, error: e?.message ?? t("bankingImport.error") });
@@ -267,219 +226,16 @@ export default function BankImportPage() {
         return;
       }
 
+      const inv = Number(j.matched_invoices ?? 0);
+      const queue = Number(j.queue_cnt ?? j.unmatched_cnt ?? 0);
       alert(
-        `✅ ${t("bankingImport.commitOk")} · committed ${j.committed}/${j.matched_count} (skipped ${j.skipped_already_committed})`,
+        `✅ ${t("bankingImport.commitOk")} · ${j.affected_rows ?? "?"} postinga · ${t("bankingImport.commitAutoInvoices")}: ${inv}` +
+          (queue > 0
+            ? ` · ${fmtT(t, "bankingImport.commitQueueHint", { count: queue })}`
+            : ""),
       );
     } finally {
       setCommitting(false);
-    }
-  }
-
-  async function commitToProjectCosts() {
-    const bid = Number(batchRes?.batch?.batch_id);
-    if (!Number.isFinite(bid) || bid <= 0) {
-      alert(t("bankingImport.noBatch"));
-      return;
-    }
-
-    setCosting(true);
-    setCostRes(null);
-
-    try {
-      const r = await fetch("/api/bank/costs/commit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ batch_id: bid }),
-      });
-
-      const j = await r.json();
-      setCostRes(j);
-
-      if (!j.ok) {
-        alert(j.error || t("bankingImport.error"));
-        return;
-      }
-
-      alert(
-        `✅ ${t("bankingImport.costsWritten")}: ${j.inserted}/${j.scanned} (skipped ${j.skipped})`,
-      );
-    } finally {
-      setCosting(false);
-    }
-  }
-
-  function resetProjectSearch() {
-    setProjectQuery("");
-    setProjectHits([]);
-    setProjectLoading(false);
-    if (searchTimerRef.current) {
-      clearTimeout(searchTimerRef.current);
-      searchTimerRef.current = null;
-    }
-  }
-
-  async function doProjectSearch(q: string) {
-    const qq = q.trim();
-    if (!qq) {
-      setProjectHits([]);
-      setProjectLoading(false);
-      return;
-    }
-
-    setProjectLoading(true);
-    try {
-      const r = await fetch(
-        `/api/projects/search?q=${encodeURIComponent(qq)}`,
-        { cache: "no-store" },
-      );
-      const j = await r.json();
-      if (j?.success) setProjectHits(j.data ?? []);
-      else setProjectHits([]);
-    } catch {
-      setProjectHits([]);
-    } finally {
-      setProjectLoading(false);
-    }
-  }
-
-  function onProjectQueryChange(v: string) {
-    setProjectQuery(v);
-
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      doProjectSearch(v);
-    }, 250);
-  }
-
-  async function openManualMatch(tx: any) {
-    const cp = cleanSpaces(tx?.counterparty);
-    const desc = cleanSpaces(tx?.description);
-
-    setManualTx({
-      ...tx,
-      projekat_id: tx?.projekat_id ? String(tx.projekat_id) : "",
-      kategorija: tx?.kategorija ? String(tx.kategorija) : "",
-    });
-
-    setRuleText((cp && cp.length >= 4 ? cp : desc).slice(0, 120));
-
-    resetProjectSearch();
-  }
-
-  async function saveManualMatch() {
-    if (!manualTx) return;
-
-    const tx_id = Number(manualTx.tx_id);
-    if (!Number.isFinite(tx_id) || tx_id <= 0) {
-      alert(t("bankingImport.invalidTxId"));
-      return;
-    }
-
-    const bid = Number(batchRes?.batch?.batch_id);
-    if (!Number.isFinite(bid) || bid <= 0) {
-      alert(t("bankingImport.noBatch"));
-      return;
-    }
-
-    setSavingManual(true);
-    try {
-      const r = await fetch("/api/bank/match/manual", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tx_id,
-          projekat_id: manualTx.projekat_id
-            ? Number(manualTx.projekat_id)
-            : null,
-          kategorija: String(manualTx.kategorija || "").trim() || null,
-        }),
-      });
-
-      const j = await r.json();
-      if (!j.ok) {
-        alert(j.error || t("bankingImport.errorSaving"));
-        return;
-      }
-
-      await loadMatching(bid);
-      setManualTx(null);
-      setView("UNMATCHED");
-      resetProjectSearch();
-    } finally {
-      setSavingManual(false);
-    }
-  }
-
-  async function saveRuleFromModal() {
-    if (!manualTx) return;
-
-    const match_text = String(ruleText || "").trim();
-    if (!match_text) {
-      alert(t("bankingImport.enterRuleText"));
-      return;
-    }
-
-    const bid = Number(batchRes?.batch?.batch_id);
-    if (!Number.isFinite(bid) || bid <= 0) {
-      alert(t("bankingImport.noBatch"));
-      return;
-    }
-
-    setSavingRule(true);
-    try {
-      const r = await fetch("/api/bank/match/rule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          match_text,
-          match_is_fee: Number(manualTx.is_fee) === 1,
-          projekat_id: manualTx.projekat_id
-            ? Number(manualTx.projekat_id)
-            : null,
-          kategorija: String(manualTx.kategorija || "").trim() || null,
-          priority: 50,
-        }),
-      });
-
-      const j = await r.json();
-      if (!j.ok) {
-        alert(j.error || t("bankingImport.errorSavingRule"));
-        return;
-      }
-
-      const r2 = await fetch(`/api/bank/match/auto?batch_id=${bid}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      const text2 = await r2.text();
-      let j2: any = null;
-      try {
-        j2 = JSON.parse(text2);
-      } catch {
-        alert(
-          `${t("bankingImport.autoMatchNoJson")} (HTTP ${r2.status}). Prvih 200 znakova: ${text2.slice(0, 200)}`,
-        );
-        return;
-      }
-
-      if (!j2?.ok) {
-        alert(j2?.error || t("bankingImport.autoMatchError"));
-        return;
-      }
-
-      await loadMatching(bid);
-      setView("UNMATCHED");
-      setProjectHits([]);
-      alert(
-        (j.created ? `✅ ${t("bankingImport.ruleSaved")}` : `✅ ${t("bankingImport.ruleExists")}`) +
-          ` · ${t("bankingImport.autoMatchResult")}: matched ${j2.matched ?? "?"}/${j2.scanned ?? "?"}`,
-      );
-
-      setManualTx(null);
-      resetProjectSearch();
-    } finally {
-      setSavingRule(false);
     }
   }
 
@@ -531,6 +287,18 @@ export default function BankImportPage() {
                 >
                   ← {t("izvodi.title")}
                 </Link>
+                <Link
+                  href="/finance/rasknjizavanje"
+                  className="btn"
+                  title={t("rasknjizavanje.title")}
+                  style={{
+                    background: "linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.1))",
+                    borderColor: "rgba(34, 197, 94, 0.4)",
+                    fontWeight: 700,
+                  }}
+                >
+                  {t("rasknjizavanje.title")}
+                </Link>
                 <Link href="/dashboard" className="btn" title={t("common.dashboard")}>
                   <img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> {t("common.dashboard")}
                 </Link>
@@ -579,19 +347,9 @@ export default function BankImportPage() {
         </button>
 
         <button
-          onClick={runAutoMatch}
-          disabled={!batchId || autoMatching}
-          className={`btn btn--active ${!batchId || autoMatching ? "btn--disabled" : ""}`}
-          aria-disabled={!batchId || autoMatching}
-          title={!batchId ? t("bankingImport.selectBatchFirst") : t("bankingImport.applyMatchRules")}
-        >
-          {autoMatching ? t("bankingImport.autoMatching") : t("bankingImport.autoMatch")}
-        </button>
-
-        <button
           onClick={commitBatch}
           disabled={!batchId || committing}
-          className={`btn ${!batchId || committing ? "btn--disabled" : ""}`}
+          className={`btn btn-primary ${!batchId || committing ? "btn--disabled" : ""}`}
           aria-disabled={!batchId || committing}
           title={
             !batchId
@@ -601,21 +359,64 @@ export default function BankImportPage() {
         >
           {committing ? t("bankingImport.committing") : t("bankingImport.commitBatch")}
         </button>
-
-        <button
-          onClick={commitToProjectCosts}
-          disabled={!batchId || costing}
-          className={`btn ${!batchId || costing ? "btn--disabled" : ""}`}
-          aria-disabled={!batchId || costing}
-          title={
-            !batchId
-              ? t("bankingImport.selectBatchFirst")
-              : t("bankingImport.writeToCosts")
-          }
-        >
-          {costing ? t("bankingImport.toCosts") : t("bankingImport.toProjectCosts")}
-        </button>
       </div>
+
+      <div
+        className="card"
+        style={{
+          marginTop: 12,
+          padding: "12px 16px",
+          background: "rgba(59,130,246,.08)",
+          borderColor: "rgba(59,130,246,.25)",
+        }}
+      >
+        <div style={{ fontWeight: 800, marginBottom: 6 }}>{t("bankingImport.workflowTitle")}</div>
+        <ol style={{ margin: 0, paddingLeft: 20, fontSize: 14, lineHeight: 1.6 }}>
+          <li>{t("bankingImport.workflowStep1")}</li>
+          <li>{t("bankingImport.workflowStep2")}</li>
+          <li>
+            {t("bankingImport.workflowStep3")}{" "}
+            <Link href="/finance/rasknjizavanje" style={{ fontWeight: 700 }}>
+              {t("rasknjizavanje.title")} →
+            </Link>
+          </li>
+        </ol>
+        <p className="muted" style={{ margin: "10px 0 0", fontSize: 13 }}>
+          {t("bankingImport.workflowNote")}
+        </p>
+      </div>
+
+      {batchId ? (
+        <div style={{ marginTop: 10 }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setShowAdvancedOut((v) => !v)}
+          >
+            {showAdvancedOut ? "▾" : "▸"} {t("bankingImport.advancedOutTitle")}
+          </button>
+          {showAdvancedOut ? (
+            <div
+              className="card"
+              style={{
+                marginTop: 8,
+                padding: 12,
+                background: "rgba(148,163,184,.06)",
+              }}
+            >
+              <p style={{ margin: "0 0 10px", fontSize: 13 }}>{t("bankingImport.advancedOutHint")}</p>
+              <button
+                onClick={runAutoMatch}
+                disabled={autoMatching}
+                className={`btn ${autoMatching ? "btn--disabled" : ""}`}
+                aria-disabled={autoMatching}
+              >
+                {autoMatching ? t("bankingImport.autoMatching") : t("bankingImport.autoMatchOut")}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* Import result */}
       {importRes && (
@@ -679,9 +480,48 @@ export default function BankImportPage() {
             <div>
               <div style={{ fontWeight: 900 }}>✅ {t("bankingImport.commitOkTitle")}</div>
               <div style={{ marginTop: 6, fontSize: 14 }}>
-                committed <b>{commitRes.committed}</b> / matched{" "}
-                <b>{commitRes.matched_count}</b> · skipped{" "}
-                <b>{commitRes.skipped_already_committed}</b>
+                {t("bankingImport.commitAffected")}: <b>{commitRes.affected_rows ?? "—"}</b>
+                {commitRes.matched_invoices != null ? (
+                  <>
+                    {" "}
+                    · {t("bankingImport.commitAutoInvoices")}:{" "}
+                    <b>{commitRes.matched_invoices}</b>
+                  </>
+                ) : null}
+                {commitRes.queue_cnt != null && Number(commitRes.queue_cnt) > 0 ? (
+                  <>
+                    {" "}
+                    · {fmtT(t, "bankingImport.commitQueueHint", {
+                      count: commitRes.queue_cnt,
+                    })}
+                  </>
+                ) : commitRes.unmatched_cnt != null && Number(commitRes.unmatched_cnt) > 0 ? (
+                  <>
+                    {" "}
+                    · {fmtT(t, "bankingImport.commitQueueHint", {
+                      count: commitRes.unmatched_cnt,
+                    })}
+                  </>
+                ) : null}
+              </div>
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: 12,
+                  borderRadius: 10,
+                  background: "rgba(34,197,94,.1)",
+                  border: "1px solid rgba(34,197,94,.35)",
+                }}
+              >
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>
+                  {t("bankingImport.nextStepRasknjizavanje")}
+                </div>
+                <Link
+                  href={`/finance/rasknjizavanje?batch_id=${batchId || commitRes.batch_id || ""}`}
+                  className="btn btn-primary"
+                >
+                  {t("rasknjizavanje.openPanel")}
+                </Link>
               </div>
             </div>
           ) : (
@@ -693,51 +533,7 @@ export default function BankImportPage() {
         </div>
       )}
 
-      {/* Costs result */}
-      {costRes && (
-        <div className="card" style={{ marginTop: 12 }}>
-          {costRes.ok ? (
-            <div>
-              <div style={{ fontWeight: 900 }}>
-                ✅ {t("bankingImport.costsWrittenTitle")}
-              </div>
-              <div style={{ marginTop: 6, fontSize: 14 }}>
-                inserted <b>{costRes.inserted}</b> / scanned{" "}
-                <b>{costRes.scanned}</b> · skipped <b>{costRes.skipped}</b>
-              </div>
-              <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
-                mapping: {JSON.stringify(costRes.mapping)}
-              </div>
-              {Array.isArray(costRes.errors) && costRes.errors.length > 0 && (
-                <div style={{ marginTop: 10, color: "var(--bad)", fontSize: 13 }}>
-                  {t("bankingImport.errorsInResponse")}: {costRes.errors.length}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div style={{ color: "var(--bad)" }}>
-              <div style={{ fontWeight: 900 }}>❌ {t("bankingImport.errorTitle")}</div>
-              <div style={{ marginTop: 6 }}>{costRes.error}</div>
-              {costRes.debug && (
-                <pre
-                  style={{
-                    marginTop: 10,
-                    background: "rgba(255,255,255,0.04)",
-                    padding: 10,
-                    borderRadius: 10,
-                    overflowX: "auto",
-                    border: "1px solid var(--border)",
-                  }}
-                >
-                  {JSON.stringify(costRes.debug, null, 2)}
-                </pre>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Batch header */}
+      {/* Raw tx preview */}
       {batchRes?.ok && batchRes.batch && (
         <div className="card" style={{ marginTop: 16 }}>
           <div
@@ -789,186 +585,9 @@ export default function BankImportPage() {
               </button>
             ))}
           </div>
-        </div>
-      )}
 
-      {/* Matching tabs */}
-      {batchRes?.ok && batchRes.batch && (
-        <div className="card" style={{ marginTop: 14 }}>
-          <div className="tabRow" style={{ justifyContent: "space-between" }}>
-            <div className="tabRow">
-            <button
-              onClick={() => setView("UNMATCHED")}
-              className={`btn ${view === "UNMATCHED" ? "btn--active" : ""}`}
-            >
-              {t("bankingImport.unmatched")} (
-              {unmatchedRes?.ok ? unmatchedRes.unmatched.length : "?"})
-            </button>
-
-            <button
-              onClick={() => setView("MATCHED")}
-              className={`btn ${view === "MATCHED" ? "btn--active" : ""}`}
-            >
-              {t("bankingImport.matched")} ({matchedRes?.ok ? matchedRes.matched.length : "?"})
-            </button>
-            </div>
-
-            <button
-              onClick={() => batchId && loadMatching(batchId)}
-              className="btn"
-            >
-              {t("bankingImport.refreshMatchList")}
-            </button>
-          </div>
-
-          {view === "UNMATCHED" && (
-            <div style={{ marginTop: 12 }}>
-              {!unmatchedRes ? (
-                <div style={{ opacity: 0.7 }}>
-                  {t("bankingImport.noDataLoadBatch")}
-                </div>
-              ) : !unmatchedRes.ok ? (
-                <div style={{ color: "var(--bad)" }}>
-                  {t("bankingImport.errorTitle")}: {unmatchedRes.error}
-                </div>
-              ) : (
-                <div className="tableCard table-wrap">
-                  <table className="table">
-                    <thead>
-                      <tr>
-                        <th>{t("bankingImport.colDate")}</th>
-                        <th>{t("bankingImport.colRef")}</th>
-                        <th style={{ textAlign: "right" }}>{t("bankingImport.colAmount")}</th>
-                        <th>{t("bankingImport.colPartner")}</th>
-                        <th>{t("bankingImport.colDescription")}</th>
-                        <th>{t("bankingImport.colAction")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {unmatchedRes.unmatched.map((row: any) => {
-                        const amount = Number(row.amount);
-                        return (
-                          <tr key={row.tx_id}>
-                            <td className="nowrap">{row.value_date ?? ""}</td>
-                            <td className="nowrap">{row.reference ?? ""}</td>
-                            <td
-                              className="num"
-                              style={{
-                                fontWeight: 800,
-                                color:
-                                  amount < 0
-                                    ? "var(--bad)"
-                                    : amount > 0
-                                      ? "var(--good)"
-                                      : undefined,
-                              }}
-                            >
-                              {fmtMoney(amount)}
-                            </td>
-                            <td style={{ minWidth: 260 }}>{cleanSpaces(row.counterparty)}</td>
-                            <td style={{ minWidth: 340 }}>{row.description ?? ""}</td>
-                            <td className="nowrap">
-                              <button
-                                onClick={() => openManualMatch(row)}
-                                className="btn"
-                              >
-                                {t("bankingImport.manualMatch")}
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-
-                      {!unmatchedRes.unmatched.length && (
-                        <tr>
-                          <td colSpan={6} style={{ padding: 12, opacity: 0.7 }}>
-                            {t("bankingImport.noUnmatched")} 🎉
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-
-          {view === "MATCHED" && (
-            <div style={{ marginTop: 12 }}>
-              {!matchedRes ? (
-                <div style={{ opacity: 0.7 }}>
-                  {t("bankingImport.noDataLoadBatch")}
-                </div>
-              ) : !matchedRes.ok ? (
-                <div style={{ color: "var(--bad)" }}>
-                  {t("bankingImport.errorTitle")}: {matchedRes.error}
-                </div>
-              ) : (
-                <div className="tableCard table-wrap">
-                  <table className="table">
-                    <thead>
-                      <tr>
-                        <th>{t("bankingImport.colDate")}</th>
-                        <th style={{ textAlign: "right" }}>{t("bankingImport.colAmount")}</th>
-                        <th>{t("bankingImport.colPartner")}</th>
-                        <th>{t("bankingImport.colDescription")}</th>
-                        <th>{t("bankingImport.colCategory")}</th>
-                        <th>{t("bankingImport.colMatched")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {matchedRes.matched.map((row: any) => {
-                        const amount = Number(row.amount);
-                        return (
-                          <tr key={row.tx_id}>
-                            <td className="nowrap">{row.value_date ?? ""}</td>
-                            <td
-                              className="num"
-                              style={{
-                                fontWeight: 800,
-                                color:
-                                  amount < 0
-                                    ? "var(--bad)"
-                                    : amount > 0
-                                      ? "var(--good)"
-                                      : undefined,
-                              }}
-                            >
-                              {fmtMoney(amount)}
-                            </td>
-                            <td style={{ minWidth: 260 }}>{cleanSpaces(row.counterparty)}</td>
-                            <td style={{ minWidth: 340 }}>{row.description ?? ""}</td>
-                            <td className="nowrap">
-                              <b>{row.kategorija ?? ""}</b>
-                              {row.projekat_id ? ` (P#${row.projekat_id})` : ""}
-                            </td>
-                            <td className="nowrap">{row.matched_by} · {row.matched_at}</td>
-                          </tr>
-                        );
-                      })}
-
-                      {!matchedRes.matched.length && (
-                        <tr>
-                          <td colSpan={6} style={{ padding: 12, opacity: 0.7 }}>
-                            {t("bankingImport.noMatched")}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Raw tx preview */}
-      {batchRes?.ok && (
-        <div className="card" style={{ marginTop: 16 }}>
-          <div className="cardTitle" style={{ marginBottom: 8 }}>
-            {t("bankingImport.rawStagingPreview")} ({filteredTxs.length} /{" "}
-            {txs.length})
+          <div className="cardTitle" style={{ marginBottom: 8, marginTop: 14 }}>
+            {t("bankingImport.rawStagingPreview")} ({filteredTxs.length} / {txs.length})
           </div>
 
           <div className="tableCard table-wrap">
@@ -1049,176 +668,6 @@ export default function BankImportPage() {
         </div>
       )}
 
-      {/* MANUAL MATCH MODAL */}
-      {manualTx && (
-        <div
-          className="modalOverlay"
-          onClick={() => {
-            setManualTx(null);
-            resetProjectSearch();
-          }}
-        >
-          <div
-            className="modalContent"
-            style={{ width: 560 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modalHeader">
-              <h3 className="modalTitleText">{t("bankingImport.manualMatchTitle")}</h3>
-            </div>
-
-            <div className="modalBody">
-
-            <div style={{ fontSize: 14, marginBottom: 8 }}>
-              <b>{fmtMoney(Number(manualTx.amount))}</b> ·{" "}
-              {cleanSpaces(manualTx.counterparty)}
-            </div>
-            <div style={{ marginBottom: 12 }}>{manualTx.description}</div>
-
-            {/* Projekat search */}
-            <label className="field">
-              <span className="label">{t("bankingImport.projectLabel")}</span>
-              <input
-                value={projectQuery}
-                onChange={(e) => onProjectQueryChange(e.target.value)}
-                placeholder={t("bankingImport.projectPlaceholder")}
-                className="input"
-              />
-
-              <div style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>
-                {t("bankingImport.selectedProject")}{" "}
-                <b>
-                  {manualTx.projekat_id
-                    ? `#${manualTx.projekat_id}`
-                    : t("bankingImport.noProject")}
-                </b>
-              </div>
-
-              {projectLoading && (
-                <div style={{ marginTop: 6, fontSize: 13 }}>{t("bankingImport.searching")}</div>
-              )}
-
-              {!!projectHits.length && (
-                <div className="card" style={{ marginTop: 8 }}>
-                  {projectHits.slice(0, 10).map((p: any, idx: number) => (
-                    <button
-                      key={`${p.projekat_id}-${idx}`}
-                      type="button"
-                      className="btn"
-                      style={{
-                        width: "100%",
-                        justifyContent: "flex-start",
-                        marginBottom: idx < 9 ? 4 : 0,
-                      }}
-                      onClick={() => {
-                        setManualTx({
-                          ...manualTx,
-                          projekat_id: String(p.projekat_id),
-                        });
-                        setProjectQuery(
-                          `#${p.projekat_id} — ${String(p.radni_naziv ?? "").slice(0, 60)}`,
-                        );
-                        setProjectHits([]);
-                      }}
-                    >
-                      <b>#{p.projekat_id}</b>{" "}
-                      <span style={{ opacity: 0.85 }}>
-                        — {String(p.radni_naziv ?? "").slice(0, 80)}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div className="actions" style={{ marginTop: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setManualTx({ ...manualTx, projekat_id: "" });
-                    resetProjectSearch();
-                  }}
-                  className="btn"
-                >
-                  {t("bankingImport.noProjectBtn")}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    const onlyNum = projectQuery.replace(/[^0-9]/g, "").trim();
-                    if (onlyNum)
-                      setManualTx({ ...manualTx, projekat_id: onlyNum });
-                    setProjectHits([]);
-                  }}
-                  className="btn"
-                  title={t("bankingImport.setNumberFromInput")}
-                >
-                  {t("bankingImport.setNumberFromInput")}
-                </button>
-              </div>
-            </label>
-
-            {/* kategorija */}
-            <label className="field">
-              <span className="label">{t("bankingImport.category")}</span>
-              <input
-                value={manualTx.kategorija ?? ""}
-                onChange={(e) =>
-                  setManualTx({ ...manualTx, kategorija: e.target.value })
-                }
-                placeholder={t("bankingImport.categoryPlaceholder")}
-                className="input"
-              />
-            </label>
-
-            {/* Save as rule */}
-            <label className="field">
-              <span className="label">{t("bankingImport.saveAsRuleLabel")}</span>
-              <input
-                value={ruleText}
-                onChange={(e) => setRuleText(e.target.value)}
-                placeholder={t("bankingImport.saveAsRulePlaceholder")}
-                className="input"
-              />
-              <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-                {t("bankingImport.saveAsRuleHint")}
-              </div>
-            </label>
-
-            </div>
-
-            <div className="modalFooter">
-              <button
-                onClick={saveRuleFromModal}
-                disabled={savingRule}
-                className={`btn btn--active ${savingRule ? "btn--disabled" : ""}`}
-                aria-disabled={savingRule}
-              >
-                {savingRule ? t("bankingImport.savingRule") : t("bankingImport.saveAsRule")}
-              </button>
-
-              <button
-                onClick={() => {
-                  setManualTx(null);
-                  resetProjectSearch();
-                }}
-                className="btn"
-              >
-                {t("bankingImport.cancel")}
-              </button>
-
-              <button
-                onClick={saveManualMatch}
-                disabled={savingManual}
-                className={`btn btn--active ${savingManual ? "btn--disabled" : ""}`}
-                aria-disabled={savingManual}
-              >
-                {savingManual ? t("bankingImport.saving") : t("bankingImport.saveManual")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
         </div>
       </div>
     </div>

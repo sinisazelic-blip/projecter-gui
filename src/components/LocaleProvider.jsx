@@ -45,10 +45,16 @@ export function LocaleProvider({ children, initialLocale, forceLocale }) {
   }, []);
 
   const t = useCallback(
-    (key) => {
+    (key, vars) => {
       if (!mounted) return key;
       const dict = messages[locale] || messages.sr;
-      return getNested(dict, key);
+      let out = getNested(dict, key);
+      if (vars && typeof out === "string") {
+        for (const [k, v] of Object.entries(vars)) {
+          out = out.replace(new RegExp(`\\{\\{${k}\\}\\}`, "g"), String(v ?? ""));
+        }
+      }
+      return out;
     },
     [locale, mounted],
   );
