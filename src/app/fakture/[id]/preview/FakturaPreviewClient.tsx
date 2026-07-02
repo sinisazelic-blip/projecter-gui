@@ -6,6 +6,10 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "@/components/LocaleProvider";
 import FluxaLogo from "@/components/FluxaLogo";
+import {
+  applyInvoicePdfPagination,
+  INVOICE_PDF_EXPORT_CSS,
+} from "@/lib/fakture/invoicePdfPagination";
 
 function fmtDDMMYYYYFromISO(isoLike: string | null): string {
   if (!isoLike) return "—";
@@ -401,17 +405,20 @@ export default function FakturaPreviewClient() {
     const el = paperRef.current;
     if (!el) return;
     const origMinHeight = (el as HTMLElement).style.minHeight;
+    el.classList.add("is-pdf-export");
+    (el as HTMLElement).style.minHeight = "auto";
+    const undoPagination = applyInvoicePdfPagination(el);
     try {
       const html2pdf = (await import("html2pdf.js")).default;
-      (el as HTMLElement).style.minHeight = "auto";
       const pdfOptions = {
         margin: 0,
         filename: `${pdfFilename}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2 },
+        html2canvas: { scale: 2, useCORS: true },
         pagebreak: {
           mode: ["css", "legacy"],
-          avoid: ["tr", ".totalsRow", ".totalsBox", ".footer", ".invRow", ".cols2"],
+          before: [".invoice-pdf-page-break"],
+          avoid: [".totalsRow", ".totalsBox", ".footer", ".invRow", ".cols2"],
         },
         jsPDF: {
           unit: "mm",
@@ -428,6 +435,8 @@ export default function FakturaPreviewClient() {
       console.error("PDF greška:", err);
       alert(err?.message || t("fakture.pdfError"));
     } finally {
+      undoPagination();
+      el.classList.remove("is-pdf-export");
       (el as HTMLElement).style.minHeight = origMinHeight || "297mm";
     }
   }
@@ -573,6 +582,7 @@ export default function FakturaPreviewClient() {
   return (
     <div className="container">
       <style>{`
+        ${INVOICE_PDF_EXPORT_CSS}
         .pageWrap { display:flex; flex-direction:column; height:100vh; overflow:hidden; }
 
         .topBlock {

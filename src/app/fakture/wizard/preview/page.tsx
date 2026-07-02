@@ -6,6 +6,10 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslation } from "@/components/LocaleProvider";
 import FluxaLogo from "@/components/FluxaLogo";
+import {
+  applyInvoicePdfPagination,
+  INVOICE_PDF_EXPORT_CSS,
+} from "@/lib/fakture/invoicePdfPagination";
 
 function fmtDDMMYYYYFromISO(isoLike: string | null): string {
   if (!isoLike) return "—";
@@ -830,32 +834,38 @@ export default function Page() {
     const el = paperRef.current;
     if (!el) return;
     const origMinHeight = (el as HTMLElement).style.minHeight;
+    el.classList.add("is-pdf-export");
+    (el as HTMLElement).style.minHeight = "auto";
+    const undoPagination = applyInvoicePdfPagination(el);
     try {
-      (el as HTMLElement).style.minHeight = "auto";
       const html2pdf = (await import("html2pdf.js")).default;
+      const pdfOptions = {
+        margin: 0,
+        filename: `${pdfFilename}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        pagebreak: {
+          mode: ["css", "legacy"],
+          before: [".invoice-pdf-page-break"],
+          avoid: [".totalsRow", ".totalsBox", ".footer", ".invRow", ".cols2"],
+        },
+        jsPDF: {
+          unit: "mm",
+          format: "a4",
+          orientation: "portrait",
+          hotfixes: ["px_scaling"],
+        },
+      } as any;
       await html2pdf()
-        .set({
-          margin: 0,
-          filename: `${pdfFilename}.pdf`,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2 },
-          jsPDF: {
-            unit: "mm",
-            format: "a4",
-            orientation: "portrait",
-            hotfixes: ["px_scaling"],
-          } as {
-            unit?: string;
-            format?: string | [number, number];
-            orientation?: "portrait" | "landscape";
-          },
-        })
+        .set(pdfOptions)
         .from(el)
         .save();
     } catch (err: any) {
       console.error("PDF greška:", err);
       alert(err?.message || t("wizard.createError"));
     } finally {
+      undoPagination();
+      el.classList.remove("is-pdf-export");
       (el as HTMLElement).style.minHeight = origMinHeight || "297mm";
     }
   }
@@ -863,6 +873,7 @@ export default function Page() {
   return (
     <div className="container">
       <style>{`
+        ${INVOICE_PDF_EXPORT_CSS}
         .pageWrap { display:flex; flex-direction:column; height:100vh; overflow:hidden; }
 
         .topBlock {

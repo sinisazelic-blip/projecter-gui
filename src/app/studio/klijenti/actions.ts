@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { query } from "@/lib/db";
+import { getClientPaymentStats } from "@/lib/klijenti/clientPaymentStats";
 
 type TipKlijenta = "direktni" | "agencija";
 
@@ -230,4 +231,14 @@ export async function setKlijentActive(input: {
   ]);
   revalidatePath("/studio/klijenti");
   return { ok: true };
+}
+
+export async function getKlijentPaymentStatsAction(klijentId: number) {
+  const id = Number(klijentId);
+  if (!Number.isFinite(id) || id <= 0) {
+    return { ok: false as const, error: "Neispravan klijent_id." };
+  }
+
+  const stats = await getClientPaymentStats(id);
+  return { ok: true as const, stats };
 }

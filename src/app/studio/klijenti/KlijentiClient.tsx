@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { KlijentRow } from "./page";
-import { createKlijent, setKlijentActive, updateKlijent } from "./actions";
+import { createKlijent, setKlijentActive, updateKlijent, getKlijentPaymentStatsAction } from "./actions";
 import ImportSection from "../ImportSection";
 import { useTranslation } from "@/components/LocaleProvider";
+import type { ClientPaymentStats } from "@/lib/klijenti/clientPaymentStats";
 
 type TipKlijenta = "direktni" | "agencija";
 
@@ -153,6 +154,10 @@ export default function KlijentiClient({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [saveWarning, setSaveWarning] = useState<{ message: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paymentStats, setPaymentStats] = useState<ClientPaymentStats | null>(
+    null,
+  );
+  const [paymentStatsLoading, setPaymentStatsLoading] = useState(false);
 
   const [items, setItems] = useState<KlijentRow[]>(initialItems ?? []);
   useEffect(() => {
@@ -249,6 +254,20 @@ export default function KlijentiClient({
       created_at: it.created_at,
       updated_at: it.updated_at,
     });
+    void loadPaymentStats(it.klijent_id);
+  }
+
+  async function loadPaymentStats(klijentId: number) {
+    setPaymentStatsLoading(true);
+    setPaymentStats(null);
+    try {
+      const res = await getKlijentPaymentStatsAction(klijentId);
+      if (res.ok) setPaymentStats(res.stats);
+    } catch {
+      setPaymentStats(null);
+    } finally {
+      setPaymentStatsLoading(false);
+    }
   }
 
   const editIndex = useMemo(() => {
@@ -281,6 +300,8 @@ export default function KlijentiClient({
     setSelectedId(null);
     setModalMode("new");
     setForm(emptyForm());
+    setPaymentStats(null);
+    setPaymentStatsLoading(false);
     setModalOpen(true);
   }
 
@@ -909,6 +930,131 @@ export default function KlijentiClient({
                     style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
                   />
                 </div>
+
+                {modalMode === "edit" ? (
+                  <div>
+                    <div
+                      style={{
+                        color: "var(--muted)",
+                        fontSize: 16,
+                        marginBottom: 8,
+                      }}
+                    >
+                      {t("studioKlijenti.labelAvgPaymentDays")}
+                    </div>
+                    <div
+                      className="input"
+                      style={{
+                        width: "100%",
+                        padding: "12px 14px",
+                        fontSize: 15,
+                        minHeight: 48,
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "center",
+                        gap: 4,
+                        background: "rgba(255,255,255,0.03)",
+                      }}
+                    >
+                      {paymentStatsLoading ? (
+                        <span style={{ color: "var(--muted)" }}>…</span>
+                      ) : paymentStats?.invoiceCount &&
+                        paymentStats.avgDaysFromIssue != null ? (
+                        <>
+                          <span style={{ fontWeight: 700, fontSize: 17 }}>
+                            {paymentStats.avgDaysFromIssue}{" "}
+                            {t("studioKlijenti.avgPaymentDaysUnit")}
+                          </span>
+                          {paymentStats.minDaysFromIssue != null &&
+                          paymentStats.maxDaysFromIssue != null &&
+                          paymentStats.minDaysFromIssue !==
+                            paymentStats.maxDaysFromIssue ? (
+                            <span
+                              style={{
+                                fontSize: 13,
+                                color: "var(--muted)",
+                                lineHeight: 1.35,
+                              }}
+                            >
+                              {t("studioKlijenti.avgPaymentRange")
+                                .replace(
+                                  "{{min}}",
+                                  String(paymentStats.minDaysFromIssue),
+                                )
+                                .replace(
+                                  "{{max}}",
+                                  String(paymentStats.maxDaysFromIssue),
+                                )}
+                            </span>
+                          ) : null}
+                          <span
+                            style={{
+                              fontSize: 13,
+                              color: "var(--muted)",
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            {t("studioKlijenti.avgPaymentBasedOn").replace(
+                              "{{count}}",
+                              String(paymentStats.invoiceCount),
+                            )}
+                          </span>
+                          {(() => {
+                            const rok = Number(form.rok_placanja_dana);
+                            const avg = paymentStats.avgDaysFromIssue;
+                            if (!Number.isFinite(rok) || avg == null) return null;
+                            const delta = Math.round((avg - rok) * 10) / 10;
+                            if (delta === 0) {
+                              return (
+                                <span
+                                  style={{
+                                    fontSize: 13,
+                                    color: "#86efac",
+                                    lineHeight: 1.35,
+                                  }}
+                                >
+                                  {t("studioKlijenti.avgPaymentOnTime")}
+                                </span>
+                              );
+                            }
+                            if (delta > 0) {
+                              return (
+                                <span
+                                  style={{
+                                    fontSize: 13,
+                                    color: "#fca5a5",
+                                    lineHeight: 1.35,
+                                  }}
+                                >
+                                  {t("studioKlijenti.avgPaymentLate")
+                                    .replace("{{days}}", String(delta))
+                                    .replace("{{rok}}", String(rok))}
+                                </span>
+                              );
+                            }
+                            return (
+                              <span
+                                style={{
+                                  fontSize: 13,
+                                  color: "#86efac",
+                                  lineHeight: 1.35,
+                                }}
+                              >
+                                {t("studioKlijenti.avgPaymentEarly")
+                                  .replace("{{days}}", String(Math.abs(delta)))
+                                  .replace("{{rok}}", String(rok))}
+                              </span>
+                            );
+                          })()}
+                        </>
+                      ) : (
+                        <span style={{ color: "var(--muted)" }}>
+                          {t("studioKlijenti.avgPaymentNoData")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
 
                 <div style={{ gridColumn: "1 / -1" }}>
                   <div
