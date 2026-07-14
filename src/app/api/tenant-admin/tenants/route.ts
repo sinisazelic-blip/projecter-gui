@@ -6,8 +6,74 @@ import {
   normalizeStudioLicenceProfile,
   STUDIO_STUB_NO_FLUXA_PLAN_NAZIV,
 } from "@/lib/studio-licence-profile";
+import {
+  annualMeetStats,
+  ensureSoccsMeetsYtdColumns,
+} from "@/lib/soccs-meet-quota";
 
 export const dynamic = "force-dynamic";
+
+async function attachAnnualMeetQuota<
+  T extends { tenant_id: number; soccs_tier?: string | null },
+>(rows: T[]) {
+  await ensureSoccsMeetsYtdColumns();
+  const ytdById = new Map<
+    number,
+    { used: number; year: number | null }
+  >();
+  try {
+    const ytdRows = (await query(
+      `SELECT tenant_id, soccs_meets_used_ytd, soccs_meets_ytd_year FROM tenants`,
+    )) as Array<{
+      tenant_id: number;
+      soccs_meets_used_ytd: number;
+      soccs_meets_ytd_year: number | null;
+    }>;
+    for (const r of ytdRows ?? []) {
+      ytdById.set(Number(r.tenant_id), {
+        used: Number(r.soccs_meets_used_ytd ?? 0),
+        year:
+          r.soccs_meets_ytd_year != null ? Number(r.soccs_meets_ytd_year) : null,
+      });
+    }
+  } catch {
+    // kolone još nisu tu
+  }
+
+  // Bootstrap: ako YTD nije punjen, procijeni iz CONSUMED MEET kodova u tekućoj godini
+  const consumedById = new Map<number, number>();
+  try {
+    const consumed = (await query(
+      `SELECT tenant_id, COUNT(*) AS cnt
+       FROM soccs_activation_codes
+       WHERE purpose = 'MEET_SESSION'
+         AND UPPER(status) = 'CONSUMED'
+         AND YEAR(COALESCE(updated_at, created_at)) = YEAR(CURDATE())
+       GROUP BY tenant_id`,
+    )) as Array<{ tenant_id: number; cnt: number }>;
+    for (const r of consumed ?? []) {
+      consumedById.set(Number(r.tenant_id), Number(r.cnt ?? 0));
+    }
+  } catch {
+    // ignore
+  }
+
+  const year = new Date().getFullYear();
+  return (rows ?? []).map((row) => {
+    const y = ytdById.get(Number(row.tenant_id));
+    const fromCol =
+      y && y.year === year ? y.used : null;
+    const fromConsumed = consumedById.get(Number(row.tenant_id)) ?? 0;
+    const usedYtd =
+      fromCol != null && fromCol > 0 ? fromCol : Math.max(fromCol ?? 0, fromConsumed);
+    const stats = annualMeetStats({
+      tier: row.soccs_tier,
+      usedYtd,
+      ytdYear: year,
+    });
+    return { ...row, ...stats };
+  });
+}
 
 function isMissingSoccsPlatformColumnsError(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e ?? "");
@@ -144,7 +210,10 @@ export async function GET() {
        ORDER BY t.naziv ASC`,
     );
 
-    return NextResponse.json({ ok: true, tenants: rows ?? [] });
+    return NextResponse.json({
+      ok: true,
+      tenants: await attachAnnualMeetQuota(rows ?? []),
+    });
   } catch (e: unknown) {
     if (isMissingSoccsPlatformColumnsError(e)) {
       const rows = await query<{
@@ -220,7 +289,10 @@ export async function GET() {
          LEFT JOIN tenants fp ON fp.tenant_id = t.soccs_federation_parent_tenant_id
          ORDER BY t.naziv ASC`,
       );
-      return NextResponse.json({ ok: true, tenants: rows ?? [] });
+      return NextResponse.json({
+        ok: true,
+        tenants: await attachAnnualMeetQuota(rows ?? []),
+      });
     }
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

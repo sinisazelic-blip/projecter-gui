@@ -4,6 +4,11 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import { usePathname, useRouter } from "next/navigation";
 import { getPermission, canSee, canEdit, canUse, isReadOnly } from "@/lib/auth/permissions-matrix";
 import { mayAccessPath, isPublicPath } from "@/lib/auth/route-permission";
+import {
+  findAclModuleByMatrix,
+  aclCanSee,
+  aclCanEdit,
+} from "@/lib/auth/acl-catalog";
 
 const AuthUserContext = createContext(null);
 
@@ -14,7 +19,7 @@ export function AuthUserProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const [subscriptionExpired, setSubscriptionExpired] = useState(false);
-  const [onboardingCompleted, setOnboardingCompleted] = useState(true); // default true so tour doesn't flash before me loads
+  const [onboardingCompleted, setOnboardingCompleted] = useState(true);
   const [forceShowTourOnce, setForceShowTourOnce] = useState(false);
 
   useEffect(() => {
@@ -45,20 +50,41 @@ export function AuthUserProvider({ children }) {
     if (loading || !user) return;
     if (isPublicPath(pathname)) return;
     const nivo = user.nivo ?? 0;
-    const isOwner = user.user_id === 0 || user.username === "Owner";
+    const isOwner = user.user_id === 0 || user.username === "Owner" || nivo >= 10;
     if (isOwner) return;
-    if (!mayAccessPath(pathname, nivo)) {
+    const aclMap = user.acl && Object.keys(user.acl).length > 0 ? user.acl : null;
+    if (!mayAccessPath(pathname, nivo, aclMap)) {
       router.replace("/dashboard");
     }
   }, [loading, user, pathname, router]);
 
   const nivo = user?.nivo ?? 0;
+  const aclMap =
+    user?.acl && typeof user.acl === "object" && Object.keys(user.acl).length > 0
+      ? user.acl
+      : null;
+
+  const resolveAccess = useCallback(
+    (module, inPage = "") => {
+      if (nivo >= 10) return "edit";
+      if (aclMap) {
+        const aclMod = findAclModuleByMatrix(module, inPage);
+        if (aclMod) return aclMap[aclMod.key] ?? "none";
+      }
+      return null;
+    },
+    [nivo, aclMap],
+  );
 
   const permission = useCallback(
     (module, inPage = "") => {
+      const access = resolveAccess(module, inPage);
+      if (access === "edit") return "Edit";
+      if (access === "view") return "Read Only";
+      if (access === "none") return "hide";
       return getPermission(module, inPage, nivo);
     },
-    [nivo]
+    [nivo, resolveAccess],
   );
 
   const completeOnboarding = useCallback(async () => {
@@ -67,7 +93,7 @@ export function AuthUserProvider({ children }) {
     try {
       await fetch("/api/auth/onboarding-complete", { method: "POST", credentials: "include" });
     } catch {
-      // Tura se sakriva odmah; nakon reloada ostaje sakrivena samo ako postoji onboarding_completed tabela
+      // ignore
     }
   }, []);
 
@@ -78,6 +104,7 @@ export function AuthUserProvider({ children }) {
   const value = {
     user,
     nivo,
+    acl: aclMap,
     loading,
     subscriptionExpired,
     onboardingCompleted,
@@ -85,10 +112,30 @@ export function AuthUserProvider({ children }) {
     requestTourOnce,
     forceShowTourOnce,
     permission,
-    canSee: (module, inPage) => nivo >= 10 || canSee(permission(module, inPage)),
-    canEdit: (module, inPage) => nivo >= 10 || canEdit(permission(module, inPage)),
-    canUse: (module, inPage) => nivo >= 10 || canUse(permission(module, inPage)),
-    isReadOnly: (module, inPage) => nivo >= 10 ? false : isReadOnly(permission(module, inPage)),
+    canSee: (module, inPage) => {
+      if (nivo >= 10) return true;
+      const access = resolveAccess(module, inPage);
+      if (access != null) return aclCanSee(access);
+      return canSee(permission(module, inPage));
+    },
+    canEdit: (module, inPage) => {
+      if (nivo >= 10) return true;
+      const access = resolveAccess(module, inPage);
+      if (access != null) return aclCanEdit(access);
+      return canEdit(permission(module, inPage));
+    },
+    canUse: (module, inPage) => {
+      if (nivo >= 10) return true;
+      const access = resolveAccess(module, inPage);
+      if (access != null) return aclCanEdit(access) || aclCanSee(access);
+      return canUse(permission(module, inPage));
+    },
+    isReadOnly: (module, inPage) => {
+      if (nivo >= 10) return false;
+      const access = resolveAccess(module, inPage);
+      if (access != null) return access === "view";
+      return isReadOnly(permission(module, inPage));
+    },
   };
 
   return (
@@ -103,6 +150,7 @@ export function useAuthUser() {
   return ctx ?? {
     user: null,
     nivo: 0,
+    acl: null,
     loading: false,
     subscriptionExpired: false,
     onboardingCompleted: true,
@@ -117,7 +165,6 @@ export function useAuthUser() {
   };
 }
 
-/** Za provjeru prava po modulu/in-page iz Excela. Vraća: "demo" | "hide" | "Read Only" | "Show" | "Use" | "Edit" | "all" */
 export function usePermission(module, inPage = "") {
   const { permission } = useAuthUser();
   return permission(module, inPage);

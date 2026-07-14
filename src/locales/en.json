@@ -2220,6 +2220,9 @@
     "colIstice": "Expires",
     "colDana": "Days left",
     "colMeetRemaining": "Meets (ISSUED codes left)",
+    "colMeetAnnual": "Annual quota",
+    "meetAnnualUnlimited": "∞",
+    "meetAnnualLeft": "{{n}} left",
     "colStatus": "Status",
     "colAkcije": "Actions",
     "noTenants": "No tenants.",
@@ -2830,7 +2833,27 @@
     "confirmActivateTitle": "Activate user?",
     "confirmDeactivateBody": "User will be hidden from active list. You can restore them later.",
     "confirmActivateBody": "User will be visible again in the active list.",
-    "confirmWorking": "Working..."
+    "confirmWorking": "Working...",
+    "aclTitle": "Access rights (module by module)",
+    "aclConfiguredHint": "Granular ACL is active — dashboard and routes follow this list (not the role matrix).",
+    "aclNotConfiguredHint": "No granular ACL yet — role matrix applies. Save the list to take control.",
+    "aclTemplateAccounting": "Template: Accounting",
+    "aclUseRoleMatrix": "Revert to role matrix",
+    "aclSave": "Save rights",
+    "aclSaved": "Rights saved.",
+    "aclCleared": "ACL cleared — role matrix applies again.",
+    "aclSaveError": "Error saving rights.",
+    "aclOwnerOnlyHint": "Owner recommended",
+    "aclGroupDesk": "Desk",
+    "aclGroupFinance": "Finance",
+    "aclGroupReports": "Reports",
+    "aclGroupMaster": "Master data",
+    "aclGroupSystem": "System",
+    "aclAccess": {
+      "none": "Hidden",
+      "view": "View only",
+      "edit": "View + edit"
+    }
   },
   "studioRoles": {
     "title": "Roles",

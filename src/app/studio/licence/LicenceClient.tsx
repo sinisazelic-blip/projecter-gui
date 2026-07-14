@@ -50,6 +50,9 @@ type TenantRow = {
   status: string;
   days_until_end: number;
   meet_remaining?: number;
+  max_meets_per_year?: number | null;
+  meets_used_ytd?: number;
+  meets_remaining_year?: number | null;
   licence_token?: string | null;
   /** 1 ako je FIRST_INSTALL kod potrošen (SOCCS aktiviran). */
   soccs_first_install_consumed?: number;
@@ -833,6 +836,7 @@ export default function LicenceClient() {
               <th style={thTd}>{t("studioLicence.colIstice")}</th>
               <th style={thTd}>{t("studioLicence.colDana")}</th>
               <th style={thTd}>{t("studioLicence.colMeetRemaining")}</th>
+              <th style={thTd}>{t("studioLicence.colMeetAnnual")}</th>
               <th style={thTd}>{t("studioLicence.colStatusLamp")}</th>
               <th style={thFlux}>{t("studioLicence.colFluxaVersion")}</th>
               <th style={thFluxCont}>{t("studioLicence.colKorisnici")}</th>
@@ -908,6 +912,18 @@ export default function LicenceClient() {
                         : Number.isFinite(Number(row.meet_remaining ?? NaN))
                           ? Number(row.meet_remaining)
                           : "—"}
+                    </td>
+                    <td style={thTd}>
+                      {dp === "FLUXA_ONLY" ||
+                      dp === "POOL_MANAGER" ||
+                      dp === "DOCENTRE"
+                        ? "—"
+                        : row.max_meets_per_year == null
+                          ? t("studioLicence.meetAnnualUnlimited")
+                          : `${Number(row.meets_used_ytd ?? 0)} / ${row.max_meets_per_year}` +
+                            (row.meets_remaining_year != null
+                              ? ` (${t("studioLicence.meetAnnualLeft").replace("{{n}}", String(row.meets_remaining_year))})`
+                              : "")}
                     </td>
                     <td style={thTd}>
                       <span

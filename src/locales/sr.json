@@ -2220,6 +2220,9 @@
     "colIstice": "Ističe",
     "colDana": "Dana do isteka",
     "colMeetRemaining": "Takmičenja (preost. kodovi)",
+    "colMeetAnnual": "Godišnja kvota",
+    "meetAnnualUnlimited": "∞",
+    "meetAnnualLeft": "ostalo {{n}}",
     "colStatus": "Status",
     "colAkcije": "Akcije",
     "noTenants": "Nema tenanata.",
@@ -2857,7 +2860,27 @@
     "confirmActivateTitle": "Aktivirati korisnika?",
     "confirmDeactivateBody": "Korisnik će biti sakriven iz liste aktivnih. Možeš ga vratiti kasnije.",
     "confirmActivateBody": "Korisnik će opet biti vidljiv u listi aktivnih.",
-    "confirmWorking": "Radi..."
+    "confirmWorking": "Radi...",
+    "aclTitle": "Prava pristupa (modul po modul)",
+    "aclConfiguredHint": "Aktivna su granularna prava — dashboard i rute slijede ovu listu (ne matricu uloge).",
+    "aclNotConfiguredHint": "Granularna prava nisu postavljena — koristi se matrica uloge. Spremi listu da preuzme controlu.",
+    "aclTemplateAccounting": "Šablon: Računovodstvo",
+    "aclUseRoleMatrix": "Vrati na ulogu (matrica)",
+    "aclSave": "Snimi prava",
+    "aclSaved": "Prava snimljena.",
+    "aclCleared": "ACL obrisan — vraća se matrica uloge.",
+    "aclSaveError": "Greška pri snimanju prava.",
+    "aclOwnerOnlyHint": "preporučeno Owner",
+    "aclGroupDesk": "Desk",
+    "aclGroupFinance": "Finansije",
+    "aclGroupReports": "Izvještaji",
+    "aclGroupMaster": "Šifarnici",
+    "aclGroupSystem": "Sistem",
+    "aclAccess": {
+      "none": "Ne vidi",
+      "view": "Samo pregled",
+      "edit": "Pregled + izmjena"
+    }
   },
   "studioRoles": {
     "title": "Uloge",

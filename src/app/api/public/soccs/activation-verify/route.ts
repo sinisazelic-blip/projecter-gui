@@ -11,6 +11,7 @@ import {
   soccsTierToLimits,
   soccsTierToModules,
 } from "@/lib/soccs-activation";
+import { bumpTenantMeetsUsedYtd } from "@/lib/soccs-meet-quota";
 
 export const dynamic = "force-dynamic";
 
@@ -784,6 +785,7 @@ async function handleMeetSession(
   );
   const consumedId = verifyRows?.[0]?.consumed_installation_id;
   if (consumedId === installationPublicId) {
+    await bumpTenantMeetsUsedYtd(meet.tenant_id);
     const tenantAfter = await loadTenantById(meet.tenant_id);
     if (!tenantAfter) {
       return NextResponse.json(

@@ -477,6 +477,18 @@ export const PERMISSIONS_MATRIX: Record<
       "10": "all",
     },
   },
+  "Finansije - PDV": {
+    "": {
+      "1": "hide",
+      "2": "Edit",
+      "3": "hide",
+      "5": "hide",
+      "6": "hide",
+      "8": "all",
+      "9": "all",
+      "10": "all",
+    },
+  },
   "Finansije - Otpis": {
     "": {
       "1": "hide",
@@ -632,12 +644,29 @@ function nearestLevel(level: number): Level {
   return 1;
 }
 
+/** Excel matrica ima NBSP (\u00a0) u imenima modula; UI/rute koriste običan space. */
+function normalizeModuleKey(name: string): string {
+  return String(name ?? "")
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function resolveMatrixModule(module: string): Record<string, Partial<Record<Level, Permission>>> | null {
+  if (PERMISSIONS_MATRIX[module]) return PERMISSIONS_MATRIX[module];
+  const want = normalizeModuleKey(module);
+  for (const [k, v] of Object.entries(PERMISSIONS_MATRIX)) {
+    if (normalizeModuleKey(k) === want) return v;
+  }
+  return null;
+}
+
 export function getPermission(
   module: string,
   inPage: string,
   userLevel: number,
 ): Permission {
-  const mod = PERMISSIONS_MATRIX[module];
+  const mod = resolveMatrixModule(module);
   if (!mod) return "hide";
   const key = inPage;
   const row = mod[key] ?? mod[""] ?? mod["-"];

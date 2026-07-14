@@ -4,6 +4,11 @@
  */
 
 import { getPermission, canSee } from "./permissions-matrix";
+import {
+  findAclModuleByMatrix,
+  aclCanSee,
+  type UserAclMap,
+} from "./acl-catalog";
 
 /** Nivo 0 = Saradnik: smije samo Dashboard i PP (projekti u kojima učestvuje). */
 export const SARADNIK_NIVO = 0;
@@ -48,7 +53,8 @@ const ROUTE_TO_MODULE: { path: string; module: string; inPage: string }[] = [
   },
   { path: "/finance/krediti", module: "Finansije - Dugovanja", inPage: "" },
   { path: "/finance/kuf", module: "Finansije - Početno stanje", inPage: "" },
-  { path: "/finance/pdv", module: "Finansije - Dugovanja", inPage: "" },
+  { path: "/finance/pdv", module: "Finansije - PDV", inPage: "" },
+  { path: "/finance/rasknjizavanje", module: "Finansije - Banka", inPage: "" },
   { path: "/finance/cashflow", module: "Finansije - Banka", inPage: "" },
   { path: "/finance/banka-vs-knjige", module: "Finansije - Banka", inPage: "" },
   {
@@ -104,7 +110,14 @@ function getModuleForPath(
 /** Nivo 10 = owner / full admin: pristup svim rutama. */
 const OWNER_NIVO = 10;
 
-export function mayAccessPath(pathname: string, nivo: number): boolean {
+/**
+ * @param aclMap – ako postoji (korisnik ima konfiguriran ACL), ima prioritet nad matricom za katalog module.
+ */
+export function mayAccessPath(
+  pathname: string,
+  nivo: number,
+  aclMap?: UserAclMap | null,
+): boolean {
   if (isPublicPath(pathname)) return true;
   if (nivo >= OWNER_NIVO) return true;
 
@@ -117,6 +130,15 @@ export function mayAccessPath(pathname: string, nivo: number): boolean {
 
   const map = getModuleForPath(pathname);
   if (!map) return true;
+
+  if (aclMap && Object.keys(aclMap).length > 0) {
+    const aclMod = findAclModuleByMatrix(map.module, map.inPage);
+    if (aclMod) {
+      const access = aclMap[aclMod.key] ?? "none";
+      return aclCanSee(access);
+    }
+  }
+
   const perm = getPermission(map.module, map.inPage, nivo);
   return canSee(perm);
 }

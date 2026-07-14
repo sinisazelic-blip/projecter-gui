@@ -289,11 +289,13 @@ export default function DashboardBody() {
               </FluxaFeature>
             </div>
             <div className="finansijeRow finansijeRow--3">
-              <ActionBtn
-                label={t("dashboard.pdv")}
-                href="/finance/pdv"
-                title={t("dashboard.pdvTitle")}
-              />
+              <PermissionGate module="Finansije - PDV" inPage="">
+                <ActionBtn
+                  label={t("dashboard.pdv")}
+                  href="/finance/pdv"
+                  title={t("dashboard.pdvTitle")}
+                />
+              </PermissionGate>
               <FluxaFeature id={75}>
                 <ActionBtn
                   label={t("dashboard.tools")}
@@ -301,11 +303,13 @@ export default function DashboardBody() {
                   title={t("dashboard.financeTools")}
                 />
               </FluxaFeature>
-              <ActionBtn
-                label={t("dashboard.naplata")}
-                href="/naplate"
-                title={t("dashboard.naplataTitle")}
-              />
+              <PermissionGate module="Naplate" inPage="">
+                <ActionBtn
+                  label={t("dashboard.naplata")}
+                  href="/naplate"
+                  title={t("dashboard.naplataTitle")}
+                />
+              </PermissionGate>
             </div>
             </div>
           </CollapsibleSection>

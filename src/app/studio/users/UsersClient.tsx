@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslation } from "@/components/LocaleProvider";
 import type { UserRow, RoleOption, RadnikOption } from "./page";
 import { createUser, setUserActive, updateUser } from "./actions";
+import UserAclPanel from "./UserAclPanel";
 
 type FormState = {
   user_id?: number;
@@ -52,6 +53,7 @@ function overlayStyle(): React.CSSProperties {
 function modalStyle(maxWidth = 640): React.CSSProperties {
   return {
     width: "min(100%, " + maxWidth + "px)",
+    maxHeight: "92vh",
     border: "1px solid var(--border)",
     borderRadius: "16px",
     background:
@@ -59,6 +61,8 @@ function modalStyle(maxWidth = 640): React.CSSProperties {
     boxShadow: "var(--shadow)",
     overflow: "hidden",
     fontSize: 16,
+    display: "flex",
+    flexDirection: "column",
   };
 }
 
@@ -98,7 +102,7 @@ export default function UsersClient({
   roles: RoleOption[];
   radnici: RadnikOption[];
 }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -565,7 +569,7 @@ export default function UsersClient({
       {/* Modal: New/Edit */}
       {modalOpen ? (
         <div className="studio-modal" style={overlayStyle()} role="dialog" aria-modal="true">
-          <div style={modalStyle(640)}>
+          <div style={modalStyle(modalMode === "edit" ? 920 : 640)}>
             <div
               style={{
                 padding: 20,
@@ -613,7 +617,7 @@ export default function UsersClient({
               </button>
             </div>
 
-            <div style={{ padding: 20 }}>
+            <div style={{ padding: 20, overflow: "auto", flex: 1, minHeight: 0 }}>
               <div
                 style={{
                   display: "flex",
@@ -750,6 +754,10 @@ export default function UsersClient({
                   </span>
                 </div>
               </div>
+
+              {modalMode === "edit" && form.user_id ? (
+                <UserAclPanel userId={Number(form.user_id)} locale={locale} />
+              ) : null}
 
               <div className="card" style={{ marginTop: 20 }}>
                 <div

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
 import { query, runWithSession } from "@/lib/db";
+import { getUserAclMap } from "@/lib/auth/user-module-acl";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,14 @@ export async function GET(req: NextRequest) {
       );
       onboardingCompleted = (onboardingRows?.length ?? 0) > 0;
     } catch {
-      // onboarding_completed tabela možda ne postoji – pokreni scripts/create-onboarding-completed.sql
+      // onboarding_completed tabela možda ne postoji
+    }
+
+    let acl: Record<string, string> | null = null;
+    try {
+      acl = await getUserAclMap(session.user_id);
+    } catch {
+      acl = null;
     }
 
     const payload: {
@@ -34,6 +42,7 @@ export async function GET(req: NextRequest) {
         nivo: number;
         isDemo?: boolean;
         bootstrap?: boolean;
+        acl?: Record<string, string> | null;
       };
       subscription_ends_at?: string;
       subscription_expired?: boolean;
@@ -46,6 +55,7 @@ export async function GET(req: NextRequest) {
         nivo: session.nivo,
         isDemo: session.isDemo === true,
         bootstrap: session.bootstrap === true,
+        acl,
       },
       onboarding_completed: onboardingCompleted,
     };
