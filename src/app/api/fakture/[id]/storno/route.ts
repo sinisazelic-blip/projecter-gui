@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3) Sledeći broj i PFR za storno (max iz fakture i brojac_faktura)
+    // 3) Sledeći broj fakture (+1). PFR ostaje ISTI kao na originalu (novi fiskalni sistem).
     const godina = Number(orig.godina) || new Date().getFullYear();
     const [maxRows]: any = await conn.query(
       `SELECT COALESCE(MAX(broj_u_godini), 0) AS m FROM fakture WHERE godina = ?`,
@@ -100,16 +100,10 @@ export async function POST(req: NextRequest) {
     }
     const sledeciBroj = Math.max(maxIzFakture, brojacZadnji) + 1;
 
-    let pfrBroj: number | null = null;
-    try {
-      const [pfrRows]: any = await conn.query(
-        `SELECT MAX(broj_fiskalni) AS max_pfr FROM fakture WHERE broj_fiskalni IS NOT NULL`,
-      );
-      const maxPfr = Number(pfrRows?.[0]?.max_pfr ?? 0) || 0;
-      pfrBroj = maxPfr + 1;
-    } catch {
-      pfrBroj = 1;
-    }
+    // Novi sistem: storno dijeli PFR sa fakturom koju stornira (ne uzima MAX+1).
+    const origPfr = orig.broj_fiskalni != null ? Number(orig.broj_fiskalni) : null;
+    const pfrBroj =
+      origPfr != null && Number.isFinite(origPfr) && origPfr > 0 ? origPfr : null;
 
     // 4) Negativni iznosi
     const osnovicaKm = -(Number(orig.osnovica_km) || 0);
@@ -194,6 +188,7 @@ export async function POST(req: NextRequest) {
       message: "Storno račun kreiran. Projekti vraćeni u status Zatvoren.",
       storno_faktura_id: stornoFakturaId,
       broj_storno: brojStorno,
+      broj_fiskalni: pfrBroj,
       projekti_ids: projekatIds,
     });
   } catch (err: any) {

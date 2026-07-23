@@ -24,8 +24,9 @@ function toDateOnlyString(val: unknown): string | null {
 /**
  * DELETE — owner-only brisanje POSLJEDNJE fakture.
  * Oslobađa broj fakture (broj_u_godini + brojac_faktura) i PFR (MAX broj_fiskalni).
- * Dozvoljeno samo ako je faktura zadnja u svojoj godini i (ako ima PFR) zadnji PFR —
+ * Dozvoljeno samo ako je faktura zadnja u svojoj godini i (ako ima PFR i nije storno) zadnji PFR —
  * brisanje iz sredine niza pravilo bi trajnu rupu u numeraciji (za to postoji storno).
+ * Storno dijeli PFR sa originalom, pa se za storno ne traži MAX PFR.
  */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -89,8 +90,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       );
     }
 
-    // Ako ima PFR — mora biti i posljednji PFR
-    if (pfr != null && pfr > 0) {
+    // Ako ima PFR — mora biti i posljednji PFR.
+    // Izuzetak: storno dijeli PFR sa originalom, pa ne mora biti MAX(broj_fiskalni).
+    if (!isStorno && pfr != null && pfr > 0) {
       const [pfrRows]: any = await conn.query(
         `SELECT COALESCE(MAX(broj_fiskalni), 0) AS m FROM fakture WHERE broj_fiskalni IS NOT NULL AND broj_fiskalni > 0`,
       );
@@ -163,9 +165,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     return NextResponse.json({
       ok: true,
-      message: `Faktura ${String(brojUGodini).padStart(3, "0")}/${godina} obrisana. Broj${pfr ? " i PFR " + pfr : ""} su oslobođeni za sljedeću fakturu.`,
+      message: isStorno
+        ? `Storno ${String(brojUGodini).padStart(3, "0")}/${godina} obrisan. Broj fakture je oslobođen (PFR ${pfr ?? "—"} ostaje na originalu).`
+        : `Faktura ${String(brojUGodini).padStart(3, "0")}/${godina} obrisana. Broj${pfr ? " i PFR " + pfr : ""} su oslobođeni za sljedeću fakturu.`,
       oslobodjen_broj: `${String(brojUGodini).padStart(3, "0")}/${godina}`,
-      oslobodjen_pfr: pfr,
+      oslobodjen_pfr: isStorno ? null : pfr,
       projekti_ids: projekatIds,
     });
   } catch (err: any) {
