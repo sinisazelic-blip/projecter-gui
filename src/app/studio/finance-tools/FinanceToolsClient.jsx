@@ -1175,6 +1175,15 @@ export default function FinanceToolsClient() {
                           >
                             LINK KREDIT
                           </button>
+                          <button
+                            className="btn"
+                            style={actionBtnSpecialStyle}
+                            disabled={!isOutgoing}
+                            title="Poveži kao računovodstvene usluge"
+                            onClick={() => linkSpecial(r, "racunovodstvo")}
+                          >
+                            LINK RACUNOVODSTVO
+                          </button>
                         </div>
                       </td>
                     </tr>

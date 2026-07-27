@@ -8,6 +8,11 @@ const TYPES = {
   porez: { label: "Porez", kategorija: "porez", nacin: "BANK_POREZ" },
   fiskalne: { label: "Fiskalne kase", kategorija: "fiskalne_kase", nacin: "BANK_FISKALNE" },
   kredit: { label: "Kredit", kategorija: "kredit", nacin: "BANK_KREDIT" },
+  racunovodstvo: {
+    label: "Računovodstvo",
+    kategorija: "racunovodstvo",
+    nacin: "BANK_RACUNOVODSTVO",
+  },
 };
 
 function bad(msg, status = 400, extra = {}) {
