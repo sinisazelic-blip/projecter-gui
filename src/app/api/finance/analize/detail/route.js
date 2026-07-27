@@ -233,6 +233,51 @@ async function detailClient(partnerId, year) {
     });
   }
 
+  // Potraživanja bez fakture (npr. refund troškova / interno potraživanje na projektu)
+  const potrazivanja = await query(
+    `
+    SELECT
+      DATE(COALESCE(pp.datum_fakture, pp.datum_valute, pp.created_at)) AS event_date,
+      pp.projekat_id,
+      p.radni_naziv AS projekat_naziv,
+      ROUND(COALESCE(pp.iznos, 0), 2) AS amount_km,
+      NULLIF(TRIM(UPPER(COALESCE(pp.valuta, ''))), '') AS valuta,
+      pp.napomena
+    FROM projekt_potrazivanja pp
+    JOIN projekti p ON p.projekat_id = pp.projekat_id
+    WHERE COALESCE(pp.fakturisano, 0) = 0
+      AND COALESCE(
+        NULLIF(p.narucilac_id, 0),
+        NULLIF(p.krajnji_klijent_id, 0)
+      ) = ?
+      AND DATE(COALESCE(pp.datum_fakture, pp.datum_valute, pp.created_at)) >= ?
+      AND DATE(COALESCE(pp.datum_fakture, pp.datum_valute, pp.created_at)) <= ?
+    ORDER BY DATE(COALESCE(pp.datum_fakture, pp.datum_valute, pp.created_at)) ASC, pp.potrazivanje_id ASC
+    `,
+    [partnerId, from, to],
+  ).catch(() => []);
+
+  for (const r of potrazivanja || []) {
+    const valuta = String(r.valuta || "BAM").trim().toUpperCase() || "BAM";
+    events.push({
+      event_date: iso(r.event_date),
+      faktura_id: null,
+      projekat_id: r.projekat_id ? Number(r.projekat_id) : null,
+      projekat_naziv: r.projekat_naziv
+        ? `#${r.projekat_id} ${r.projekat_naziv}`
+        : r.projekat_id
+          ? `#${r.projekat_id}`
+          : null,
+      faktura_broj: null,
+      datum_fakture: iso(r.event_date),
+      opis: "Potraživanje",
+      duguje: 0,
+      potrazuje: round2(r.amount_km),
+      nacin_placanja: null,
+      valuta,
+    });
+  }
+
   const naplate = await query(
     `
     SELECT

@@ -45,7 +45,7 @@ async function clientBalances(year) {
   const rows = await query(
     `
     SELECT k.klijent_id AS partner_id,
-      COALESCE(ps.pocetno, 0) + COALESCE(fi.fakturisano, 0) - COALESCE(na.naplaceno, 0) - COALESCE(nc.naplaceno, 0) - COALESCE(bn.naplaceno, 0) AS saldo
+      COALESCE(ps.pocetno, 0) + COALESCE(fi.fakturisano, 0) + COALESCE(po.potrazivanja, 0) - COALESCE(na.naplaceno, 0) - COALESCE(nc.naplaceno, 0) - COALESCE(bn.naplaceno, 0) AS saldo
     FROM klijenti k
     LEFT JOIN (
       SELECT p.klijent_id, ROUND(SUM(GREATEST(0, COALESCE(p.iznos_potrazuje,0) - COALESCE(u.paid_km,0))), 2) AS pocetno
@@ -66,6 +66,18 @@ async function clientBalances(year) {
         AND (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN','ZAMIJENJEN'))
       GROUP BY f.bill_to_klijent_id
     ) fi ON fi.klijent_id = k.klijent_id
+    LEFT JOIN (
+      SELECT
+        COALESCE(NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0)) AS klijent_id,
+        ROUND(SUM(COALESCE(pp.iznos, 0)), 2) AS potrazivanja
+      FROM projekt_potrazivanja pp
+      JOIN projekti p ON p.projekat_id = pp.projekat_id
+      WHERE COALESCE(pp.fakturisano, 0) = 0
+        AND DATE(COALESCE(pp.datum_fakture, pp.datum_valute, pp.created_at)) >= ?
+        AND DATE(COALESCE(pp.datum_fakture, pp.datum_valute, pp.created_at)) <= ?
+        AND COALESCE(NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0)) IS NOT NULL
+      GROUP BY COALESCE(NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0))
+    ) po ON po.klijent_id = k.klijent_id
     LEFT JOIN (
       SELECT COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0), NULLIF(pc.klijent_id, 0)) AS klijent_id,
              ROUND(SUM(COALESCE(pr.iznos_km,0)),2) AS naplaceno
@@ -141,7 +153,7 @@ async function clientBalances(year) {
       GROUP BY k2.klijent_id
     ) bn ON bn.klijent_id = k.klijent_id
     `,
-    [from, to, from, to, from, to, from, to, from, to],
+    [from, to, from, to, from, to, from, to, from, to, from, to],
   ).catch(() => []);
   return (rows || [])
     .map((r) => ({ partner_id: Number(r.partner_id), saldo: round2(r.saldo) }))

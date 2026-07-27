@@ -115,6 +115,23 @@ async function getClientSummary(year) {
     [from, to],
   ).catch(() => []);
 
+  // Potraživanja bez fakture (projekt_potrazivanja.fakturisano = 0)
+  const potrazivanjaRows = await query(
+    `
+    SELECT
+      COALESCE(NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0)) AS klijent_id,
+      ROUND(SUM(COALESCE(pp.iznos, 0)), 2) AS s
+    FROM projekt_potrazivanja pp
+    JOIN projekti p ON p.projekat_id = pp.projekat_id
+    WHERE COALESCE(pp.fakturisano, 0) = 0
+      AND DATE(COALESCE(pp.datum_fakture, pp.datum_valute, pp.created_at)) >= ?
+      AND DATE(COALESCE(pp.datum_fakture, pp.datum_valute, pp.created_at)) <= ?
+      AND COALESCE(NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0)) IS NOT NULL
+    GROUP BY COALESCE(NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0))
+    `,
+    [from, to],
+  ).catch(() => []);
+
   const collectedRows = await query(
     `
     SELECT
@@ -241,6 +258,13 @@ async function getClientSummary(year) {
     const id = Number(r.klijent_id);
     if (!Number.isFinite(id)) continue;
     invoiced.set(id, round2(r.s));
+    ids.add(id);
+  }
+  for (const r of potrazivanjaRows || []) {
+    const id = Number(r.klijent_id);
+    if (!Number.isFinite(id)) continue;
+    const prev = Number(invoiced.get(id) || 0);
+    invoiced.set(id, round2(prev + Number(r.s || 0)));
     ids.add(id);
   }
   for (const r of collectedRows || []) {
