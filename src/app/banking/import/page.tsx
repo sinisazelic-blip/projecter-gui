@@ -71,6 +71,9 @@ export default function BankImportPage() {
   // import
   const [file, setFile] = useState<File | null>(null);
   const [accountId, setAccountId] = useState<string>("1");
+  const [bankAccounts, setBankAccounts] = useState<
+    { bank_account_id: number; label: string; bank_naziv: string }[]
+  >([]);
   const [importing, setImporting] = useState(false);
   const [importRes, setImportRes] = useState<ImportResponse | null>(null);
 
@@ -108,6 +111,28 @@ export default function BankImportPage() {
     }
   }
 
+  async function loadBankAccounts() {
+    try {
+      const r = await fetch("/api/bank/accounts", { cache: "no-store" });
+      const j = await r.json();
+      if (j?.ok && Array.isArray(j.accounts) && j.accounts.length) {
+        setBankAccounts(j.accounts);
+        setAccountId((prev) => {
+          const ids = new Set(
+            j.accounts.map((a: any) => String(a.bank_account_id)),
+          );
+          return ids.has(prev) ? prev : String(j.accounts[0].bank_account_id);
+        });
+      }
+    } catch {
+      // ostaje ručni unos fallback
+    }
+  }
+
+  React.useEffect(() => {
+    loadBankAccounts();
+  }, []);
+
   async function loadBatch(id: number) {
     const r = await fetch(`/api/bank/batch?id=${id}`, { cache: "no-store" });
     const j: BatchResponse = await r.json();
@@ -131,7 +156,14 @@ export default function BankImportPage() {
       fd.append("account_id", accountId.trim());
       fd.append("mode", "staging");
 
-      const r = await fetch("/api/bank/import/xml-v2", {
+      const name = String(file.name || "").toLowerCase();
+      const isPdf =
+        name.endsWith(".pdf") || file.type === "application/pdf";
+      const endpoint = isPdf
+        ? "/api/bank/import/nova-pdf"
+        : "/api/bank/import/xml-v2";
+
+      const r = await fetch(endpoint, {
         method: "POST",
         body: fd,
       });
@@ -314,7 +346,7 @@ export default function BankImportPage() {
       <div className="actions">
         <input
           type="file"
-          accept=".xml,application/xml,text/xml"
+          accept=".xml,.pdf,application/xml,text/xml,application/pdf"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           className="input"
           style={{ width: "auto", minWidth: 200 }}
@@ -322,12 +354,29 @@ export default function BankImportPage() {
 
         <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span className="label">{t("bankingImport.accountId")}</span>
-          <input
-            value={accountId}
-            onChange={(e) => setAccountId(e.target.value)}
-            className="input small"
-            style={{ width: 80 }}
-          />
+          {bankAccounts.length > 0 ? (
+            <select
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
+              className="input small"
+              style={{ width: "auto", minWidth: 180 }}
+              title="Bankovni račun firme (ne broj izvoda)"
+            >
+              {bankAccounts.map((a) => (
+                <option key={a.bank_account_id} value={String(a.bank_account_id)}>
+                  {a.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
+              className="input small"
+              style={{ width: 80 }}
+              title="1 = UniCredit, 2 = Nova Banka"
+            />
+          )}
         </label>
 
         <button
@@ -549,8 +598,21 @@ export default function BankImportPage() {
                 Batch #{batchRes.batch.batch_id} — {t("bankingImport.statementWord")} {batchRes.batch.statement_no} ({batchRes.batch.statement_date})
               </div>
               <div style={{ marginTop: 6, fontSize: 14, opacity: 0.9 }}>
-                {t("bankingImport.account")}: <b>{batchRes.batch.bank_account_no}</b> · {t("bankingImport.company")}:{" "}
-                <b>{batchRes.batch.company_name}</b>
+                {t("bankingImport.account")}: <b>{batchRes.batch.bank_account_no}</b>
+                {batchRes.batch.account_id != null ? (
+                  <>
+                    {" "}
+                    · account_id: <b>{batchRes.batch.account_id}</b>
+                  </>
+                ) : null}
+                {batchRes.batch.source ? (
+                  <>
+                    {" "}
+                    · source: <b>{batchRes.batch.source}</b>
+                  </>
+                ) : null}
+                {" "}
+                · {t("bankingImport.company")}: <b>{batchRes.batch.company_name}</b>
               </div>
             </div>
 

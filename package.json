@@ -21,6 +21,7 @@
     "lucide-react": "^0.563.0",
     "mysql2": "^3.16.0",
     "next": "^16.1.6",
+    "pdf-parse": "^2.4.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-frappe-gantt": "^0.2.3",
