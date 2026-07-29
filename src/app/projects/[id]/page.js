@@ -23,8 +23,14 @@ import CostsPanel from "./_components/CostsPanel";
 import FinalOkButtonClient from "./_components/FinalOkButtonClient";
 import ProjectStornoButton from "./_components/ProjectStornoButton";
 import ProBonoButton from "./_components/ProBonoButton";
+import ProjectCostOverridePanel from "./_components/ProjectCostOverridePanel";
 import { ReadOnlyGuard } from "@/components/ReadOnlyGuard";
 import FluxaLogo from "@/components/FluxaLogo";
+import {
+  assertProjectCostsEditableOrThrow,
+  getProjectEditOverrideState,
+  isOwnerLike,
+} from "@/lib/projects/deal-edit-guard";
 
 // ✅ NEW: Timeline indikator (read-only)
 import {
@@ -100,6 +106,17 @@ async function getTipRequiresEntity(tipId) {
   return "none";
 }
 
+async function requireCostsEditable(projekatId) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
+  const session = token ? verifySessionToken(token) : null;
+  try {
+    await assertProjectCostsEditableOrThrow(projekatId, session);
+  } catch {
+    redirect(`/projects/${projekatId}`);
+  }
+}
+
 async function addCost(formData) {
   "use server";
 
@@ -108,6 +125,9 @@ async function addCost(formData) {
     formData.get("return_to") ||
       (Number.isFinite(projekatId) ? `/projects/${projekatId}` : "/projects"),
   );
+
+  if (!Number.isFinite(projekatId)) redirect("/projects");
+  await requireCostsEditable(projekatId);
 
   const datum = String(formData.get("datum_troska") || "");
   const opis = String(formData.get("opis") || "").trim();
@@ -132,7 +152,6 @@ async function addCost(formData) {
   const entityType = entityTypeRaw ? entityTypeRaw : null;
   const entityId = entityIdRaw ? Number(entityIdRaw) : null;
 
-  if (!Number.isFinite(projekatId)) redirect("/projects");
   if (!datum || !opis || !Number.isFinite(iznosOriginal)) redirect(returnTo);
   if (!Number.isFinite(kurs) || kurs <= 0) redirect(returnTo);
   if (!VALID_STATUS.has(status) || status === "STORNIRANO") redirect(returnTo);
@@ -204,6 +223,11 @@ async function editCost(formData) {
     formData.get("return_to") ||
       (Number.isFinite(projekatId) ? `/projects/${projekatId}` : "/projects"),
   );
+
+  if (!Number.isFinite(projekatId) || !Number.isFinite(trosakId)) {
+    redirect(Number.isFinite(projekatId) ? `/projects/${projekatId}` : "/projects");
+  }
+  await requireCostsEditable(projekatId);
 
   const datum = String(formData.get("datum_troska") || "");
   const opis = String(formData.get("opis") || "").trim();
@@ -332,6 +356,7 @@ async function setCostStatus(formData) {
 
   if (!Number.isFinite(projekatId)) redirect("/projects");
   if (!Number.isFinite(trosakId)) redirect(`/projects/${projekatId}`);
+  await requireCostsEditable(projekatId);
 
   await query(
     `
@@ -728,8 +753,15 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
       : String(project?.naziv_statusa ?? `Status ${statusIdNum}`);
 
   // ✅ SEF: read-only tek kad je fakturisan; Saradnik ne mijenja owner signal / budžet / Final OK / Storno
-  const isReadOnly = statusIdNum === 9;
-  const isReadOnlyOwner = isReadOnly || isSaradnik;
+  // Owner/admin + aktivni edit-override → troškovi se mogu privremeno ispraviti.
+  const isFakturisan = statusIdNum === 9;
+  const isOwnerAdmin = isOwnerLike(session);
+  const costOverrideState = isFakturisan
+    ? await getProjectEditOverrideState(projekatId)
+    : null;
+  const hasCostOverride = isFakturisan && isOwnerAdmin && !!costOverrideState;
+  const isReadOnly = isFakturisan && !hasCostOverride;
+  const isReadOnlyOwner = isFakturisan || isSaradnik;
 
   return (
     <div
@@ -1132,7 +1164,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
             >
               {t("projectDetail.phases")}
             </Link>
-            {!isSaradnik && <FinalOkButtonClient projekatId={project.projekat_id} disabled={isReadOnly} />}
+            {!isSaradnik && <FinalOkButtonClient projekatId={project.projekat_id} disabled={isFakturisan} />}
           </div>
 
           {/* Row 4: Timeline Status projekta */}
@@ -1166,7 +1198,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
             <h1 style={{ fontSize: 22, margin: 0, fontWeight: 800 }}>
               #{project.projekat_id} — {project.radni_naziv}
             </h1>
-            {!isSaradnik && !isReadOnly && statusIdNum !== 10 && statusIdNum !== 11 && statusIdNum !== 12 ? (
+            {!isSaradnik && !isFakturisan && statusIdNum !== 10 && statusIdNum !== 11 && statusIdNum !== 12 ? (
               <ProjectStornoButton projekatId={project.projekat_id} disabled={false} />
             ) : null}
           </div>
@@ -1176,7 +1208,7 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
       {/* ✅ Scroll samo donji sadržaj */}
       <div style={{ flex: "1 1 auto", overflowY: "auto" }}>
         <div className="container" style={{ paddingBottom: 24 }}>
-          {isReadOnly && (
+          {isFakturisan && (
             <div
               className="card"
               style={{
@@ -1189,10 +1221,19 @@ export default async function ProjectDetailsPage({ params, searchParams }) {
                 {t("projectDetail.readOnly")}
               </div>
               <div style={{ opacity: 0.9 }}>
-                {t("projectDetail.readOnlyMessage")}
+                {hasCostOverride
+                  ? "Projekat je fakturisan. Admin override je aktivan — troškove možeš privremeno ispraviti. Iznos prema klijentu i dalje samo u Deal-u."
+                  : t("projectDetail.readOnlyMessage")}
               </div>
             </div>
           )}
+
+          {isFakturisan && isOwnerAdmin ? (
+            <ProjectCostOverridePanel
+              projekatId={projekatId}
+              initialState={costOverrideState}
+            />
+          ) : null}
 
           <ProjectHeader project={project} statusName={statusName} hideTitle t={t} locale={locale} />
           <ProjectSummaryCard project={project} locale={locale} />

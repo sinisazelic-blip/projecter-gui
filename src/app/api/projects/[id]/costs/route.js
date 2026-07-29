@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import {
+  assertProjectCostsEditableOrThrow,
+  getSessionFromRequest,
+} from "@/lib/projects/deal-edit-guard";
 
 export async function POST(req, { params }) {
   try {
@@ -10,6 +14,23 @@ export async function POST(req, { params }) {
       return NextResponse.json(
         { success: false, message: "Neispravan projekat_id" },
         { status: 400 },
+      );
+    }
+
+    try {
+      await assertProjectCostsEditableOrThrow(
+        projekatId,
+        getSessionFromRequest(req),
+      );
+    } catch (e) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Projekat je fakturisan. Potreban je admin override za izmjenu troškova.",
+          error: e?.message ?? "PROJECT_COSTS_LOCKED",
+        },
+        { status: 423 },
       );
     }
 

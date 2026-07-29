@@ -70,6 +70,7 @@ type StavkaRow = {
 type CloseCheck = {
   ok?: boolean;
   ok_to_close?: boolean;
+  production_not_finished?: boolean;
   hard_blocks?: { code: string; message: string }[];
   warnings?: { code: string; message: string; value?: any }[];
   summary?: {
@@ -355,6 +356,7 @@ export default function InicijacijaDetailClient() {
   const [closeSaving, setCloseSaving] = useState(false);
   const [closeData, setCloseData] = useState<CloseCheck | null>(null);
   const [closeConfirmWarnings, setCloseConfirmWarnings] = useState(false);
+  const [closeMarkFinished, setCloseMarkFinished] = useState(false);
   const [closeError, setCloseError] = useState<string | null>(null);
 
   // ✅ NOVO: stvarni status projekta (kanonski za Deal UI)
@@ -549,6 +551,7 @@ export default function InicijacijaDetailClient() {
     setCloseError(null);
     setCloseLoading(true);
     setCloseConfirmWarnings(false);
+    setCloseMarkFinished(false);
     try {
       const j = (await fetchJson(
         `/api/projects/${projekatId}/close-check`,
@@ -971,6 +974,7 @@ export default function InicijacijaDetailClient() {
     if (!Number.isFinite(pid) || pid <= 0) return;
 
     const hasWarnings = (closeData?.warnings?.length ?? 0) > 0;
+    const needsMarkFinished = !!closeData?.production_not_finished;
 
     setCloseSaving(true);
     setCloseError(null);
@@ -980,6 +984,7 @@ export default function InicijacijaDetailClient() {
         headers: { "Content-Type": "application/json", "x-user": USER_LABEL },
         body: JSON.stringify({
           force: hasWarnings ? closeConfirmWarnings : true,
+          mark_finished: needsMarkFinished ? closeMarkFinished : false,
         }),
       });
 
@@ -991,6 +996,10 @@ export default function InicijacijaDetailClient() {
         setCloseError(t("dealDetail.closeBlocked"));
       else if (payload?.error === "CLOSE_NEEDS_CONFIRM")
         setCloseError(t("dealDetail.closeNeedsConfirm"));
+      else if (payload?.error === "CLOSE_NEEDS_MARK_FINISHED")
+        setCloseError(
+          "Produkcija nije Završena. Potvrdi checkbox da je završiš i zatvoriš projekat.",
+        );
       else setCloseError(e?.message ?? t("dealDetail.closeError"));
 
       try {
@@ -1020,6 +1029,7 @@ export default function InicijacijaDetailClient() {
 
   const hasHardBlocks = (closeData?.hard_blocks?.length ?? 0) > 0;
   const hasWarnings = (closeData?.warnings?.length ?? 0) > 0;
+  const needsMarkFinished = !!closeData?.production_not_finished;
 
   const projectStatusKey = projectStatusId ? `statuses.project.${projectStatusId}` : "";
   const projectStatusTranslated =
@@ -1246,14 +1256,49 @@ export default function InicijacijaDetailClient() {
                   <div style={{ position: "relative" }}>
                     <button
                       onClick={() => setCloseOpen((v) => !v)}
-                      className="glassbtn actionBtn"
+                      className="actionBtn"
                       type="button"
                       title={
                         dealReadOnly
                           ? t("dealDetail.closeReadOnlyTitle")
                           : t("dealDetail.closeTitle")
                       }
-                      style={{ opacity: dealReadOnly ? 0.9 : 1 }}
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 800,
+                        padding: "12px 20px",
+                        background: dealReadOnly
+                          ? "rgba(100, 100, 100, 0.3)"
+                          : "linear-gradient(135deg, rgba(249, 115, 22, 0.92) 0%, rgba(234, 88, 12, 0.96) 100%)",
+                        border: dealReadOnly
+                          ? "1px solid rgba(100, 100, 100, 0.3)"
+                          : "1px solid rgba(249, 115, 22, 0.55)",
+                        color: "white",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                        boxShadow: dealReadOnly
+                          ? "none"
+                          : "0 4px 12px rgba(249, 115, 22, 0.35)",
+                        transition: "all 0.2s",
+                        opacity: dealReadOnly ? 0.55 : 1,
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                        borderRadius: 14,
+                      }}
+                      onMouseEnter={(e) => {
+                        if (dealReadOnly) return;
+                        e.currentTarget.style.transform = "translateY(-1px)";
+                        e.currentTarget.style.boxShadow =
+                          "0 6px 16px rgba(249, 115, 22, 0.45)";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (dealReadOnly) return;
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow =
+                          "0 4px 12px rgba(249, 115, 22, 0.35)";
+                      }}
                     >
                       🔒 {t("dealDetail.closeProject")}
                     </button>
@@ -1373,6 +1418,58 @@ export default function InicijacijaDetailClient() {
                                 </div>
                               )}
 
+                              {needsMarkFinished && !hasHardBlocks && (
+                                <div
+                                  style={{
+                                    marginTop: 12,
+                                    border: "1px solid rgba(80, 170, 255, .45)",
+                                    background: "rgba(80, 170, 255, .10)",
+                                    padding: 10,
+                                    borderRadius: 12,
+                                  }}
+                                >
+                                  <div
+                                    style={{ fontWeight: 900, marginBottom: 6 }}
+                                  >
+                                    Produkcija nije označena kao Završena
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: 13,
+                                      opacity: 0.92,
+                                      marginBottom: 10,
+                                    }}
+                                  >
+                                    Klijent je prihvatio / produkcija je gotova,
+                                    ali status još nije „Završen“. Možeš jednim
+                                    korakom završiti produkciju i zatvoriti
+                                    projekat.
+                                  </div>
+                                  <label
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "flex-start",
+                                      gap: 8,
+                                      fontSize: 13,
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={closeMarkFinished}
+                                      onChange={(e) =>
+                                        setCloseMarkFinished(e.target.checked)
+                                      }
+                                      disabled={closeSaving}
+                                      style={{ marginTop: 2 }}
+                                    />
+                                    <span>
+                                      Završi produkciju (status Završen) i zatvori
+                                      projekat
+                                    </span>
+                                  </label>
+                                </div>
+                              )}
+
                               {hasWarnings && (
                                 <div
                                   style={{
@@ -1475,6 +1572,7 @@ onClick={() => setCloseOpen(false)}
                                 disabled={
                                   closeSaving ||
                                   hasHardBlocks ||
+                                  (needsMarkFinished && !closeMarkFinished) ||
                                   (hasWarnings && !closeConfirmWarnings) ||
                                   isProjectClosed
                                 }
@@ -1484,7 +1582,9 @@ onClick={() => setCloseOpen(false)}
                                   ? t("dealDetail.saving")
                                   : isProjectClosed
                                     ? t("dealDetail.alreadyClosed")
-                                    : t("dealDetail.closeProject")}
+                                    : needsMarkFinished
+                                      ? "Završi i zatvori"
+                                      : t("dealDetail.closeProject")}
                               </button>
                               </div>
                             </>

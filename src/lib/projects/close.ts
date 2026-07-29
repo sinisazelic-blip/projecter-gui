@@ -5,6 +5,8 @@ type CloseCheck = {
   projekat_id: number;
   status_id: number;
   status_name: string | null;
+  /** true kad produkcija još nije Završena (7) — zatvaranje traži mark_finished */
+  production_not_finished: boolean;
   summary: {
     broj_troskova: number;
     ukupno_km: number;
@@ -74,7 +76,7 @@ export async function getCloseCheck(
   /**
    * HARD BLOCK pravila:
    * - ne smije se zatvarati ako je Zatvoren/Fakturisan/Arhiviran/Otkazan
-   * - zatvaranje (ZATVOREN = 8) smije doći tek nakon FINAL OK (status 7 = Završen)
+   * - status < 7 nije hard block: UI nudi checkbox „završi produkciju i zatvori”
    */
   if (status_id === 8) {
     hard_blocks.push({
@@ -102,14 +104,7 @@ export async function getCloseCheck(
     });
   }
 
-  // mora biti bar FINAL OK (7)
-  if (status_id < 7) {
-    hard_blocks.push({
-      code: "NOT_READY",
-      message:
-        "Projekat nije u statusu 'Završen' (FINAL OK). Prvo završi produkciju (status 7).",
-    });
-  }
+  const production_not_finished = status_id > 0 && status_id < 7;
 
   // HARD BLOCK: bank postinzi za projekat koji nisu prebačeni u troškove (trosak_row_id je NULL)
   const bRows = await query(
@@ -167,6 +162,7 @@ export async function getCloseCheck(
     projekat_id: Number(p.projekat_id),
     status_id,
     status_name,
+    production_not_finished,
     summary: {
       broj_troskova: Number(t.broj_troskova ?? 0),
       ukupno_km: spent,

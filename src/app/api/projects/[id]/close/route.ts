@@ -40,6 +40,7 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const force = Boolean((body as any)?.force);
+  const markFinished = Boolean((body as any)?.mark_finished);
 
   const check = await getCloseCheck(projekatId);
   if (!check) {
@@ -56,10 +57,43 @@ export async function POST(req: Request) {
     );
   }
 
+  if (check.production_not_finished && !markFinished) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "CLOSE_NEEDS_MARK_FINISHED",
+        message:
+          "Produkcija nije označena kao Završena. Potvrdi checkbox da je završiš i zatvoriš projekat.",
+        ...check,
+      },
+      { status: 409 },
+    );
+  }
+
   if (check.warnings.length > 0 && !force) {
     return NextResponse.json(
       { ok: false, error: "CLOSE_NEEDS_CONFIRM", ...check },
       { status: 409 },
+    );
+  }
+
+  const user_label = getUserLabel(req);
+  const ip = getIp(req);
+
+  // Opciono: prvo Završen (7), pa Zatvoren (8) — jedan korak u UI
+  if (check.production_not_finished && markFinished) {
+    await query(`UPDATE projekti SET status_id = 7 WHERE projekat_id = ? AND status_id < 7`, [
+      projekatId,
+    ]);
+    await query(
+      `INSERT INTO project_audit (projekat_id, action, details, user_label, ip)
+       VALUES (?, 'PROJECT_MARK_FINISHED', CAST(? AS JSON), ?, ?)`,
+      [
+        projekatId,
+        JSON.stringify({ via: "close_with_mark_finished", from_status: check.status_id }),
+        user_label,
+        ip,
+      ],
     );
   }
 
@@ -68,13 +102,12 @@ export async function POST(req: Request) {
     projekatId,
   ]);
 
-  // ✅ audit log
-  const user_label = getUserLabel(req);
-  const ip = getIp(req);
   const details = {
     force,
+    mark_finished: markFinished,
     warnings: check.warnings,
     summary: check.summary,
+    from_status: check.status_id,
   };
 
   await query(
@@ -88,7 +121,9 @@ export async function POST(req: Request) {
   return NextResponse.json(
     {
       ok: true,
-      message: "Projekat zatvoren (soft-lock).",
+      message: markFinished
+        ? "Produkcija označena kao Završena i projekat zatvoren."
+        : "Projekat zatvoren (soft-lock).",
       projekat_id: projekatId,
       after,
     },

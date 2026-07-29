@@ -3,6 +3,8 @@ import { query } from "@/lib/db";
 import { audit } from "@/lib/audit";
 
 const LOCKED_PROJECT_STATUSES = new Set([8, 9, 10, 12]);
+/** Troškovi na project page: read-only tek kad je Fakturisan (9). */
+const COSTS_LOCKED_PROJECT_STATUSES = new Set([9]);
 const OWNER_NIVO = 10;
 
 type ProjectLockInfo = {
@@ -130,6 +132,49 @@ export async function assertDealEditableOrThrow(
   err.details = {
     projekat_id: lockInfo.projekat_id,
     status_id: lockInfo.project_status_id,
+    owner_can_override: isOwner,
+  };
+  throw err;
+}
+
+/**
+ * Troškovi na projektu: zaključano kad je Fakturisan (9),
+ * osim owner/admin + aktivni project_edit_overrides.
+ */
+export async function assertProjectCostsEditableOrThrow(
+  projekatId: number,
+  session: SessionPayload | null,
+) {
+  const rows = await query<{ status_id: number | null }>(
+    `
+    SELECT status_id
+    FROM projekti
+    WHERE projekat_id = ?
+    LIMIT 1
+    `,
+    [projekatId],
+  );
+  const statusId =
+    rows?.[0]?.status_id !== null && rows?.[0]?.status_id !== undefined
+      ? Number(rows[0].status_id)
+      : null;
+  if (
+    !Number.isFinite(statusId as number) ||
+    !COSTS_LOCKED_PROJECT_STATUSES.has(Number(statusId))
+  ) {
+    return;
+  }
+
+  const isOwner = isOwnerLike(session);
+  if (isOwner && (await hasActiveProjectEditOverride(projekatId))) {
+    return;
+  }
+
+  const err: any = new Error("PROJECT_COSTS_LOCKED");
+  err.status = 423;
+  err.details = {
+    projekat_id: projekatId,
+    status_id: statusId,
     owner_can_override: isOwner,
   };
   throw err;
