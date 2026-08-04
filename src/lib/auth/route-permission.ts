@@ -24,17 +24,26 @@ export function isPublicPath(pathname: string): boolean {
   );
 }
 
+type RouteModuleMap = {
+  path: string;
+  module: string;
+  inPage: string;
+  /** Dodatni ACL ključevi koji takođe daju pristup (OR s primarnim). */
+  aclAltKeys?: string[];
+};
+
 /**
  * Lista path → { module, inPage } za sve zaštićene rute.
  * Redoslijed: specifičnije rute prvo (npr. /finance/banka prije /finance).
  */
-const ROUTE_TO_MODULE: { path: string; module: string; inPage: string }[] = [
+const ROUTE_TO_MODULE: RouteModuleMap[] = [
   { path: "/dashboard", module: "Dashboard", inPage: "" },
   { path: "/inicijacije", module: "Deals", inPage: "-" },
   { path: "/studio/strategic-core", module: "Strategic Core", inPage: "" },
   { path: "/projects", module: "PP", inPage: "-" },
   { path: "/projects/", module: "Projekat", inPage: "-" },
-  { path: "/fakture", module: "Fakture", inPage: "" },
+  { path: "/fakture/za-fakturisanje", module: "Fakture", inPage: "" },
+  { path: "/fakture", module: "Fakture", inPage: "", aclAltKeys: ["kif"] },
   { path: "/naplate", module: "Naplate", inPage: "" },
   { path: "/finance/prihodi", module: "Finansije - Potraživanja", inPage: "" },
   { path: "/finance/dugovanja", module: "Finansije - Dugovanja", inPage: "" },
@@ -52,7 +61,7 @@ const ROUTE_TO_MODULE: { path: string; module: string; inPage: string }[] = [
     inPage: "",
   },
   { path: "/finance/krediti", module: "Finansije - Dugovanja", inPage: "" },
-  { path: "/finance/kuf", module: "Finansije - Početno stanje", inPage: "" },
+  { path: "/finance/kuf", module: "Finansije - KUF", inPage: "" },
   { path: "/finance/pdv", module: "Finansije - PDV", inPage: "" },
   { path: "/finance/rasknjizavanje", module: "Finansije - Banka", inPage: "" },
   { path: "/finance/cashflow", module: "Finansije - Banka", inPage: "" },
@@ -79,23 +88,30 @@ const ROUTE_TO_MODULE: { path: string; module: string; inPage: string }[] = [
   { path: "/studio/licence", module: "Šifarnici - Users", inPage: "" },
   { path: "/studio", module: "Šifarnici - Klijenti", inPage: "" },
   { path: "/izvjestaji", module: "Izvještaji", inPage: "" },
-  { path: "/izvodi", module: "Finansije - Banka", inPage: "" },
+  { path: "/izvodi", module: "Finansije - Izvodi", inPage: "" },
   { path: "/narudzbenice", module: "Fakture", inPage: "" },
   { path: "/ponude", module: "Deals", inPage: "-" },
+  {
+    path: "/banking/import",
+    module: "Finansije - Izvodi",
+    inPage: "",
+    aclAltKeys: ["banka"],
+  },
   { path: "/banking", module: "Finansije - Banka", inPage: "" },
 ];
 
 function getModuleForPath(
   pathname: string,
-): { module: string; inPage: string } | null {
+): RouteModuleMap | null {
   const path = pathname.startsWith("/") ? pathname : `/${pathname}`;
-  for (const { path: p, module: mod, inPage } of ROUTE_TO_MODULE) {
+  for (const entry of ROUTE_TO_MODULE) {
+    const p = entry.path;
     if (
       path === p ||
       (p.endsWith("/") && path.startsWith(p)) ||
       (!p.endsWith("/") && path.startsWith(p + "/"))
     ) {
-      return { module: mod, inPage };
+      return entry;
     }
   }
   return null;
@@ -132,10 +148,12 @@ export function mayAccessPath(
   if (!map) return true;
 
   if (aclMap && Object.keys(aclMap).length > 0) {
+    const keys = new Set<string>();
     const aclMod = findAclModuleByMatrix(map.module, map.inPage);
-    if (aclMod) {
-      const access = aclMap[aclMod.key] ?? "none";
-      return aclCanSee(access);
+    if (aclMod) keys.add(aclMod.key);
+    for (const k of map.aclAltKeys ?? []) keys.add(k);
+    if (keys.size > 0) {
+      return [...keys].some((k) => aclCanSee(aclMap[k]));
     }
   }
 

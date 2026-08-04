@@ -254,7 +254,7 @@ export default function DashboardBody() {
                   />
                 </FluxaFeature>
               </PermissionGate>
-              <PermissionGate module="Fakture" inPage="">
+              {(canSee("Fakture") || canSee("Finansije - KIF")) && (
                 <FluxaFeature id={12}>
                   <ActionBtn
                     label={t("dashboard.fakture")}
@@ -262,10 +262,10 @@ export default function DashboardBody() {
                     title={t("dashboard.faktureTitle")}
                   />
                 </FluxaFeature>
-              </PermissionGate>
+              )}
             </div>
             <div className="finansijeRow finansijeRow--3">
-              <PermissionGate module="Finansije - Banka" inPage="">
+              <PermissionGate module="Finansije - Izvodi" inPage="">
                 <FluxaFeature id={13}>
                   <ActionBtn
                     label={t("dashboard.izvodi")}
@@ -275,7 +275,7 @@ export default function DashboardBody() {
                   />
                 </FluxaFeature>
               </PermissionGate>
-              <PermissionGate module="Finansije - Dugovanja" inPage="">
+              <PermissionGate module="Finansije - KUF" inPage="">
                 <FluxaFeature id={14}>
                   <ActionBtn
                     label={t("dashboard.kuf")}

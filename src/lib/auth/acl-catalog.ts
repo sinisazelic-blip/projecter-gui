@@ -27,7 +27,9 @@ export const ACL_MODULES: AclModuleDef[] = [
   { key: "fakture", labelSr: "Fakture", labelEn: "Invoices", matrixModule: "Fakture", matrixInPage: "", group: "finance" },
   { key: "naplate", labelSr: "Naplata", labelEn: "Collections", matrixModule: "Naplate", matrixInPage: "", group: "finance" },
   { key: "pdv", labelSr: "PDV", labelEn: "VAT", matrixModule: "Finansije - PDV", matrixInPage: "", group: "finance" },
-  { key: "kuf", labelSr: "KUF", labelEn: "Purchase ledger", matrixModule: "Finansije - Početno stanje", matrixInPage: "", group: "finance" },
+  { key: "kif", labelSr: "KIF", labelEn: "Sales ledger", matrixModule: "Finansije - KIF", matrixInPage: "", group: "finance" },
+  { key: "kuf", labelSr: "KUF", labelEn: "Purchase ledger", matrixModule: "Finansije - KUF", matrixInPage: "", group: "finance" },
+  { key: "izvodi", labelSr: "Izvodi", labelEn: "Bank statements", matrixModule: "Finansije - Izvodi", matrixInPage: "", group: "finance" },
   { key: "potrazivanja", labelSr: "Potraživanja / Prihodi", labelEn: "Receivables", matrixModule: "Finansije - Potraživanja", matrixInPage: "", group: "finance" },
   { key: "dugovanja", labelSr: "Dugovanja / Troškovi", labelEn: "Payables / Costs", matrixModule: "Finansije - Dugovanja", matrixInPage: "", group: "finance" },
   { key: "banka", labelSr: "Banka (novčanik)", labelEn: "Bank (wallet)", matrixModule: "Finansije - Banka", matrixInPage: "", group: "finance", ownerOnlyDefault: true },
@@ -51,17 +53,17 @@ export const ACL_MODULES: AclModuleDef[] = [
   { key: "mobile", labelSr: "Mobile dashboard", labelEn: "Mobile dashboard", matrixModule: "Mobile dashboard", matrixInPage: "-", group: "system" },
 ];
 
-/** Šablon: računovodstvo — samo PDV, troškovi/KUF i pregled banke. */
+/** Šablon: računovodstvo — PDV, KIF/KUF, izvodi (bez novčanika / fakturisanja). */
 export const ACL_TEMPLATE_RACUNOVODSTVO: Record<string, AclAccess> = {
   dashboard: "view",
   pdv: "edit",
+  kif: "edit",
   kuf: "edit",
+  izvodi: "edit",
   dugovanja: "edit",
   pocetna_stanja: "edit",
   potrazivanja: "view",
-  banka: "view",
   izvjestaji: "view",
-  fakture: "view",
   naplate: "view",
 };
 

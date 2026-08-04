@@ -489,6 +489,42 @@ export const PERMISSIONS_MATRIX: Record<
       "10": "all",
     },
   },
+  "Finansije - KIF": {
+    "": {
+      "1": "hide",
+      "2": "Edit",
+      "3": "hide",
+      "5": "all",
+      "6": "hide",
+      "8": "all",
+      "9": "all",
+      "10": "all",
+    },
+  },
+  "Finansije - KUF": {
+    "": {
+      "1": "hide",
+      "2": "Edit",
+      "3": "hide",
+      "5": "all",
+      "6": "hide",
+      "8": "all",
+      "9": "all",
+      "10": "all",
+    },
+  },
+  "Finansije - Izvodi": {
+    "": {
+      "1": "hide",
+      "2": "Edit",
+      "3": "hide",
+      "5": "Read Only",
+      "6": "hide",
+      "8": "all",
+      "9": "all",
+      "10": "all",
+    },
+  },
   "Finansije - Otpis": {
     "": {
       "1": "hide",

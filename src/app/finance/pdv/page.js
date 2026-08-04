@@ -6,6 +6,7 @@ import { getValidLocale } from "@/lib/i18n";
 import { formatAmount } from "@/lib/format";
 import { getLastMonthRange, getPdvPrijavaData } from "@/lib/pdv-prijava";
 import { isFakturaPlacenaStatus } from "@/lib/invoicePaidStatus";
+import PdvYearPopup from "./PdvYearPopup";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,16 @@ export default async function PdvPrijavaPage({ searchParams }) {
     to = range.to;
   }
   const data = await getPdvPrijavaData(from || null, to || null, { excludePaidKif });
-  const { from: dataFrom, to: dataTo, summary, kif, kuf, kif_filter_exclude_paid: kifFiltered } = data;
+  const { from: dataFrom, to: dataTo, summary, credit, kif, kuf, kif_filter_exclude_paid: kifFiltered } = data;
+
+  const saldoMjeseca = summary.za_prijavu_km;
+  const showCredit = credit?.is_full_month;
+  const netoZaUplatu = showCredit ? credit.za_uplatu_km : null;
+  const pretplataKraj = showCredit ? credit.pretplata_km : null;
+  const preneto = showCredit ? credit.preneto_km : 0;
+  const isPretplataSaldo = saldoMjeseca < -0.004;
+  const isPretplataNeto = showCredit && pretplataKraj > 0.004;
+  const isUplataNeto = showCredit && netoZaUplatu > 0.004;
 
   return (
     <div className="container">
@@ -121,6 +131,18 @@ export default async function PdvPrijavaPage({ searchParams }) {
               >
                 {t("pdv.lastMonth")}
               </Link>
+              <Link
+                href={`/finance/pdv/obrazac?from=${encodeURIComponent(dataFrom)}&to=${encodeURIComponent(dataTo)}`}
+                className="btn btn--orange-accent"
+                style={{ padding: "8px 16px" }}
+                title={t("pdv.obrazacTitle")}
+              >
+                {t("pdv.obrazac")}
+              </Link>
+              <PdvYearPopup
+                initialYear={Number(String(dataFrom).slice(0, 4)) || new Date().getFullYear()}
+                locale={locale}
+              />
             </form>
             {kifFiltered ? (
               <div className="subtle" style={{ marginTop: 12, fontSize: 12, lineHeight: 1.45 }}>
@@ -143,7 +165,7 @@ export default async function PdvPrijavaPage({ searchParams }) {
             <div style={{ fontSize: 13, marginBottom: 12, color: "var(--muted)" }}>
               Period: {fmtDate(dataFrom)} – {fmtDate(dataTo)}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 16 }}>
               <div>
                 <div className="subtle" style={{ fontSize: 12, marginBottom: 4 }}>{t("pdv.izlazniPdv")}</div>
                 <div style={{ fontSize: 18, fontWeight: 700 }}>{formatAmount(summary.pdv_izlazni_km, locale)}</div>
@@ -152,13 +174,51 @@ export default async function PdvPrijavaPage({ searchParams }) {
                 <div className="subtle" style={{ fontSize: 12, marginBottom: 4 }}>{t("pdv.ulazniPdv")}</div>
                 <div style={{ fontSize: 18, fontWeight: 700 }}>{formatAmount(summary.pdv_ulazni_km, locale)}</div>
               </div>
-              <div style={{ padding: "8px 0", paddingLeft: 12, borderLeft: "2px solid var(--accent)" }}>
-                <div className="subtle" style={{ fontSize: 12, marginBottom: 4 }}>{t("pdv.zaPrijavu")}</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: "var(--accent)" }}>
-                  {formatAmount(summary.za_prijavu_km, locale)}
+              <div style={{ padding: "8px 0", paddingLeft: 12, borderLeft: "2px solid var(--border)" }}>
+                <div className="subtle" style={{ fontSize: 12, marginBottom: 4 }}>{t("pdv.saldoMjeseca")}</div>
+                <div
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 800,
+                    color: isPretplataSaldo ? "var(--accent)" : undefined,
+                  }}
+                >
+                  {formatAmount(saldoMjeseca, locale)}
+                </div>
+                <div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>
+                  {isPretplataSaldo ? t("pdv.saldoPretplataHint") : t("pdv.saldoUplataHint")}
                 </div>
               </div>
+              {showCredit ? (
+                <>
+                  <div>
+                    <div className="subtle" style={{ fontSize: 12, marginBottom: 4 }}>{t("pdv.preneto")}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700 }}>{formatAmount(preneto, locale)}</div>
+                    <div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>{t("pdv.prenetoHint")}</div>
+                  </div>
+                  <div style={{ padding: "8px 0", paddingLeft: 12, borderLeft: "2px solid var(--accent)" }}>
+                    <div className="subtle" style={{ fontSize: 12, marginBottom: 4 }}>
+                      {isPretplataNeto ? t("pdv.pretplata") : t("pdv.zaUplatu")}
+                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "var(--accent)" }}>
+                      {formatAmount(isPretplataNeto ? pretplataKraj : netoZaUplatu, locale)}
+                    </div>
+                    <div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>
+                      {isPretplataNeto
+                        ? t("pdv.pretplataHint")
+                        : isUplataNeto
+                          ? t("pdv.zaUplatuHint")
+                          : t("pdv.nulaHint")}
+                    </div>
+                  </div>
+                </>
+              ) : null}
             </div>
+            {!showCredit ? (
+              <div className="subtle" style={{ marginTop: 14, fontSize: 12, lineHeight: 1.45 }}>
+                {t("pdv.creditOnlyFullMonth")}
+              </div>
+            ) : null}
           </div>
 
           {/* KIF – dokumenti izlazni PDV */}
