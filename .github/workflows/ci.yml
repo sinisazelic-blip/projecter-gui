@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    name: Next.js build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          # Build ne spaja se na bazu; dummy vrijednosti da mustEnv ne padne ako se modul učita.
+          DB_HOST: 127.0.0.1
+          DB_USER: ci
+          DB_PASSWORD: ci
+          DB_NAME: ci
+          DB_PORT: "3306"
