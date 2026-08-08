@@ -279,7 +279,7 @@
   "deals": {
     "title": "Deals list",
     "pageTitle": "Deals",
-    "pageSubtitle": "Project & Finance Engine · V2.0.1",
+    "pageSubtitle": "Project & Finance Engine · V2.0.2",
     "backToDashboard": "Back to Dashboard",
     "searchLabel": "Search",
     "searchPlaceholder": "Deal ID / Project number / Name…",
@@ -322,7 +322,7 @@
     "pageDescription": "Overview of all deals"
   },
   "dealDetail": {
-    "brandSlogan": "Project & Finance Engine · V2.0.1",
+    "brandSlogan": "Project & Finance Engine · V2.0.2",
     "pageTitle": "Deal",
     "pageSubtitle": "Quote details",
     "backToDeals": "Back to Deals",
@@ -951,7 +951,7 @@
     "noAccess": "You don't have access to this page."
   },
   "scPage": {
-    "brandSlogan": "Project & Finance Engine · V2.0.1",
+    "brandSlogan": "Project & Finance Engine · V2.0.2",
     "pageTitle": "SC Strategic Core®",
     "pageSubtitle": "Quick budget in negotiations",
     "studio": "Studio",

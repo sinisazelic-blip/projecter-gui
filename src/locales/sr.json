@@ -279,7 +279,7 @@
   "deals": {
     "title": "Deals lista",
     "pageTitle": "Deals",
-    "pageSubtitle": "Project & Finance Engine · V2.0.1",
+    "pageSubtitle": "Project & Finance Engine · V2.0.2",
     "backToDashboard": "Povratak na Dashboard",
     "searchLabel": "Traži",
     "searchPlaceholder": "ID Deal / Broj projekta / Naziv…",
@@ -322,7 +322,7 @@
     "pageDescription": "Pregled svih pregovora"
   },
   "dealDetail": {
-    "brandSlogan": "Project & Finance Engine · V2.0.1",
+    "brandSlogan": "Project & Finance Engine · V2.0.2",
     "pageTitle": "Deal",
     "pageSubtitle": "Detalji ponude",
     "backToDeals": "Back to Deals",
@@ -951,7 +951,7 @@
     "noAccess": "Nemaš pristup ovoj stranici."
   },
   "scPage": {
-    "brandSlogan": "Project & Finance Engine · V2.0.1",
+    "brandSlogan": "Project & Finance Engine · V2.0.2",
     "pageTitle": "SC Strategic Core®",
     "pageSubtitle": "Brzi budžet u pregovorima",
     "studio": "Studio",
