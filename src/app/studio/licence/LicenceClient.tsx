@@ -5,6 +5,7 @@ import { useTranslation } from "@/components/LocaleProvider";
 import {
   profileToActivationApp,
   profileToTabs,
+  profileUsesActivationCodes,
   resolveDisplayStudioProfile,
   STUDIO_STUB_NO_FLUXA_PLAN_NAZIV,
   studioWizardStep3ShowsFluxaBlock,
@@ -189,9 +190,9 @@ export default function LicenceClient() {
 
   const openNewTenantWizard = () => {
     resetTenantWizard();
-    // Pool Manager / DOCentre tab: profil je jednoznačan, preskačemo izbor.
-    if (activeTab === "POOL_MANAGER") setWizardProfile("POOL_MANAGER");
+    // Dokumentar / EnterSYS tab: profil je jednoznačan, preskačemo izbor.
     if (activeTab === "DOCENTRE") setWizardProfile("DOCENTRE");
+    if (activeTab === "ENTERSYS") setWizardProfile("ENTERSYS");
     setNewTenantOpen(true);
   };
 
@@ -619,8 +620,7 @@ export default function LicenceClient() {
         SOCCS_TIER_OPTIONS.includes(
           soccs as (typeof SOCCS_TIER_OPTIONS)[number],
         )) ||
-      // Pool Manager / DOCentre čekaju potrošen FIRST_INSTALL kod (kao SOCCS).
-      profile === "POOL_MANAGER" ||
+      // Dokumentar čeka potrošen FIRST_INSTALL kod (kao SOCCS).
       profile === "DOCENTRE";
     const consumed = Number(row.soccs_first_install_consumed ?? 0) === 1;
     if (st === "AKTIVAN" && needsSoccsNode && !consumed) {
@@ -813,7 +813,7 @@ export default function LicenceClient() {
                   color: "rgba(248, 113, 113, 0.95)",
                 }}
               >
-                {activeTab === "POOL_MANAGER" || activeTab === "DOCENTRE"
+                {activeTab === "DOCENTRE"
                   ? t("studioLicence.groupActivation")
                   : t("studioLicence.groupSoccsSv")}
               </th>
@@ -884,10 +884,10 @@ export default function LicenceClient() {
                               ? "rgba(59,130,246,0.18)"
                               : dp === "SOCCS_SWIMVOICE"
                                 ? "rgba(239,68,68,0.18)"
-                                : dp === "POOL_MANAGER"
-                                  ? "rgba(20,184,166,0.2)"
-                                  : dp === "DOCENTRE"
-                                    ? "rgba(245,158,11,0.2)"
+                                : dp === "DOCENTRE"
+                                  ? "rgba(245,158,11,0.2)"
+                                  : dp === "ENTERSYS"
+                                    ? "rgba(20,184,166,0.2)"
                                     : "rgba(168,85,247,0.2)",
                           color: "var(--foreground)",
                         }}
@@ -906,8 +906,8 @@ export default function LicenceClient() {
                     </td>
                     <td style={thTd}>
                       {dp === "FLUXA_ONLY" ||
-                      dp === "POOL_MANAGER" ||
-                      dp === "DOCENTRE"
+                      dp === "DOCENTRE" ||
+                      dp === "ENTERSYS"
                         ? "—"
                         : Number.isFinite(Number(row.meet_remaining ?? NaN))
                           ? Number(row.meet_remaining)
@@ -915,8 +915,8 @@ export default function LicenceClient() {
                     </td>
                     <td style={thTd}>
                       {dp === "FLUXA_ONLY" ||
-                      dp === "POOL_MANAGER" ||
-                      dp === "DOCENTRE"
+                      dp === "DOCENTRE" ||
+                      dp === "ENTERSYS"
                         ? "—"
                         : row.max_meets_per_year == null
                           ? t("studioLicence.meetAnnualUnlimited")
@@ -943,8 +943,8 @@ export default function LicenceClient() {
                     </td>
                     <td style={tdFlux}>
                       {dp === "SOCCS_SWIMVOICE" ||
-                      dp === "POOL_MANAGER" ||
-                      dp === "DOCENTRE" ? (
+                      dp === "DOCENTRE" ||
+                      dp === "ENTERSYS" ? (
                         <span style={{ opacity: 0.5 }}>
                           {t("studioLicence.fluxaSkippedForProfile")}
                         </span>
@@ -954,8 +954,8 @@ export default function LicenceClient() {
                     </td>
                     <td style={tdFluxCont}>
                       {dp === "SOCCS_SWIMVOICE" ||
-                      dp === "POOL_MANAGER" ||
-                      dp === "DOCENTRE" ? (
+                      dp === "DOCENTRE" ||
+                      dp === "ENTERSYS" ? (
                         <span style={{ opacity: 0.5 }}>—</span>
                       ) : (
                         formatMaxUsers(row.max_users)
@@ -1055,6 +1055,7 @@ export default function LicenceClient() {
                               : t("studioLicence.suspend")}
                           </button>
                         )}
+                        {profileUsesActivationCodes(dp) ? (
                         <button
                           type="button"
                           className="btn"
@@ -1067,15 +1068,16 @@ export default function LicenceClient() {
                           }}
                           onClick={() => openSoccsModal(row)}
                           title={
-                            dp === "POOL_MANAGER" || dp === "DOCENTRE"
+                            dp === "DOCENTRE"
                               ? t("studioLicence.activationButton")
                               : t("studioLicence.soccsModalTitle")
                           }
                         >
-                          {dp === "POOL_MANAGER" || dp === "DOCENTRE"
+                          {dp === "DOCENTRE"
                             ? t("studioLicence.activationButton")
                             : t("studioLicence.soccsButton")}
                         </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -1438,8 +1440,8 @@ export default function LicenceClient() {
                       ? t("studioLicence.wizardTitleStep3SoccsOnly")
                       : wizardProfile === "FLUXA_AND_SOCCS"
                         ? t("studioLicence.wizardTitleStep3FluxaAndSoccs")
-                        : wizardProfile === "POOL_MANAGER" ||
-                            wizardProfile === "DOCENTRE"
+                        : wizardProfile === "DOCENTRE" ||
+                            wizardProfile === "ENTERSYS"
                           ? t("studioLicence.wizardTitleStep3Activation")
                           : t("studioLicence.wizardTitleStep3FluxaOnly")}
               </h3>
@@ -1466,8 +1468,8 @@ export default function LicenceClient() {
                         "FLUXA_ONLY",
                         "SOCCS_SWIMVOICE",
                         "FLUXA_AND_SOCCS",
-                        "POOL_MANAGER",
                         "DOCENTRE",
+                        "ENTERSYS",
                       ] as const
                     ).map((p) => (
                       <button
@@ -1730,8 +1732,8 @@ export default function LicenceClient() {
                       </select>
                     </>
                   )}
-                  {(wizardProfile === "POOL_MANAGER" ||
-                    wizardProfile === "DOCENTRE") && (
+                  {(wizardProfile === "DOCENTRE" ||
+                    wizardProfile === "ENTERSYS") && (
                     <p
                       style={{
                         fontSize: 13,
@@ -1785,11 +1787,10 @@ export default function LicenceClient() {
         </div>
       )}
 
-      {/* Modal SOCCS / aktivacija (Pool Manager i DOCentre: samo public ID + FIRST_INSTALL kod) */}
+      {/* Modal SOCCS / aktivacija (Dokumentar: samo public ID + FIRST_INSTALL kod) */}
       {soccsModal && (() => {
         const modalProfile = resolveDisplayStudioProfile(soccsModal);
-        const isActivationOnly =
-          modalProfile === "POOL_MANAGER" || modalProfile === "DOCENTRE";
+        const isActivationOnly = modalProfile === "DOCENTRE";
         return (
         <div
           className="studio-modal"

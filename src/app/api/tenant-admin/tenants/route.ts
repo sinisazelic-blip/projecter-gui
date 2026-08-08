@@ -371,8 +371,8 @@ export async function POST(req: NextRequest) {
   // Profili bez Fluxa pretplate koriste stub plan (kao čisti SOCCS).
   const usesStubPlan =
     profile === "SOCCS_SWIMVOICE" ||
-    profile === "POOL_MANAGER" ||
-    profile === "DOCENTRE";
+    profile === "DOCENTRE" ||
+    profile === "ENTERSYS";
 
   let planId = Number(body?.plan_id);
   if (usesStubPlan) {
@@ -449,8 +449,8 @@ export async function POST(req: NextRequest) {
     "SWIMVOICE",
   ];
   let soccsTier: string | null = null;
-  if (profile === "FLUXA_ONLY" || profile === "POOL_MANAGER" || profile === "DOCENTRE") {
-    // Pool Manager i DOCentre ne koriste SOCCS tier — samo first-install kod + dani do isteka.
+  if (profile === "FLUXA_ONLY" || profile === "DOCENTRE" || profile === "ENTERSYS") {
+    // Dokumentar / EnterSYS ne koriste SOCCS tier — samo first-install kod + dani do isteka (gdje primjenjivo).
     soccsTier = null;
   } else if (profile === "SOCCS_SWIMVOICE") {
     if (!soccsTierRaw || !allowedTier.includes(soccsTierRaw)) {
@@ -484,7 +484,7 @@ export async function POST(req: NextRequest) {
       : "";
   let soccsPlatformScope = scopeRaw || null;
 
-  if (profile === "FLUXA_ONLY" || profile === "POOL_MANAGER" || profile === "DOCENTRE") {
+  if (profile === "FLUXA_ONLY" || profile === "DOCENTRE" || profile === "ENTERSYS") {
     soccsPlatformRole = null;
     soccsPlatformScope = null;
   }

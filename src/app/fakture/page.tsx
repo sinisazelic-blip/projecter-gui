@@ -22,11 +22,29 @@ function fmtMoney(n: number, ccy: string): string {
   return `${v.toFixed(2)} ${label}`;
 }
 
-function statusLabel(status: string | null, t: (k: string) => string): string {
+function isStornoFaktura(
+  status: string | null | undefined,
+  iznosSaPdv?: number | null,
+): boolean {
+  const s = String(status ?? "")
+    .trim()
+    .toUpperCase();
+  if (s === "STORNIRAN" || s === "STORNO") return true;
+  return Number(iznosSaPdv) < 0;
+}
+
+function statusLabel(
+  status: string | null,
+  t: (k: string) => string,
+  iznosSaPdv?: number | null,
+): string {
+  if (isStornoFaktura(status, iznosSaPdv)) return t("fakture.statusStorno");
   if (!status) return t("fakture.statusOther");
   const s = status.trim().toUpperCase();
-  if (s === "PLACENA" || s === "PAID" || s === "PLACENO" || s === "DJELIMICNO") return t("fakture.statusPaid");
-  if (s === "FAKTURISAN" || s === "KREIRANA" || s === "CREATED") return t("fakture.statusCreated");
+  if (s === "PLACENA" || s === "PAID" || s === "PLACENO" || s === "DJELIMICNO")
+    return t("fakture.statusPaid");
+  if (s === "FAKTURISAN" || s === "KREIRANA" || s === "CREATED")
+    return t("fakture.statusCreated");
   return t("fakture.statusOther");
 }
 
@@ -283,7 +301,7 @@ const headers = [
                         f.iznos_sa_pdv ?? "",
                         (f.valuta === "BAM" || f.valuta === "KM") ? "KM" : (f.valuta ?? ""),
                       f.pdv_iznos ?? "",
-                      f.status ?? "",
+                      statusLabel(f.status, t, f.iznos_sa_pdv),
                     ]);
                     downloadExcel({
                       filename: "fakture_lista",
@@ -406,16 +424,18 @@ const headers = [
                           <span
                             className="status-badge"
                             style={{
-                              background:
-                                f.status === "Fakturisan" || f.status === "KREIRANA"
+                              background: isStornoFaktura(f.status, f.iznos_sa_pdv)
+                                ? "rgba(239, 68, 68, 0.15)"
+                                : f.status === "Fakturisan" || f.status === "KREIRANA"
                                   ? "rgba(80, 170, 255, 0.15)"
                                   : ["PLACENA", "DJELIMICNO", "PAID", "PLACENO"].includes(
                                         String(f.status ?? "").trim().toUpperCase(),
                                       )
                                     ? "rgba(52, 199, 89, 0.15)"
                                     : "rgba(255, 193, 7, 0.15)",
-                              borderColor:
-                                f.status === "Fakturisan" || f.status === "KREIRANA"
+                              borderColor: isStornoFaktura(f.status, f.iznos_sa_pdv)
+                                ? "rgba(239, 68, 68, 0.35)"
+                                : f.status === "Fakturisan" || f.status === "KREIRANA"
                                   ? "rgba(80, 170, 255, 0.3)"
                                   : ["PLACENA", "DJELIMICNO", "PAID", "PLACENO"].includes(
                                         String(f.status ?? "").trim().toUpperCase(),
@@ -424,7 +444,7 @@ const headers = [
                                     : "rgba(255, 193, 7, 0.3)",
                             }}
                           >
-                            {statusLabel(f.status, t)}
+                            {statusLabel(f.status, t, f.iznos_sa_pdv)}
                           </span>
                         </td>
                         {isOwner && (

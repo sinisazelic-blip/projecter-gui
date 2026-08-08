@@ -251,11 +251,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Podržane aplikacije: SOCCS (default), Pool Manager i DOCentre (isti mehanizam aktivacije).
+  // Podržane aplikacije: SOCCS (default) i Dokumentar / DOCentre (isti mehanizam aktivacije).
   const app = String(body?.app ?? "")
     .trim()
     .toLowerCase();
-  const SUPPORTED_APPS = ["", "soccs", "pool_manager", "docentre"];
+  const SUPPORTED_APPS = ["", "soccs", "docentre"];
   if (!SUPPORTED_APPS.includes(app)) {
     return NextResponse.json(
       { ok: false, reason: "unsupported_app", retryable: false },
@@ -264,7 +264,6 @@ export async function POST(req: NextRequest) {
   }
   const appNormalized = (app === "" ? "soccs" : app).toUpperCase() as
     | "SOCCS"
-    | "POOL_MANAGER"
     | "DOCENTRE";
   if (purposeRaw === "MEET_SESSION" && appNormalized !== "SOCCS") {
     return NextResponse.json(
@@ -517,7 +516,7 @@ async function handleConsumeMeetSlot(
 async function handleFirstInstall(
   code: string,
   installationPublicId: string,
-  app: "SOCCS" | "POOL_MANAGER" | "DOCENTRE" = "SOCCS",
+  app: "SOCCS" | "DOCENTRE" = "SOCCS",
 ) {
   type AcRow = {
     id: number;

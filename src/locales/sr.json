@@ -1125,6 +1125,7 @@
     "deleteCancel": "Otkaži",
     "statusCreated": "Kreirana",
     "statusPaid": "Plaćena",
+    "statusStorno": "Storno",
     "statusOther": "Ostalo",
     "previewTitle": "Faktura",
     "previewSub": "Pregled fakture",
@@ -2354,8 +2355,8 @@
       "FLUXA_ONLY": "Samo Fluxa",
       "SOCCS_SWIMVOICE": "Samo SOCCS / SwimVoice",
       "FLUXA_AND_SOCCS": "Fluxa + SOCCS/SwimVoice",
-      "POOL_MANAGER": "Pool Manager",
-      "DOCENTRE": "DOCentre"
+      "DOCENTRE": "Dokumentar",
+      "ENTERSYS": "EnterSYS"
     },
     "wizardNext": "Dalje",
     "wizardBack": "Nazad",
@@ -2365,21 +2366,22 @@
       "FLUXA_ONLY": "Fluxa",
       "SOCCS_SWIMVOICE": "SOCCS",
       "FLUXA_AND_SOCCS": "Fluxa+SOCCS",
-      "POOL_MANAGER": "Pool Mgr",
-      "DOCENTRE": "DOCentre"
+      "DOCENTRE": "Dokumentar",
+      "ENTERSYS": "EnterSYS",
+      "POOL_MANAGER": "Pool Mgr"
     },
     "profileHint": {
       "FLUXA_ONLY": "Tenant je definisan kao samo Fluxa.",
       "SOCCS_SWIMVOICE": "Tenant je definisan kao samo SOCCS/SwimVoice.",
       "FLUXA_AND_SOCCS": "Tenant uključuje i Fluxa i SOCCS/SwimVoice.",
-      "POOL_MANAGER": "Tenant je Pool Manager (aktivacija kao SOCCS — first install kod).",
-      "DOCENTRE": "Tenant je DOCentre (aktivacija kao SOCCS — first install kod)."
+      "DOCENTRE": "Tenant je Dokumentar (aktivacija kao SOCCS — first install kod).",
+      "ENTERSYS": "Tenant je EnterSYS (platforma za prodaju karata)."
     },
     "productTab": {
       "FLUXA": "Fluxa",
       "SOCCS_SV": "SOCCS / SwimVoice",
-      "POOL_MANAGER": "Pool Manager",
-      "DOCENTRE": "DOCentre"
+      "DOCENTRE": "Dokumentar",
+      "ENTERSYS": "EnterSYS"
     },
     "groupActivation": "Aktivacija",
     "activationButton": "Aktivacija",

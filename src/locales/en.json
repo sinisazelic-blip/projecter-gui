@@ -1125,6 +1125,7 @@
     "deleteCancel": "Cancel",
     "statusCreated": "Created",
     "statusPaid": "Paid",
+    "statusStorno": "Credit note",
     "statusOther": "Other",
     "previewTitle": "Invoice",
     "previewSub": "Invoice preview",
@@ -2327,8 +2328,8 @@
       "FLUXA_ONLY": "Fluxa only",
       "SOCCS_SWIMVOICE": "SOCCS / SwimVoice only",
       "FLUXA_AND_SOCCS": "Fluxa + SOCCS/SwimVoice",
-      "POOL_MANAGER": "Pool Manager",
-      "DOCENTRE": "DOCentre"
+      "DOCENTRE": "Dokumentar",
+      "ENTERSYS": "EnterSYS"
     },
     "wizardNext": "Next",
     "wizardBack": "Back",
@@ -2338,21 +2339,22 @@
       "FLUXA_ONLY": "Fluxa",
       "SOCCS_SWIMVOICE": "SOCCS",
       "FLUXA_AND_SOCCS": "Fluxa+SOCCS",
-      "POOL_MANAGER": "Pool Mgr",
-      "DOCENTRE": "DOCentre"
+      "DOCENTRE": "Dokumentar",
+      "ENTERSYS": "EnterSYS",
+      "POOL_MANAGER": "Pool Mgr"
     },
     "profileHint": {
       "FLUXA_ONLY": "Tenant is defined as Fluxa-only.",
       "SOCCS_SWIMVOICE": "Tenant is defined as SOCCS/SwimVoice-only.",
       "FLUXA_AND_SOCCS": "Tenant includes both Fluxa and SOCCS/SwimVoice.",
-      "POOL_MANAGER": "Tenant is Pool Manager (SOCCS-style activation — first-install code).",
-      "DOCENTRE": "Tenant is DOCentre (SOCCS-style activation — first-install code)."
+      "DOCENTRE": "Tenant is Dokumentar (SOCCS-style activation — first-install code).",
+      "ENTERSYS": "Tenant is EnterSYS (ticketing platform)."
     },
     "productTab": {
       "FLUXA": "Fluxa",
       "SOCCS_SV": "SOCCS / SwimVoice",
-      "POOL_MANAGER": "Pool Manager",
-      "DOCENTRE": "DOCentre"
+      "DOCENTRE": "Dokumentar",
+      "ENTERSYS": "EnterSYS"
     },
     "groupActivation": "Activation",
     "activationButton": "Activation",

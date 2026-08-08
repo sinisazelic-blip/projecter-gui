@@ -141,11 +141,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Kojoj aplikaciji kod pripada (SOCCS | POOL_MANAGER | DOCENTRE).
+  // Kojoj aplikaciji kod pripada (SOCCS | DOCENTRE).
   const appRaw = String(body?.app ?? "SOCCS")
     .trim()
     .toUpperCase();
-  const ALLOWED_APPS = ["SOCCS", "POOL_MANAGER", "DOCENTRE"] as const;
+  const ALLOWED_APPS = ["SOCCS", "DOCENTRE"] as const;
   if (!ALLOWED_APPS.includes(appRaw as (typeof ALLOWED_APPS)[number])) {
     return NextResponse.json({ ok: false, error: "INVALID_APP" }, { status: 400 });
   }
