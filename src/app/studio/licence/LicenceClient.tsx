@@ -777,72 +777,89 @@ export default function LicenceClient() {
       <div style={{ overflowX: "auto" }}>
         <table style={tableStyle}>
           <thead>
-            <tr>
-              <th
-                colSpan={7}
-                style={{
-                  ...thTd,
-                  textAlign: "center",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  opacity: 0.9,
-                  letterSpacing: "0.02em",
-                }}
-              >
-                {t("studioLicence.groupCommon")}
-              </th>
-              <th
-                colSpan={3}
-                style={{
-                  ...thFlux,
-                  textAlign: "center",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "rgba(96, 165, 250, 0.95)",
-                }}
-              >
-                {t("studioLicence.groupFluxa")}
-              </th>
-              <th
-                colSpan={1}
-                style={{
-                  ...thSoccs,
-                  textAlign: "center",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "rgba(248, 113, 113, 0.95)",
-                }}
-              >
-                {activeTab === "DOCENTRE"
-                  ? t("studioLicence.groupActivation")
-                  : t("studioLicence.groupSoccsSv")}
-              </th>
-              <th
-                rowSpan={2}
-                style={{
-                  ...thTd,
-                  textAlign: "center",
-                  fontSize: 11,
-                  verticalAlign: "middle",
-                }}
-              >
-                {t("studioLicence.colAkcije")}
-              </th>
-            </tr>
-            <tr>
-              <th style={thTd}>{t("studioLicence.colNaziv")}</th>
-              <th style={thTd}>{t("studioLicence.colLicenceProfile")}</th>
-              <th style={thTd}>{t("studioLicence.colCijena")}</th>
-              <th style={thTd}>{t("studioLicence.colIstice")}</th>
-              <th style={thTd}>{t("studioLicence.colDana")}</th>
-              <th style={thTd}>{t("studioLicence.colMeetRemaining")}</th>
-              <th style={thTd}>{t("studioLicence.colMeetAnnual")}</th>
-              <th style={thTd}>{t("studioLicence.colStatusLamp")}</th>
-              <th style={thFlux}>{t("studioLicence.colFluxaVersion")}</th>
-              <th style={thFluxCont}>{t("studioLicence.colKorisnici")}</th>
-              <th style={thFluxCont}>{t("studioLicence.colToken")}</th>
-              <th style={thSoccs}>{t("studioLicence.colSoccsVersion")}</th>
-            </tr>
+            {activeTab === "ENTERSYS" ? (
+              <tr>
+                <th style={thTd}>Naziv Tenanta</th>
+                <th style={thTd}>Kontekst Objekta</th>
+                <th style={thTd}>Paket / Tier</th>
+                <th style={thTd}>Cijena / Način Naplate</th>
+                <th style={thTd}>Ističe Datum</th>
+                <th style={thTd}>Dana do Isteka</th>
+                <th style={thTd}>Stanje</th>
+                <th style={thFlux}>Aktivni Moduli</th>
+                <th style={thFluxCont}>Licencni Token</th>
+                <th style={{ ...thTd, textAlign: "center" }}>Akcije</th>
+              </tr>
+            ) : (
+              <>
+                <tr>
+                  <th
+                    colSpan={7}
+                    style={{
+                      ...thTd,
+                      textAlign: "center",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      opacity: 0.9,
+                      letterSpacing: "0.02em",
+                    }}
+                  >
+                    {t("studioLicence.groupCommon")}
+                  </th>
+                  <th
+                    colSpan={3}
+                    style={{
+                      ...thFlux,
+                      textAlign: "center",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "rgba(96, 165, 250, 0.95)",
+                    }}
+                  >
+                    {t("studioLicence.groupFluxa")}
+                  </th>
+                  <th
+                    colSpan={1}
+                    style={{
+                      ...thSoccs,
+                      textAlign: "center",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "rgba(248, 113, 113, 0.95)",
+                    }}
+                  >
+                    {activeTab === "DOCENTRE"
+                      ? t("studioLicence.groupActivation")
+                      : t("studioLicence.groupSoccsSv")}
+                  </th>
+                  <th
+                    rowSpan={2}
+                    style={{
+                      ...thTd,
+                      textAlign: "center",
+                      fontSize: 11,
+                      verticalAlign: "middle",
+                    }}
+                  >
+                    {t("studioLicence.colAkcije")}
+                  </th>
+                </tr>
+                <tr>
+                  <th style={thTd}>{t("studioLicence.colNaziv")}</th>
+                  <th style={thTd}>{t("studioLicence.colLicenceProfile")}</th>
+                  <th style={thTd}>{t("studioLicence.colCijena")}</th>
+                  <th style={thTd}>{t("studioLicence.colIstice")}</th>
+                  <th style={thTd}>{t("studioLicence.colDana")}</th>
+                  <th style={thTd}>{t("studioLicence.colMeetRemaining")}</th>
+                  <th style={thTd}>{t("studioLicence.colMeetAnnual")}</th>
+                  <th style={thTd}>{t("studioLicence.colStatusLamp")}</th>
+                  <th style={thFlux}>{t("studioLicence.colFluxaVersion")}</th>
+                  <th style={thFluxCont}>{t("studioLicence.colKorisnici")}</th>
+                  <th style={thFluxCont}>{t("studioLicence.colToken")}</th>
+                  <th style={thSoccs}>{t("studioLicence.colSoccsVersion")}</th>
+                </tr>
+              </>
+            )}
           </thead>
           <tbody>
             {visibleTenants.length === 0 ? (
@@ -866,101 +883,172 @@ export default function LicenceClient() {
                       openContactModal(row);
                     }}
                   >
-                    <td style={thTd}>{row.naziv}</td>
-                    <td style={thTd}>
-                      <span
-                        title={t(`studioLicence.profileHint.${dp}`)}
-                        style={{
-                          display: "inline-block",
-                          fontSize: 10,
-                          fontWeight: 700,
-                          padding: "3px 9px",
-                          borderRadius: 999,
-                          letterSpacing: "0.03em",
-                          textTransform: "uppercase",
-                          border: "1px solid var(--border)",
-                          background:
-                            dp === "FLUXA_ONLY"
-                              ? "rgba(59,130,246,0.18)"
-                              : dp === "SOCCS_SWIMVOICE"
-                                ? "rgba(239,68,68,0.18)"
-                                : dp === "DOCENTRE"
-                                  ? "rgba(245,158,11,0.2)"
-                                  : dp === "ENTERSYS"
-                                    ? "rgba(20,184,166,0.2)"
-                                    : "rgba(168,85,247,0.2)",
-                          color: "var(--foreground)",
-                        }}
-                      >
-                        {t(`studioLicence.profileShort.${dp}`)}
-                      </span>
-                    </td>
-                    <td style={thTd}>{formatPrice(row)}</td>
-                    <td style={thTd}>{row.subscription_ends_at}</td>
-                    <td style={thTd}>
-                      {row.days_until_end > 0
-                        ? row.days_until_end
-                        : row.days_until_end === 0
-                          ? "0"
-                          : t("studioLicence.expired")}
-                    </td>
-                    <td style={thTd}>
-                      {dp === "FLUXA_ONLY" ||
-                      dp === "DOCENTRE" ||
-                      dp === "ENTERSYS"
-                        ? "—"
-                        : Number.isFinite(Number(row.meet_remaining ?? NaN))
-                          ? Number(row.meet_remaining)
-                          : "—"}
-                    </td>
-                    <td style={thTd}>
-                      {dp === "FLUXA_ONLY" ||
-                      dp === "DOCENTRE" ||
-                      dp === "ENTERSYS"
-                        ? "—"
-                        : row.max_meets_per_year == null
-                          ? t("studioLicence.meetAnnualUnlimited")
-                          : `${Number(row.meets_used_ytd ?? 0)} / ${row.max_meets_per_year}` +
-                            (row.meets_remaining_year != null
-                              ? ` (${t("studioLicence.meetAnnualLeft").replace("{{n}}", String(row.meets_remaining_year))})`
-                              : "")}
-                    </td>
-                    <td style={thTd}>
-                      <span
-                        role="img"
-                        aria-label={lamp.title}
-                        title={`${lamp.title} (${row.status})`}
-                        style={{
-                          display: "inline-block",
-                          width: 14,
-                          height: 14,
-                          borderRadius: 999,
-                          background: lamp.color,
-                          boxShadow: `0 0 0 2px rgba(255,255,255,0.2)`,
-                          verticalAlign: "middle",
-                        }}
-                      />
-                    </td>
-                    <td style={tdFlux}>
-                      {dp === "SOCCS_SWIMVOICE" ||
-                      dp === "DOCENTRE" ||
-                      dp === "ENTERSYS" ? (
-                        <span style={{ opacity: 0.5 }}>
-                          {t("studioLicence.fluxaSkippedForProfile")}
-                        </span>
-                      ) : (
-                        row.plan_naziv
-                      )}
-                    </td>
-                    <td style={tdFluxCont}>
-                      {dp === "SOCCS_SWIMVOICE" ||
-                      dp === "DOCENTRE" ||
-                      dp === "ENTERSYS" ? (
-                        <span style={{ opacity: 0.5 }}>—</span>
-                      ) : (
-                        formatMaxUsers(row.max_users)
-                      )}
-                    </td>
+                    {activeTab === "ENTERSYS" ? (
+                      <>
+                        <td style={thTd}>{row.naziv}</td>
+                        <td style={thTd}>
+                          <span
+                            style={{
+                              display: "inline-block",
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: "3px 9px",
+                              borderRadius: 999,
+                              background: "rgba(20,184,166,0.2)",
+                              color: "#2dd4bf",
+                              border: "1px solid rgba(20,184,166,0.3)",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {row.tenant_context ? String(row.tenant_context).toUpperCase() : "BAZEN"}
+                          </span>
+                        </td>
+                        <td style={thTd}>{row.soccs_tier || "ENTERPRISE"}</td>
+                        <td style={thTd}>{formatPrice(row)}</td>
+                        <td style={thTd}>{row.subscription_ends_at || "—"}</td>
+                        <td style={thTd}>
+                          {row.days_until_end > 0
+                            ? row.days_until_end
+                            : row.days_until_end === 0
+                              ? "0"
+                              : t("studioLicence.expired")}
+                        </td>
+                        <td style={thTd}>
+                          <span
+                            role="img"
+                            aria-label={lamp.title}
+                            title={`${lamp.title} (${row.status})`}
+                            style={{
+                              display: "inline-block",
+                              width: 12,
+                              height: 12,
+                              borderRadius: 999,
+                              background: lamp.color,
+                              boxShadow: `0 0 0 2px rgba(255,255,255,0.2)`,
+                              verticalAlign: "middle",
+                            }}
+                          />
+                        </td>
+                        <td style={tdFlux}>
+                          <span style={{ fontSize: 10, opacity: 0.9 }}>
+                            Core, POS, Lockers, Rentals, MojTV
+                          </span>
+                        </td>
+                        <td style={tdFluxCont}>
+                          <code style={{ fontSize: 10, opacity: 0.85 }}>
+                            {row.tenant_token ? `${String(row.tenant_token).substring(0, 12)}...` : "—"}
+                          </code>
+                        </td>
+                        <td style={{ ...thTd, textAlign: "center" }}>
+                          <button
+                            type="button"
+                            className="btn btn-sm"
+                            style={{ fontSize: 11, padding: "2px 8px" }}
+                            onClick={() => openContactModal(row)}
+                          >
+                            Upravljaj
+                          </button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={thTd}>{row.naziv}</td>
+                        <td style={thTd}>
+                          <span
+                            title={t(`studioLicence.profileHint.${dp}`)}
+                            style={{
+                              display: "inline-block",
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: "3px 9px",
+                              borderRadius: 999,
+                              letterSpacing: "0.03em",
+                              textTransform: "uppercase",
+                              border: "1px solid var(--border)",
+                              background:
+                                dp === "FLUXA_ONLY"
+                                  ? "rgba(59,130,246,0.18)"
+                                  : dp === "SOCCS_SWIMVOICE"
+                                    ? "rgba(239,68,68,0.18)"
+                                    : dp === "DOCENTRE"
+                                      ? "rgba(245,158,11,0.2)"
+                                      : dp === "ENTERSYS"
+                                        ? "rgba(20,184,166,0.2)"
+                                        : "rgba(168,85,247,0.2)",
+                              color: "var(--foreground)",
+                            }}
+                          >
+                            {t(`studioLicence.profileShort.${dp}`)}
+                          </span>
+                        </td>
+                        <td style={thTd}>{formatPrice(row)}</td>
+                        <td style={thTd}>{row.subscription_ends_at}</td>
+                        <td style={thTd}>
+                          {row.days_until_end > 0
+                            ? row.days_until_end
+                            : row.days_until_end === 0
+                              ? "0"
+                              : t("studioLicence.expired")}
+                        </td>
+                        <td style={thTd}>
+                          {dp === "FLUXA_ONLY" ||
+                          dp === "DOCENTRE" ||
+                          dp === "ENTERSYS"
+                            ? "—"
+                            : Number.isFinite(Number(row.meet_remaining ?? NaN))
+                              ? Number(row.meet_remaining)
+                              : "—"}
+                        </td>
+                        <td style={thTd}>
+                          {dp === "FLUXA_ONLY" ||
+                          dp === "DOCENTRE" ||
+                          dp === "ENTERSYS"
+                            ? "—"
+                            : row.max_meets_per_year == null
+                              ? t("studioLicence.meetAnnualUnlimited")
+                              : `${Number(row.meets_used_ytd ?? 0)} / ${row.max_meets_per_year}` +
+                                (row.meets_remaining_year != null
+                                  ? ` (${t("studioLicence.meetAnnualLeft").replace("{{n}}", String(row.meets_remaining_year))})`
+                                  : "")}
+                        </td>
+                        <td style={thTd}>
+                          <span
+                            role="img"
+                            aria-label={lamp.title}
+                            title={`${lamp.title} (${row.status})`}
+                            style={{
+                              display: "inline-block",
+                              width: 14,
+                              height: 14,
+                              borderRadius: 999,
+                              background: lamp.color,
+                              boxShadow: `0 0 0 2px rgba(255,255,255,0.2)`,
+                              verticalAlign: "middle",
+                            }}
+                          />
+                        </td>
+                        <td style={tdFlux}>
+                          {dp === "SOCCS_SWIMVOICE" ||
+                          dp === "DOCENTRE" ||
+                          dp === "ENTERSYS" ? (
+                            <span style={{ opacity: 0.5 }}>
+                              {t("studioLicence.fluxaSkippedForProfile")}
+                            </span>
+                          ) : (
+                            row.plan_naziv
+                          )}
+                        </td>
+                        <td style={tdFluxCont}>
+                          {dp === "SOCCS_SWIMVOICE" ||
+                          dp === "DOCENTRE" ||
+                          dp === "ENTERSYS" ? (
+                            <span style={{ opacity: 0.5 }}>—</span>
+                          ) : (
+                            formatMaxUsers(row.max_users)
+                          )}
+                        </td>
+                      </>
+                    )}
                     <td style={tdFluxCont}>
                       <button
                         type="button"
