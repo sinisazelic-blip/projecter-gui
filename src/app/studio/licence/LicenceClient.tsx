@@ -55,6 +55,8 @@ type TenantRow = {
   meets_used_ytd?: number;
   meets_remaining_year?: number | null;
   licence_token?: string | null;
+  /** EnterSYS kontekst objekta (bazen, event, …) — opcionalno dok nema kolone u bazi. */
+  tenant_context?: string | null;
   /** 1 ako je FIRST_INSTALL kod potrošen (SOCCS aktiviran). */
   soccs_first_install_consumed?: number;
 };
@@ -936,7 +938,9 @@ export default function LicenceClient() {
                         </td>
                         <td style={tdFluxCont}>
                           <code style={{ fontSize: 10, opacity: 0.85 }}>
-                            {row.tenant_token ? `${String(row.tenant_token).substring(0, 12)}...` : "—"}
+                            {row.licence_token
+                              ? `${String(row.licence_token).substring(0, 12)}...`
+                              : "—"}
                           </code>
                         </td>
                         <td style={{ ...thTd, textAlign: "center" }}>
