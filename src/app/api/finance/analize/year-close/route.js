@@ -63,7 +63,7 @@ async function clientBalances(year) {
       FROM fakture f
       WHERE f.bill_to_klijent_id IS NOT NULL
         AND DATE(f.datum_izdavanja) >= ? AND DATE(f.datum_izdavanja) <= ?
-        AND (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN','ZAMIJENJEN'))
+        AND (f.fiskalni_status IS NULL OR f.fiskalni_status <> 'ZAMIJENJEN')
       GROUP BY f.bill_to_klijent_id
     ) fi ON fi.klijent_id = k.klijent_id
     LEFT JOIN (

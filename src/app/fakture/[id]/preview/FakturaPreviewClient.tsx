@@ -252,52 +252,87 @@ export default function FakturaPreviewClient() {
 
   const stornoSign = isStornoFaktura ? -1 : 1;
 
-  const items = useMemo(
-    () =>
-      projects.map((p) => {
-        const overrideNaziv = projectNames[p.projekat_id];
-        const baseTitle = String(
-          (overrideNaziv || p.radni_naziv) ?? `Projekat #${p.projekat_id}`,
-        ).trim();
+  const items = useMemo(() => {
+    const mapped = projects.map((p) => {
+      const overrideNaziv = projectNames[p.projekat_id];
+      const baseTitle = String(
+        (overrideNaziv || p.radni_naziv) ?? `Projekat #${p.projekat_id}`,
+      ).trim();
 
-        // ✅ Ako radimo za krajnjeg klijenta preko agencije, istakni ga u naslovu:
-        // "Xiaomi — Naziv projekta"
-        const hasEndClient =
-          p.krajnji_klijent_id != null &&
-          p.klijent_naziv &&
-          String(p.klijent_naziv).trim() !== "" &&
-          p.narucilac_id != null &&
-          Number(p.krajnji_klijent_id) !== Number(p.narucilac_id);
-        const endClientName = hasEndClient
-          ? String(p.klijent_naziv).trim()
+      // ✅ Ako radimo za krajnjeg klijenta preko agencije, istakni ga u naslovu:
+      // "Xiaomi — Naziv projekta"
+      const hasEndClient =
+        p.krajnji_klijent_id != null &&
+        p.klijent_naziv &&
+        String(p.klijent_naziv).trim() !== "" &&
+        p.narucilac_id != null &&
+        Number(p.krajnji_klijent_id) !== Number(p.narucilac_id);
+      const endClientName = hasEndClient
+        ? String(p.klijent_naziv).trim()
+        : "";
+      const title = endClientName
+        ? `${endClientName} — ${baseTitle}`
+        : baseTitle;
+
+      // Ako je krajnji klijent već u naslovu, nema potrebe da ga dupliramo u podnaslovu.
+      const sub = endClientName
+        ? ""
+        : p.klijent_naziv
+          ? `Klijent: ${p.klijent_naziv}`
           : "";
-        const title = endClientName
-          ? `${endClientName} — ${baseTitle}`
-          : baseTitle;
+      const subItems = projectSubItems[p.projekat_id] ?? [];
+      const qty = 1;
+      const unit = Number(p.budzet_planirani ?? 0) * stornoSign;
+      const total = qty * unit;
+      return {
+        id: p.projekat_id,
+        title,
+        sub,
+        subItems,
+        qty,
+        unit,
+        total,
+        closed_at: p.closed_at,
+      };
+    });
 
-        // Ako je krajnji klijent već u naslovu, nema potrebe da ga dupliramo u podnaslovu.
-        const sub = endClientName
-          ? ""
-          : p.klijent_naziv
-            ? `Klijent: ${p.klijent_naziv}`
-            : "";
-        const subItems = projectSubItems[p.projekat_id] ?? [];
-        const qty = 1;
-        const unit = Number(p.budzet_planirani ?? 0) * stornoSign;
-        const total = qty * unit;
-        return {
-          id: p.projekat_id,
-          title,
-          sub,
-          subItems,
-          qty,
-          unit,
-          total,
-          closed_at: p.closed_at,
-        };
-      }),
-    [projects, projectSubItems, projectNames, stornoSign],
-  );
+    // Historijski dokument: stavke uskladi sa snimljenim iznosom fakture
+    // (budžet projekta se može kasnije mijenjati / refakturisati).
+    const storedOsnovica = Number(
+      faktura?.iznos_bez_pdv ?? faktura?.osnovica_km ?? 0,
+    );
+    if (mapped.length === 1 && Number.isFinite(storedOsnovica) && storedOsnovica !== 0) {
+      mapped[0] = {
+        ...mapped[0],
+        unit: storedOsnovica,
+        total: storedOsnovica,
+      };
+    } else if (
+      mapped.length > 1 &&
+      Number.isFinite(storedOsnovica) &&
+      storedOsnovica !== 0
+    ) {
+      const liveSum = mapped.reduce(
+        (s, it) => s + (Number.isFinite(it.total) ? it.total : 0),
+        0,
+      );
+      if (Math.abs(liveSum) > 0.0001) {
+        const scale = storedOsnovica / liveSum;
+        return mapped.map((it) => {
+          const total = Math.round(it.total * scale * 100) / 100;
+          return { ...it, total, unit: total };
+        });
+      }
+    }
+    return mapped;
+  }, [
+    projects,
+    projectSubItems,
+    projectNames,
+    stornoSign,
+    faktura?.iznos_bez_pdv,
+    faktura?.osnovica_km,
+  ]);
 
   const fakturaOsnovica = Number(
     faktura?.iznos_bez_pdv ?? faktura?.osnovica_km ?? 0,
@@ -308,28 +343,23 @@ export default function FakturaPreviewClient() {
   );
 
   const baseAmount = useMemo(() => {
-    const fromItems = items.reduce(
+    // Snimljeni iznos fakture ima prioritet nad tekućim budžetom projekta.
+    if (fakturaOsnovica !== 0) return fakturaOsnovica;
+    if (fakturaUkupno !== 0) return fakturaUkupno - fakturaPdv;
+    return items.reduce(
       (s, it) => s + (Number.isFinite(it.total) ? it.total : 0),
       0,
     );
-    if (
-      (fromItems === 0 || !Number.isFinite(fromItems)) &&
-      (fakturaOsnovica !== 0 || fakturaUkupno !== 0)
-    ) {
-      return fakturaOsnovica;
-    }
-    return fromItems;
-  }, [items, fakturaOsnovica, fakturaUkupno]);
+  }, [items, fakturaOsnovica, fakturaUkupno, fakturaPdv]);
   const vatRate = useMemo(() => (isInoInvoice ? 0 : 0.17), [isInoInvoice]);
   const vatAmount = useMemo(() => {
-    if (baseAmount === fakturaOsnovica && fakturaPdv !== 0) return fakturaPdv;
+    if (fakturaPdv !== 0 || fakturaOsnovica !== 0) return fakturaPdv;
     return Math.round(baseAmount * vatRate * 100) / 100;
   }, [baseAmount, vatRate, fakturaOsnovica, fakturaPdv]);
   const totalAmount = useMemo(() => {
-    if (baseAmount === fakturaOsnovica && fakturaUkupno !== 0)
-      return fakturaUkupno;
+    if (fakturaUkupno !== 0) return fakturaUkupno;
     return baseAmount + vatAmount;
-  }, [baseAmount, vatAmount, fakturaOsnovica, fakturaUkupno]);
+  }, [baseAmount, vatAmount, fakturaUkupno]);
 
   const lastClosed = useMemo(() => {
     const dates = items

@@ -434,12 +434,30 @@ export default function FinanceToolsClient() {
     let paid = 0;
     let valuta = null;
     let faktura_broj = null;
+    let projekatKey = null;
     for (const r of detailRows || []) {
       if (Number(r.faktura_id) !== fid) continue;
       if (!valuta && r.valuta) valuta = r.valuta;
       if (!faktura_broj && r.faktura_broj) faktura_broj = r.faktura_broj;
-      if (r.opis === "Fakturisano") inv += Number(r.potrazuje || 0);
+      if (r.opis === "Fakturisano") {
+        inv += Number(r.potrazuje || 0);
+        if (projekatKey == null) {
+          projekatKey = `${r.projekat_id ?? ""}|${String(r.projekat_naziv || "").trim()}`;
+        }
+      }
       if (r.opis === "Naplata") paid += Number(r.duguje || 0);
+    }
+    // Ako postoji storno dokument koji poništava isti iznos na istom projektu — nema razlike za otpis.
+    if (inv > 0.01 && projekatKey != null) {
+      const reversed = (detailRows || []).some((r) => {
+        if (r.opis !== "Storno") return false;
+        const key = `${r.projekat_id ?? ""}|${String(r.projekat_naziv || "").trim()}`;
+        if (key !== projekatKey) return false;
+        return Math.abs(Number(r.potrazuje || 0) + inv) < 0.02;
+      });
+      if (reversed) {
+        return { faktura_id: fid, faktura_broj, valuta, gap: 0 };
+      }
     }
     const gap = Math.max(0, Math.round((inv - paid) * 100) / 100);
     return { faktura_id: fid, faktura_broj, valuta, gap };

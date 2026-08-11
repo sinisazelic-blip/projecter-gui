@@ -86,12 +86,12 @@ async function dominantClientInvoiceValuta(partnerId, from, to) {
   const rows = await query(
     `
     SELECT COALESCE(NULLIF(TRIM(UPPER(f.valuta)), ''), 'BAM') AS valuta,
-      SUM(COALESCE(f.iznos_ukupno_km, 0)) AS w
+      SUM(ABS(COALESCE(f.iznos_ukupno_km, 0))) AS w
     FROM fakture f
     WHERE f.bill_to_klijent_id = ?
       AND DATE(f.datum_izdavanja) >= ?
       AND DATE(f.datum_izdavanja) <= ?
-      AND (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))
+      AND (f.fiskalni_status IS NULL OR f.fiskalni_status <> 'ZAMIJENJEN')
     GROUP BY valuta
     ORDER BY w DESC
     LIMIT 1
@@ -205,12 +205,13 @@ async function detailClient(partnerId, year) {
       COALESCE(f.broj_fakture_puni, CONCAT(LPAD(f.broj_u_godini, 3, '0'), '/', f.godina)) AS faktura_broj,
       DATE(f.datum_izdavanja) AS datum_fakture,
       ROUND(COALESCE(f.iznos_ukupno_km, 0), 2) AS amount_km,
-      NULLIF(TRIM(UPPER(COALESCE(f.valuta, ''))), '') AS valuta
+      NULLIF(TRIM(UPPER(COALESCE(f.valuta, ''))), '') AS valuta,
+      TRIM(UPPER(COALESCE(f.fiskalni_status, ''))) AS fiskalni_status
     FROM fakture f
     WHERE f.bill_to_klijent_id = ?
       AND DATE(f.datum_izdavanja) >= ?
       AND DATE(f.datum_izdavanja) <= ?
-      AND (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))
+      AND (f.fiskalni_status IS NULL OR f.fiskalni_status <> 'ZAMIJENJEN')
     ORDER BY f.datum_izdavanja ASC, f.faktura_id ASC
     `,
     [partnerId, from, to],
@@ -218,6 +219,9 @@ async function detailClient(partnerId, year) {
 
   for (const r of fakture || []) {
     const valuta = String(r.valuta || "BAM").trim().toUpperCase() || "BAM";
+    const amount = round2(r.amount_km);
+    const isStorno =
+      amount < 0 || String(r.fiskalni_status || "") === "STORNIRAN";
     events.push({
       event_date: iso(r.event_date),
       faktura_id: Number(r.faktura_id),
@@ -225,9 +229,9 @@ async function detailClient(partnerId, year) {
       projekat_naziv: r.projekat_naziv || null,
       faktura_broj: r.faktura_broj || null,
       datum_fakture: iso(r.datum_fakture),
-      opis: "Fakturisano",
+      opis: isStorno ? "Storno" : "Fakturisano",
       duguje: 0,
-      potrazuje: round2(r.amount_km),
+      potrazuje: amount,
       nacin_placanja: null,
       valuta,
     });

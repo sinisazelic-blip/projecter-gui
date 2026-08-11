@@ -109,7 +109,7 @@ async function getClientSummary(year) {
     WHERE f.bill_to_klijent_id IS NOT NULL
       AND DATE(f.datum_izdavanja) >= ?
       AND DATE(f.datum_izdavanja) <= ?
-      AND (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))
+      AND (f.fiskalni_status IS NULL OR f.fiskalni_status <> 'ZAMIJENJEN')
     GROUP BY f.bill_to_klijent_id
     `,
     [from, to],
@@ -207,12 +207,12 @@ async function getClientSummary(year) {
     SELECT
       f.bill_to_klijent_id AS klijent_id,
       COALESCE(NULLIF(TRIM(UPPER(f.valuta)), ''), 'BAM') AS valuta,
-      SUM(COALESCE(f.iznos_ukupno_km, 0)) AS w
+      SUM(ABS(COALESCE(f.iznos_ukupno_km, 0))) AS w
     FROM fakture f
     WHERE f.bill_to_klijent_id IS NOT NULL
       AND DATE(f.datum_izdavanja) >= ?
       AND DATE(f.datum_izdavanja) <= ?
-      AND (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))
+      AND (f.fiskalni_status IS NULL OR f.fiskalni_status <> 'ZAMIJENJEN')
     GROUP BY f.bill_to_klijent_id, valuta
     `,
     [from, to],
