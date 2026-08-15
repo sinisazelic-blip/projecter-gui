@@ -133,6 +133,73 @@ export default function LicenceClient() {
   >(null);
   const [soccsMeetCountDraft, setSoccsMeetCountDraft] = useState<string>("1");
   const [soccsMeetTargetDraft, setSoccsMeetTargetDraft] = useState<string>("");
+
+  const ALL_ENTERSYS_MODULE_KEYS = [
+    { key: "enterCore", label: "ENTER (Osnovni Prolazi & Kasa)" },
+    { key: "poolManager", label: "POOL MANAGER (Bazeni & Staze)" },
+    { key: "hallManager", label: "HALL MANAGER (Sportske Dvorane)" },
+    { key: "fieldManager", label: "FIELD MANAGER (Otvoreni Tereni)" },
+    { key: "gymManager", label: "GYM MANAGER (Teretane & Fitness)" },
+    { key: "doorMan", label: "DOORMAN (Kontrola Vrata)" },
+    { key: "lockers", label: "LOCKER (RS-485 Ormarići)" },
+    { key: "rentals", label: "RENTALS (Iznajmljivanje ležaljki)" },
+    { key: "mojRadio", label: "MOJRADIO (TTS Glasovno Usmjeravanje)" },
+    { key: "mojTv", label: "MOJTV (Digital Signage & Playout)" },
+    { key: "cctvGate", label: "CCTV GATE (Video Nadzor Prolaza)" },
+    { key: "eventManager", label: "EVENT MANAGER (Koncerti & Utakmice)" },
+    { key: "webShop", label: "WEBSHOP (Online Prodaja & Dopuna)" },
+  ];
+
+  const [enterSysModalRow, setEnterSysModalRow] = useState<TenantRow | null>(null);
+  const [enterSysModulesDraft, setEnterSysModulesDraft] = useState<Record<string, boolean>>({});
+  const [enterSysSaving, setEnterSysSaving] = useState(false);
+
+  const openEnterSysModulesModal = (row: TenantRow) => {
+    setEnterSysModalRow(row);
+    const scopeStr = String(row.soccs_platform_scope ?? "").trim();
+    const active = scopeStr ? scopeStr.split(",").map((s) => s.trim()) : [];
+    const hasFilter = active.length > 0;
+
+    const draft: Record<string, boolean> = {};
+    for (const item of ALL_ENTERSYS_MODULE_KEYS) {
+      if (!hasFilter) {
+        draft[item.key] = item.key !== "eventManager" && item.key !== "webShop";
+      } else {
+        draft[item.key] = active.includes(item.key);
+      }
+    }
+    setEnterSysModulesDraft(draft);
+  };
+
+  const handleEnterSysSave = async () => {
+    if (!enterSysModalRow) return;
+    setEnterSysSaving(true);
+    try {
+      const selected = ALL_ENTERSYS_MODULE_KEYS
+        .filter((item) => enterSysModulesDraft[item.key])
+        .map((item) => item.key);
+
+      const res = await fetch(
+        `/api/tenant-admin/tenants/${enterSysModalRow.tenant_id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ soccs_platform_scope: selected.join(",") }),
+        },
+      );
+      const data = await res.json();
+      if (data.ok) {
+        setEnterSysModalRow(null);
+        await load();
+      } else {
+        setError(data.error ?? t("common.error"));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setEnterSysSaving(false);
+    }
+  };
   const [soccsMeetSponsor, setSoccsMeetSponsor] = useState<number | "">("");
   const [soccsMeetNote, setSoccsMeetNote] = useState("");
   const [soccsGenBusy, setSoccsGenBusy] = useState(false);
@@ -1090,20 +1157,38 @@ export default function LicenceClient() {
                         >
                           {t("studioLicence.extend")}
                         </button>
-                        <button
-                          type="button"
-                          className="btn"
-                          style={{
-                            fontSize: 11,
-                            padding: "4px 8px",
-                            color: "#60a5fa",
-                            borderColor: "rgba(96, 165, 250, 0.45)",
-                            background: "rgba(59, 130, 246, 0.12)",
-                          }}
-                          onClick={() => openPlanModal(row.tenant_id)}
-                        >
-                          {t("studioLicence.changePlan")}
-                        </button>
+                        {dp === "ENTERSYS" ? (
+                          <button
+                            type="button"
+                            className="btn"
+                            style={{
+                              fontSize: 11,
+                              padding: "4px 8px",
+                              color: "#c084fc",
+                              borderColor: "rgba(192, 132, 252, 0.45)",
+                              background: "rgba(168, 85, 247, 0.12)",
+                            }}
+                            onClick={() => openEnterSysModulesModal(row)}
+                            title="Upravljaj zakupljenim EnterSYS modulima"
+                          >
+                            Moduli &amp; Paket
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn"
+                            style={{
+                              fontSize: 11,
+                              padding: "4px 8px",
+                              color: "#60a5fa",
+                              borderColor: "rgba(96, 165, 250, 0.45)",
+                              background: "rgba(59, 130, 246, 0.12)",
+                            }}
+                            onClick={() => openPlanModal(row.tenant_id)}
+                          >
+                            {t("studioLicence.changePlan")}
+                          </button>
+                        )}
                         {String(row.status).toUpperCase() === "SUSPENDOVAN" ? (
                           <button
                             type="button"
@@ -2364,6 +2449,71 @@ export default function LicenceClient() {
                   }}
                 >
                   {t("common.cancel")}
+                </button>
+              </div>
+            </div>
+          </div>
+      {/* Modal Upravljanje EnterSYS Modulima */}
+      {enterSysModalRow && (
+        <div
+          className="studio-modal"
+          style={overlayStyle()}
+          onClick={() => !enterSysSaving && setEnterSysModalRow(null)}
+        >
+          <div style={modalStyle(520)} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: 24 }}>
+              <h3 style={{ marginTop: 0, color: "#38bdf8" }}>
+                Upravljanje EnterSYS Modulima — {enterSysModalRow.naziv}
+              </h3>
+              <p style={{ fontSize: 13, opacity: 0.85, marginBottom: 16 }}>
+                Označite module koje klijent ima zakupljene u pretplati. Promene se primjenjuju uživo pri svakoj proveri licence u Argusu.
+              </p>
+              
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px", marginBottom: 20, maxHeight: "320px", overflowY: "auto", paddingRight: 4 }}>
+                {ALL_ENTERSYS_MODULE_KEYS.map((item) => (
+                  <label
+                    key={item.key}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      fontSize: 12,
+                      cursor: "pointer",
+                      padding: "6px 10px",
+                      background: "rgba(15, 23, 42, 0.6)",
+                      borderRadius: 6,
+                      border: enterSysModulesDraft[item.key] ? "1px solid rgba(56, 189, 248, 0.4)" : "1px solid rgba(255, 255, 255, 0.08)",
+                      color: enterSysModulesDraft[item.key] ? "#38bdf8" : "#94a3b8",
+                      fontWeight: enterSysModulesDraft[item.key] ? "bold" : "normal"
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!!enterSysModulesDraft[item.key]}
+                      onChange={(e) => setEnterSysModulesDraft(prev => ({ ...prev, [item.key]: e.target.checked }))}
+                    />
+                    {item.label}
+                  </label>
+                ))}
+              </div>
+
+              <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={enterSysSaving}
+                  onClick={handleEnterSysSave}
+                  style={{ background: "#0284c7", borderColor: "#38bdf8", color: "#fff", fontWeight: "bold" }}
+                >
+                  {enterSysSaving ? "Snimanje..." : "Sačuvaj Module"}
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={enterSysSaving}
+                  onClick={() => setEnterSysModalRow(null)}
+                >
+                  Odustani
                 </button>
               </div>
             </div>

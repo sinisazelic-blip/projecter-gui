@@ -9,6 +9,7 @@ type LicenceCheckTenantRow = {
   naziv: string;
   status: string;
   soccs_tier: string | null;
+  soccs_platform_scope: string | null;
   subscription_ends_at: string;
   days_until_end: number;
   meet_remaining: number;
@@ -57,6 +58,7 @@ export async function GET(req: Request) {
         t.naziv,
         t.status,
         t.soccs_tier,
+        t.soccs_platform_scope,
         DATE_FORMAT(t.subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
         DATEDIFF(t.subscription_ends_at, CURDATE()) AS days_until_end,
         (
@@ -107,6 +109,26 @@ export async function GET(req: Request) {
         })
       : [];
 
+    const scopeStr = String(row.soccs_platform_scope ?? "").trim();
+    const activeScopeModules = scopeStr ? scopeStr.split(",").map((s) => s.trim()) : [];
+    const hasScopeFilter = activeScopeModules.length > 0;
+
+    const modules = {
+      enterCore: !hasScopeFilter || activeScopeModules.includes("enterCore"),
+      poolManager: !hasScopeFilter || activeScopeModules.includes("poolManager"),
+      hallManager: !hasScopeFilter || activeScopeModules.includes("hallManager"),
+      fieldManager: !hasScopeFilter || activeScopeModules.includes("fieldManager"),
+      gymManager: !hasScopeFilter || activeScopeModules.includes("gymManager"),
+      doorMan: !hasScopeFilter || activeScopeModules.includes("doorMan"),
+      lockers: !hasScopeFilter || activeScopeModules.includes("lockers"),
+      rentals: !hasScopeFilter || activeScopeModules.includes("rentals"),
+      mojRadio: !hasScopeFilter || activeScopeModules.includes("mojRadio"),
+      mojTv: !hasScopeFilter || activeScopeModules.includes("mojTv"),
+      cctvGate: !hasScopeFilter || activeScopeModules.includes("cctvGate"),
+      eventManager: activeScopeModules.includes("eventManager"),
+      webShop: activeScopeModules.includes("webShop"),
+    };
+
     return NextResponse.json({
       ok: true,
       allowed,
@@ -117,6 +139,8 @@ export async function GET(req: Request) {
       days_until_end: days,
       meet_remaining: meetRem,
       soccs_tier: row.soccs_tier,
+      soccs_platform_scope: row.soccs_platform_scope,
+      modules,
       warnings,
     });
   } catch (e) {
