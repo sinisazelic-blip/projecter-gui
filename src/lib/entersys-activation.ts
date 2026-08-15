@@ -15,54 +15,79 @@ export type EnterSysContext =
 
 export type EnterSysBillingMode = "MONTHLY_SAAS" | "SEASONAL" | "EVENT_PRESALE_FIXED";
 
+/**
+ * Zvanični Cjenovnik EnterSYS Modula (u KM):
+ * - Mjesečne pretplate
+ * - EventManager paket: 300 KM/dan (uključuje i MojRadio i MojTV)
+ * - Dan pretprodaje EventManager-a: 5% od dnevne cijene = 15 KM/dan
+ */
+export const ENTERSYS_PRICE_LIST_KM = {
+  ENTER_ARGUS_BASE: 100,         // Enter + Argus (Mjesečno)
+  POOL_MANAGER: 200,             // PoolManager, Enter + Argus (Mjesečno)
+  HALL_MANAGER: 200,             // HallManager, Enter + Argus (Mjesečno)
+  FIELD_MANAGER: 200,            // FieldManager, Enter + Argus (Mjesečno)
+  GYM_MANAGER: 200,              // GymManager, Enter + Argus (Mjesečno)
+  DOOR_MAN: 80,                  // DoorMan (Mjesečno)
+  EVENT_MANAGER_DAY: 300,        // EventManager, Enter + Argus (Po danu događaja - uključuje MojRadio & MojTV)
+  EVENT_MANAGER_PRESALE_DAY: 15, // Pretprodaja (5% od dnevne cijene: 15 KM/dan)
+  LOCKER: 80,                    // Locker (Mjesečno)
+  RENTALS: 80,                   // Rentals (Mjesečno)
+  MOJ_RADIO: 100,                // MojRadio (Mjesečno)
+  MOJ_TV: 200,                   // MojTV (Mjesečno)
+  CCTV_GATE: 150,                // CCTV Gate Video Nadzor & Evidencija Prolaza (Mjesečno) — NOVI MODUL!
+  WEB_SHOP: 30,                  // WebShop (Mjesečno)
+} as const;
+
 export interface EnterSysLicenceConfig {
   tenantId: string;
   tenantName: string;
   context: EnterSysContext;
   tier: EnterSysTier;
   billingMode: EnterSysBillingMode;
-  presaleDailyRateEur?: number;
-  eventDailyRateEur?: number;
+  presaleDailyRateKm?: number;
+  eventDailyRateKm?: number;
   modules: {
     enterCore: boolean;
     poolManager: boolean;
+    hallManager: boolean;
+    fieldManager: boolean;
+    gymManager: boolean;
+    doorMan: boolean;
     eventManager: boolean;
     rentals: boolean;
     lockers: boolean;
     mojRadio: boolean;
     mojTv: boolean;
+    cctvGate: boolean;
+    webShop: boolean;
     b2bPortal: boolean;
   };
 }
 
 /**
- * Kalkulacija fiksne cene za utakmice, koncerte i događaje (FK Borac model):
- * Pretprodaja po danu + Glavni dan događaja (Full CampNow). Bez procenata od karata!
+ * Kalkulacija cene za utakmice, koncerte i događaje (EventManager model):
+ * Pretprodaja 15 KM/dan (5% od dnevne cene) + Glavni dan događaja 300 KM/dan (uključuje MojRadio i MojTV).
  */
-export function calculateEventLicenceFee(input: {
+export function calculateEventLicenceFeeKm(input: {
   presaleDays: number;
   eventDays: number;
-  capacityTier: "SMALL" | "MEDIUM" | "LARGE";
 }) {
-  // Cene po kapacitetu stadiona/arene
-  const rates = {
-    SMALL: { presalePerDay: 5, eventPerDay: 50 },     // < 1.000 gledalaca
-    MEDIUM: { presalePerDay: 10, eventPerDay: 150 },   // 1.000 - 8.000 gledalaca
-    LARGE: { presalePerDay: 20, eventPerDay: 350 },    // > 8.000 gledalaca (Stadion/Veliki koncert)
-  }[input.capacityTier];
+  const eventDayRate = ENTERSYS_PRICE_LIST_KM.EVENT_MANAGER_DAY;       // 300 KM
+  const presaleRate = ENTERSYS_PRICE_LIST_KM.EVENT_MANAGER_PRESALE_DAY; // 15 KM (5% od 300 KM)
 
-  const presaleTotal = input.presaleDays * rates.presalePerDay;
-  const eventTotal = input.eventDays * rates.eventPerDay;
+  const presaleTotal = input.presaleDays * presaleRate;
+  const eventTotal = input.eventDays * eventDayRate;
   const grandTotal = presaleTotal + eventTotal;
 
   return {
-    presaleDays: input.presaleDays,
-    presaleDailyRateEur: rates.presalePerDay,
-    presaleTotalEur: presaleTotal,
     eventDays: input.eventDays,
-    eventDailyRateEur: rates.eventPerDay,
-    eventTotalEur: eventTotal,
-    grandTotalEur: grandTotal,
+    eventRateKm: eventDayRate,
+    eventTotalKm: eventTotal,
+    presaleDays: input.presaleDays,
+    presaleRateKm: presaleRate,
+    presaleTotalKm: presaleTotal,
+    grandTotalKm: grandTotal,
+    includesMojRadioAndTv: true,
   };
 }
 
@@ -79,8 +104,8 @@ export function defaultModulesForTierAndContext(
     eventManager: context === "event" || context === "dvorana",
     rentals: context === "plaza" || context === "bazen",
     lockers: context === "teretana" || context === "bazen" || context === "dvorana",
-    mojRadio: tier === "PROFESSIONAL" || tier === "ENTERPRISE",
-    mojTv: tier === "PROFESSIONAL" || tier === "ENTERPRISE",
+    mojRadio: context === "event" || tier === "PROFESSIONAL" || tier === "ENTERPRISE",
+    mojTv: context === "event" || tier === "PROFESSIONAL" || tier === "ENTERPRISE",
     b2bPortal: tier === "ENTERPRISE",
   };
 }
