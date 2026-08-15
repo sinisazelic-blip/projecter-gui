@@ -68,9 +68,9 @@ export async function GET(req: Request) {
             AND (sac.valid_until IS NULL OR sac.valid_until >= NOW())
         ) AS meet_remaining
        FROM tenants t
-       WHERE t.licence_token = ?
+       WHERE t.licence_token = ? OR t.tenant_public_id = ?
        LIMIT 1`,
-      [token],
+      [token, token],
     );
     const row = rows[0];
     if (!row) {
