@@ -2453,6 +2453,9 @@ export default function LicenceClient() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
       {/* Modal Upravljanje EnterSYS Modulima */}
       {enterSysModalRow && (
         <div
