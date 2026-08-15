@@ -101,11 +101,17 @@ export function defaultModulesForTierAndContext(
   return {
     enterCore: true,
     poolManager: context === "bazen",
+    hallManager: context === "dvorana",
+    fieldManager: context === "plaza" || context === "bazen",
+    gymManager: context === "teretana",
+    doorMan: true,
     eventManager: context === "event" || context === "dvorana",
     rentals: context === "plaza" || context === "bazen",
     lockers: context === "teretana" || context === "bazen" || context === "dvorana",
     mojRadio: context === "event" || tier === "PROFESSIONAL" || tier === "ENTERPRISE",
     mojTv: context === "event" || tier === "PROFESSIONAL" || tier === "ENTERPRISE",
+    cctvGate: tier === "PROFESSIONAL" || tier === "ENTERPRISE",
+    webShop: tier === "ENTERPRISE",
     b2bPortal: tier === "ENTERPRISE",
   };
 }
