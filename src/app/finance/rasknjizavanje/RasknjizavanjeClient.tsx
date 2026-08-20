@@ -454,7 +454,19 @@ export default function RasknjizavanjeClient({
     setBusy(true);
     setErr("");
     try {
-      const amt = iznos_km ?? Math.abs(selected.amount);
+      const amt =
+        iznos_km ??
+        round2(
+          Math.max(
+            0,
+            Number(
+              selected.remaining_km > 0
+                ? selected.remaining_km
+                : Math.abs(selected.amount),
+            ),
+          ),
+        );
+      if (!(amt > 0)) throw new Error(t("rasknjizavanje.commitError"));
       const res = await fetch("/api/finance/rasknjizavanje/commit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

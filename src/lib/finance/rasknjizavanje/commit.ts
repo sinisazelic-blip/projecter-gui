@@ -531,7 +531,7 @@ export async function commitRasknjizavanje(payload: CommitPayload) {
       };
     }
 
-    if (lineSum <= 0.01 && tolKmPayload <= 0.01) {
+    if (lineSum < 0.005 && tolKmPayload < 0.005) {
       return {
         ok: false as const,
         error: "Nema alokacije ni otpisa tolerancije",
