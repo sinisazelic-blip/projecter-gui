@@ -206,12 +206,47 @@ async function allocateSpecialPayment(
   const cfg = SPECIAL_PAYMENT_CFG[opts.vrsta];
   if (!cfg) throw new Error(`Nepoznata specijalna vrsta: ${opts.vrsta}`);
 
-  const isCreditIncoming = opts.vrsta === RASKNJIŽAVANJE_VRSTA.KREDIT && opts.postingAmount > 0;
-  const placanjeIznosKm = isCreditIncoming ? 0 : opts.amountKm;
   const napomena =
     (opts.napomena && String(opts.napomena).trim()) ||
     `${cfg.label} [posting ${opts.postingId}]`;
+  const { ownerProjectId } = getOwnerEnv();
+  const projekatId = opts.projekat_id ?? ownerProjectId;
 
+  // Priliv (IN): DB trigger zabranjuje bank_tx_posting_placanje_link — koristi prihod_link.
+  if (opts.postingAmount > 0) {
+    const isRealIncome = opts.vrsta === RASKNJIŽAVANJE_VRSTA.KAMATA;
+    const prihodIznos = isRealIncome ? opts.amountKm : 0;
+    const [insPrihod] = await conn.execute(
+      `INSERT INTO projektni_prihodi (projekat_id, datum_prihoda, iznos_km, opis)
+       VALUES (?, ?, ?, ?)`,
+      [projekatId, opts.datum, prihodIznos, napomena.slice(0, 255)],
+    );
+    const prihodId = (insPrihod as { insertId?: number })?.insertId;
+    if (!prihodId) throw new Error(`${cfg.label}: prihod nije kreiran`);
+
+    await conn.execute(
+      `INSERT INTO bank_tx_posting_prihod_link (posting_id, prihod_id, amount_km, aktivan)
+       VALUES (?, ?, ?, 1)`,
+      [opts.postingId, prihodId, opts.amountKm],
+    );
+    await conn.execute(`UPDATE bank_tx_posting SET kategorija = ? WHERE posting_id = ?`, [
+      cfg.kategorija,
+      opts.postingId,
+    ]);
+    await insertRasknjizavanje(conn, {
+      posting_id: opts.postingId,
+      iznos_km: opts.amountKm,
+      vrsta: opts.vrsta,
+      prihod_id: prihodId,
+      klijent_id: opts.klijent_id ?? null,
+      faktura_id: opts.faktura_id ?? null,
+      projekat_id: projekatId,
+      napomena,
+    });
+    return prihodId;
+  }
+
+  // Odliv (OUT): placanje + placanje_link
   const [insPay] = await conn.execute(
     `INSERT INTO placanja
       (datum_placanja, iznos_original, valuta_original, kurs_u_km, iznos_km, nacin_placanja, referenca, napomena)
@@ -219,7 +254,7 @@ async function allocateSpecialPayment(
     [
       opts.datum,
       opts.amountKm,
-      placanjeIznosKm,
+      opts.amountKm,
       cfg.nacin,
       `${cfg.kategorija}:posting_id=${opts.postingId}`,
       napomena.slice(0, 255),
@@ -238,7 +273,6 @@ async function allocateSpecialPayment(
     opts.postingId,
   ]);
 
-  const { ownerProjectId } = getOwnerEnv();
   await insertRasknjizavanje(conn, {
     posting_id: opts.postingId,
     iznos_km: opts.amountKm,
@@ -248,7 +282,7 @@ async function allocateSpecialPayment(
     talent_id: opts.talent_id ?? null,
     klijent_id: opts.klijent_id ?? null,
     faktura_id: opts.faktura_id ?? null,
-    projekat_id: opts.projekat_id ?? ownerProjectId,
+    projekat_id: projekatId,
     napomena,
   });
 
