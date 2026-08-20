@@ -307,16 +307,32 @@ export type OpenObaveza = {
   preostalo_km: number;
 };
 
+async function trosakDateExpr(alias = "t"): Promise<string> {
+  const cols = await query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'projektni_troskovi'`,
+  ).catch(() => []);
+  const set = new Set((cols || []).map((c: { column_name: string }) => String(c.column_name)));
+  const parts: string[] = [];
+  if (set.has("datum_troska")) parts.push(`${alias}.datum_troska`);
+  if (set.has("datum_nastanka")) parts.push(`${alias}.datum_nastanka`);
+  parts.push(`${alias}.created_at`);
+  return `COALESCE(${parts.join(", ")})`;
+}
+
 export async function getOpenObaveze(
   partnerTip: "dobavljac" | "talent",
   partnerId: number,
 ): Promise<OpenObaveza[]> {
   const isTalent = partnerTip === "talent";
+  const dt = await trosakDateExpr("t");
   const rows = await query(
     `SELECT
        t.trosak_id,
        t.opis,
-       DATE(COALESCE(t.datum_troska, t.datum_nastanka, t.created_at)) AS datum,
+       DATE(${dt}) AS datum,
        ROUND(COALESCE(t.iznos_km, 0), 2) AS iznos_km,
        p.radni_naziv AS projekat_naziv
      FROM projektni_troskovi t

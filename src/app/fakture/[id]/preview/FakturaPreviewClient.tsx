@@ -10,6 +10,10 @@ import {
   applyInvoicePdfPagination,
   INVOICE_PDF_EXPORT_CSS,
 } from "@/lib/fakture/invoicePdfPagination";
+import {
+  pickPreferredPdfDirectory,
+  savePdfBlobPreferred,
+} from "@/lib/pdf/savePdfPreferredFolder";
 
 function fmtDDMMYYYYFromISO(isoLike: string | null): string {
   if (!isoLike) return "—";
@@ -457,11 +461,13 @@ export default function FakturaPreviewClient() {
           hotfixes: ["px_scaling"],
         },
       } as any;
-      await html2pdf()
+      const blob: Blob = await html2pdf()
         .set(pdfOptions)
         .from(el)
-        .save();
+        .outputPdf("blob");
+      await savePdfBlobPreferred(blob, `${pdfFilename}.pdf`);
     } catch (err: any) {
+      if (err?.name === "AbortError") return;
       console.error("PDF greška:", err);
       alert(err?.message || t("fakture.pdfError"));
     } finally {
@@ -1069,9 +1075,24 @@ export default function FakturaPreviewClient() {
                     borderColor: "rgba(168, 85, 247, 0.4)",
                     fontWeight: 600,
                   }}
-                  title={`Preuzmi PDF: ${pdfFilename}.pdf`}
+                  title={t("fakture.saveAsPdfHint")}
                 >
                   💾 {t("fakture.saveAsPdf")}
+                </button>
+                <button
+                  className="btn"
+                  onClick={async () => {
+                    try {
+                      const ok = await pickPreferredPdfDirectory();
+                      if (ok) alert(t("fakture.pdfFolderSaved"));
+                    } catch (err: any) {
+                      if (err?.name === "AbortError") return;
+                      alert(err?.message || t("fakture.pdfError"));
+                    }
+                  }}
+                  title={t("fakture.changePdfFolderHint")}
+                >
+                  {t("fakture.changePdfFolder")}
                 </button>
               </div>
             </div>

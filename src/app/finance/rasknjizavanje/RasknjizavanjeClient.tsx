@@ -428,9 +428,27 @@ export default function RasknjizavanjeClient({
         filteredInvoices.some((i) => i.preostalo_km > 0.01)));
 
   async function commitSpecial(
-    vrsta: "PRENOS_VLASNIKA" | "POSUDBA_VLASNIKA" | "KONVERZIJA" | "BANK_PROVIZIJA",
+    vrsta:
+      | "PRENOS_VLASNIKA"
+      | "POSUDBA_VLASNIKA"
+      | "KONVERZIJA"
+      | "BANK_PROVIZIJA"
+      | "PDV"
+      | "POREZ"
+      | "KREDIT"
+      | "FISKALNE"
+      | "KAMATA"
+      | "VEC_KNJIZENO"
+      | "DIREKTAN_TROSAK"
+      | "OSTALO",
     iznos_km?: number,
     napomena?: string,
+    extra?: {
+      faktura_id?: number | null;
+      klijent_id?: number | null;
+      dobavljac_id?: number | null;
+      talent_id?: number | null;
+    },
   ) {
     if (!selected) return;
     setBusy(true);
@@ -442,7 +460,17 @@ export default function RasknjizavanjeClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           posting_id: selected.posting_id,
-          lines: [{ vrsta, iznos_km: amt, napomena: napomena || undefined }],
+          lines: [
+            {
+              vrsta,
+              iznos_km: amt,
+              napomena: napomena || undefined,
+              faktura_id: extra?.faktura_id ?? undefined,
+              klijent_id: extra?.klijent_id ?? undefined,
+              dobavljac_id: extra?.dobavljac_id ?? undefined,
+              talent_id: extra?.talent_id ?? undefined,
+            },
+          ],
         }),
       });
       const j = await res.json();
@@ -752,7 +780,7 @@ export default function RasknjizavanjeClient({
               suggestedAction !== "owner_loan" &&
               suggestedAction !== "bank_provizija" ? (
                 <>
-                  <div style={{ marginBottom: 12 }}>
+                  <div style={{ marginBottom: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
                     <button
                       type="button"
                       className="btn"
@@ -761,6 +789,36 @@ export default function RasknjizavanjeClient({
                       title={t("rasknjizavanje.ownerLoanHint")}
                     >
                       {t("rasknjizavanje.ownerLoanBtn")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={busy}
+                      onClick={() =>
+                        commitSpecial("KAMATA", undefined, t("rasknjizavanje.interestDefaultNote"))
+                      }
+                      title={t("rasknjizavanje.interestHint")}
+                    >
+                      {t("rasknjizavanje.interestBtn")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={busy}
+                      onClick={() =>
+                        commitSpecial(
+                          "VEC_KNJIZENO",
+                          undefined,
+                          t("rasknjizavanje.alreadyBookedDefaultNote"),
+                          {
+                            faktura_id: allocs[0]?.faktura_id ?? tolFakturaId,
+                            klijent_id: klijentId,
+                          },
+                        )
+                      }
+                      title={t("rasknjizavanje.alreadyBookedHint")}
+                    >
+                      {t("rasknjizavanje.alreadyBookedBtn")}
                     </button>
                   </div>
                   <div className="label">{t("rasknjizavanje.client")}</div>
@@ -929,6 +987,84 @@ export default function RasknjizavanjeClient({
                         title={t("rasknjizavanje.bankFeeHint")}
                       >
                         {t("rasknjizavanje.bankFeeBtn")}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn"
+                        disabled={busy}
+                        onClick={() =>
+                          commitSpecial("FISKALNE", undefined, t("rasknjizavanje.fiscalDefaultNote"))
+                        }
+                        title={t("rasknjizavanje.fiscalHint")}
+                      >
+                        {t("rasknjizavanje.fiscalBtn")}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn"
+                        disabled={busy}
+                        onClick={() =>
+                          commitSpecial("PDV", undefined, t("rasknjizavanje.pdvDefaultNote"))
+                        }
+                        title={t("rasknjizavanje.pdvHint")}
+                      >
+                        {t("rasknjizavanje.pdvBtn")}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn"
+                        disabled={busy}
+                        onClick={() =>
+                          commitSpecial("POREZ", undefined, t("rasknjizavanje.taxDefaultNote"))
+                        }
+                        title={t("rasknjizavanje.taxHint")}
+                      >
+                        {t("rasknjizavanje.taxBtn")}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn"
+                        disabled={busy}
+                        onClick={() =>
+                          commitSpecial("KREDIT", undefined, t("rasknjizavanje.creditDefaultNote"))
+                        }
+                        title={t("rasknjizavanje.creditHint")}
+                      >
+                        {t("rasknjizavanje.creditBtn")}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn"
+                        disabled={busy || !partnerId}
+                        onClick={() =>
+                          commitSpecial(
+                            "DIREKTAN_TROSAK",
+                            undefined,
+                            t("rasknjizavanje.directExpenseDefaultNote"),
+                            {
+                              dobavljac_id: partnerTip === "dobavljac" ? partnerId : null,
+                              talent_id: partnerTip === "talent" ? partnerId : null,
+                            },
+                          )
+                        }
+                        title={t("rasknjizavanje.directExpenseHint")}
+                      >
+                        {t("rasknjizavanje.directExpenseBtn")}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn"
+                        disabled={busy}
+                        onClick={() =>
+                          commitSpecial(
+                            "VEC_KNJIZENO",
+                            undefined,
+                            t("rasknjizavanje.alreadyBookedDefaultNote"),
+                          )
+                        }
+                        title={t("rasknjizavanje.alreadyBookedHint")}
+                      >
+                        {t("rasknjizavanje.alreadyBookedBtn")}
                       </button>
                     </div>
                   ) : null}

@@ -10,6 +10,7 @@ import {
   applyInvoicePdfPagination,
   INVOICE_PDF_EXPORT_CSS,
 } from "@/lib/fakture/invoicePdfPagination";
+import { savePdfBlobPreferred } from "@/lib/pdf/savePdfPreferredFolder";
 
 function fmtDDMMYYYYFromISO(isoLike: string | null): string {
   if (!isoLike) return "—";
@@ -856,11 +857,13 @@ export default function Page() {
           hotfixes: ["px_scaling"],
         },
       } as any;
-      await html2pdf()
+      const blob: Blob = await html2pdf()
         .set(pdfOptions)
         .from(el)
-        .save();
+        .outputPdf("blob");
+      await savePdfBlobPreferred(blob, `${pdfFilename}.pdf`);
     } catch (err: any) {
+      if (err?.name === "AbortError") return;
       console.error("PDF greška:", err);
       alert(err?.message || t("wizard.createError"));
     } finally {

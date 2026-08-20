@@ -14,6 +14,7 @@ import {
 } from "./invoiceStatus";
 import {
   RASKNJIŽAVANJE_VRSTA,
+  SPECIAL_PAYMENT_CFG,
   isoDate,
   round2,
   type AllocationLine,
@@ -186,6 +187,74 @@ async function allocateToTrosak(
   });
 }
 
+async function allocateSpecialPayment(
+  conn: mysql.PoolConnection,
+  opts: {
+    postingId: number;
+    amountKm: number;
+    datum: string;
+    vrsta: string;
+    napomena?: string | null;
+    postingAmount: number;
+    dobavljac_id?: number | null;
+    talent_id?: number | null;
+    klijent_id?: number | null;
+    faktura_id?: number | null;
+    projekat_id?: number | null;
+  },
+) {
+  const cfg = SPECIAL_PAYMENT_CFG[opts.vrsta];
+  if (!cfg) throw new Error(`Nepoznata specijalna vrsta: ${opts.vrsta}`);
+
+  const isCreditIncoming = opts.vrsta === RASKNJIŽAVANJE_VRSTA.KREDIT && opts.postingAmount > 0;
+  const placanjeIznosKm = isCreditIncoming ? 0 : opts.amountKm;
+  const napomena =
+    (opts.napomena && String(opts.napomena).trim()) ||
+    `${cfg.label} [posting ${opts.postingId}]`;
+
+  const [insPay] = await conn.execute(
+    `INSERT INTO placanja
+      (datum_placanja, iznos_original, valuta_original, kurs_u_km, iznos_km, nacin_placanja, referenca, napomena)
+     VALUES (?, ?, 'BAM', 1.000000, ?, ?, ?, ?)`,
+    [
+      opts.datum,
+      opts.amountKm,
+      placanjeIznosKm,
+      cfg.nacin,
+      `${cfg.kategorija}:posting_id=${opts.postingId}`,
+      napomena.slice(0, 255),
+    ],
+  );
+  const placanjeId = (insPay as { insertId?: number })?.insertId;
+  if (!placanjeId) throw new Error(`${cfg.label}: plaćanje nije kreirano`);
+
+  await conn.execute(
+    `INSERT INTO bank_tx_posting_placanje_link (posting_id, placanje_id, amount_km, aktivan)
+     VALUES (?, ?, ?, 1)`,
+    [opts.postingId, placanjeId, opts.amountKm],
+  );
+  await conn.execute(`UPDATE bank_tx_posting SET kategorija = ? WHERE posting_id = ?`, [
+    cfg.kategorija,
+    opts.postingId,
+  ]);
+
+  const { ownerProjectId } = getOwnerEnv();
+  await insertRasknjizavanje(conn, {
+    posting_id: opts.postingId,
+    iznos_km: opts.amountKm,
+    vrsta: opts.vrsta,
+    placanje_id: placanjeId,
+    dobavljac_id: opts.dobavljac_id ?? null,
+    talent_id: opts.talent_id ?? null,
+    klijent_id: opts.klijent_id ?? null,
+    faktura_id: opts.faktura_id ?? null,
+    projekat_id: opts.projekat_id ?? ownerProjectId,
+    napomena,
+  });
+
+  return placanjeId;
+}
+
 async function processLine(
   conn: mysql.PoolConnection,
   postingId: number,
@@ -229,36 +298,74 @@ async function processLine(
     return;
   }
 
-  if (line.vrsta === RASKNJIŽAVANJE_VRSTA.BANK_PROVIZIJA) {
-    const [insPay] = await conn.execute(
-      `INSERT INTO placanja
-        (datum_placanja, iznos_original, valuta_original, kurs_u_km, iznos_km, nacin_placanja, referenca, napomena)
-       VALUES (?, ?, 'BAM', 1.000000, ?, 'BANK_PROVIZIJA', ?, ?)`,
-      [
-        datum,
-        amountKm,
-        amountKm,
-        `provizija:posting_id=${postingId}`,
-        line.napomena || "Bankovna provizija",
-      ],
-    );
-    const placanjeId = (insPay as { insertId?: number })?.insertId;
-    if (!placanjeId) throw new Error("Provizija: plaćanje nije kreirano");
+  if (SPECIAL_PAYMENT_CFG[line.vrsta]) {
+    const postingAmount = Number(posting.amount);
+    const smjerIn = postingAmount > 0;
+    const cfg = SPECIAL_PAYMENT_CFG[line.vrsta];
+    if (smjerIn && !cfg.allowIn) {
+      throw new Error(`${cfg.label} nije dozvoljeno za priliv`);
+    }
+    if (!smjerIn && !cfg.allowOut) {
+      throw new Error(`${cfg.label} nije dozvoljeno za odliv`);
+    }
 
-    await conn.execute(
-      `INSERT INTO bank_tx_posting_placanje_link (posting_id, placanje_id, amount_km, aktivan) VALUES (?, ?, ?, 1)`,
-      [postingId, placanjeId, amountKm],
-    );
-    await conn.execute(`UPDATE bank_tx_posting SET kategorija = 'provizija' WHERE posting_id = ?`, [
+    // Već knjiženo + faktura: zatvori posting; ako faktura još ima gap — dopuni prihod (bez bank_prihod_link).
+    if (
+      line.vrsta === RASKNJIŽAVANJE_VRSTA.VEC_KNJIZENO &&
+      line.faktura_id &&
+      Number(line.faktura_id) > 0
+    ) {
+      const fakturaId = Number(line.faktura_id);
+      const total = await getFakturaTotal(fakturaId);
+      const paidBefore = await sumPlacenoByFaktura(fakturaId);
+      const gap = round2(Math.max(0, total - paidBefore));
+      if (gap > 0.01) {
+        const fill = round2(Math.min(gap, amountKm));
+        const opis =
+          line.napomena ||
+          "Naplata usklađena (već knjiženo / blagajna)";
+        const prihodParts = await createPrihodSplit(conn, {
+          fakturaId,
+          amountKm: fill,
+          datum,
+          opis,
+          klijentId: line.klijent_id,
+        });
+        for (const { prihodId, amountKm: partKm } of prihodParts) {
+          await insertRasknjizavanje(conn, {
+            posting_id: postingId,
+            iznos_km: partKm,
+            vrsta: RASKNJIŽAVANJE_VRSTA.VEC_KNJIZENO,
+            faktura_id: fakturaId,
+            klijent_id: line.klijent_id ?? null,
+            prihod_id: prihodId,
+            napomena: opis,
+          });
+        }
+        await syncFakturaStatusConn(conn, fakturaId);
+      }
+    }
+
+    if (
+      line.vrsta === RASKNJIŽAVANJE_VRSTA.DIREKTAN_TROSAK &&
+      !line.dobavljac_id &&
+      !line.talent_id
+    ) {
+      throw new Error("Direktan trošak zahtijeva odabranog dobavljača ili saradnika");
+    }
+
+    await allocateSpecialPayment(conn, {
       postingId,
-    ]);
-    await insertRasknjizavanje(conn, {
-      posting_id: postingId,
-      iznos_km: amountKm,
-      vrsta: RASKNJIŽAVANJE_VRSTA.BANK_PROVIZIJA,
-      placanje_id: placanjeId,
-      projekat_id: line.projekat_id ?? 1,
-      napomena: line.napomena ?? null,
+      amountKm,
+      datum,
+      vrsta: line.vrsta,
+      napomena: line.napomena,
+      postingAmount,
+      dobavljac_id: line.dobavljac_id,
+      talent_id: line.talent_id,
+      klijent_id: line.klijent_id,
+      faktura_id: line.faktura_id,
+      projekat_id: line.projekat_id,
     });
     return;
   }
