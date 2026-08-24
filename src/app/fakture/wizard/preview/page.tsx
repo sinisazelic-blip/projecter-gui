@@ -937,6 +937,9 @@ export default function Page() {
           padding: 18mm 16mm;
           box-sizing: border-box;
           overflow-x: hidden;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
         }
         @media (max-width: 980px){
           .paper{ width: min(100%, 210mm); padding: 16px; }
@@ -985,7 +988,8 @@ export default function Page() {
           overflow:hidden;
           margin-top: 10px;
         }
-        table{ width:100%; border-collapse:collapse; }
+        table{ width:100%; border-collapse:collapse; page-break-inside: auto; }
+        thead { display: table-header-group; }
         thead tr{ background: #F7F7F7 !important; }
         th{
           padding: 7px 8px !important;
@@ -1006,6 +1010,7 @@ export default function Page() {
           color:#000 !important;
           line-height: 1.25 !important;
         }
+        tr { page-break-inside: avoid !important; break-inside: avoid !important; }
         .num{ text-align:right !important; white-space:nowrap !important; color:#000 !important; }
         .desc{ color:#000 !important; font-weight: 650 !important; line-height: 1.22 !important; }
         .mutedSmall{ font-size: 10px !important; color:#000 !important; margin-top: 1px !important; line-height: 1.2 !important; }
@@ -1014,8 +1019,10 @@ export default function Page() {
           display:flex;
           align-items:flex-start;
           gap: 18px;
-          margin-top: 8px;
+          margin-top: 14px;
           width: 100%;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
         }
         /* Rezervirano mjesto za PU (1/3 stranice); kad nema podataka ostaje prazno */
         .fiscalSlot{
@@ -1046,6 +1053,8 @@ export default function Page() {
           border: 1px solid #000 !important;
           background: #F7F7F7 !important;
           padding: 10px 12px !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
         }
         .totLine{
           display:flex !important;
@@ -1069,9 +1078,46 @@ export default function Page() {
           line-height: 1.25 !important;
         }
 
-        /* Footer: samo Made by FLUXA, centrirano (kao na originalnim fakturama) */
+        /* ✅ Sekcija za potpis ovlaštenog lica - desno poravnata */
+        .signatureSection {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: 28px;
+          margin-bottom: 12px;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+        .signatureBox {
+          width: 240px;
+          text-align: center;
+        }
+        .sigLine {
+          width: 100%;
+          border-bottom: 1px solid #000;
+          margin-bottom: 5px;
+        }
+        .sigText {
+          font-size: 11px;
+          font-weight: 600;
+          color: #000 !important;
+        }
+        .sigSub {
+          font-size: 10px;
+          color: #444 !important;
+          margin-top: 2px;
+        }
+
+        /* ✅ Bottom section: gura potpis i footer na samo dno A4 stranice */
+        .bottomSection {
+          margin-top: auto;
+          padding-top: 16px;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+
+        /* Footer: samo Made by FLUXA, centrirano pri dnu stranice */
         .footer{
-          margin-top: 18px;
+          margin-top: 12px;
           padding-top: 10px;
           border-top: 1px solid rgba(0,0,0,.08);
           font-size: 11px;
@@ -1823,11 +1869,25 @@ export default function Page() {
                 </div>
               </div>
 
-              {/* Linija i „Made by Fluxa” uvijek ispod svega (fiskalni blok + obračun); veći QR samo gura footer niže */}
-              <div className="footer">
-                <div className="fluxaSig">
-                  <img src="/fluxa/Icon.png" alt="FLUXA" />
-                  <span>{t(`wizard.previewDoc.${docLang}.madeByFluxa`)}</span>
+              {/* ✅ Donja sekcija: Potpis ovlaštenog lica + Footer zasidren na samo dno stranice */}
+              <div className="bottomSection">
+                <div className="signatureSection">
+                  <div className="signatureBox">
+                    <div className="sigLine" />
+                    <div className="sigText">
+                      {docLang === "bh" ? "Fakturisao:" : "Issued by:"}
+                    </div>
+                    <div className="sigSub">
+                      {docLang === "bh" ? "Ispred" : "On behalf of"} {sellerName}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="footer">
+                  <div className="fluxaSig">
+                    <img src="/fluxa/Icon.png" alt="FLUXA" />
+                    <span>{t(`wizard.previewDoc.${docLang}.madeByFluxa`)}</span>
+                  </div>
                 </div>
               </div>
 

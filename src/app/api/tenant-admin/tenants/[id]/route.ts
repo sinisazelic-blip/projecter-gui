@@ -35,6 +35,24 @@ export async function PATCH(
     );
   }
 
+  // Kasica uloga: isključivo Read-Only pristup (nema prava izmjene tenanta)
+  if (session.role_id) {
+    try {
+      const rRows = await query<{ naziv: string }>(
+        `SELECT naziv FROM roles WHERE role_id = ? LIMIT 1`,
+        [session.role_id],
+      );
+      if (String(rRows?.[0]?.naziv ?? "").toLowerCase() === "kasica") {
+        return NextResponse.json(
+          { ok: false, error: "READ_ONLY_KASICA_ROLE" },
+          { status: 403 },
+        );
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   const id = Number((await params).id);
   if (!Number.isInteger(id) || id <= 0) {
     return NextResponse.json(
@@ -50,6 +68,7 @@ export async function PATCH(
     status?: string;
     regenerate_licence_token?: boolean;
     max_users?: number;
+    broj_blagajni?: number | string | null;
     monthly_price?: number | string | null;
     currency?: string | null;
     soccs_tier?: string | null;
@@ -103,6 +122,13 @@ export async function PATCH(
   ) {
     updates.push("max_users = ?");
     paramsList.push(Number(body.max_users));
+  }
+  if (body.broj_blagajni != null) {
+    const b = Number(body.broj_blagajni);
+    if (Number.isInteger(b) && b > 0) {
+      updates.push("broj_blagajni = ?");
+      paramsList.push(b);
+    }
   }
   if (body.monthly_price !== undefined) {
     updates.push("monthly_price = ?");

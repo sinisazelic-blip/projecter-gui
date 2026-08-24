@@ -14,6 +14,8 @@ import {
   type TenantProductTab,
 } from "@/lib/studio-licence-profile";
 
+import { useAuthUser } from "@/components/AuthUserProvider";
+
 const USER_LIMIT_OPTIONS = [1, 3, 5, 10, 50, 101] as const; // 101 = 100+
 const CURRENCY_OPTIONS = ["EUR", "KM"];
 
@@ -55,6 +57,8 @@ type TenantRow = {
   meets_used_ytd?: number;
   meets_remaining_year?: number | null;
   licence_token?: string | null;
+  /** Broj prodajnih instanci / blagajni za EnterSYS / Kasica. */
+  broj_blagajni?: number | null;
   /** EnterSYS kontekst objekta (bazen, event, …) — opcionalno dok nema kolone u bazi. */
   tenant_context?: string | null;
   /** 1 ako je FIRST_INSTALL kod potrošen (SOCCS aktiviran). */
@@ -72,10 +76,21 @@ type KlijentOption = {
 
 export default function LicenceClient() {
   const { t } = useTranslation();
+  const { user } = useAuthUser();
+  const isKasicaRole = String(user?.role_naziv ?? "").toLowerCase() === "kasica";
+
   const [tenants, setTenants] = useState<TenantRow[]>([]);
   const [plans, setPlans] = useState<PlanRow[]>([]);
   const [klijenti, setKlijenti] = useState<KlijentOption[]>([]);
   const [activeTab, setActiveTab] = useState<TenantProductTab>("FLUXA");
+  const [enterSysBlagajniDraft, setEnterSysBlagajniDraft] = useState<number>(1);
+  const [newTenantBrojBlagajni, setNewTenantBrojBlagajni] = useState<number>(1);
+
+  useEffect(() => {
+    if (isKasicaRole) {
+      setActiveTab("ENTERSYS");
+    }
+  }, [isKasicaRole]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [extendId, setExtendId] = useState<number | null>(null);
@@ -156,6 +171,7 @@ export default function LicenceClient() {
 
   const openEnterSysModulesModal = (row: TenantRow) => {
     setEnterSysModalRow(row);
+    setEnterSysBlagajniDraft(row.broj_blagajni ?? 1);
     const scopeStr = String(row.soccs_platform_scope ?? "").trim();
     const active = scopeStr ? scopeStr.split(",").map((s) => s.trim()) : [];
     const hasFilter = active.length > 0;
@@ -184,7 +200,10 @@ export default function LicenceClient() {
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ soccs_platform_scope: selected.join(",") }),
+          body: JSON.stringify({
+            soccs_platform_scope: selected.join(","),
+            broj_blagajni: enterSysBlagajniDraft,
+          }),
         },
       );
       const data = await res.json();
@@ -818,31 +837,37 @@ export default function LicenceClient() {
           );
         })}
       </div>
-      <div
-        style={{
-          marginBottom: 16,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 8,
-        }}
-      >
-        <button type="button" className="btn" onClick={openNewTenantWizard}>
-          {t("studioLicence.newTenant")}
-        </button>
-        <p
+      {isKasicaRole ? (
+        <div style={{ padding: "12px 16px", marginBottom: 16, background: "rgba(56, 189, 248, 0.12)", borderRadius: 8, border: "1px solid rgba(56, 189, 248, 0.35)", color: "#38bdf8", fontSize: 13, fontWeight: 600 }}>
+          🔒 Kasica Developer Read-Only Access — Pregled EnterSYS licenciranih objekata i prodajnih instanci (blagajni)
+        </div>
+      ) : (
+        <div
           style={{
-            margin: 0,
-            fontSize: 12,
-            opacity: 0.75,
-            flex: "1 1 200px",
-            textAlign: "right",
+            marginBottom: 16,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 8,
           }}
         >
-          {t("studioLicence.contactTableHint")}
-        </p>
-      </div>
+          <button type="button" className="btn" onClick={openNewTenantWizard}>
+            {t("studioLicence.newTenant")}
+          </button>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 12,
+              opacity: 0.75,
+              flex: "1 1 200px",
+              textAlign: "right",
+            }}
+          >
+            {t("studioLicence.contactTableHint")}
+          </p>
+        </div>
+      )}
       <div style={{ overflowX: "auto" }}>
         <table style={tableStyle}>
           <thead>
@@ -850,14 +875,15 @@ export default function LicenceClient() {
               <tr>
                 <th style={thTd}>Naziv Tenanta</th>
                 <th style={thTd}>Kontekst Objekta</th>
+                <th style={thTd}>Prodajne Instance (Blagajne)</th>
                 <th style={thTd}>Paket / Tier</th>
-                <th style={thTd}>Cijena / Način Naplate</th>
+                {!isKasicaRole && <th style={thTd}>Cijena / Način Naplate</th>}
                 <th style={thTd}>Ističe Datum</th>
                 <th style={thTd}>Dana do Isteka</th>
                 <th style={thTd}>Stanje</th>
                 <th style={thFlux}>Aktivni Moduli</th>
                 <th style={thFluxCont}>Licencni Token</th>
-                <th style={{ ...thTd, textAlign: "center" }}>Akcije</th>
+                {!isKasicaRole && <th style={{ ...thTd, textAlign: "center" }}>Akcije</th>}
               </tr>
             ) : (
               <>
@@ -972,8 +998,26 @@ export default function LicenceClient() {
                             {row.tenant_context ? String(row.tenant_context).toUpperCase() : "BAZEN"}
                           </span>
                         </td>
+                        <td style={thTd}>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                              fontWeight: 700,
+                              fontSize: 11,
+                              color: "#38bdf8",
+                              background: "rgba(56, 189, 248, 0.15)",
+                              padding: "3px 8px",
+                              borderRadius: 6,
+                              border: "1px solid rgba(56, 189, 248, 0.3)",
+                            }}
+                          >
+                            🖥️ {row.broj_blagajni ?? 1} {(row.broj_blagajni ?? 1) === 1 ? "blagajna" : "blagajne"}
+                          </span>
+                        </td>
                         <td style={thTd}>{row.soccs_tier || "ENTERPRISE"}</td>
-                        <td style={thTd}>{formatPrice(row)}</td>
+                        {!isKasicaRole && <td style={thTd}>{formatPrice(row)}</td>}
                         <td style={thTd}>{row.subscription_ends_at || "—"}</td>
                         <td style={thTd}>
                           {row.days_until_end > 0
@@ -1010,16 +1054,18 @@ export default function LicenceClient() {
                               : "—"}
                           </code>
                         </td>
-                        <td style={{ ...thTd, textAlign: "center" }}>
-                          <button
-                            type="button"
-                            className="btn btn-sm"
-                            style={{ fontSize: 11, padding: "2px 8px" }}
-                            onClick={() => openContactModal(row)}
-                          >
-                            Upravljaj
-                          </button>
-                        </td>
+                        {!isKasicaRole && (
+                          <td style={{ ...thTd, textAlign: "center" }}>
+                            <button
+                              type="button"
+                              className="btn btn-sm"
+                              style={{ fontSize: 11, padding: "2px 8px" }}
+                              onClick={() => openContactModal(row)}
+                            >
+                              Upravljaj
+                            </button>
+                          </td>
+                        )}
                       </>
                     ) : (
                       <>
@@ -2468,10 +2514,33 @@ export default function LicenceClient() {
               <h3 style={{ marginTop: 0, color: "#38bdf8" }}>
                 Upravljanje EnterSYS Modulima — {enterSysModalRow.naziv}
               </h3>
-              <p style={{ fontSize: 13, opacity: 0.85, marginBottom: 16 }}>
-                Označite module koje klijent ima zakupljene u pretplati. Promene se primjenjuju uživo pri svakoj proveri licence u Argusu.
-              </p>
-              
+              <div style={{ marginBottom: 16, padding: "10px 12px", background: "rgba(15, 23, 42, 0.6)", borderRadius: 8, border: "1px solid rgba(56, 189, 248, 0.25)" }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
+                  Broj prodajnih instanci / blagajni (Kasica licence):
+                </label>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <input
+                    type="number"
+                    min={1}
+                    value={enterSysBlagajniDraft}
+                    onChange={(e) => setEnterSysBlagajniDraft(Math.max(1, Number(e.target.value)))}
+                    style={{
+                      padding: "6px 10px",
+                      width: 100,
+                      borderRadius: 6,
+                      background: "rgba(15, 23, 42, 0.9)",
+                      border: "1px solid rgba(56, 189, 248, 0.4)",
+                      color: "#fff",
+                      fontSize: 14,
+                      fontWeight: "bold"
+                    }}
+                  />
+                  <span style={{ fontSize: 12, opacity: 0.8, color: "#94a3b8" }}>
+                    {enterSysBlagajniDraft === 1 ? "1 prodajna instanca / blagajna" : `${enterSysBlagajniDraft} prodajne instance / blagajne`}
+                  </span>
+                </div>
+              </div>
+
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px", marginBottom: 20, maxHeight: "320px", overflowY: "auto", paddingRight: 4 }}>
                 {ALL_ENTERSYS_MODULE_KEYS.map((item) => (
                   <label

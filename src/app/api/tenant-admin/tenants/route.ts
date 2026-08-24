@@ -89,6 +89,7 @@ function requireTenantAdmin(cookieStore: Awaited<ReturnType<typeof cookies>>) {
         { ok: false, error: "FORBIDDEN" },
         { status: 403 },
       ),
+      session: null,
     };
   }
   const token = cookieStore.get(COOKIE_NAME)?.value;
@@ -98,6 +99,7 @@ function requireTenantAdmin(cookieStore: Awaited<ReturnType<typeof cookies>>) {
         { ok: false, error: "UNAUTHORIZED" },
         { status: 401 },
       ),
+      session: null,
     };
   }
   const session = verifySessionToken(token);
@@ -107,9 +109,23 @@ function requireTenantAdmin(cookieStore: Awaited<ReturnType<typeof cookies>>) {
         { ok: false, error: "UNAUTHORIZED" },
         { status: 401 },
       ),
+      session: null,
     };
   }
-  return { error: null };
+  return { error: null, session };
+}
+
+async function isKasicaSession(roleId: number | null | undefined): Promise<boolean> {
+  if (!roleId) return false;
+  try {
+    const rows = await query<{ naziv: string }>(
+      `SELECT naziv FROM roles WHERE role_id = ? LIMIT 1`,
+      [roleId],
+    );
+    return String(rows?.[0]?.naziv ?? "").toLowerCase() === "kasica";
+  } catch {
+    return false;
+  }
 }
 
 async function tenantsHasKlijentColumn(): Promise<boolean> {
@@ -129,8 +145,9 @@ async function tenantsHasKlijentColumn(): Promise<boolean> {
 export async function GET() {
   const cookieStore = await cookies();
   const auth = requireTenantAdmin(cookieStore);
-  if (auth.error) return auth.error;
+  if (auth.error || !auth.session) return auth.error;
 
+  const isKasica = await isKasicaSession(auth.session.role_id);
   const klijentSel = (await tenantsHasKlijentColumn())
     ? "t.klijent_id,"
     : "NULL AS klijent_id,";
@@ -176,6 +193,7 @@ export async function GET() {
         t.plan_id,
         p.naziv AS plan_naziv,
         COALESCE(t.max_users, p.max_users) AS max_users,
+        COALESCE(t.broj_blagajni, 1) AS broj_blagajni,
         t.monthly_price,
         t.currency,
         t.soccs_tier,
@@ -210,9 +228,20 @@ export async function GET() {
        ORDER BY t.naziv ASC`,
     );
 
+    const finalRows = await attachAnnualMeetQuota(rows ?? []);
+    const sanitizedRows = isKasica
+      ? finalRows.map((r) => ({
+          ...r,
+          monthly_price: null,
+          currency: null,
+          billing_email: null,
+          billing_phone: null,
+        }))
+      : finalRows;
+
     return NextResponse.json({
       ok: true,
-      tenants: await attachAnnualMeetQuota(rows ?? []),
+      tenants: sanitizedRows,
     });
   } catch (e: unknown) {
     if (isMissingSoccsPlatformColumnsError(e)) {
@@ -312,6 +341,7 @@ export async function POST(req: NextRequest) {
     klijent_id?: number | null;
     plan_id?: number;
     max_users?: number;
+    broj_blagajni?: number | string | null;
     subscription_starts_at?: string;
     subscription_ends_at?: string;
     monthly_price?: number | string | null;
@@ -506,13 +536,15 @@ export async function POST(req: NextRequest) {
   const klijentVals = hasKlijentCol ? [klijentId] : [];
 
   try {
+    const brojBlagajni = body?.broj_blagajni != null && Number.isInteger(Number(body.broj_blagajni)) && Number(body.broj_blagajni) > 0 ? Number(body.broj_blagajni) : 1;
     const res = await query(
-      `INSERT INTO tenants (naziv, plan_id, max_users, subscription_starts_at, subscription_ends_at, status, licence_token, monthly_price, currency, tenant_public_id, studio_licence_profile, soccs_tier, soccs_platform_role, soccs_platform_scope${klijentCol})
-       VALUES (?, ?, ?, ?, ?, 'AKTIVAN', ?, ?, ?, ?, ?, ?, ?, ?${klijentPlc})`,
+      `INSERT INTO tenants (naziv, plan_id, max_users, broj_blagajni, subscription_starts_at, subscription_ends_at, status, licence_token, monthly_price, currency, tenant_public_id, studio_licence_profile, soccs_tier, soccs_platform_role, soccs_platform_scope${klijentCol})
+       VALUES (?, ?, ?, ?, ?, ?, 'AKTIVAN', ?, ?, ?, ?, ?, ?, ?, ?${klijentPlc})`,
       [
         naziv,
         planId,
         maxUsers,
+        brojBlagajni,
         startRaw,
         endRaw,
         licenceToken,

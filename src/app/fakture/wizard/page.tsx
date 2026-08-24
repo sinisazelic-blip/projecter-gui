@@ -81,9 +81,9 @@ export default function InvoiceWizard() {
   const [vatMode, setVatMode] = useState<"BH_17" | "INO_0">("BH_17");
   const [isInoDetected, setIsInoDetected] = useState<boolean>(false);
 
-  // Fiskalizacija: ručni PFR ili automatski (Fiskalizuj). Podrazumijevano ručno dok automatski ne radi.
+  // Fiskalizacija: podrazumijevano DA (automatski putem fiskalnog uređaja).
   const [lastPfrNumber, setLastPfrNumber] = useState<string>("");
-  const [useAutoFiscal, setUseAutoFiscal] = useState<boolean>(false);
+  const [useAutoFiscal, setUseAutoFiscal] = useState<boolean>(true);
   const [nextNumbers, setNextNumbers] = useState<{
     next_broj_fakture: string;
     next_pfr: number;

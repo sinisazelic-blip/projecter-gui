@@ -34,11 +34,25 @@ export async function GET(req: NextRequest) {
       acl = null;
     }
 
+    let roleNaziv: string | null = null;
+    if (session.role_id) {
+      try {
+        const rRows = await query<{ naziv: string }>(
+          `SELECT naziv FROM roles WHERE role_id = ? LIMIT 1`,
+          [session.role_id],
+        );
+        roleNaziv = rRows?.[0]?.naziv ?? null;
+      } catch {
+        roleNaziv = null;
+      }
+    }
+
     const payload: {
       user: {
         user_id: number;
         username: string;
         role_id: number | null;
+        role_naziv: string | null;
         nivo: number;
         isDemo?: boolean;
         bootstrap?: boolean;
@@ -52,6 +66,7 @@ export async function GET(req: NextRequest) {
         user_id: session.user_id,
         username: session.username,
         role_id: session.role_id,
+        role_naziv: roleNaziv,
         nivo: session.nivo,
         isDemo: session.isDemo === true,
         bootstrap: session.bootstrap === true,

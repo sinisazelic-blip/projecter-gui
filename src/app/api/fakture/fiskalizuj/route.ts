@@ -179,7 +179,7 @@ function normalizeBuyerId(body: Body) {
 /** Za formate koji traže "VP:" + cifre (max 17 cifara u specu). */
 function normalizeBuyerIdWithPrefix(body: Body) {
   const digits = normalizeBuyerId(body);
-  return digits ? `VP:${digits}` : "";
+  return digits || "";
 }
 
 /** Službeni PU spec: direktan InvoiceRequest. Šaljemo SAMO polja iz spec-a (bez discount/discountAmount na stavkama). */
@@ -288,6 +288,10 @@ function buildInvoicePrintBody(body: Body, options?: { useLatinLabels?: boolean;
     transactionType: "Sale",
     payment: [{ amount: paymentAmount, paymentType: "WireTransfer" }],
     items,
+    options: {
+      omitQRCodeGen: 0,
+      omitTextualRepresentation: 0,
+    },
   };
   // Broj računa šaljemo SAMO kad ga imamo (nakon "Kreiraj račun"). Inače ne dodajemo polje – uređaj sam dodjeljuje.
   if (!options?.omitInvoiceNumber && invoiceNumberRaw != null && invoiceNumberRaw > 0) {
@@ -460,10 +464,10 @@ export async function POST(req: NextRequest) {
     const isApiV3Invoices =
       normalizedPath === "/api/v3/invoices" || normalizedPath.endsWith("/api/v3/invoices");
 
-    // Port 3566 /api/invoices: { invoiceRequest, print }. Testni uređaj = latinično E/K; produkcija može ćirilica. GTIN 8. Broj računa samo kad front pošalje.
+    // Port 3566 /api/invoices: { invoiceRequest, print }. Teron OFS EFU LPFR zahtijeva ćirilično Е (U+0415) i К (U+041A) u RS.
     const invoicePrintBodyOptions = {
       gtin8: true,
-      ...(body.training ? { useLatinLabels: true } : {}),
+      useLatinLabels: false,
     };
     const requestBodyPrimary = isApiV3Invoices
       ? buildDirectInvoiceRequestV3(body, primaryScript)

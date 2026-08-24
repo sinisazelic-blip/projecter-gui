@@ -51,6 +51,7 @@ Aplikacija ima **first-run onboarding** za nove korisnike: pri prvom pristupu na
 | **LISTA-DOKUMENTACIJE-OSTALO.md** | Šta je u dokumentaciji gotovo, šta ostaje (checklist). |
 | **DEVELOPER-README.md** | Developer onboarding: šta prvo pročitati, kako pokrenuti, struktura projekta (app, lib, API, baza), auth, i18n, ključni moduli. |
 | **STATE.md** | State i razvojni put (GUI moduli, principi). |
+| **ENTERSYS_SAAS_POSLOVNI_MODEL_I_LICENCIRANJE.md** | Poslovni model EnterSYS-a, Master/Child federacija (Studio TAF vs Novo Preduzeće), Kasica uloga i sigurnost. |
 | **API_CONTRACTS.md** | API ugovori. |
 | **DB_MAP.md**, **ANALIZA-BAZE-DO.md** | Baza: mapiranje, analiza. |
 

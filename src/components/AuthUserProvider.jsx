@@ -49,6 +49,16 @@ export function AuthUserProvider({ children }) {
   useEffect(() => {
     if (loading || !user) return;
     if (isPublicPath(pathname)) return;
+
+    // Kasica uloga: isključivo Read-Only pristup tabu /studio/licence
+    if (String(user.role_naziv ?? "").toLowerCase() === "kasica") {
+      if (pathname !== "/studio/licence") {
+        router.replace("/studio/licence?tab=ENTERSYS");
+        return;
+      }
+      return;
+    }
+
     const nivo = user.nivo ?? 0;
     const isOwner = user.user_id === 0 || user.username === "Owner" || nivo >= 10;
     if (isOwner) return;
