@@ -4,6 +4,7 @@
 // Neki uređaji/proxy vraćaju odgovor u obliku { Request, Response }; Response može biti objekt ili string ("Uređaj nije dostupan").
 // Koristi postavke iz firma_fiskal_settings (base_url, api_path, api_key, yid).
 import { NextRequest, NextResponse } from "next/server";
+import QRCode from "qrcode";
 import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +38,14 @@ type Body = {
 
 function round2(n: number) {
   return Math.round(n * 100) / 100;
+}
+
+function cleanText(raw: string | null | undefined): string {
+  if (!raw) return "";
+  if (raw.includes("<") && raw.includes(">")) {
+    return raw.replace(/<[^>]*>?/gm, " ").replace(/\s+/g, " ").trim();
+  }
+  return raw.trim();
 }
 
 /** Status i error kodovi prema PU dokumentaciji (Status and Error Codes). */
@@ -86,25 +95,27 @@ function parseFiscalError(
   text: string | null | undefined,
   data: any,
 ): null | { code: string; hint: string; retryable?: boolean } {
+  let code: string | null = null;
   const codeFromData =
     data?.code != null
       ? String(data.code).trim()
       : data?.statusCode != null
         ? String(data.statusCode).trim()
         : null;
+  if (codeFromData && FISCAL_STATUS_CODES[codeFromData]) {
+    code = codeFromData;
+  }
   const textStr = text ? String(text).trim() : "";
-  let code: string | null = null;
-  if (codeFromData && /^\d{4}$/.test(codeFromData)) code = codeFromData;
-  else if (codeFromData) {
-    const m = codeFromData.match(/\b(\d{4})\b/);
-    if (m) code = m[1];
-  }
   if (!code && textStr) {
-    const m = textStr.match(/\b(\d{4})\b/);
-    if (m) code = m[1];
-    else if (/^\d{4}$/.test(textStr)) code = textStr;
+    const matches = textStr.match(/\b(\d{4})\b/g) || [];
+    for (const m of matches) {
+      if (FISCAL_STATUS_CODES[m]) {
+        code = m;
+        break;
+      }
+    }
   }
-  if (!code) return null;
+  if (!code || !FISCAL_STATUS_CODES[code]) return null;
   const entry = FISCAL_STATUS_CODES[code];
   const hint = entry ? `${code}: ${entry.desc}` : `${code}: (nepoznat kod)`;
   return {
@@ -179,7 +190,9 @@ function normalizeBuyerId(body: Body) {
 /** Za formate koji traže "VP:" + cifre (max 17 cifara u specu). */
 function normalizeBuyerIdWithPrefix(body: Body) {
   const digits = normalizeBuyerId(body);
-  return digits || "";
+  if (!digits) return "";
+  if (digits === "9999999999999") return digits;
+  return `10:${digits}`;
 }
 
 /** Službeni PU spec: direktan InvoiceRequest. Šaljemo SAMO polja iz spec-a (bez discount/discountAmount na stavkama). */
@@ -271,7 +284,7 @@ function buildInvoicePrintBody(body: Body, options?: { useLatinLabels?: boolean;
   const paymentAmount = round2(
     items.reduce((s, it) => s + (Number(it.totalAmount) || 0), 0),
   );
-  const buyerIdDigits = normalizeBuyerId(body);
+  const buyerIdDigits = normalizeBuyerIdWithPrefix(body);
   const invoiceNumberRaw =
     body.invoiceNumber != null && Number.isFinite(Number(body.invoiceNumber))
       ? Number(body.invoiceNumber)
@@ -475,60 +488,96 @@ export async function POST(req: NextRequest) {
         ? buildInvoicePrintBody(body, invoicePrintBodyOptions)
         : buildInvoiceRequestV3(body);
 
-    // Headers prema službenom spec-u: Accept, Content-Type, RequestId (max 32), Accept-Language.
-    const requestId = `req-${Date.now().toString(36)}`.slice(0, 32);
+    // Headers prema službenom spec-u: Accept, Content-Type, Authorization, Accept-Language, X-Requested-By.
     const acceptLanguage = (body.acceptLanguage || "sr;en").slice(0, 64);
     const headers: Record<string, string> = {
       Accept: "application/json",
       "Content-Type": "application/json",
-      RequestId: requestId,
       "Accept-Language": acceptLanguage,
       "X-Requested-By": yid || "req",
     };
     if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
 
+    const isPrivateIp = /^(https?:\/\/)?(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|127\.0\.0\.1|localhost)/i.test(baseUrl);
+    const hostHeader = req.headers.get("host") || "";
+    const isCloudHost = !hostHeader.includes("localhost") && !hostHeader.includes("127.0.0.1");
+
+    if (isPrivateIp && isCloudHost) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `Fiskalni uređaj ima lokalnu IP adresu (${baseUrl}) kojoj Cloud server (${hostHeader}) ne može direktno pristupiti preko interneta. Unesite javni URL (npr. Cloudflare Tunnel / Ngrok / DDNS) u podešavanjima firme ili kreirajte račun klikom na dugme "Kreiraj račun".`,
+        },
+        { status: 400 },
+      );
+    }
+
     async function postOnce(targetUrl: string, bodyObj: any) {
-      const r = await fetch(targetUrl, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(bodyObj),
-        signal: AbortSignal.timeout(30000),
-      });
-      const t = await r.text();
-      let j: any = null;
       try {
-        j = t ? JSON.parse(t) : null;
-      } catch {
-        j = null;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const r = await fetch(targetUrl, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(bodyObj),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        const t = await r.text();
+        let j: any = null;
+        try {
+          j = t ? JSON.parse(t) : null;
+        } catch {
+          j = null;
+        }
+        return { r, t, j };
+      } catch (err: any) {
+        return {
+          r: { ok: false, status: 504 } as any,
+          t: err?.message || "Timeout pri spajanju na uređaj",
+          j: null,
+        };
       }
-      return { r, t, j };
     }
 
     // Pokušaj #1: službeni format (direktan InvoiceRequest za v3) ili stari format
     let { r: res, t: text, j: data } = await postOnce(url, requestBodyPrimary);
 
-    // Za /api/invoices: ako 400, redom probaj (1) direktno /api/v3/invoices s wrapperom, (2) bez invoiceNumber, (3) GTIN 8, (4) bez buyerId. Zadržavamo latin/cyrillic iz primarnog pokušaja.
+    // Za /api/invoices: ako 400, redom probaj: (1) direktan V3 na portu 3565 (/api/v3/invoices), (2) bez invoiceNumber na 3566, (3) gtin8, (4) bez buyerId.
     if (isApiInvoices && res.status === 400 && !res.ok) {
       const code = parseFiscalError(text, data);
       if (!code?.code) {
         const wrapperPayload = (opts?: Parameters<typeof buildInvoicePrintBody>[1]) =>
           buildInvoicePrintBody(body, { ...invoicePrintBodyOptions, ...opts });
-        const v3Url = `${baseWithScheme}/api/v3/invoices`;
+        const hostOnly = baseWithScheme.replace(/:\d+$/, "");
+        const v3UrlPort3565 = `${hostOnly}:3565/api/v3/invoices`;
+        const directV3Payload = buildDirectInvoiceRequestV3(body, primaryScript);
 
         const attempts = [
-          () => postOnce(v3Url, wrapperPayload()),
-          () => postOnce(v3Url, wrapperPayload({ omitInvoiceNumber: true })),
-          () => postOnce(v3Url, wrapperPayload({ gtin8: true })),
-          () => postOnce(v3Url, wrapperPayload({ omitInvoiceNumber: true, omitBuyerId: true })),
+          () => postOnce(v3UrlPort3565, directV3Payload),
+          () => postOnce(url, buildRequestWrapperLPR(body)),
+          () => postOnce(url, buildRadeFormatBody(body)),
+          () => postOnce(url, wrapperPayload({ omitInvoiceNumber: true })),
+          () => postOnce(url, wrapperPayload({ gtin8: true })),
+          () => postOnce(url, wrapperPayload({ omitInvoiceNumber: true, omitBuyerId: true })),
         ];
+        let lastRet: any = null;
         for (const attempt of attempts) {
           const ret = await attempt();
           if (ret.r.ok) {
             res = ret.r;
             text = ret.t;
             data = ret.j;
+            lastRet = null;
             break;
+          } else {
+            lastRet = ret;
           }
+        }
+        if (!res.ok && lastRet && lastRet.r) {
+          res = lastRet.r;
+          text = lastRet.t;
+          data = lastRet.j;
         }
       }
     }
@@ -633,10 +682,9 @@ export async function POST(req: NextRequest) {
         res.statusText ||
         text?.slice(0, 300);
       const deviceBody = data ?? (text ? text.slice(0, 500) : null);
-      const detail =
-        res.status === 500 && deviceBody
-          ? ` ${typeof deviceBody === "string" ? deviceBody : JSON.stringify(deviceBody).slice(0, 200)}`
-          : "";
+      const rawDeviceBody = typeof deviceBody === "string" ? deviceBody : JSON.stringify(deviceBody);
+      const cleanedBody = rawDeviceBody ? rawDeviceBody.replace(/<[^>]*>?/gm, " ").replace(/\s+/g, " ").trim() : "";
+      const detail = cleanedBody ? ` (${cleanedBody.slice(0, 250)})` : "";
       const safeHeaders = { ...headers };
       if (safeHeaders.Authorization) safeHeaders.Authorization = "Bearer ***";
       const retryable =
@@ -644,7 +692,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           ok: false,
-          error: `Fiskalni uređaj: ${res.status} ${errMsg}${detail}`,
+          error: `Fiskalni uređaj (${res.status}): ${cleanText(errMsg)}${detail}`,
           fiscalCode: code?.code,
           fiscalCodeHint: code?.hint,
           retryable,
@@ -694,17 +742,32 @@ export async function POST(req: NextRequest) {
 
     const totalCounter =
       payload?.totalCounter != null ? Number(payload.totalCounter) : null;
+    const verificationUrl = payload?.verificationUrl ?? null;
+    let verificationQRCode =
+      payload?.verificationQrCode ?? payload?.verificationQRCode ?? null;
+
+    if (!verificationQRCode && verificationUrl) {
+      try {
+        verificationQRCode = await QRCode.toDataURL(verificationUrl, {
+          errorCorrectionLevel: "M",
+          margin: 2,
+          width: 450,
+        });
+      } catch {
+        verificationQRCode = null;
+      }
+    }
+
     return NextResponse.json({
       ok: true,
-      verificationQRCode:
-        payload?.verificationQrCode ?? payload?.verificationQRCode ?? null,
+      verificationQRCode,
       sdcDateTime: payload?.sdcDateTime ?? null,
       invoiceNumber: payload?.invoiceNumber ?? null,
       invoiceCounter: payload?.invoiceCounter ?? null,
       invoiceCounterExtension: payload?.invoiceCounterExtension ?? null,
       totalCounter: Number.isFinite(totalCounter) ? totalCounter : null,
       transactionTypeCounter: payload?.transactionTypeCounter ?? null,
-      verificationUrl: payload?.verificationUrl ?? null,
+      verificationUrl,
       journal: payload?.journal ?? null,
       printerError:
         rawResponse?.statusCode === -2

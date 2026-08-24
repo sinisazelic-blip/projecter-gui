@@ -260,8 +260,9 @@ export async function POST(req: NextRequest) {
         INSERT INTO fakture
           (bill_to_klijent_id, godina, broj_u_godini, broj_fiskalni, fiskalni_status,
            datum_izdavanja, tip, valuta, osnovica_km, pdv_stopa, pdv_iznos_km,
-           pdv_obracunat, iznos_ukupno_km, poziv_na_broj)
-        VALUES (?, ?, ?, ?, 'DODIJELJEN', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           pdv_obracunat, iznos_ukupno_km, poziv_na_broj,
+           fiskal_verification_url, fiskal_qr_code, fiskal_sdc_date_time, fiskal_journal)
+        VALUES (?, ?, ?, ?, 'DODIJELJEN', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
           narucilacId,
@@ -270,7 +271,6 @@ export async function POST(req: NextRequest) {
           pfrBroj,
           datumFakture,
           tipFakture,
-          // valuta je enum('BAM','EUR','USD') - mora biti tačno jedan od ovih
           String(ccy || "BAM").toUpperCase() === "KM" ? "BAM" : String(ccy || "BAM").toUpperCase(),
           osnovicaKm,
           pdvStopa,

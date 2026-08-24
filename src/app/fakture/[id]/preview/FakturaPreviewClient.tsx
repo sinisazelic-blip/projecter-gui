@@ -750,20 +750,17 @@ export default function FakturaPreviewClient() {
 
         .totalsRow{
           display:flex;
-          align-items:flex-start;
-          gap: 18px;
-          margin-top: 8px;
+          justify-content:flex-end;
+          margin-top: 12px;
           width: 100%;
         }
-        .fiscalSlot{
-          width: 260px;
-          min-width: 260px;
-          flex-shrink: 0;
+        .fiscalSection{
+          margin-top: 20px;
         }
         .fiscalBlock{
           border: none !important;
           background: transparent !important;
-          padding: 10px 12px !important;
+          padding: 0 !important;
           font-size: 11px !important;
           color: #000 !important;
         }
@@ -772,9 +769,8 @@ export default function FakturaPreviewClient() {
         .fiscalBlock .fiscalEnd{ font-weight: 700 !important; margin-top: 8px !important; }
 
         .totalsBox{
-          width: 50%;
+          width: 100%;
           max-width: 320px;
-          flex-shrink: 0;
           margin-left: auto;
           border: 1px solid #000 !important;
           background: #F7F7F7 !important;
@@ -987,16 +983,10 @@ export default function FakturaPreviewClient() {
           }
 
           .totalsRow {
-            display: block !important;
+            display: flex !important;
+            justify-content: flex-end !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
-          }
-
-          .totalsRow .fiscalSlot {
-            width: 100% !important;
-            max-width: 100% !important;
-            min-width: 0 !important;
-            margin-bottom: 10px !important;
           }
 
           .totalsRow .totalsBox {
@@ -1007,6 +997,12 @@ export default function FakturaPreviewClient() {
             margin-left: auto !important;
             margin-right: 0 !important;
             padding: 10px 12px !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+
+          .fiscalSection {
+            margin-top: 20px !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
@@ -1156,9 +1152,8 @@ export default function FakturaPreviewClient() {
                   <img
                     src={(() => {
                       const p = data?.firma?.logo_path?.trim();
-                      if (!p) return "/api/firma/logo";
-                      if (p.startsWith("http://") || p.startsWith("https://"))
-                        return p;
+                      if (p && (p.startsWith("http://") || p.startsWith("https://") || p.startsWith("data:"))) return p;
+                      if (typeof window !== "undefined") return `${window.location.origin}/api/firma/logo`;
                       return "/api/firma/logo";
                     })()}
                     alt="Company logo"
@@ -1199,14 +1194,12 @@ export default function FakturaPreviewClient() {
                         {ccy === "BAM" || ccy === "KM" ? "KM" : ccy}
                       </div>
                     </div>
-                    {!fisk ? (
-                      <div className="line">
-                        <div className="k">
-                          {lang === "EN" ? "PFR No." : "PFR broj"}
-                        </div>
-                        <div className="v">—</div>
+                    <div className="line">
+                      <div className="k">
+                        {lang === "EN" ? "PFR No." : "PFR broj"}
                       </div>
-                    ) : null}
+                      <div className="v">{fisk || "—"}</div>
+                    </div>
                     <div className="line">
                       <div className="k">
                         {lang === "EN" ? "Payment ref." : "Poziv na broj"}
@@ -1312,20 +1305,6 @@ export default function FakturaPreviewClient() {
               </div>
 
               <div className="totalsRow">
-                {fisk ? (
-                  <div className="fiscalSlot">
-                    <div className="fiscalBlock">
-                      <div className="fiscalTitle">
-                        {String(
-                          (faktura as any)?.status ?? "",
-                        ).toUpperCase() === "DODIJELJEN"
-                          ? "FISKALNI RAČUN JE U PRILOGU"
-                          : "FISKALNI RAČUN"}
-                      </div>
-                      <div className="fiscalLine">PFR br.rač: {fisk}</div>
-                    </div>
-                  </div>
-                ) : null}
                 <div className="totalsBox">
                   <div className="totLine">
                     <div className="k">
@@ -1394,11 +1373,11 @@ export default function FakturaPreviewClient() {
 
                   {/* INO fakture BiH: obavezna rečenica o oslobođenju PDV-a */}
                   {lang === "EN" &&
-                  isBiHSystem &&
+                  isBhDoc &&
                   (vatRate === 0 || isInoInvoice) ? (
                     <div
                       style={{
-                        marginTop: 6,
+                        marginTop: 4,
                         fontSize: 10,
                         color: "#555",
                         lineHeight: 1.25,
@@ -1409,7 +1388,7 @@ export default function FakturaPreviewClient() {
                   ) : lang === "EN" && vatRate === 0 ? (
                     <div
                       style={{
-                        marginTop: 6,
+                        marginTop: 4,
                         fontSize: 10,
                         color: "#555",
                         lineHeight: 1.25,
@@ -1421,7 +1400,7 @@ export default function FakturaPreviewClient() {
 
                   <div
                     style={{
-                      marginTop: 6,
+                      marginTop: 4,
                       fontSize: 10,
                       color: "#555",
                       lineHeight: 1.25,
@@ -1434,13 +1413,46 @@ export default function FakturaPreviewClient() {
                 </div>
               </div>
 
+              {fisk ? (
+                <div className="fiscalSection">
+                  <div className="fiscalBlock">
+                    <div className="fiscalTitle">
+                      {(faktura as any)?.fiskal_qr_code
+                        ? "FISKALNI RAČUN"
+                        : String((faktura as any)?.status ?? "").toUpperCase() === "DODIJELJEN"
+                        ? "FISKALNI RAČUN JE U PRILOGU"
+                        : "FISKALNI RAČUN"}
+                    </div>
+                    {(faktura as any)?.fiskal_qr_code ? (
+                      <div className="fiscalQrWrap" style={{ margin: "6px 0" }}>
+                        <img
+                          src={(faktura as any).fiskal_qr_code}
+                          alt="QR za provjeru"
+                          width={140}
+                          height={140}
+                          style={{ display: "block" }}
+                        />
+                      </div>
+                    ) : null}
+                    {(faktura as any)?.fiskal_sdc_date_time ? (
+                      <div className="fiscalLine" style={{ fontSize: 11, color: "#000", marginTop: 4 }}>
+                        PFR vrijeme: {(faktura as any).fiskal_sdc_date_time}
+                      </div>
+                    ) : null}
+                    <div className="fiscalLine" style={{ fontSize: 11, color: "#000" }}>
+                      PFR br.rač: {fisk}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="footer">
                 <div className="fluxaSig">
                   <img src="/fluxa/Icon.png" alt="FLUXA" />
                   <span>
-                    {t(
-                      `wizard.previewDoc.${lang === "EN" ? "en" : "bh"}.madeByFluxa`,
-                    )}
+                    {lang === "EN"
+                      ? t("wizard.previewDoc.en.madeByFluxa")
+                      : t("wizard.previewDoc.bh.madeByFluxa")}
                   </span>
                 </div>
               </div>

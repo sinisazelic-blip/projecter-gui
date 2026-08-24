@@ -323,6 +323,8 @@ export default function Page() {
   const [fiskalizacijaDone, setFiskalizacijaDone] = useState(false);
   const [fiskalniOdgovor, setFiskalniOdgovor] = useState<{
     verificationQRCode?: string | null;
+    verificationUrl?: string | null;
+    journal?: string | null;
     sdcDateTime?: string | null;
     invoiceNumber?: string | null;
     invoiceCounter?: string | null;
@@ -408,94 +410,7 @@ export default function Page() {
     [t, docLang],
   );
 
-  // Fiskalizuj — PU prima samo JIB (13 cifara); za INO kupce obavezno 13×9 (9999999999999). PIB (12 cifara) nije dozvoljen.
-  async function handleFiskalizuj() {
-    if (fiskalizujLoading || fiskalizacijaDone) return;
-    setFiskalizujLoading(true);
-    try {
-      let buyerTaxId: string | undefined;
-      if (buyer) {
-        if (buyer.is_ino) {
-          buyerTaxId = "9999999999999";
-        } else {
-          const jibRaw = (buyer.jib ?? buyer.porezni_id ?? "")
-            .toString()
-            .trim();
-          const digits = jibRaw.replace(/[^\d]/g, "").slice(0, 13);
-          if (digits.length === 13) buyerTaxId = digits;
-          else if (digits.length === 12) {
-            throw new Error(
-              "Fiskalni uređaj zahtijeva JIB (13 cifara), ne PIB (12). Unesite JIB kupca u podacima klijenta.",
-            );
-          }
-          // else nema 13 cifara – ne šaljemo buyerId ili korisnik mora dopuniti JIB
-        }
-      }
-      // Broj u godini (1, 2, 3…) za PU – imamo ga tek nakon "Kreiraj račun". Format "1/2026" → 1.
-      const brojFaktureStr = invoiceNumber || invoiceNumberFromUrl || "";
-      const brojUGodini = brojFaktureStr.includes("/")
-        ? String(brojFaktureStr).split("/")[0]?.trim()
-        : brojFaktureStr.replace(/\D/g, "");
-      const fiscalInvoiceNumber = brojUGodini
-        ? parseInt(brojUGodini, 10)
-        : undefined;
-      const payload = {
-        items: items.map((it) => ({
-          name: [it.title, it.sub].filter(Boolean).join(" – ").slice(0, 2048),
-          quantity: it.qty,
-          unitPrice: it.unit,
-          totalAmount: it.total,
-          vatRate: vatRate * 100,
-        })),
-        totalAmount,
-        discountNet: popustKm > 0 ? popustKm : 0,
-        dateISO: invoiceDateISO || undefined,
-        buyerName: buyer?.naziv_klijenta
-          ? String(buyer.naziv_klijenta).trim().slice(0, 500)
-          : undefined,
-        buyerTaxId: buyerTaxId || undefined,
-        invoiceNumber: Number.isFinite(fiscalInvoiceNumber)
-          ? fiscalInvoiceNumber
-          : undefined,
-        acceptLanguage: locale === "en" ? "en" : "sr;en",
-        training: trainingParam || undefined,
-      };
-      const res = await fetch("/api/fakture/fiskalizuj", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      let result: any = {};
-      const rawTextFiskal = await res.text();
-      try {
-        result = JSON.parse(rawTextFiskal);
-      } catch {
-        throw new Error(`Server je vratio grešku (${res.status}): ${rawTextFiskal.slice(0, 300)}`);
-      }
-      if (!res.ok || !result.ok) {
-        const msg = result.error || "Fiskalizacija nije uspjela";
-        const urlLine = result.url ? `\nURL: ${result.url}` : "";
-        throw new Error(msg + urlLine);
-      }
-      if (result?.printerError) {
-        alert(String(result.printerError));
-      }
-      setFiskalniOdgovor({
-        verificationQRCode: result.verificationQRCode,
-        sdcDateTime: result.sdcDateTime,
-        invoiceNumber: result.invoiceNumber,
-        invoiceCounter: result.invoiceCounter,
-        totalCounter: result.totalCounter,
-      });
-      setFiskalizacijaDone(true);
-    } catch (err: any) {
-      alert(err?.message || "Greška pri fiskalizaciji");
-    } finally {
-      setFiskalizujLoading(false);
-    }
-  }
-
-  // Funkcija za kreiranje fakture
+  // Funkcija za kreiranje fakture (automatski fiskalizuje u 1 koraku ako je aktivna fiskalizacija)
   async function handleCreateInvoice() {
     if (creating || created) return;
 
@@ -503,10 +418,99 @@ export default function Page() {
     setCreateError(null);
 
     try {
-      // PFR za novu fakturu: automatski = totalCounter iz uređaja; ručni = posljednji PFR (iz wizarda) + 1; prazno = API uzima MAX+1.
+      let fiskalRes = fiskalniOdgovor;
+
+      // 1. Ako je aktivna fiskalizacija za firmu, prvo automatski fiskalizuj na uređaju:
+      if (useFiskalizacijaDropbox && !fiskalRes) {
+        let buyerTaxId: string | undefined;
+        if (buyer) {
+          if (buyer.is_ino) {
+            buyerTaxId = "9999999999999";
+          } else {
+            const jibRaw = (buyer.jib ?? buyer.porezni_id ?? "")
+              .toString()
+              .trim();
+            const digits = jibRaw.replace(/[^\d]/g, "").slice(0, 13);
+            if (digits.length === 13) buyerTaxId = digits;
+            else if (digits.length === 12) {
+              throw new Error(
+                "Fiskalni uređaj zahtijeva JIB (13 cifara), ne PIB (12). Unesite JIB kupca u podacima klijenta.",
+              );
+            }
+          }
+        }
+
+        const brojFaktureStr = invoiceNumber || invoiceNumberFromUrl || "";
+        const brojUGodini = brojFaktureStr.includes("/")
+          ? String(brojFaktureStr).split("/")[0]?.trim()
+          : brojFaktureStr.replace(/\D/g, "");
+        const fiscalInvoiceNumber = brojUGodini
+          ? parseInt(brojUGodini, 10)
+          : undefined;
+
+        const payload = {
+          items: items.map((it) => ({
+            name: [it.title, it.sub].filter(Boolean).join(" – ").slice(0, 2048),
+            quantity: it.qty,
+            unitPrice: it.unit,
+            totalAmount: it.total,
+            vatRate: vatRate * 100,
+          })),
+          totalAmount,
+          discountNet: popustKm > 0 ? popustKm : 0,
+          dateISO: invoiceDateISO || undefined,
+          buyerName: buyer?.naziv_klijenta
+            ? String(buyer.naziv_klijenta).trim().slice(0, 500)
+            : undefined,
+          buyerTaxId: buyerTaxId || undefined,
+          invoiceNumber: Number.isFinite(fiscalInvoiceNumber)
+            ? fiscalInvoiceNumber
+            : undefined,
+          acceptLanguage: locale === "en" ? "en" : "sr;en",
+          training: trainingParam || undefined,
+        };
+
+        const resFiskal = await fetch("/api/fakture/fiskalizuj", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        let resultFiskal: any = {};
+        const rawTextFiskal = await resFiskal.text();
+        try {
+          resultFiskal = JSON.parse(rawTextFiskal);
+        } catch {
+          throw new Error(`Greška pri fiskalizaciji (${resFiskal.status}): ${rawTextFiskal.slice(0, 300)}`);
+        }
+
+        if (!resFiskal.ok || !resultFiskal.ok) {
+          const msg = resultFiskal.error || "Fiskalizacija nije uspjela";
+          const urlLine = resultFiskal.url ? `\nURL: ${resultFiskal.url}` : "";
+          throw new Error(msg + urlLine);
+        }
+
+        if (resultFiskal?.printerError) {
+          alert(String(resultFiskal.printerError));
+        }
+
+        fiskalRes = {
+          verificationQRCode: resultFiskal.verificationQRCode,
+          verificationUrl: resultFiskal.verificationUrl,
+          journal: resultFiskal.journal,
+          sdcDateTime: resultFiskal.sdcDateTime,
+          invoiceNumber: resultFiskal.invoiceNumber,
+          invoiceCounter: resultFiskal.invoiceCounter,
+          totalCounter: resultFiskal.totalCounter,
+        };
+        setFiskalniOdgovor(fiskalRes);
+        setFiskalizacijaDone(true);
+      }
+
+      // 2. Kreiranje fakture u Fluxa bazi sa fiskalnim podacima
       let pfrZaCreate: number | undefined;
-      if (useFiskalizacijaDropbox && fiskalniOdgovor?.totalCounter != null) {
-        pfrZaCreate = fiskalniOdgovor.totalCounter;
+      if (fiskalRes?.totalCounter != null) {
+        pfrZaCreate = fiskalRes.totalCounter;
       } else if (pfrLastParam.trim() !== "") {
         const last = Number(pfrLastParam.trim());
         pfrZaCreate = Number.isFinite(last) && last >= 0 ? last + 1 : undefined;
@@ -537,6 +541,10 @@ export default function Page() {
             .filter(([_, arr]) => arr && arr.length > 0)
             .map(([id, arr]) => `${id}:${(arr as string[]).join("|")}`)
             .join(","),
+          fiskal_verification_url: fiskalRes?.verificationUrl ?? null,
+          fiskal_qr_code: fiskalRes?.verificationQRCode ?? null,
+          fiskal_sdc_date_time: fiskalRes?.sdcDateTime ?? null,
+          fiskal_journal: fiskalRes?.journal ?? null,
         }),
       });
 
@@ -554,14 +562,12 @@ export default function Page() {
 
       setCreated(true);
       setCreatedInvoice(result);
-      // Postavi broj fakture i datum dospijeća za prikaz
       if (result.broj_fakture) {
         setInvoiceNumber(result.broj_fakture);
       }
       if (result.datum_dospijeca) {
         setCalculatedDueDate(result.datum_dospijeca);
       } else if (invoiceDateISO && data?.buyer?.rok_placanja_dana) {
-        // Fallback: izračunaj datum dospijeća ako nije vraćen iz API-ja
         const rokDana = Number(data.buyer.rok_placanja_dana) || 30;
         const dueDate = new Date(invoiceDateISO);
         dueDate.setDate(dueDate.getDate() + rokDana);
@@ -569,6 +575,7 @@ export default function Page() {
       }
     } catch (err: any) {
       setCreateError(err?.message || t("wizard.createError"));
+      alert(err?.message || t("wizard.createError"));
     } finally {
       setCreating(false);
     }
@@ -949,9 +956,6 @@ export default function Page() {
           padding: 18mm 16mm;
           box-sizing: border-box;
           overflow-x: hidden;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
         }
         @media (max-width: 980px){
           .paper{ width: min(100%, 210mm); padding: 16px; }
@@ -1028,39 +1032,30 @@ export default function Page() {
         .mutedSmall{ font-size: 10px !important; color:#000 !important; margin-top: 1px !important; line-height: 1.2 !important; }
 
         .totalsRow{
-          display:flex;
-          align-items:flex-start;
-          gap: 18px;
-          margin-top: 14px;
+          display: flex;
+          justify-content: flex-end;
+          margin-top: 12px;
           width: 100%;
-          page-break-inside: avoid !important;
-          break-inside: avoid !important;
         }
-        /* Rezervirano mjesto za PU (1/3 stranice); kad nema podataka ostaje prazno */
-        .fiscalSlot{
-          width: 260px;
-          min-width: 260px;
-          flex-shrink: 0;
+        .fiscalSection{
+          margin-top: 20px;
         }
         .fiscalBlock{
           border: none !important;
           background: transparent !important;
-          padding: 10px 12px !important;
+          padding: 0 !important;
           font-size: 11px !important;
           color: #000 !important;
         }
         .fiscalBlock .fiscalTitle{ font-weight: 800 !important; margin-bottom: 6px !important; }
-        .fiscalBlock .fiscalQrWrap{ margin: 8px 0; text-align: center; }
-        .fiscalBlock .fiscalQrWrap img{ width: 140px; height: 140px; max-width: 160px; max-height: 160px; object-fit: contain; display: block; margin: 0 auto; }
         .fiscalBlock .fiscalLine{ margin: 4px 0 !important; }
         .fiscalBlock .fiscalEnd{ font-weight: 700 !important; margin-top: 8px !important; }
         .fiscalTrainingNote{ font-size: 12px; color: var(--muted, #666); margin-right: 8px; }
 
         /* Obračun (Osnovica / PDV / Ukupno) uvijek uz desnu marginu */
         .totalsBox{
-          width: 50%;
+          width: 100%;
           max-width: 320px;
-          flex-shrink: 0;
           margin-left: auto;
           border: 1px solid #000 !important;
           background: #F7F7F7 !important;
@@ -1082,7 +1077,7 @@ export default function Page() {
         .totLine.total .k{ color:#000 !important; font-weight: 800 !important; }
         .totLine.total .v{ font-weight: 900 !important; color:#000 !important; }
 
-        /* ✅ Info line unutar obračuna (umjesto između tabele i obračuna) */
+        /* ✅ Info line unutar obračuna */
         .completedLine{
           margin-top: 6px !important;
           font-size: 10px !important;
@@ -1090,46 +1085,9 @@ export default function Page() {
           line-height: 1.25 !important;
         }
 
-        /* ✅ Sekcija za potpis ovlaštenog lica - desno poravnata */
-        .signatureSection {
-          display: flex;
-          justify-content: flex-end;
-          margin-top: 28px;
-          margin-bottom: 12px;
-          page-break-inside: avoid !important;
-          break-inside: avoid !important;
-        }
-        .signatureBox {
-          width: 240px;
-          text-align: center;
-        }
-        .sigLine {
-          width: 100%;
-          border-bottom: 1px solid #000;
-          margin-bottom: 5px;
-        }
-        .sigText {
-          font-size: 11px;
-          font-weight: 600;
-          color: #000 !important;
-        }
-        .sigSub {
-          font-size: 10px;
-          color: #444 !important;
-          margin-top: 2px;
-        }
-
-        /* ✅ Bottom section: gura potpis i footer na samo dno A4 stranice */
-        .bottomSection {
-          margin-top: auto;
-          padding-top: 16px;
-          page-break-inside: avoid !important;
-          break-inside: avoid !important;
-        }
-
         /* Footer: samo Made by FLUXA, centrirano pri dnu stranice */
         .footer{
-          margin-top: 12px;
+          margin-top: 18px;
           padding-top: 10px;
           border-top: 1px solid rgba(0,0,0,.08);
           font-size: 11px;
@@ -1275,27 +1233,31 @@ export default function Page() {
             color: #000 !important;
           }
           
-          .num, .desc, .mutedSmall {
-            color: #000 !important;
+          .totalsRow {
+            display: flex !important;
+            justify-content: flex-end !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
-          
-          .totalsBox {
+
+          .totalsRow .totalsBox {
             border: 1px solid #000 !important;
             background: #F7F7F7 !important;
+            width: 100% !important;
+            max-width: 320px !important;
+            margin-left: auto !important;
+            margin-right: 0 !important;
+            padding: 10px 12px !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
-          
-          .totLine .k, .totLine .v {
-            color: #000 !important;
+
+          .fiscalSection {
+            margin-top: 20px !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
-          
-          .totLine.total .k, .totLine.total .v {
-            color: #000 !important;
-          }
-          
-          .completedLine {
-            color: #000 !important;
-          }
-          
+
           tr {
             page-break-inside: avoid;
             page-break-after: auto;
@@ -1356,38 +1318,13 @@ export default function Page() {
                       ← {t("wizard.nazad23")}
                     </Link>
 
-                    {useFiskalizacijaDropbox && (
-                      <>
-                        {trainingParam && (
-                          <span
-                            className="fiscalTrainingNote"
-                            title="PU ne broji ovaj račun; provjera će vratiti „Ovo nije fiskalni račun”."
-                          >
-                            🧪 Testni račun
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          className="btn"
-                          onClick={handleFiskalizuj}
-                          disabled={fiskalizujLoading || fiskalizacijaDone}
-                          style={{
-                            background: fiskalizacijaDone
-                              ? "rgba(34, 197, 94, 0.2)"
-                              : "linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.1))",
-                            borderColor: "rgba(34, 197, 94, 0.4)",
-                            fontWeight: 600,
-                          }}
-                          title={t("wizard.fiskalizujTitle")}
-                        >
-                          {fiskalizujLoading
-                            ? "⏳"
-                            : fiskalizacijaDone
-                              ? "✓"
-                              : "📋"}{" "}
-                          {t("wizard.fiskalizuj")}
-                        </button>
-                      </>
+                    {useFiskalizacijaDropbox && trainingParam && (
+                      <span
+                        className="fiscalTrainingNote"
+                        title="PU ne broji ovaj račun; provjera će vratiti „Ovo nije fiskalni račun”."
+                      >
+                        🧪 Testni račun
+                      </span>
                     )}
 
                     <button
@@ -1404,7 +1341,7 @@ export default function Page() {
                       }}
                       title={t("wizard.kreirajRacunTitle")}
                     >
-                      {creating ? "⏳" : "📄"} {t("wizard.kreirajRacun")}
+                      {creating ? "⏳ Fiskalizacija i kreiranje..." : "📄 " + t("wizard.kreirajRacun")}
                     </button>
                   </>
                 ) : (
@@ -1705,59 +1642,6 @@ export default function Page() {
               </div>
 
               <div className="totalsRow">
-                {isBiHSystem ? (
-                  <div className="fiscalSlot">
-                    {fiskalniOdgovor || createdInvoice?.broj_fiskalni ? (
-                      <div className="fiscalBlock">
-                        <div className="fiscalTitle">
-                          {useFiskalizacijaDropbox &&
-                          fiskalniOdgovor?.verificationQRCode
-                            ? "FISKALNI RAČUN"
-                            : "FISKALNI RAČUN JE U PRILOGU"}
-                        </div>
-                        {fiskalniOdgovor?.verificationQRCode ? (
-                          <div className="fiscalQrWrap">
-                            <img
-                              src={
-                                fiskalniOdgovor.verificationQRCode.startsWith(
-                                  "data:",
-                                )
-                                  ? fiskalniOdgovor.verificationQRCode
-                                  : fiskalniOdgovor.verificationQRCode
-                              }
-                              alt="QR za provjeru"
-                              width={140}
-                              height={140}
-                            />
-                          </div>
-                        ) : null}
-                        {fiskalniOdgovor?.sdcDateTime ? (
-                          <div className="fiscalLine">
-                            PFR vrijeme: {fiskalniOdgovor.sdcDateTime}
-                          </div>
-                        ) : null}
-                        {(fiskalniOdgovor?.invoiceNumber ??
-                          createdInvoice?.broj_fiskalni ??
-                          fiskalniOdgovor?.totalCounter) != null ? (
-                          <div className="fiscalLine">
-                            PFR br.rač:{" "}
-                            {String(
-                              fiskalniOdgovor?.invoiceNumber ??
-                                createdInvoice?.broj_fiskalni ??
-                                fiskalniOdgovor?.totalCounter ??
-                                "",
-                            )}
-                          </div>
-                        ) : null}
-                        {fiskalniOdgovor?.invoiceCounter ? (
-                          <div className="fiscalLine">
-                            Brojač računa: {fiskalniOdgovor.invoiceCounter}
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
                 <div className="totalsBox">
                   <div className="totLine">
                     <div className="k">
@@ -1879,27 +1763,66 @@ export default function Page() {
                     {t(`wizard.previewDoc.${docLang}.generatedElectronically`)}
                   </div>
                 </div>
+
               </div>
 
-              {/* ✅ Donja sekcija: Potpis ovlaštenog lica + Footer zasidren na samo dno stranice */}
-              <div className="bottomSection">
-                <div className="signatureSection">
-                  <div className="signatureBox">
-                    <div className="sigLine" />
-                    <div className="sigText">
-                      {docLang === "bh" ? "Fakturisao:" : "Issued by:"}
+              {isBiHSystem && (fiskalniOdgovor || createdInvoice?.broj_fiskalni) ? (
+                <div className="fiscalSection">
+                  <div className="fiscalBlock">
+                    <div className="fiscalTitle">
+                      {useFiskalizacijaDropbox &&
+                      fiskalniOdgovor?.verificationQRCode
+                        ? "FISKALNI RAČUN"
+                        : "FISKALNI RAČUN JE U PRILOGU"}
                     </div>
-                    <div className="sigSub">
-                      {docLang === "bh" ? "Ispred" : "On behalf of"} {sellerName}
-                    </div>
+                    {fiskalniOdgovor?.verificationQRCode ? (
+                      <div className="fiscalQrWrap" style={{ margin: "6px 0" }}>
+                        <img
+                          src={
+                            fiskalniOdgovor.verificationQRCode.startsWith(
+                              "data:",
+                            )
+                              ? fiskalniOdgovor.verificationQRCode
+                              : fiskalniOdgovor.verificationQRCode
+                          }
+                          alt="QR za provjeru"
+                          width={140}
+                          height={140}
+                          style={{ display: "block" }}
+                        />
+                      </div>
+                    ) : null}
+                    {fiskalniOdgovor?.sdcDateTime ? (
+                      <div className="fiscalLine" style={{ fontSize: 11, color: "#000", marginTop: 4 }}>
+                        PFR vrijeme: {fiskalniOdgovor.sdcDateTime}
+                      </div>
+                    ) : null}
+                    {(fiskalniOdgovor?.invoiceNumber ??
+                      createdInvoice?.broj_fiskalni ??
+                      fiskalniOdgovor?.totalCounter) != null ? (
+                      <div className="fiscalLine" style={{ fontSize: 11, color: "#000" }}>
+                        PFR br.rač:{" "}
+                        {String(
+                          fiskalniOdgovor?.invoiceNumber ??
+                            createdInvoice?.broj_fiskalni ??
+                            fiskalniOdgovor?.totalCounter ??
+                            "",
+                        )}
+                      </div>
+                    ) : null}
+                    {fiskalniOdgovor?.invoiceCounter ? (
+                      <div className="fiscalLine" style={{ fontSize: 11, color: "#000" }}>
+                        Brojač računa: {fiskalniOdgovor.invoiceCounter}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
+              ) : null}
 
-                <div className="footer">
-                  <div className="fluxaSig">
-                    <img src="/fluxa/Icon.png" alt="FLUXA" />
-                    <span>{t(`wizard.previewDoc.${docLang}.madeByFluxa`)}</span>
-                  </div>
+              <div className="footer">
+                <div className="fluxaSig">
+                  <img src="/fluxa/Icon.png" alt="FLUXA" />
+                  <span>{t(`wizard.previewDoc.${docLang}.madeByFluxa`)}</span>
                 </div>
               </div>
 

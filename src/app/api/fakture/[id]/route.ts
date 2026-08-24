@@ -217,6 +217,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           f.fiskalni_status AS status,
           f.tip,
           f.poziv_na_broj,
+          f.fiskal_verification_url,
+          f.fiskal_qr_code,
+          f.fiskal_sdc_date_time,
+          f.fiskal_journal,
           f.created_at
         FROM fakture f
         LEFT JOIN klijenti k ON k.klijent_id = f.bill_to_klijent_id
