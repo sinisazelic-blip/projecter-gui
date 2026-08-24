@@ -465,7 +465,13 @@ export default function Page() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const result = await res.json();
+      let result: any = {};
+      const rawTextFiskal = await res.text();
+      try {
+        result = JSON.parse(rawTextFiskal);
+      } catch {
+        throw new Error(`Server je vratio grešku (${res.status}): ${rawTextFiskal.slice(0, 300)}`);
+      }
       if (!res.ok || !result.ok) {
         const msg = result.error || "Fiskalizacija nije uspjela";
         const urlLine = result.url ? `\nURL: ${result.url}` : "";
@@ -534,7 +540,13 @@ export default function Page() {
         }),
       });
 
-      const result = await res.json();
+      let result: any = {};
+      const rawTextCreate = await res.text();
+      try {
+        result = JSON.parse(rawTextCreate);
+      } catch {
+        throw new Error(`Server je vratio grešku pri kreiranju fakture (${res.status}): ${rawTextCreate.slice(0, 300)}`);
+      }
 
       if (!res.ok || !result.ok) {
         throw new Error(result.error || t("wizard.createError"));
