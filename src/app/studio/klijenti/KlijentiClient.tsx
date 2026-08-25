@@ -78,13 +78,16 @@ function overlayStyle(): React.CSSProperties {
 function modalStyle(maxWidth = 980): React.CSSProperties {
   return {
     width: "min(100%, " + maxWidth + "px)",
+    maxHeight: "min(92vh, 880px)",
+    display: "flex",
+    flexDirection: "column",
     border: "1px solid var(--border)",
     borderRadius: "16px",
     background:
-      "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
+      "linear-gradient(180deg, rgba(30,32,40,0.98), rgba(20,22,28,0.98))",
     boxShadow: "var(--shadow)",
     overflow: "hidden",
-    fontSize: 16,
+    fontSize: 14,
   };
 }
 
@@ -742,38 +745,40 @@ export default function KlijentiClient({
           <div style={modalStyle(980)}>
             <div
               style={{
-                padding: 20,
+                padding: "14px 20px",
                 borderBottom: "1px solid var(--border)",
                 display: "flex",
                 justifyContent: "space-between",
+                alignItems: "center",
                 gap: 12,
+                flexShrink: 0,
+                background: "rgba(255,255,255,0.02)",
               }}
             >
               <div
-                style={{ display: "flex", gap: 12, alignItems: "flex-start" }}
+                style={{ display: "flex", gap: 12, alignItems: "center" }}
               >
                 <img
                   src="/fluxa/Ikona%20Siva.png"
                   alt="Fluxa"
                   style={{
-                    width: 26,
-                    height: 26,
+                    width: 24,
+                    height: 24,
                     objectFit: "contain",
                     opacity: 0.9,
-                    marginTop: 2,
                   }}
                 />
                 <div>
-                  <div style={{ fontSize: 20, fontWeight: 700 }}>
+                  <div style={{ fontSize: 18, fontWeight: 700 }}>
                     {modalMode === "new"
                       ? t("studioKlijenti.modalNew")
                       : t("studioKlijenti.modalEdit")}
                   </div>
                   <div
                     style={{
-                      marginTop: 6,
+                      marginTop: 2,
                       color: "var(--muted)",
-                      fontSize: 15,
+                      fontSize: 13,
                     }}
                   >
                     {t("studioKlijenti.modalSubtitle")}
@@ -785,17 +790,17 @@ export default function KlijentiClient({
               </button>
             </div>
 
-            <div style={{ padding: 20 }}>
+            <div style={{ padding: "16px 20px", overflowY: "auto", flex: 1, minHeight: 0 }}>
               <div
                 className="grid"
-                style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
+                style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}
               >
                 <div style={{ gridColumn: "1 / -1" }}>
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 16,
-                      marginBottom: 8,
+                      fontSize: 13,
+                      marginBottom: 4,
                     }}
                   >
                     {t("studioKlijenti.labelNaziv")}
@@ -808,7 +813,7 @@ export default function KlijentiClient({
                     placeholder={t("studioKlijenti.placeholderNaziv")}
                     autoFocus
                     className="input"
-                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                    style={{ width: "100%", padding: "8px 12px", fontSize: 14 }}
                   />
                 </div>
 
@@ -816,8 +821,8 @@ export default function KlijentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 16,
-                      marginBottom: 8,
+                      fontSize: 13,
+                      marginBottom: 4,
                     }}
                   >
                     {t("studioKlijenti.labelTip")}
@@ -831,7 +836,7 @@ export default function KlijentiClient({
                       }))
                     }
                     className="input"
-                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                    style={{ width: "100%", padding: "8px 12px", fontSize: 14 }}
                   >
                     <option value="direktni">{t("studioKlijenti.tipDirektni")}</option>
                     <option value="agencija">{t("studioKlijenti.tipAgencija")}</option>
@@ -842,8 +847,8 @@ export default function KlijentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 16,
-                      marginBottom: 8,
+                      fontSize: 13,
+                      marginBottom: 4,
                     }}
                   >
                     {t("studioKlijenti.labelPorezniId")}
@@ -855,7 +860,7 @@ export default function KlijentiClient({
                     }
                     placeholder={t("studioKlijenti.placeholderPorezniId")}
                     className="input"
-                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                    style={{ width: "100%", padding: "8px 12px", fontSize: 14 }}
                   />
                 </div>
 
@@ -864,8 +869,8 @@ export default function KlijentiClient({
                     <div
                       style={{
                         color: "var(--muted)",
-                        fontSize: 16,
-                        marginBottom: 8,
+                        fontSize: 13,
+                        marginBottom: 4,
                       }}
                     >
                       {t("studioKlijenti.labelJib")}
@@ -877,7 +882,7 @@ export default function KlijentiClient({
                       }
                       placeholder={t("studioKlijenti.placeholderJib")}
                       className="input"
-                      style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                      style={{ width: "100%", padding: "8px 12px", fontSize: 14 }}
                       maxLength={20}
                     />
                   </div>
@@ -888,8 +893,8 @@ export default function KlijentiClient({
                     <div
                       style={{
                         color: "var(--muted)",
-                        fontSize: 16,
-                        marginBottom: 8,
+                        fontSize: 13,
+                        marginBottom: 4,
                       }}
                     >
                       {t("studioKlijenti.labelPib")}
@@ -901,7 +906,7 @@ export default function KlijentiClient({
                       }
                       placeholder={t("studioKlijenti.placeholderPib")}
                       className="input"
-                      style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                      style={{ width: "100%", padding: "8px 12px", fontSize: 14 }}
                       maxLength={20}
                     />
                   </div>
@@ -911,8 +916,8 @@ export default function KlijentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 16,
-                      marginBottom: 8,
+                      fontSize: 13,
+                      marginBottom: 4,
                     }}
                   >
                     {t("studioKlijenti.labelRokPlacanja")}
@@ -927,7 +932,7 @@ export default function KlijentiClient({
                     }
                     placeholder="0"
                     className="input"
-                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                    style={{ width: "100%", padding: "8px 12px", fontSize: 14 }}
                   />
                 </div>
 
@@ -936,8 +941,8 @@ export default function KlijentiClient({
                     <div
                       style={{
                         color: "var(--muted)",
-                        fontSize: 16,
-                        marginBottom: 8,
+                        fontSize: 13,
+                        marginBottom: 4,
                       }}
                     >
                       {t("studioKlijenti.labelAvgPaymentDays")}
@@ -946,13 +951,13 @@ export default function KlijentiClient({
                       className="input"
                       style={{
                         width: "100%",
-                        padding: "12px 14px",
-                        fontSize: 15,
-                        minHeight: 48,
+                        padding: "8px 12px",
+                        fontSize: 14,
+                        minHeight: 38,
                         display: "flex",
                         flexDirection: "column",
                         justifyContent: "center",
-                        gap: 4,
+                        gap: 2,
                         background: "rgba(255,255,255,0.03)",
                       }}
                     >
@@ -961,7 +966,7 @@ export default function KlijentiClient({
                       ) : paymentStats?.invoiceCount &&
                         paymentStats.avgDaysFromIssue != null ? (
                         <>
-                          <span style={{ fontWeight: 700, fontSize: 17 }}>
+                          <span style={{ fontWeight: 700, fontSize: 15 }}>
                             {paymentStats.avgDaysFromIssue}{" "}
                             {t("studioKlijenti.avgPaymentDaysUnit")}
                           </span>
@@ -971,9 +976,9 @@ export default function KlijentiClient({
                             paymentStats.maxDaysFromIssue ? (
                             <span
                               style={{
-                                fontSize: 13,
+                                fontSize: 12,
                                 color: "var(--muted)",
-                                lineHeight: 1.35,
+                                lineHeight: 1.25,
                               }}
                             >
                               {t("studioKlijenti.avgPaymentRange")
@@ -989,9 +994,9 @@ export default function KlijentiClient({
                           ) : null}
                           <span
                             style={{
-                              fontSize: 13,
+                              fontSize: 12,
                               color: "var(--muted)",
-                              lineHeight: 1.35,
+                              lineHeight: 1.25,
                             }}
                           >
                             {t("studioKlijenti.avgPaymentBasedOn").replace(
@@ -1008,9 +1013,9 @@ export default function KlijentiClient({
                               return (
                                 <span
                                   style={{
-                                    fontSize: 13,
+                                    fontSize: 12,
                                     color: "#86efac",
-                                    lineHeight: 1.35,
+                                    lineHeight: 1.25,
                                   }}
                                 >
                                   {t("studioKlijenti.avgPaymentOnTime")}
@@ -1021,9 +1026,9 @@ export default function KlijentiClient({
                               return (
                                 <span
                                   style={{
-                                    fontSize: 13,
+                                    fontSize: 12,
                                     color: "#fca5a5",
-                                    lineHeight: 1.35,
+                                    lineHeight: 1.25,
                                   }}
                                 >
                                   {t("studioKlijenti.avgPaymentLate")
@@ -1035,9 +1040,9 @@ export default function KlijentiClient({
                             return (
                               <span
                                 style={{
-                                  fontSize: 13,
+                                  fontSize: 12,
                                   color: "#86efac",
-                                  lineHeight: 1.35,
+                                  lineHeight: 1.25,
                                 }}
                               >
                                 {t("studioKlijenti.avgPaymentEarly")
@@ -1060,8 +1065,8 @@ export default function KlijentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 16,
-                      marginBottom: 8,
+                      fontSize: 13,
+                      marginBottom: 4,
                     }}
                   >
                     {t("studioKlijenti.labelAdresa")}
@@ -1073,7 +1078,7 @@ export default function KlijentiClient({
                     }
                     placeholder={t("studioKlijenti.placeholderAdresa")}
                     className="input"
-                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                    style={{ width: "100%", padding: "8px 12px", fontSize: 14 }}
                   />
                 </div>
 
@@ -1081,8 +1086,8 @@ export default function KlijentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 16,
-                      marginBottom: 8,
+                      fontSize: 13,
+                      marginBottom: 4,
                     }}
                   >
                     {t("studioKlijenti.labelGrad")}
@@ -1094,7 +1099,7 @@ export default function KlijentiClient({
                     }
                     placeholder={t("studioKlijenti.placeholderGrad")}
                     className="input"
-                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                    style={{ width: "100%", padding: "8px 12px", fontSize: 14 }}
                   />
                 </div>
 
@@ -1102,8 +1107,8 @@ export default function KlijentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 16,
-                      marginBottom: 8,
+                      fontSize: 13,
+                      marginBottom: 4,
                     }}
                   >
                     {t("studioKlijenti.labelDrzava")}
@@ -1115,7 +1120,7 @@ export default function KlijentiClient({
                     }
                     placeholder={t("studioKlijenti.placeholderDrzava")}
                     className="input"
-                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                    style={{ width: "100%", padding: "8px 12px", fontSize: 14 }}
                   />
                 </div>
 
@@ -1123,8 +1128,8 @@ export default function KlijentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 16,
-                      marginBottom: 8,
+                      fontSize: 13,
+                      marginBottom: 4,
                     }}
                   >
                     {t("studioKlijenti.labelEmail")}
@@ -1137,7 +1142,7 @@ export default function KlijentiClient({
                     }
                     placeholder={t("studioKlijenti.placeholderEmail")}
                     className="input"
-                    style={{ width: "100%", padding: "12px 14px", fontSize: 15 }}
+                    style={{ width: "100%", padding: "8px 12px", fontSize: 14 }}
                   />
                 </div>
 
@@ -1153,13 +1158,13 @@ export default function KlijentiClient({
                   <span
                     style={{
                       color: "var(--text)",
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: 700,
                     }}
                   >
                     {locale === "en" ? t("vat.vatTreatment") : t("vat.inoClient")}
                   </span>
-                  <span style={{ color: "var(--muted)", fontSize: 13 }}>
+                  <span style={{ color: "var(--muted)", fontSize: 12 }}>
                     {locale === "en" ? t("vat.vatTreatmentHint") : `— ${t("vat.inoClientHint")}`}
                   </span>
                 </div>
@@ -1179,13 +1184,13 @@ export default function KlijentiClient({
                   <span
                     style={{
                       color: "var(--text)",
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: 700,
                     }}
                   >
                     {locale === "en" ? t("vat.vatExempt") : t("vat.pdvOslobodjenLabel")}
                   </span>
-                  <span style={{ color: "var(--muted)", fontSize: 13 }}>
+                  <span style={{ color: "var(--muted)", fontSize: 12 }}>
                     — {t("vat.pdvOslobodjenHint")}
                   </span>
                 </div>
@@ -1195,8 +1200,8 @@ export default function KlijentiClient({
                     <div
                       style={{
                         color: "var(--muted)",
-                        fontSize: 13,
-                        marginBottom: 6,
+                        fontSize: 12,
+                        marginBottom: 4,
                       }}
                     >
                       {t("vat.pdvNapomenaLabel")}
@@ -1211,7 +1216,7 @@ export default function KlijentiClient({
                       }
                       placeholder={t("studioKlijenti.placeholderPdvNapomena")}
                       className="input"
-                    style={{ width: "100%", minHeight: 70, resize: "vertical", padding: "12px 14px", fontSize: 15 }}
+                      style={{ width: "100%", minHeight: 50, resize: "vertical", padding: "8px 12px", fontSize: 14 }}
                     />
                   </div>
                 )}
@@ -1228,7 +1233,7 @@ export default function KlijentiClient({
                   <span
                     style={{
                       color: "var(--text)",
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: 600,
                     }}
                   >
@@ -1248,13 +1253,13 @@ export default function KlijentiClient({
                   <span
                     style={{
                       color: "var(--text)",
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: 700,
                     }}
                   >
                     {t("studioKlijenti.labelNarucilac")}
                   </span>
-                  <span style={{ color: "var(--muted)", fontSize: 13 }}>
+                  <span style={{ color: "var(--muted)", fontSize: 12 }}>
                     — {t("studioKlijenti.labelNarucilacHint")}
                   </span>
                 </div>
@@ -1263,8 +1268,8 @@ export default function KlijentiClient({
                   <div
                     style={{
                       color: "var(--muted)",
-                      fontSize: 16,
-                      marginBottom: 8,
+                      fontSize: 13,
+                      marginBottom: 4,
                     }}
                   >
                     {t("studioKlijenti.labelNapomena")}
@@ -1276,16 +1281,16 @@ export default function KlijentiClient({
                     }
                     placeholder={t("studioKlijenti.placeholderNapomena")}
                     className="input"
-                    style={{ width: "100%", minHeight: 90, resize: "vertical", padding: "12px 14px", fontSize: 15 }}
+                    style={{ width: "100%", minHeight: 60, resize: "vertical", padding: "8px 12px", fontSize: 14 }}
                   />
                 </div>
               </div>
 
-              <div className="card" style={{ marginTop: 14 }}>
+              <div className="card" style={{ marginTop: 12, padding: "10px 14px" }}>
                 <div
                   style={{
                     color: "var(--muted)",
-                    fontSize: 12,
+                    fontSize: 11,
                     letterSpacing: ".06em",
                     textTransform: "uppercase",
                   }}
@@ -1294,33 +1299,33 @@ export default function KlijentiClient({
                 </div>
                 <div
                   style={{
-                    marginTop: 10,
+                    marginTop: 6,
                     display: "grid",
                     gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
                     gap: 12,
                   }}
                 >
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                    <div style={{ color: "var(--muted)", fontSize: 11 }}>
                       {t("studioKlijenti.id")}
                     </div>
-                    <div style={{ fontWeight: 700 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>
                       {form.klijent_id ?? "—"}
                     </div>
                   </div>
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                    <div style={{ color: "var(--muted)", fontSize: 11 }}>
                       {t("studioKlijenti.created")}
                     </div>
-                    <div style={{ fontWeight: 700 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>
                       {form.created_at ? fmtDateTime(form.created_at) : "—"}
                     </div>
                   </div>
                   <div>
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                    <div style={{ color: "var(--muted)", fontSize: 11 }}>
                       {t("studioKlijenti.updated")}
                     </div>
-                    <div style={{ fontWeight: 700 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>
                       {form.updated_at ? fmtDateTime(form.updated_at) : "—"}
                     </div>
                   </div>
@@ -1330,11 +1335,14 @@ export default function KlijentiClient({
 
             <div
               style={{
-                padding: 16,
+                padding: "12px 20px",
                 borderTop: "1px solid var(--border)",
                 display: "flex",
                 justifyContent: "flex-end",
+                alignItems: "center",
                 gap: 10,
+                flexShrink: 0,
+                background: "rgba(255,255,255,0.02)",
               }}
             >
               {modalMode === "edit" ? (

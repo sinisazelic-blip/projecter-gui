@@ -124,28 +124,31 @@ export function applyInvoicePdfPagination(paper: HTMLElement): () => void {
 
 export const INVOICE_PDF_EXPORT_CSS = `
   .paper.is-pdf-export {
-    min-height: auto !important;
+    min-height: 277mm !important;
     width: 210mm !important;
     padding: 10mm 8mm !important;
     box-sizing: border-box !important;
     overflow: visible !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
-  .paper.is-pdf-export .totalsRow {
-    display: block !important;
+  .paper.is-pdf-export .cols2 {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 14px !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
-  .paper.is-pdf-export .totalsRow .fiscalSlot {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    margin-bottom: 10px !important;
-  }
-  .paper.is-pdf-export .totalsRow .totalsBox {
+  .paper.is-pdf-export .totalsBox {
     width: 100% !important;
     max-width: 320px !important;
-    margin-left: auto !important;
-    margin-right: 0 !important;
+    padding: 10px 12px !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  .paper.is-pdf-export .footer {
+    margin-top: auto !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }

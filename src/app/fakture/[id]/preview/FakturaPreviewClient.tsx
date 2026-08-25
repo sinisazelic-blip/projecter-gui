@@ -440,7 +440,7 @@ export default function FakturaPreviewClient() {
     if (!el) return;
     const origMinHeight = (el as HTMLElement).style.minHeight;
     el.classList.add("is-pdf-export");
-    (el as HTMLElement).style.minHeight = "auto";
+    (el as HTMLElement).style.minHeight = "277mm";
     const undoPagination = applyInvoicePdfPagination(el);
     try {
       const html2pdf = (await import("html2pdf.js")).default;
@@ -676,6 +676,8 @@ export default function FakturaPreviewClient() {
           padding: 18mm 16mm;
           box-sizing: border-box;
           overflow-x: hidden;
+          display: flex;
+          flex-direction: column;
         }
         @media (max-width: 980px){
           .paper{ width: min(100%, 210mm); padding: 16px; }
@@ -797,9 +799,9 @@ export default function FakturaPreviewClient() {
           line-height: 1.25 !important;
         }
 
-        /* Footer: samo Made by FLUXA, centrirano (kao na originalnim fakturama) */
+        /* Footer: samo Made by FLUXA, centrirano na samom dnu stranice */
         .footer{
-          margin-top: 18px;
+          margin-top: auto !important;
           padding-top: 10px;
           border-top: 1px solid rgba(0,0,0,.08);
           font-size: 11px;
@@ -848,25 +850,17 @@ export default function FakturaPreviewClient() {
           
           .container {
             width: 100% !important;
-            max-width: 100% !important;
-            margin: 0 !important;
+            max-width: none !important;
             padding: 0 !important;
-            background: #ffffff !important;
-            background-color: #ffffff !important;
+            margin: 0 !important;
           }
           
-          .pageWrap {
-            display: block !important;
-            height: auto !important;
-            overflow: visible !important;
-            background: #ffffff !important;
-            background-color: #ffffff !important;
-            margin: 0 !important;
-            padding: 0 !important;
+          .topBlock {
+            display: none !important;
           }
           
-          .topBlock, .divider { 
-            display: none !important; 
+          .topRow, .topRowSecondary, .actions, .btn, .btn-primary, .btn-secondary, .badge, .statusRow {
+            display: none !important;
           }
           
           .body { 
@@ -889,7 +883,7 @@ export default function FakturaPreviewClient() {
           
           .paper {
             width: auto !important;
-            min-height: auto !important;
+            min-height: 275mm !important;
             max-width: none !important;
             box-sizing: border-box !important;
             overflow-x: hidden !important;
@@ -901,6 +895,8 @@ export default function FakturaPreviewClient() {
             background: #ffffff !important;
             background-color: #ffffff !important;
             color: #000000 !important;
+            display: flex !important;
+            flex-direction: column !important;
             page-break-inside: auto;
           }
           
@@ -982,32 +978,27 @@ export default function FakturaPreviewClient() {
             break-inside: auto !important;
           }
 
-          .totalsRow {
-            display: flex !important;
-            justify-content: flex-end !important;
+          .cols2 {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 14px !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
 
-          .totalsRow .totalsBox {
+          .totalsBox {
             border: 1px solid #000 !important;
             background: #F7F7F7 !important;
             width: 100% !important;
             max-width: 320px !important;
-            margin-left: auto !important;
-            margin-right: 0 !important;
             padding: 10px 12px !important;
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-          }
-
-          .fiscalSection {
-            margin-top: 20px !important;
+            box-sizing: border-box !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
         }
       `}</style>
+      <style jsx global>{INVOICE_PDF_EXPORT_CSS}</style>
 
       <div className="pageWrap">
         <div className="topBlock">
@@ -1104,24 +1095,6 @@ export default function FakturaPreviewClient() {
                   flexWrap: "wrap",
                 }}
               >
-                {canMarkAsPaid && (
-                  <button
-                    className="btn"
-                    onClick={handleMarkPaid}
-                    disabled={markPaidLoading}
-                    style={{
-                      background:
-                        "linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(22, 163, 74, 0.15))",
-                      color: "#86efac",
-                      border: "1px solid rgba(34, 197, 94, 0.5)",
-                      fontWeight: 700,
-                      opacity: markPaidLoading ? 0.6 : 1,
-                    }}
-                    title={t("fakture.markAsPaid")}
-                  >
-                    {markPaidLoading ? "…" : "✓ " + t("fakture.markAsPaid")}
-                  </button>
-                )}
                 <button
                   className="btn"
                   onClick={handleStorno}
@@ -1304,147 +1277,149 @@ export default function FakturaPreviewClient() {
                 </table>
               </div>
 
-              <div className="totalsRow">
-                <div className="totalsBox">
-                  <div className="totLine">
-                    <div className="k">
-                      {lang === "EN" ? "Subtotal" : "Osnovica"}
-                    </div>
-                    <div className="v">{fmtMoney(baseAmount, ccy)}</div>
-                  </div>
-                  {(vatRate > 0 || isInoInvoice) && (
-                    <>
-                      <div className="totLine">
-                        <div className="k">
-                          {lang === "EN"
-                            ? `VAT (${(vatRate * 100).toFixed(0)}%)`
-                            : `PDV (${(vatRate * 100).toFixed(0)}%)`}
-                        </div>
-                        <div className="v">{fmtMoney(vatAmount, ccy)}</div>
+              <div className="cols2" style={{ marginTop: 14, alignItems: "start" }}>
+                <div>
+                  {fisk ? (
+                    <div className="fiscalBlock">
+                      <div className="fiscalTitle">
+                        {(faktura as any)?.fiskal_qr_code
+                          ? "FISKALNI RAČUN"
+                          : String((faktura as any)?.status ?? "").toUpperCase() === "DODIJELJEN"
+                          ? "FISKALNI RAČUN JE U PRILOGU"
+                          : "FISKALNI RAČUN"}
                       </div>
-                    </>
-                  )}
-                  <div className="totLine total">
-                    <div className="k">
-                      {lang === "EN"
-                        ? t("wizard.previewDoc.en.totalDue")
-                        : t("wizard.previewDoc.bh.totalDue")}
-                    </div>
-                    <div
-                      className="v"
-                      style={
-                        isInoInvoice && String(ccy).trim() === "EUR"
-                          ? {
-                              display: "flex",
-                              flexDirection: "column",
-                              alignItems: "flex-end",
-                            }
-                          : undefined
-                      }
-                    >
-                      {fmtMoney(totalAmount, ccy)}
-                      {isInoInvoice && String(ccy).trim() === "EUR" ? (
-                        <div
-                          style={{
-                            marginTop: 2,
-                            fontSize: 9,
-                            color: "#555",
-                            lineHeight: 1.25,
-                            fontWeight: 500,
-                            textAlign: "right",
-                            width: "100%",
-                          }}
-                        >
-                          BAM equivalent:{" "}
-                          {(
-                            Math.round(totalAmount * EUR_TO_BAM * 100) / 100
-                          ).toFixed(2)}{" "}
-                          BAM
+                      {(faktura as any)?.fiskal_qr_code ? (
+                        <div className="fiscalQrWrap" style={{ margin: "6px 0" }}>
+                          <img
+                            src={(faktura as any).fiskal_qr_code}
+                            alt="QR za provjeru"
+                            width={130}
+                            height={130}
+                            style={{ display: "block" }}
+                          />
                         </div>
                       ) : null}
-                    </div>
-                  </div>
-
-                  <div className="completedLine">
-                    {lang === "EN"
-                      ? `${t("wizard.previewDoc.en.projectCompleted")} ${lastClosed ? fmtDDMMYYYYFromISO(lastClosed) : "—"}`
-                      : `${t("wizard.previewDoc.bh.projectCompleted")} ${lastClosed ? fmtDDMMYYYYFromISO(lastClosed) : "—"}`}
-                  </div>
-
-                  {/* INO fakture BiH: obavezna rečenica o oslobođenju PDV-a */}
-                  {lang === "EN" &&
-                  isBhDoc &&
-                  (vatRate === 0 || isInoInvoice) ? (
-                    <div
-                      style={{
-                        marginTop: 4,
-                        fontSize: 10,
-                        color: "#555",
-                        lineHeight: 1.25,
-                      }}
-                    >
-                      {t("wizard.previewDoc.en.vatExemptionBiH")}
-                    </div>
-                  ) : lang === "EN" && vatRate === 0 ? (
-                    <div
-                      style={{
-                        marginTop: 4,
-                        fontSize: 10,
-                        color: "#555",
-                        lineHeight: 1.25,
-                      }}
-                    >
-                      {t("wizard.previewDoc.en.vatExemption")}
+                      {(faktura as any)?.fiskal_sdc_date_time ? (
+                        <div className="fiscalLine" style={{ fontSize: 11, color: "#000", marginTop: 4 }}>
+                          PFR vrijeme: {(faktura as any).fiskal_sdc_date_time}
+                        </div>
+                      ) : null}
+                      <div className="fiscalLine" style={{ fontSize: 11, color: "#000" }}>
+                        PFR br.rač: {fisk}
+                      </div>
                     </div>
                   ) : null}
+                </div>
 
-                  <div
-                    style={{
-                      marginTop: 4,
-                      fontSize: 10,
-                      color: "#555",
-                      lineHeight: 1.25,
-                    }}
-                  >
-                    {lang === "EN"
-                      ? t("wizard.previewDoc.en.generatedElectronically")
-                      : t("wizard.previewDoc.bh.generatedElectronically")}
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <div className="totalsBox">
+                    <div className="totLine">
+                      <div className="k">
+                        {lang === "EN" ? "Subtotal" : "Osnovica"}
+                      </div>
+                      <div className="v">{fmtMoney(baseAmount, ccy)}</div>
+                    </div>
+                    {(vatRate > 0 || isInoInvoice) && (
+                      <>
+                        <div className="totLine">
+                          <div className="k">
+                            {lang === "EN"
+                              ? `VAT (${(vatRate * 100).toFixed(0)}%)`
+                              : `PDV (${(vatRate * 100).toFixed(0)}%)`}
+                          </div>
+                          <div className="v">{fmtMoney(vatAmount, ccy)}</div>
+                        </div>
+                      </>
+                    )}
+                    <div className="totLine total">
+                      <div className="k">
+                        {lang === "EN"
+                          ? t("wizard.previewDoc.en.totalDue")
+                          : t("wizard.previewDoc.bh.totalDue")}
+                      </div>
+                      <div
+                        className="v"
+                        style={
+                          isInoInvoice && String(ccy).trim() === "EUR"
+                            ? {
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "flex-end",
+                              }
+                            : undefined
+                        }
+                      >
+                        {fmtMoney(totalAmount, ccy)}
+                        {isInoInvoice && String(ccy).trim() === "EUR" ? (
+                          <div
+                            style={{
+                              marginTop: 2,
+                              fontSize: 9,
+                              color: "#555",
+                              lineHeight: 1.25,
+                              fontWeight: 500,
+                              textAlign: "right",
+                              width: "100%",
+                            }}
+                          >
+                            BAM equivalent:{" "}
+                            {(
+                              Math.round(totalAmount * EUR_TO_BAM * 100) / 100
+                            ).toFixed(2)}{" "}
+                            BAM
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="completedLine">
+                      {lang === "EN"
+                        ? `${t("wizard.previewDoc.en.projectCompleted")} ${lastClosed ? fmtDDMMYYYYFromISO(lastClosed) : "—"}`
+                        : `${t("wizard.previewDoc.bh.projectCompleted")} ${lastClosed ? fmtDDMMYYYYFromISO(lastClosed) : "—"}`}
+                    </div>
+
+                    {/* INO fakture BiH: obavezna rečenica o oslobođenju PDV-a */}
+                    {lang === "EN" &&
+                    isBhDoc &&
+                    (vatRate === 0 || isInoInvoice) ? (
+                      <div
+                        style={{
+                          marginTop: 4,
+                          fontSize: 10,
+                          color: "#555",
+                          lineHeight: 1.25,
+                        }}
+                      >
+                        {t("wizard.previewDoc.en.vatExemptionBiH")}
+                      </div>
+                    ) : lang === "EN" && vatRate === 0 ? (
+                      <div
+                        style={{
+                          marginTop: 4,
+                          fontSize: 10,
+                          color: "#555",
+                          lineHeight: 1.25,
+                        }}
+                      >
+                        {t("wizard.previewDoc.en.vatExemption")}
+                      </div>
+                    ) : null}
+
+                    <div
+                      style={{
+                        marginTop: 4,
+                        fontSize: 10,
+                        color: "#555",
+                        lineHeight: 1.25,
+                      }}
+                    >
+                      {lang === "EN"
+                        ? t("wizard.previewDoc.en.generatedElectronically")
+                        : t("wizard.previewDoc.bh.generatedElectronically")}
+                    </div>
                   </div>
                 </div>
               </div>
-
-              {fisk ? (
-                <div className="fiscalSection">
-                  <div className="fiscalBlock">
-                    <div className="fiscalTitle">
-                      {(faktura as any)?.fiskal_qr_code
-                        ? "FISKALNI RAČUN"
-                        : String((faktura as any)?.status ?? "").toUpperCase() === "DODIJELJEN"
-                        ? "FISKALNI RAČUN JE U PRILOGU"
-                        : "FISKALNI RAČUN"}
-                    </div>
-                    {(faktura as any)?.fiskal_qr_code ? (
-                      <div className="fiscalQrWrap" style={{ margin: "6px 0" }}>
-                        <img
-                          src={(faktura as any).fiskal_qr_code}
-                          alt="QR za provjeru"
-                          width={140}
-                          height={140}
-                          style={{ display: "block" }}
-                        />
-                      </div>
-                    ) : null}
-                    {(faktura as any)?.fiskal_sdc_date_time ? (
-                      <div className="fiscalLine" style={{ fontSize: 11, color: "#000", marginTop: 4 }}>
-                        PFR vrijeme: {(faktura as any).fiskal_sdc_date_time}
-                      </div>
-                    ) : null}
-                    <div className="fiscalLine" style={{ fontSize: 11, color: "#000" }}>
-                      PFR br.rač: {fisk}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
 
               <div className="footer">
                 <div className="fluxaSig">

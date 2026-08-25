@@ -855,7 +855,7 @@ export default function Page() {
     if (!el) return;
     const origMinHeight = (el as HTMLElement).style.minHeight;
     el.classList.add("is-pdf-export");
-    (el as HTMLElement).style.minHeight = "auto";
+    (el as HTMLElement).style.minHeight = "277mm";
     const undoPagination = applyInvoicePdfPagination(el);
     try {
       const html2pdf = (await import("html2pdf.js")).default;
@@ -956,6 +956,8 @@ export default function Page() {
           padding: 18mm 16mm;
           box-sizing: border-box;
           overflow-x: hidden;
+          display: flex;
+          flex-direction: column;
         }
         @media (max-width: 980px){
           .paper{ width: min(100%, 210mm); padding: 16px; }
@@ -1087,7 +1089,7 @@ export default function Page() {
 
         /* Footer: samo Made by FLUXA, centrirano pri dnu stranice */
         .footer{
-          margin-top: 18px;
+          margin-top: auto !important;
           padding-top: 10px;
           border-top: 1px solid rgba(0,0,0,.08);
           font-size: 11px;
@@ -1177,7 +1179,7 @@ export default function Page() {
           
           .paper {
             width: auto !important;
-            min-height: auto !important;
+            min-height: 275mm !important;
             max-width: none !important;
             box-sizing: border-box !important;
             overflow-x: hidden !important;
@@ -1189,6 +1191,8 @@ export default function Page() {
             background: #ffffff !important;
             background-color: #ffffff !important;
             color: #000000 !important;
+            display: flex !important;
+            flex-direction: column !important;
             page-break-inside: auto;
           }
           
@@ -1233,27 +1237,21 @@ export default function Page() {
             color: #000 !important;
           }
           
-          .totalsRow {
-            display: flex !important;
-            justify-content: flex-end !important;
+          .cols2 {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 14px !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
 
-          .totalsRow .totalsBox {
+          .totalsBox {
             border: 1px solid #000 !important;
             background: #F7F7F7 !important;
             width: 100% !important;
             max-width: 320px !important;
-            margin-left: auto !important;
-            margin-right: 0 !important;
             padding: 10px 12px !important;
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-          }
-
-          .fiscalSection {
-            margin-top: 20px !important;
+            box-sizing: border-box !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
@@ -1269,6 +1267,7 @@ export default function Page() {
           }
         }
       `}</style>
+      <style jsx global>{INVOICE_PDF_EXPORT_CSS}</style>
 
       <div className="pageWrap">
         <div className="topBlock">
@@ -1641,183 +1640,184 @@ export default function Page() {
                 </table>
               </div>
 
-              <div className="totalsRow">
-                <div className="totalsBox">
-                  <div className="totLine">
-                    <div className="k">
-                      {t(`wizard.previewDoc.${docLang}.subtotal`)}
-                    </div>
-                    <div className="v">{fmtMoney(baseAmount, ccy)}</div>
-                  </div>
-
-                  {popustAmount > 0 && (
-                    <>
-                      <div className="totLine">
-                        <div className="k">
-                          {t(`wizard.previewDoc.${docLang}.discount`)}
-                        </div>
-                        <div className="v">− {fmtMoney(popustAmount, ccy)}</div>
+              <div className="cols2" style={{ marginTop: 14, alignItems: "start" }}>
+                <div>
+                  {isBiHSystem && (fiskalniOdgovor || createdInvoice?.broj_fiskalni) ? (
+                    <div className="fiscalBlock">
+                      <div className="fiscalTitle">
+                        {useFiskalizacijaDropbox &&
+                        fiskalniOdgovor?.verificationQRCode
+                          ? "FISKALNI RAČUN"
+                          : "FISKALNI RAČUN JE U PRILOGU"}
                       </div>
-                      <div className="totLine">
-                        <div className="k">
-                          {t(`wizard.previewDoc.${docLang}.baseAfterDiscount`)}
+                      {fiskalniOdgovor?.verificationQRCode ? (
+                        <div className="fiscalQrWrap" style={{ margin: "6px 0" }}>
+                          <img
+                            src={
+                              fiskalniOdgovor.verificationQRCode.startsWith(
+                                "data:",
+                              )
+                                ? fiskalniOdgovor.verificationQRCode
+                                : fiskalniOdgovor.verificationQRCode
+                            }
+                            alt="QR za provjeru"
+                            width={130}
+                            height={130}
+                            style={{ display: "block" }}
+                          />
                         </div>
-                        <div className="v">
-                          {fmtMoney(baseAfterPopust, ccy)}
+                      ) : null}
+                      {fiskalniOdgovor?.sdcDateTime ? (
+                        <div className="fiscalLine" style={{ fontSize: 11, color: "#000", marginTop: 4 }}>
+                          PFR vrijeme: {fiskalniOdgovor.sdcDateTime}
                         </div>
-                      </div>
-                    </>
-                  )}
-
-                  <div className="totLine">
-                    <div className="k">
-                      {t(`wizard.previewDoc.${docLang}.vat`)}
-                      {vatRate > 0 ? ` (${Math.round(vatRate * 100)}%)` : ""}
-                    </div>
-                    <div className="v">
-                      {vatRate > 0 ? fmtMoney(vatAmount, ccy) : "—"}
-                    </div>
-                  </div>
-
-                  <div className="totLine total">
-                    <div className="k">
-                      {t(`wizard.previewDoc.${docLang}.totalDue`)}
-                    </div>
-                    <div className="v">
-                      {fmtMoney(totalAmount, ccy)}
-                      {isInoInvoice && String(ccy).trim() === "EUR" ? (
-                        <div
-                          style={{
-                            marginTop: 2,
-                            fontSize: 9,
-                            color: "#555",
-                            lineHeight: 1.25,
-                            fontWeight: 500,
-                          }}
-                        >
-                          BAM equivalent:{" "}
-                          {(
-                            Math.round(totalAmount * EUR_TO_BAM * 100) / 100
-                          ).toFixed(2)}{" "}
-                          BAM
+                      ) : null}
+                      {(fiskalniOdgovor?.invoiceNumber ??
+                        createdInvoice?.broj_fiskalni ??
+                        fiskalniOdgovor?.totalCounter) != null ? (
+                        <div className="fiscalLine" style={{ fontSize: 11, color: "#000" }}>
+                          PFR br.rač:{" "}
+                          {String(
+                            fiskalniOdgovor?.invoiceNumber ??
+                              createdInvoice?.broj_fiskalni ??
+                              fiskalniOdgovor?.totalCounter ??
+                              "",
+                          )}
+                        </div>
+                      ) : null}
+                      {fiskalniOdgovor?.invoiceCounter ? (
+                        <div className="fiscalLine" style={{ fontSize: 11, color: "#000" }}>
+                          Brojač računa: {fiskalniOdgovor.invoiceCounter}
                         </div>
                       ) : null}
                     </div>
-                  </div>
-
-                  {/* ✅ Proj completion ovdje, da se “rupa” iznad obračuna zatvori */}
-                  <div className="completedLine">
-                    {lang === "EN"
-                      ? `${t("wizard.previewDoc.en.projectCompleted")} ${lastClosed ? fmtDDMMYYYYFromISO(lastClosed) : "—"}`
-                      : `${t("wizard.previewDoc.bh.projectCompleted")} ${lastClosed ? fmtDDMMYYYYFromISO(lastClosed) : "—"}`}
-                  </div>
-
-                  {lang === "EN" &&
-                  String(vatModeParam || "").toUpperCase() === "INO_0" ? (
-                    <div
-                      style={{
-                        marginTop: 6,
-                        fontSize: 10,
-                        color: "#555",
-                        lineHeight: 1.25,
-                      }}
-                    >
-                      {isBiHSystem
-                        ? t("wizard.previewDoc.en.vatExemptionBiH")
-                        : t("wizard.previewDoc.en.reverseCharge")}
-                    </div>
-                  ) : lang === "EN" ? (
-                    <div
-                      style={{
-                        marginTop: 6,
-                        fontSize: 10,
-                        color: "#555",
-                        lineHeight: 1.25,
-                      }}
-                    >
-                      {isBiHSystem
-                        ? t("wizard.previewDoc.en.vatExemptionBiH")
-                        : t("wizard.previewDoc.en.vatExemption")}
-                    </div>
-                  ) : pdvOslobodjen && buyer?.pdv_oslobodjen_napomena ? (
-                    <div
-                      style={{
-                        marginTop: 6,
-                        fontSize: 10,
-                        color: "#555",
-                        lineHeight: 1.25,
-                      }}
-                    >
-                      {buyer.pdv_oslobodjen_napomena}
-                    </div>
                   ) : null}
-
-                  <div
-                    style={{
-                      marginTop: 6,
-                      fontSize: 10,
-                      color: "#555",
-                      lineHeight: 1.25,
-                    }}
-                  >
-                    {t(`wizard.previewDoc.${docLang}.generatedElectronically`)}
-                  </div>
                 </div>
 
-              </div>
-
-              {isBiHSystem && (fiskalniOdgovor || createdInvoice?.broj_fiskalni) ? (
-                <div className="fiscalSection">
-                  <div className="fiscalBlock">
-                    <div className="fiscalTitle">
-                      {useFiskalizacijaDropbox &&
-                      fiskalniOdgovor?.verificationQRCode
-                        ? "FISKALNI RAČUN"
-                        : "FISKALNI RAČUN JE U PRILOGU"}
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <div className="totalsBox">
+                    <div className="totLine">
+                      <div className="k">
+                        {t(`wizard.previewDoc.${docLang}.subtotal`)}
+                      </div>
+                      <div className="v">{fmtMoney(baseAmount, ccy)}</div>
                     </div>
-                    {fiskalniOdgovor?.verificationQRCode ? (
-                      <div className="fiscalQrWrap" style={{ margin: "6px 0" }}>
-                        <img
-                          src={
-                            fiskalniOdgovor.verificationQRCode.startsWith(
-                              "data:",
-                            )
-                              ? fiskalniOdgovor.verificationQRCode
-                              : fiskalniOdgovor.verificationQRCode
-                          }
-                          alt="QR za provjeru"
-                          width={140}
-                          height={140}
-                          style={{ display: "block" }}
-                        />
+
+                    {popustAmount > 0 && (
+                      <>
+                        <div className="totLine">
+                          <div className="k">
+                            {t(`wizard.previewDoc.${docLang}.discount`)}
+                          </div>
+                          <div className="v">− {fmtMoney(popustAmount, ccy)}</div>
+                        </div>
+                        <div className="totLine">
+                          <div className="k">
+                            {t(`wizard.previewDoc.${docLang}.baseAfterDiscount`)}
+                          </div>
+                          <div className="v">
+                            {fmtMoney(baseAfterPopust, ccy)}
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="totLine">
+                      <div className="k">
+                        {t(`wizard.previewDoc.${docLang}.vat`)}
+                        {vatRate > 0 ? ` (${Math.round(vatRate * 100)}%)` : ""}
+                      </div>
+                      <div className="v">
+                        {vatRate > 0 ? fmtMoney(vatAmount, ccy) : "—"}
+                      </div>
+                    </div>
+
+                    <div className="totLine total">
+                      <div className="k">
+                        {t(`wizard.previewDoc.${docLang}.totalDue`)}
+                      </div>
+                      <div className="v">
+                        {fmtMoney(totalAmount, ccy)}
+                        {isInoInvoice && String(ccy).trim() === "EUR" ? (
+                          <div
+                            style={{
+                              marginTop: 2,
+                              fontSize: 9,
+                              color: "#555",
+                              lineHeight: 1.25,
+                              fontWeight: 500,
+                            }}
+                          >
+                            BAM equivalent:{" "}
+                            {(
+                              Math.round(totalAmount * EUR_TO_BAM * 100) / 100
+                            ).toFixed(2)}{" "}
+                            BAM
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {/* ✅ Proj completion ovdje, da se “rupa” iznad obračuna zatvori */}
+                    <div className="completedLine">
+                      {lang === "EN"
+                        ? `${t("wizard.previewDoc.en.projectCompleted")} ${lastClosed ? fmtDDMMYYYYFromISO(lastClosed) : "—"}`
+                        : `${t("wizard.previewDoc.bh.projectCompleted")} ${lastClosed ? fmtDDMMYYYYFromISO(lastClosed) : "—"}`}
+                    </div>
+
+                    {lang === "EN" &&
+                    String(vatModeParam || "").toUpperCase() === "INO_0" ? (
+                      <div
+                        style={{
+                          marginTop: 6,
+                          fontSize: 10,
+                          color: "#555",
+                          lineHeight: 1.25,
+                        }}
+                      >
+                        {isBiHSystem
+                          ? t("wizard.previewDoc.en.vatExemptionBiH")
+                          : t("wizard.previewDoc.en.reverseCharge")}
+                      </div>
+                    ) : lang === "EN" ? (
+                      <div
+                        style={{
+                          marginTop: 6,
+                          fontSize: 10,
+                          color: "#555",
+                          lineHeight: 1.25,
+                        }}
+                      >
+                        {isBiHSystem
+                          ? t("wizard.previewDoc.en.vatExemptionBiH")
+                          : t("wizard.previewDoc.en.vatExemption")}
+                      </div>
+                    ) : pdvOslobodjen && buyer?.pdv_oslobodjen_napomena ? (
+                      <div
+                        style={{
+                          marginTop: 6,
+                          fontSize: 10,
+                          color: "#555",
+                          lineHeight: 1.25,
+                        }}
+                      >
+                        {buyer.pdv_oslobodjen_napomena}
                       </div>
                     ) : null}
-                    {fiskalniOdgovor?.sdcDateTime ? (
-                      <div className="fiscalLine" style={{ fontSize: 11, color: "#000", marginTop: 4 }}>
-                        PFR vrijeme: {fiskalniOdgovor.sdcDateTime}
-                      </div>
-                    ) : null}
-                    {(fiskalniOdgovor?.invoiceNumber ??
-                      createdInvoice?.broj_fiskalni ??
-                      fiskalniOdgovor?.totalCounter) != null ? (
-                      <div className="fiscalLine" style={{ fontSize: 11, color: "#000" }}>
-                        PFR br.rač:{" "}
-                        {String(
-                          fiskalniOdgovor?.invoiceNumber ??
-                            createdInvoice?.broj_fiskalni ??
-                            fiskalniOdgovor?.totalCounter ??
-                            "",
-                        )}
-                      </div>
-                    ) : null}
-                    {fiskalniOdgovor?.invoiceCounter ? (
-                      <div className="fiscalLine" style={{ fontSize: 11, color: "#000" }}>
-                        Brojač računa: {fiskalniOdgovor.invoiceCounter}
-                      </div>
-                    ) : null}
+
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 10,
+                        color: "#555",
+                        lineHeight: 1.25,
+                      }}
+                    >
+                      {t(`wizard.previewDoc.${docLang}.generatedElectronically`)}
+                    </div>
                   </div>
                 </div>
-              ) : null}
+              </div>
 
               <div className="footer">
                 <div className="fluxaSig">
