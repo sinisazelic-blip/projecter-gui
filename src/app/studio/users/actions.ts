@@ -95,10 +95,26 @@ export async function createUser(input: {
   const passwordNorm = normalizePassword(password);
   const passwordHash = await bcrypt.hash(passwordNorm, BCRYPT_ROUNDS);
 
-  await query(
-    `INSERT INTO users (username, password, role_id, aktivan, radnik_id, created_at, updated_at) VALUES (?,?,?,?,?, NOW(), NOW())`,
-    [username, passwordHash, role_id, aktivan, radnik_id],
-  );
+  try {
+    await query(
+      `INSERT INTO users (username, password, password_hash, role_id, aktivan, radnik_id, created_at, updated_at) VALUES (?,?,?,?,?,?, NOW(), NOW())`,
+      [username, passwordHash, passwordHash, role_id, aktivan, radnik_id],
+    );
+  } catch (err: any) {
+    if (String(err?.message || "").includes("Unknown column 'password_hash'")) {
+      await query(
+        `INSERT INTO users (username, password, role_id, aktivan, radnik_id, created_at, updated_at) VALUES (?,?,?,?,?, NOW(), NOW())`,
+        [username, passwordHash, role_id, aktivan, radnik_id],
+      );
+    } else if (String(err?.message || "").includes("Unknown column 'password'")) {
+      await query(
+        `INSERT INTO users (username, password_hash, role_id, aktivan, radnik_id, created_at, updated_at) VALUES (?,?,?,?,?, NOW(), NOW())`,
+        [username, passwordHash, role_id, aktivan, radnik_id],
+      );
+    } else {
+      throw err;
+    }
+  }
 
   revalidatePath("/studio/users");
   return { ok: true };
@@ -145,20 +161,36 @@ export async function updateUser(input: {
   const hasPassword =
     input?.password !== undefined &&
     String(input.password ?? "").trim().length > 0;
-  let sql: string;
-  let params: any[];
 
   if (hasPassword) {
     const passwordNorm = normalizePassword(String(input.password).trim());
     const passwordHash = await bcrypt.hash(passwordNorm, BCRYPT_ROUNDS);
-    sql = `UPDATE users SET username=?, password=?, role_id=?, aktivan=?, radnik_id=?, updated_at=NOW() WHERE user_id=?`;
-    params = [username, passwordHash, role_id, aktivan, radnik_id, id];
+    try {
+      await query(
+        `UPDATE users SET username=?, password=?, password_hash=?, role_id=?, aktivan=?, radnik_id=?, updated_at=NOW() WHERE user_id=?`,
+        [username, passwordHash, passwordHash, role_id, aktivan, radnik_id, id],
+      );
+    } catch (err: any) {
+      if (String(err?.message || "").includes("Unknown column 'password_hash'")) {
+        await query(
+          `UPDATE users SET username=?, password=?, role_id=?, aktivan=?, radnik_id=?, updated_at=NOW() WHERE user_id=?`,
+          [username, passwordHash, role_id, aktivan, radnik_id, id],
+        );
+      } else if (String(err?.message || "").includes("Unknown column 'password'")) {
+        await query(
+          `UPDATE users SET username=?, password_hash=?, role_id=?, aktivan=?, radnik_id=?, updated_at=NOW() WHERE user_id=?`,
+          [username, passwordHash, role_id, aktivan, radnik_id, id],
+        );
+      } else {
+        throw err;
+      }
+    }
   } else {
-    sql = `UPDATE users SET username=?, role_id=?, aktivan=?, radnik_id=?, updated_at=NOW() WHERE user_id=?`;
-    params = [username, role_id, aktivan, radnik_id, id];
+    await query(
+      `UPDATE users SET username=?, role_id=?, aktivan=?, radnik_id=?, updated_at=NOW() WHERE user_id=?`,
+      [username, role_id, aktivan, radnik_id, id],
+    );
   }
-
-  await query(sql, params);
 
   const [row] = (await query(
     `SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
