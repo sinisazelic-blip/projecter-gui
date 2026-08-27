@@ -3,7 +3,7 @@ import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-// Fallback kad tip_troska ne postoji ili je prazna (npr. demo baza)
+// Fallback kad tip_troska ne postoji ili je prazna
 const DEFAULT_COST_TYPES = [
   { id: 1, name: "Honorar", requires_entity: "TALENT" },
   { id: 2, name: "Ostalo", requires_entity: "NONE" },

@@ -2,7 +2,6 @@ import "./globals.css";
 import "@/lib/ui/common-styles.css";
 import { cookies, headers } from "next/headers";
 import { AuthUserProvider } from "@/components/AuthUserProvider";
-import DemoBadge from "@/components/DemoBadge";
 import { FluxaEditionProvider } from "@/components/FluxaEditionProvider";
 import { GlobalTooltip } from "@/components/GlobalTooltip";
 import LicenceCheckWrapper from "@/components/LicenceCheckWrapper";
@@ -17,15 +16,8 @@ import { runWithSession } from "@/lib/db";
 import { getValidLocale } from "@/lib/i18n";
 import { FLUXA_BUILD_LABEL } from "@/lib/fluxaVersion";
 
-function isDemoInstanceHost(host) {
-  if (!host || typeof host !== "string") return false;
-  return host.includes("demo.studiotaf.xyz") || host.startsWith("demo.");
-}
-
 function getFaviconPath(host) {
   if (!host || typeof host !== "string") return "/fluxa/Icon.ico";
-  if (host.includes("demo.studiotaf.xyz") || host.startsWith("demo."))
-    return "/fluxa/Icon-demo.png";
   if (
     host === "localhost" ||
     host.startsWith("127.0.0.1") ||
@@ -38,10 +30,8 @@ function getFaviconPath(host) {
 export async function generateMetadata() {
   const headersList = await headers();
   const host = headersList.get("host") || "";
-  const isDemo =
-    host.includes("demo.studiotaf.xyz") || host.startsWith("demo.");
   return {
-    title: isDemo ? "Fluxa - DEMO" : "Fluxa · P&FE",
+    title: "Fluxa · P&FE",
     description: "Fluxa — upravljanje projektima i finansijama (GUI).",
     icons: {
       icon: getFaviconPath(host),
@@ -52,11 +42,7 @@ export async function generateMetadata() {
 export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
   const headersList = await headers();
-  const host = headersList.get("host") || "";
-  const forceEnForDemo = isDemoInstanceHost(host);
-  const locale = forceEnForDemo
-    ? "en"
-    : getValidLocale(cookieStore.get("NEXT_LOCALE")?.value ?? "sr");
+  const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value ?? "sr");
   const lang = locale === "en" ? "en" : "bs";
   const token = cookieStore.get(COOKIE_NAME)?.value;
   const session = token ? verifySessionToken(token) : null;
@@ -75,14 +61,10 @@ export default async function RootLayout({ children }) {
         />
       </head>
       <body>
-        <DemoBadge show={forceEnForDemo} />
         <PerformanceMeasurePatch />
         <ThemeProvider>
-          <LocaleProvider
-            initialLocale={locale}
-            forceLocale={forceEnForDemo ? "en" : undefined}
-          >
-            <FluxaEditionProvider initialDemoInstance={forceEnForDemo}>
+          <LocaleProvider initialLocale={locale}>
+            <FluxaEditionProvider>
               <LicenceCheckWrapper>
                 <AuthUserProvider>
                   <GlobalTooltip />

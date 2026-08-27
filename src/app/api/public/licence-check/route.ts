@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { buildLicenceWarnings } from "@/lib/licence-alerts/thresholds";
+import { isLiveTenantStatus } from "@/lib/tenant-licence-status";
 
 export const dynamic = "force-dynamic";
 
@@ -94,7 +95,7 @@ export async function GET(req: Request) {
     const meetRem = Number(row.meet_remaining ?? 0);
     const hasSoccs = Boolean(String(row.soccs_tier ?? "").trim());
 
-    const dateOk = Number.isFinite(days) && days >= 0 && st === "AKTIVAN";
+    const dateOk = Number.isFinite(days) && days >= 0 && isLiveTenantStatus(st);
     const allowed = dateOk;
 
     const reason = allowed
@@ -135,6 +136,7 @@ export async function GET(req: Request) {
       reason,
       tenant_id: row.tenant_id,
       naziv: row.naziv,
+      status: st,
       subscription_ends_at: row.subscription_ends_at,
       days_until_end: days,
       meet_remaining: meetRem,

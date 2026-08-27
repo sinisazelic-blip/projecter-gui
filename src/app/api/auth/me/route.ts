@@ -54,7 +54,6 @@ export async function GET(req: NextRequest) {
         role_id: number | null;
         role_naziv: string | null;
         nivo: number;
-        isDemo?: boolean;
         bootstrap?: boolean;
         acl?: Record<string, string> | null;
       };
@@ -68,7 +67,6 @@ export async function GET(req: NextRequest) {
         role_id: session.role_id,
         role_naziv: roleNaziv,
         nivo: session.nivo,
-        isDemo: session.isDemo === true,
         bootstrap: session.bootstrap === true,
         acl,
       },

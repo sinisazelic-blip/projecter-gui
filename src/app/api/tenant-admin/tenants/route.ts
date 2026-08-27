@@ -3,6 +3,12 @@ import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
 import { query } from "@/lib/db";
 import {
+  calculateEnterSysMonthly,
+  ensureEnterSysCjenovnikTable,
+  listEnterSysCjenovnik,
+} from "@/lib/entersys-cjenovnik";
+import { getEnterSysBasePackage, isEnterSysBasePackageId } from "@/lib/entersys-activation";
+import {
   normalizeStudioLicenceProfile,
   STUDIO_STUB_NO_FLUXA_PLAN_NAZIV,
 } from "@/lib/studio-licence-profile";
@@ -350,6 +356,8 @@ export async function POST(req: NextRequest) {
     soccs_platform_role?: string | null;
     soccs_platform_scope?: string | null;
     studio_licence_profile?: string | null;
+    status?: string;
+    is_pilot?: boolean;
   };
   try {
     body = await req.json();
@@ -456,9 +464,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const wantsPilot =
+    body?.is_pilot === true ||
+    String(body?.status ?? "")
+      .trim()
+      .toUpperCase() === "PILOT";
+  const tenantStatus = wantsPilot ? "PILOT" : "AKTIVAN";
+
   const rawPrice = body?.monthly_price;
-  const monthlyPrice =
-    rawPrice != null && rawPrice !== "" ? Number(rawPrice) : null;
+  let monthlyPrice = wantsPilot
+    ? 0
+    : rawPrice != null && rawPrice !== ""
+      ? Number(rawPrice)
+      : null;
   const currency =
     typeof body?.currency === "string"
       ? body.currency.trim().slice(0, 3) || null
@@ -479,9 +497,10 @@ export async function POST(req: NextRequest) {
     "SWIMVOICE",
   ];
   let soccsTier: string | null = null;
-  if (profile === "FLUXA_ONLY" || profile === "DOCENTRE" || profile === "ENTERSYS") {
-    // Dokumentar / EnterSYS ne koriste SOCCS tier — samo first-install kod + dani do isteka (gdje primjenjivo).
+  if (profile === "FLUXA_ONLY" || profile === "DOCENTRE") {
     soccsTier = null;
+  } else if (profile === "ENTERSYS") {
+    soccsTier = isEnterSysBasePackageId(soccsTierRaw) ? soccsTierRaw : null;
   } else if (profile === "SOCCS_SWIMVOICE") {
     if (!soccsTierRaw || !allowedTier.includes(soccsTierRaw)) {
       return NextResponse.json(
@@ -514,9 +533,38 @@ export async function POST(req: NextRequest) {
       : "";
   let soccsPlatformScope = scopeRaw || null;
 
-  if (profile === "FLUXA_ONLY" || profile === "DOCENTRE" || profile === "ENTERSYS") {
+  if (profile === "FLUXA_ONLY" || profile === "DOCENTRE") {
     soccsPlatformRole = null;
     soccsPlatformScope = null;
+  }
+  if (profile === "ENTERSYS") {
+    soccsPlatformRole = null;
+    if (!soccsPlatformScope && soccsTier) {
+      const pkg = getEnterSysBasePackage(soccsTier);
+      const modules = ["enterCore"];
+      if (pkg && pkg.managerModule !== "enterCore") {
+        modules.push(pkg.managerModule);
+      }
+      soccsPlatformScope = modules.join(",");
+    }
+    if (!wantsPilot) {
+      try {
+        await ensureEnterSysCjenovnikTable();
+        const catalog = await listEnterSysCjenovnik();
+        const calc = calculateEnterSysMonthly({
+          packageId: soccsTier,
+          moduleKeys: String(soccsPlatformScope ?? "")
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+          currency,
+          catalog,
+        });
+        monthlyPrice = calc.total;
+      } catch {
+        // ostavi wizard cijenu
+      }
+    }
   }
 
   // tenants.klijent_id postoji tek nakon migracije — upiši samo ako kolona postoji.
@@ -539,7 +587,7 @@ export async function POST(req: NextRequest) {
     const brojBlagajni = body?.broj_blagajni != null && Number.isInteger(Number(body.broj_blagajni)) && Number(body.broj_blagajni) > 0 ? Number(body.broj_blagajni) : 1;
     const res = await query(
       `INSERT INTO tenants (naziv, plan_id, max_users, broj_blagajni, subscription_starts_at, subscription_ends_at, status, licence_token, monthly_price, currency, tenant_public_id, studio_licence_profile, soccs_tier, soccs_platform_role, soccs_platform_scope${klijentCol})
-       VALUES (?, ?, ?, ?, ?, ?, 'AKTIVAN', ?, ?, ?, ?, ?, ?, ?, ?${klijentPlc})`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${klijentPlc})`,
       [
         naziv,
         planId,
@@ -547,6 +595,7 @@ export async function POST(req: NextRequest) {
         brojBlagajni,
         startRaw,
         endRaw,
+        tenantStatus,
         licenceToken,
         monthlyPrice ?? null,
         currency,

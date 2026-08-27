@@ -10,8 +10,6 @@ export type SessionPayload = {
   nivo: number;
   bootstrap?: boolean;
   mustChangePassword?: boolean;
-  /** true = svi DB upiti idu na demo bazu (DEMO_DB_NAME); false ili nedefinirano = studio baza (DB_NAME) */
-  isDemo?: boolean;
   exp: number;
 };
 

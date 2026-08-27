@@ -5,7 +5,6 @@ import { useState } from "react";
 
 /** Login page uvijek na engleskom – "ulazna vrata", bez čekanja na prevod. */
 const L = {
-  credentialsHint: "To access the DEMO version, enter: demo / demo",
   labelUsername: "Username",
   placeholderUsername: "Enter username",
   labelPassword: "Password",
@@ -14,7 +13,7 @@ const L = {
   submitLoading: "Signing in…",
 };
 
-export default function LoginForm({ isDemoInstance = false }) {
+export default function LoginForm() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -98,23 +97,6 @@ export default function LoginForm({ isDemoInstance = false }) {
         maxWidth: 320,
       }}
     >
-      {isDemoInstance && (
-        <div
-          style={{
-            width: "100%",
-            padding: "12px 16px",
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 10,
-            fontSize: 14,
-            color: "var(--muted)",
-            textAlign: "center",
-            fontFamily: "monospace",
-          }}
-        >
-          {L.credentialsHint}
-        </div>
-      )}
       <div style={{ width: "100%" }}>
         <label
           htmlFor="login-user"

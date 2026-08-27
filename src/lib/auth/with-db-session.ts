@@ -5,8 +5,7 @@ import type { SessionPayload } from "@/lib/auth/session";
 import { runWithSession } from "@/lib/db";
 
 /**
- * Za API rute koje koriste bazu: osigurava da query()/pool koriste ispravan pool (demo vs studio)
- * prema session.isDemo. Dohvati session iz cookie i pokreni handler unutar runWithSession.
+ * Za API rute koje koriste bazu: dohvati session iz cookie i pokreni handler unutar runWithSession.
  */
 export async function withDbSession(
   req: NextRequest,

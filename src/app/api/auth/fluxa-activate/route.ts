@@ -92,7 +92,6 @@ export async function POST(req: NextRequest) {
     username: session.username,
     role_id: session.role_id,
     nivo: session.nivo,
-    isDemo: false,
     bootstrap: true,
     mustChangePassword: true,
   });

@@ -13,11 +13,27 @@ import {
   type StudioLicenceProfile,
   type TenantProductTab,
 } from "@/lib/studio-licence-profile";
+import {
+  applyEnterSysPackageToModules,
+  ENTERSYS_BASE_PACKAGES,
+  getEnterSysBasePackage,
+  resolveEnterSysBasePackageId,
+  type EnterSysBasePackageId,
+} from "@/lib/entersys-activation";
+import {
+  amountForCurrency,
+  calculateEnterSysMonthly,
+  calculateEnterSysMonthlyForTenant,
+  displayEnterSysCurrency,
+  normalizeEnterSysCurrency,
+  type EnterSysCjenovnikRow,
+} from "@/lib/entersys-cjenovnik-calc";
+import { restoreStatusAfterSuspend } from "@/lib/tenant-licence-status";
 
 import { useAuthUser } from "@/components/AuthUserProvider";
 
 const USER_LIMIT_OPTIONS = [1, 3, 5, 10, 50, 101] as const; // 101 = 100+
-const CURRENCY_OPTIONS = ["EUR", "KM"];
+const CURRENCY_OPTIONS = ["KM", "EUR", "USD"];
 
 const SOCCS_TIER_OPTIONS = [
   "BASIC",
@@ -114,6 +130,7 @@ export default function LicenceClient() {
   const [newTenantEnd, setNewTenantEnd] = useState("");
   const [newTenantPrice, setNewTenantPrice] = useState("");
   const [newTenantCurrency, setNewTenantCurrency] = useState("EUR");
+  const [newTenantPilot, setNewTenantPilot] = useState(false);
   const [newTenantSaving, setNewTenantSaving] = useState(false);
   const [statusSavingId, setStatusSavingId] = useState<number | null>(null);
   const [tokenModalRow, setTokenModalRow] = useState<TenantRow | null>(null);
@@ -167,11 +184,25 @@ export default function LicenceClient() {
 
   const [enterSysModalRow, setEnterSysModalRow] = useState<TenantRow | null>(null);
   const [enterSysModulesDraft, setEnterSysModulesDraft] = useState<Record<string, boolean>>({});
+  const [enterSysPackageDraft, setEnterSysPackageDraft] =
+    useState<EnterSysBasePackageId>("POOL_MANAGER");
   const [enterSysSaving, setEnterSysSaving] = useState(false);
+  const [enterSysCurrencyDraft, setEnterSysCurrencyDraft] = useState("KM");
+  const [enterSysCatalog, setEnterSysCatalog] = useState<EnterSysCjenovnikRow[]>(
+    [],
+  );
+  const [cjenovnikOpen, setCjenovnikOpen] = useState(false);
+  const [cjenovnikDraft, setCjenovnikDraft] = useState<EnterSysCjenovnikRow[]>(
+    [],
+  );
+  const [cjenovnikSaving, setCjenovnikSaving] = useState(false);
+  const [newTenantEnterSysPackage, setNewTenantEnterSysPackage] =
+    useState<EnterSysBasePackageId>("POOL_MANAGER");
 
   const openEnterSysModulesModal = (row: TenantRow) => {
     setEnterSysModalRow(row);
     setEnterSysBlagajniDraft(row.broj_blagajni ?? 1);
+    setEnterSysCurrencyDraft(row.currency || "KM");
     const scopeStr = String(row.soccs_platform_scope ?? "").trim();
     const active = scopeStr ? scopeStr.split(",").map((s) => s.trim()) : [];
     const hasFilter = active.length > 0;
@@ -185,6 +216,9 @@ export default function LicenceClient() {
       }
     }
     setEnterSysModulesDraft(draft);
+    setEnterSysPackageDraft(
+      resolveEnterSysBasePackageId(row) ?? "POOL_MANAGER",
+    );
   };
 
   const handleEnterSysSave = async () => {
@@ -194,6 +228,14 @@ export default function LicenceClient() {
       const selected = ALL_ENTERSYS_MODULE_KEYS
         .filter((item) => enterSysModulesDraft[item.key])
         .map((item) => item.key);
+      const calc = calculateEnterSysMonthly({
+        packageId: enterSysPackageDraft,
+        moduleKeys: selected,
+        currency: enterSysCurrencyDraft,
+        catalog: enterSysCatalog,
+      });
+      const isPilot =
+        String(enterSysModalRow.status).toUpperCase() === "PILOT";
 
       const res = await fetch(
         `/api/tenant-admin/tenants/${enterSysModalRow.tenant_id}`,
@@ -201,8 +243,11 @@ export default function LicenceClient() {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            soccs_tier: enterSysPackageDraft,
             soccs_platform_scope: selected.join(","),
             broj_blagajni: enterSysBlagajniDraft,
+            currency: enterSysCurrencyDraft,
+            monthly_price: isPilot ? 0 : calc.total,
           }),
         },
       );
@@ -219,6 +264,46 @@ export default function LicenceClient() {
       setEnterSysSaving(false);
     }
   };
+
+  const handleCjenovnikSave = async () => {
+    setCjenovnikSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/tenant-admin/entersys-cjenovnik", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: cjenovnikDraft }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setEnterSysCatalog(data.items ?? []);
+        setCjenovnikOpen(false);
+      } else {
+        setError(data.error ?? t("common.error"));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCjenovnikSaving(false);
+    }
+  };
+
+  const catalogAmountForPackage = (
+    packageId: string,
+    currency: string,
+  ): number | null => {
+    const row = enterSysCatalog.find(
+      (r) => String(r.stavka_key).toUpperCase() === packageId.toUpperCase(),
+    );
+    if (!row) return null;
+    return amountForCurrency(row, currency);
+  };
+
+  const catalogRowForModule = (moduleKey: string) =>
+    enterSysCatalog.find(
+      (r) => r.module_key === moduleKey && Number(r.aktivan) === 1,
+    ) ?? null;
+
   const [soccsMeetSponsor, setSoccsMeetSponsor] = useState<number | "">("");
   const [soccsMeetNote, setSoccsMeetNote] = useState("");
   const [soccsGenBusy, setSoccsGenBusy] = useState(false);
@@ -227,16 +312,20 @@ export default function LicenceClient() {
     setLoading(true);
     setError(null);
     try {
-      const [tr, pr, kr] = await Promise.all([
+      const [tr, pr, kr, cj] = await Promise.all([
         fetch("/api/tenant-admin/tenants").then((r) => r.json()),
         fetch("/api/tenant-admin/plans").then((r) => r.json()),
         fetch("/api/klijenti")
+          .then((r) => r.json())
+          .catch(() => ({ ok: false })),
+        fetch("/api/tenant-admin/entersys-cjenovnik")
           .then((r) => r.json())
           .catch(() => ({ ok: false })),
       ]);
       if (tr.ok) setTenants(tr.tenants ?? []);
       else setError(tr.error ?? t("common.errorLoad"));
       if (pr.ok) setPlans(pr.plans ?? []);
+      if (cj.ok) setEnterSysCatalog(cj.items ?? []);
       if (kr.ok) {
         // Tenant se naplaćuje kroz fakturisanje — nude se samo aktivni naručioci.
         const rows = (kr.rows ?? []) as KlijentOption[];
@@ -273,14 +362,19 @@ export default function LicenceClient() {
     setNewTenantEnd("");
     setNewTenantPrice("");
     setNewTenantCurrency("EUR");
+    setNewTenantPilot(false);
     setNewTenantSoccsTier("");
+    setNewTenantEnterSysPackage("POOL_MANAGER");
   };
 
   const openNewTenantWizard = () => {
     resetTenantWizard();
     // Dokumentar / EnterSYS tab: profil je jednoznačan, preskačemo izbor.
     if (activeTab === "DOCENTRE") setWizardProfile("DOCENTRE");
-    if (activeTab === "ENTERSYS") setWizardProfile("ENTERSYS");
+    if (activeTab === "ENTERSYS") {
+      setWizardProfile("ENTERSYS");
+      setNewTenantCurrency("KM");
+    }
     setNewTenantOpen(true);
   };
 
@@ -421,14 +515,30 @@ export default function LicenceClient() {
 
   const handleSetStatus = async (
     tenantId: number,
-    status: "SUSPENDOVAN" | "AKTIVAN",
+    status: "SUSPENDOVAN" | "AKTIVAN" | "PILOT",
+    row?: TenantRow,
   ) => {
     setStatusSavingId(tenantId);
     try {
+      const body: {
+        status: string;
+        monthly_price?: number;
+      } = { status };
+      if (
+        row &&
+        (status === "AKTIVAN" || status === "PILOT") &&
+        resolveDisplayStudioProfile(row) === "ENTERSYS"
+      ) {
+        const calc = calculateEnterSysMonthlyForTenant(
+          { ...row, status },
+          enterSysCatalog,
+        );
+        body.monthly_price = calc.billedTotal;
+      }
       const res = await fetch(`/api/tenant-admin/tenants/${tenantId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (data.ok) await load();
@@ -466,12 +576,24 @@ export default function LicenceClient() {
           max_users: newTenantMaxUsers,
           subscription_starts_at: newTenantStart,
           subscription_ends_at: newTenantEnd,
-          monthly_price: newTenantPrice.trim() ? Number(newTenantPrice) : null,
-          currency: newTenantPrice.trim() ? newTenantCurrency : null,
+          is_pilot: newTenantPilot,
+          monthly_price: newTenantPilot
+            ? 0
+            : newTenantPrice.trim()
+              ? Number(newTenantPrice)
+              : null,
+          currency:
+            wizardProfile === "ENTERSYS" ||
+            newTenantPilot ||
+            newTenantPrice.trim()
+              ? newTenantCurrency
+              : null,
           soccs_tier:
             wizardProfile === "FLUXA_ONLY"
               ? null
-              : newTenantSoccsTier.trim() || null,
+              : wizardProfile === "ENTERSYS"
+                ? newTenantEnterSysPackage
+                : newTenantSoccsTier.trim() || null,
           studio_licence_profile: wizardProfile,
         }),
       });
@@ -671,6 +793,21 @@ export default function LicenceClient() {
     return `${Number(row.monthly_price)} ${curr}`;
   };
 
+  const formatDateBiH = (raw: string | null | undefined) => {
+    const s = String(raw ?? "").trim().slice(0, 10);
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if (!m) return raw?.trim() ? String(raw) : "—";
+    return `${m[3]}.${m[2]}.${m[1]}`;
+  };
+
+  const formatEnterSysPrice = (row: TenantRow) => {
+    const calc = calculateEnterSysMonthlyForTenant(row, enterSysCatalog);
+    if (calc.isPilot) {
+      return `0 ${calc.displayCurrency} (${t("studioLicence.enterSysPilotPriceHint")} ${calc.total} ${calc.displayCurrency})`;
+    }
+    return `${calc.billedTotal} ${calc.displayCurrency}`;
+  };
+
   /** Tab u kojem se red prikazuje — svaki proizvod ima svoj sloj. */
   const rowVisibleInTab = (row: TenantRow, tab: TenantProductTab) =>
     profileToTabs(resolveDisplayStudioProfile(row)).includes(tab);
@@ -689,6 +826,12 @@ export default function LicenceClient() {
       return {
         color: "#ef4444",
         title: t("studioLicence.lampTitleRed"),
+      };
+    }
+    if (st === "PILOT") {
+      return {
+        color: "#38bdf8",
+        title: t("studioLicence.lampTitlePilot"),
       };
     }
     if (Number(row.days_until_end) < 0) {
@@ -725,6 +868,41 @@ export default function LicenceClient() {
           : t("studioLicence.lampTitleGreen"),
     };
   };
+
+  const renderStatusCell = (
+    row: TenantRow,
+    lamp: { color: string; title: string },
+    size = 12,
+  ) => (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <span
+        role="img"
+        aria-label={lamp.title}
+        title={`${lamp.title} (${row.status})`}
+        style={{
+          display: "inline-block",
+          width: size,
+          height: size,
+          borderRadius: 999,
+          background: lamp.color,
+          boxShadow: `0 0 0 2px rgba(255,255,255,0.2)`,
+          verticalAlign: "middle",
+        }}
+      />
+      {String(row.status).toUpperCase() === "PILOT" ? (
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.04em",
+            color: "#38bdf8",
+          }}
+        >
+          {t("studioLicence.statusPilot")}
+        </span>
+      ) : null}
+    </span>
+  );
 
   if (loading) {
     return <p style={{ padding: 24 }}>{t("common.loading")}</p>;
@@ -852,9 +1030,23 @@ export default function LicenceClient() {
             gap: 8,
           }}
         >
-          <button type="button" className="btn" onClick={openNewTenantWizard}>
-            {t("studioLicence.newTenant")}
-          </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button type="button" className="btn" onClick={openNewTenantWizard}>
+              {t("studioLicence.newTenant")}
+            </button>
+            {activeTab === "ENTERSYS" && (
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setCjenovnikDraft(enterSysCatalog.map((r) => ({ ...r })));
+                  setCjenovnikOpen(true);
+                }}
+              >
+                {t("studioLicence.enterSysCjenovnik")}
+              </button>
+            )}
+          </div>
           <p
             style={{
               margin: 0,
@@ -876,12 +1068,12 @@ export default function LicenceClient() {
                 <th style={thTd}>Naziv Tenanta</th>
                 <th style={thTd}>Kontekst Objekta</th>
                 <th style={thTd}>Prodajne Instance (Blagajne)</th>
-                <th style={thTd}>Paket / Tier</th>
+                <th style={thTd}>Režim</th>
                 {!isKasicaRole && <th style={thTd}>Cijena / Način Naplate</th>}
                 <th style={thTd}>Ističe Datum</th>
                 <th style={thTd}>Dana do Isteka</th>
                 <th style={thTd}>Stanje</th>
-                <th style={thFlux}>Aktivni Moduli</th>
+                <th style={thFlux}>{t("studioLicence.enterSysModulesCol")}</th>
                 <th style={thFluxCont}>Licencni Token</th>
                 {!isKasicaRole && <th style={{ ...thTd, textAlign: "center" }}>Akcije</th>}
               </tr>
@@ -974,7 +1166,7 @@ export default function LicenceClient() {
                     style={{ cursor: "default" }}
                     onDoubleClick={(e) => {
                       const el = e.target as HTMLElement;
-                      if (el.closest("button")) return;
+                      if (el.closest("button, select, input, label")) return;
                       openContactModal(row);
                     }}
                   >
@@ -995,7 +1187,15 @@ export default function LicenceClient() {
                               textTransform: "uppercase",
                             }}
                           >
-                            {row.tenant_context ? String(row.tenant_context).toUpperCase() : "BAZEN"}
+                            {(() => {
+                              const pkg = getEnterSysBasePackage(
+                                resolveEnterSysBasePackageId(row),
+                              );
+                              const ctx = pkg?.context;
+                              return ctx
+                                ? `${String(ctx).toUpperCase()} · ${pkg?.label ?? ""}`
+                                : pkg?.label ?? "—";
+                            })()}
                           </span>
                         </td>
                         <td style={thTd}>
@@ -1016,9 +1216,57 @@ export default function LicenceClient() {
                             🖥️ {row.broj_blagajni ?? 1} {(row.broj_blagajni ?? 1) === 1 ? "blagajna" : "blagajne"}
                           </span>
                         </td>
-                        <td style={thTd}>{row.soccs_tier || "ENTERPRISE"}</td>
-                        {!isKasicaRole && <td style={thTd}>{formatPrice(row)}</td>}
-                        <td style={thTd}>{row.subscription_ends_at || "—"}</td>
+                        <td style={thTd}>
+                          {isKasicaRole ? (
+                            String(row.status).toUpperCase() === "PILOT"
+                              ? t("studioLicence.rezimPilot")
+                              : t("studioLicence.rezimNormal")
+                          ) : (
+                            <select
+                              value={
+                                String(row.status).toUpperCase() === "PILOT"
+                                  ? "PILOT"
+                                  : "NORMAL"
+                              }
+                              disabled={
+                                statusSavingId === row.tenant_id ||
+                                String(row.status).toUpperCase() ===
+                                  "SUSPENDOVAN"
+                              }
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                const next =
+                                  e.target.value === "PILOT"
+                                    ? "PILOT"
+                                    : "AKTIVAN";
+                                handleSetStatus(row.tenant_id, next, row);
+                              }}
+                              title={t("studioLicence.rezimHint")}
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: 8,
+                                background: "rgba(15, 23, 42, 0.7)",
+                                border: "1px solid var(--border)",
+                                color: "inherit",
+                                fontSize: 12,
+                                fontWeight: 700,
+                              }}
+                            >
+                              <option value="NORMAL">
+                                {t("studioLicence.rezimNormal")}
+                              </option>
+                              <option value="PILOT">
+                                {t("studioLicence.rezimPilot")}
+                              </option>
+                            </select>
+                          )}
+                        </td>
+                        {!isKasicaRole && (
+                          <td style={thTd}>{formatEnterSysPrice(row)}</td>
+                        )}
+                        <td style={thTd}>
+                          {formatDateBiH(row.subscription_ends_at)}
+                        </td>
                         <td style={thTd}>
                           {row.days_until_end > 0
                             ? row.days_until_end
@@ -1026,26 +1274,34 @@ export default function LicenceClient() {
                               ? "0"
                               : t("studioLicence.expired")}
                         </td>
-                        <td style={thTd}>
-                          <span
-                            role="img"
-                            aria-label={lamp.title}
-                            title={`${lamp.title} (${row.status})`}
-                            style={{
-                              display: "inline-block",
-                              width: 12,
-                              height: 12,
-                              borderRadius: 999,
-                              background: lamp.color,
-                              boxShadow: `0 0 0 2px rgba(255,255,255,0.2)`,
-                              verticalAlign: "middle",
-                            }}
-                          />
-                        </td>
+                        <td style={thTd}>{renderStatusCell(row, lamp, 12)}</td>
                         <td style={tdFlux}>
-                          <span style={{ fontSize: 10, opacity: 0.9 }}>
-                            Core, POS, Lockers, Rentals, MojTV
-                          </span>
+                          {isKasicaRole ? (
+                            <span style={{ fontSize: 10, opacity: 0.9 }}>
+                              {String(row.soccs_platform_scope ?? "")
+                                .split(",")
+                                .map((s) => s.trim())
+                                .filter(Boolean)
+                                .join(", ") || "—"}
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn"
+                              style={{
+                                fontSize: 11,
+                                padding: "4px 8px",
+                                color: "#c084fc",
+                                borderColor: "rgba(192, 132, 252, 0.45)",
+                                background: "rgba(168, 85, 247, 0.12)",
+                                whiteSpace: "nowrap",
+                              }}
+                              onClick={() => openEnterSysModulesModal(row)}
+                              title="Upravljaj zakupljenim EnterSYS modulima"
+                            >
+                              {t("studioLicence.enterSysModulesCol")}
+                            </button>
+                          )}
                         </td>
                         <td style={tdFluxCont}>
                           <code style={{ fontSize: 10, opacity: 0.85 }}>
@@ -1056,14 +1312,107 @@ export default function LicenceClient() {
                         </td>
                         {!isKasicaRole && (
                           <td style={{ ...thTd, textAlign: "center" }}>
-                            <button
-                              type="button"
-                              className="btn btn-sm"
-                              style={{ fontSize: 11, padding: "2px 8px" }}
-                              onClick={() => openContactModal(row)}
+                            <div
+                              style={{
+                                display: "flex",
+                                flexWrap: "nowrap",
+                                gap: 6,
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
                             >
-                              Upravljaj
-                            </button>
+                              <button
+                                type="button"
+                                className="btn"
+                                style={{ fontSize: 11, padding: "4px 8px" }}
+                                onClick={() => setTokenModalRow(row)}
+                                title={t("studioLicence.tokenTooltip")}
+                              >
+                                {row.licence_token
+                                  ? "🔑 Token"
+                                  : t("studioLicence.noToken")}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn"
+                                style={{
+                                  fontSize: 11,
+                                  padding: "4px 8px",
+                                  color: "#60a5fa",
+                                  borderColor: "rgba(96, 165, 250, 0.45)",
+                                  background: "rgba(59, 130, 246, 0.12)",
+                                  whiteSpace: "nowrap",
+                                }}
+                                onClick={() => openExtendModal(row)}
+                                title={t("studioLicence.extend")}
+                              >
+                                {t("studioLicence.enterSysValidTo")}
+                              </button>
+                              {String(row.status).toUpperCase() ===
+                              "SUSPENDOVAN" ? (
+                                <button
+                                  type="button"
+                                  className="btn"
+                                  style={{
+                                    fontSize: 11,
+                                    padding: "4px 8px",
+                                    color: "#f8fafc",
+                                    borderColor: "rgba(248, 250, 252, 0.35)",
+                                    background: "rgba(148, 163, 184, 0.2)",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                  disabled={statusSavingId === row.tenant_id}
+                                  onClick={() =>
+                                    handleSetStatus(
+                                      row.tenant_id,
+                                      restoreStatusAfterSuspend(
+                                        row.monthly_price,
+                                      ),
+                                      row,
+                                    )
+                                  }
+                                  title={t("studioLicence.restoreAccess")}
+                                >
+                                  {statusSavingId === row.tenant_id
+                                    ? t("common.loading")
+                                    : t("studioLicence.enterSysLive")}
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn"
+                                  style={{
+                                    fontSize: 11,
+                                    padding: "4px 8px",
+                                    color: "#f87171",
+                                    borderColor: "rgba(248, 113, 113, 0.45)",
+                                    background: "rgba(239, 68, 68, 0.12)",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                  disabled={statusSavingId === row.tenant_id}
+                                  onClick={() =>
+                                    handleSetStatus(
+                                      row.tenant_id,
+                                      "SUSPENDOVAN",
+                                      row,
+                                    )
+                                  }
+                                  title={`${t("studioLicence.suspendAccess")} (${t("studioLicence.suspendAppliesToAll")})`}
+                                >
+                                  {statusSavingId === row.tenant_id
+                                    ? t("common.loading")
+                                    : t("studioLicence.enterSysKill")}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="btn btn-sm"
+                                style={{ fontSize: 11, padding: "2px 8px" }}
+                                onClick={() => openContactModal(row)}
+                              >
+                                Upravljaj
+                              </button>
+                            </div>
                           </td>
                         )}
                       </>
@@ -1099,7 +1448,9 @@ export default function LicenceClient() {
                           </span>
                         </td>
                         <td style={thTd}>{formatPrice(row)}</td>
-                        <td style={thTd}>{row.subscription_ends_at}</td>
+                        <td style={thTd}>
+                          {formatDateBiH(row.subscription_ends_at)}
+                        </td>
                         <td style={thTd}>
                           {row.days_until_end > 0
                             ? row.days_until_end
@@ -1128,22 +1479,7 @@ export default function LicenceClient() {
                                   ? ` (${t("studioLicence.meetAnnualLeft").replace("{{n}}", String(row.meets_remaining_year))})`
                                   : "")}
                         </td>
-                        <td style={thTd}>
-                          <span
-                            role="img"
-                            aria-label={lamp.title}
-                            title={`${lamp.title} (${row.status})`}
-                            style={{
-                              display: "inline-block",
-                              width: 14,
-                              height: 14,
-                              borderRadius: 999,
-                              background: lamp.color,
-                              boxShadow: `0 0 0 2px rgba(255,255,255,0.2)`,
-                              verticalAlign: "middle",
-                            }}
-                          />
-                        </td>
+                        <td style={thTd}>{renderStatusCell(row, lamp, 14)}</td>
                         <td style={tdFlux}>
                           {dp === "SOCCS_SWIMVOICE" ||
                           dp === "DOCENTRE" ||
@@ -1166,6 +1502,8 @@ export default function LicenceClient() {
                         </td>
                       </>
                     )}
+                    {activeTab !== "ENTERSYS" && (
+                    <>
                     <td style={tdFluxCont}>
                       <button
                         type="button"
@@ -1217,7 +1555,7 @@ export default function LicenceClient() {
                             onClick={() => openEnterSysModulesModal(row)}
                             title="Upravljaj zakupljenim EnterSYS modulima"
                           >
-                            Moduli &amp; Paket
+                            {t("studioLicence.enterSysModulesCol")}
                           </button>
                         ) : (
                           <button
@@ -1248,7 +1586,11 @@ export default function LicenceClient() {
                             }}
                             disabled={statusSavingId === row.tenant_id}
                             onClick={() =>
-                              handleSetStatus(row.tenant_id, "AKTIVAN")
+                              handleSetStatus(
+                                row.tenant_id,
+                                restoreStatusAfterSuspend(row.monthly_price),
+                                row,
+                              )
                             }
                             title={t("studioLicence.restoreAccess")}
                           >
@@ -1269,7 +1611,7 @@ export default function LicenceClient() {
                             }}
                             disabled={statusSavingId === row.tenant_id}
                             onClick={() =>
-                              handleSetStatus(row.tenant_id, "SUSPENDOVAN")
+                              handleSetStatus(row.tenant_id, "SUSPENDOVAN", row)
                             }
                             title={`${t("studioLicence.suspendAccess")} (${t("studioLicence.suspendAppliesToAll")})`}
                           >
@@ -1303,6 +1645,8 @@ export default function LicenceClient() {
                         ) : null}
                       </div>
                     </td>
+                    </>
+                    )}
                   </tr>
                 );
               })
@@ -1699,7 +2043,10 @@ export default function LicenceClient() {
                         key={p}
                         type="button"
                         className="btn"
-                        onClick={() => setWizardProfile(p)}
+                        onClick={() => {
+                          setWizardProfile(p);
+                          if (p === "ENTERSYS") setNewTenantCurrency("KM");
+                        }}
                         style={{
                           textAlign: "left",
                           borderWidth: 2,
@@ -1814,6 +2161,28 @@ export default function LicenceClient() {
                   <label style={{ display: "block", marginBottom: 4 }}>
                     {t("studioLicence.cijenaMjesečno")}
                   </label>
+                  {wizardProfile === "ENTERSYS" ? (
+                    <div style={{ marginBottom: 12, maxWidth: 420 }}>
+                      <p style={{ fontSize: 12, opacity: 0.85, margin: "0 0 8px" }}>
+                        {t("studioLicence.enterSysWizardPriceHint")}
+                      </p>
+                      <select
+                        value={newTenantCurrency}
+                        onChange={(e) => setNewTenantCurrency(e.target.value)}
+                        style={{ padding: 8 }}
+                      >
+                        {CURRENCY_OPTIONS.map((c) => (
+                          <option key={c} value={c}>
+                            {c === "KM"
+                              ? t("studioLicence.currencyLocalKm")
+                              : c === "EUR"
+                                ? t("studioLicence.currencyInoEur")
+                                : t("studioLicence.currencyInoUsd")}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
                   <div
                     style={{
                       display: "flex",
@@ -1830,11 +2199,13 @@ export default function LicenceClient() {
                       value={newTenantPrice}
                       onChange={(e) => setNewTenantPrice(e.target.value)}
                       placeholder="—"
+                      disabled={newTenantPilot}
                       style={{ padding: 8, width: 120 }}
                     />
                     <select
                       value={newTenantCurrency}
                       onChange={(e) => setNewTenantCurrency(e.target.value)}
+                      disabled={newTenantPilot}
                       style={{ padding: 8 }}
                     >
                       {CURRENCY_OPTIONS.map((c) => (
@@ -1844,6 +2215,37 @@ export default function LicenceClient() {
                       ))}
                     </select>
                   </div>
+                  )}
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 8,
+                      marginBottom: 14,
+                      fontSize: 13,
+                      maxWidth: 420,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={newTenantPilot}
+                      onChange={(e) => setNewTenantPilot(e.target.checked)}
+                      style={{ marginTop: 3 }}
+                    />
+                    <span>
+                      <strong>{t("studioLicence.pilotCheckbox")}</strong>
+                      <span
+                        style={{
+                          display: "block",
+                          opacity: 0.75,
+                          fontSize: 12,
+                          marginTop: 2,
+                        }}
+                      >
+                        {t("studioLicence.pilotCheckboxHint")}
+                      </span>
+                    </span>
+                  </label>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button
                       type="button"
@@ -1967,6 +2369,43 @@ export default function LicenceClient() {
                     >
                       {t("studioLicence.wizardActivationHint")}
                     </p>
+                  )}
+                  {wizardProfile === "ENTERSYS" && (
+                    <>
+                      <label style={{ display: "block", marginBottom: 4 }}>
+                        {t("studioLicence.enterSysPackage")}
+                      </label>
+                      <select
+                        value={newTenantEnterSysPackage}
+                        onChange={(e) =>
+                          setNewTenantEnterSysPackage(
+                            e.target.value as EnterSysBasePackageId,
+                          )
+                        }
+                        style={{
+                          padding: 8,
+                          marginBottom: 12,
+                          width: "100%",
+                          maxWidth: 320,
+                        }}
+                      >
+                        {ENTERSYS_BASE_PACKAGES.map((pkg) => {
+                          const amt = catalogAmountForPackage(
+                            pkg.id,
+                            newTenantCurrency,
+                          );
+                          const cur = displayEnterSysCurrency(
+                            normalizeEnterSysCurrency(newTenantCurrency),
+                          );
+                          return (
+                            <option key={pkg.id} value={pkg.id}>
+                              {pkg.label} (
+                              {amt != null ? amt : pkg.priceKm} {cur})
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </>
                   )}
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button
@@ -2503,18 +2942,99 @@ export default function LicenceClient() {
       )}
 
       {/* Modal Upravljanje EnterSYS Modulima */}
-      {enterSysModalRow && (
+      {enterSysModalRow && (() => {
+        const selectedKeys = ALL_ENTERSYS_MODULE_KEYS.filter(
+          (item) => enterSysModulesDraft[item.key],
+        ).map((item) => item.key);
+        const liveCalc = calculateEnterSysMonthly({
+          packageId: enterSysPackageDraft,
+          moduleKeys: selectedKeys,
+          currency: enterSysCurrencyDraft,
+          catalog: enterSysCatalog,
+        });
+        const isPilotModal =
+          String(enterSysModalRow.status).toUpperCase() === "PILOT";
+        const pkg = getEnterSysBasePackage(enterSysPackageDraft);
+        return (
         <div
           className="studio-modal"
           style={overlayStyle()}
           onClick={() => !enterSysSaving && setEnterSysModalRow(null)}
         >
-          <div style={modalStyle(520)} onClick={(e) => e.stopPropagation()}>
+          <div style={modalStyle(560)} onClick={(e) => e.stopPropagation()}>
             <div style={{ padding: 24 }}>
               <h3 style={{ marginTop: 0, color: "#38bdf8" }}>
-                Upravljanje EnterSYS Modulima — {enterSysModalRow.naziv}
+                {t("studioLicence.enterSysModalTitle")} — {enterSysModalRow.naziv}
               </h3>
               <div style={{ marginBottom: 16, padding: "10px 12px", background: "rgba(15, 23, 42, 0.6)", borderRadius: 8, border: "1px solid rgba(56, 189, 248, 0.25)" }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
+                  {t("studioLicence.enterSysPackage")}
+                </label>
+                <select
+                  value={enterSysPackageDraft}
+                  onChange={(e) => {
+                    const id = e.target.value as EnterSysBasePackageId;
+                    setEnterSysPackageDraft(id);
+                    setEnterSysModulesDraft((prev) =>
+                      applyEnterSysPackageToModules(id, prev),
+                    );
+                  }}
+                  style={{
+                    padding: "6px 10px",
+                    width: "100%",
+                    maxWidth: 360,
+                    marginBottom: 12,
+                    borderRadius: 6,
+                    background: "rgba(15, 23, 42, 0.9)",
+                    border: "1px solid rgba(56, 189, 248, 0.4)",
+                    color: "#fff",
+                    fontSize: 14,
+                  }}
+                >
+                  {ENTERSYS_BASE_PACKAGES.map((p) => {
+                    const amt = catalogAmountForPackage(
+                      p.id,
+                      enterSysCurrencyDraft,
+                    );
+                    return (
+                      <option key={p.id} value={p.id}>
+                        {p.label} — {amt != null ? amt : p.priceKm}{" "}
+                        {liveCalc.displayCurrency} / mj
+                      </option>
+                    );
+                  })}
+                </select>
+                <p style={{ margin: "0 0 12px", fontSize: 12, opacity: 0.8, color: "#94a3b8" }}>
+                  {t("studioLicence.enterSysPackageHint")}
+                </p>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
+                  {t("studioLicence.valuta")}
+                </label>
+                <select
+                  value={enterSysCurrencyDraft}
+                  onChange={(e) => setEnterSysCurrencyDraft(e.target.value)}
+                  style={{
+                    padding: "6px 10px",
+                    width: "100%",
+                    maxWidth: 280,
+                    marginBottom: 12,
+                    borderRadius: 6,
+                    background: "rgba(15, 23, 42, 0.9)",
+                    border: "1px solid rgba(56, 189, 248, 0.4)",
+                    color: "#fff",
+                    fontSize: 14,
+                  }}
+                >
+                  {CURRENCY_OPTIONS.map((c) => (
+                    <option key={c} value={c}>
+                      {c === "KM"
+                        ? t("studioLicence.currencyLocalKm")
+                        : c === "EUR"
+                          ? t("studioLicence.currencyInoEur")
+                          : t("studioLicence.currencyInoUsd")}
+                    </option>
+                  ))}
+                </select>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
                   Broj prodajnih instanci / blagajni (Kasica licence):
                 </label>
@@ -2541,16 +3061,33 @@ export default function LicenceClient() {
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px", marginBottom: 20, maxHeight: "320px", overflowY: "auto", paddingRight: 4 }}>
-                {ALL_ENTERSYS_MODULE_KEYS.map((item) => (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px", marginBottom: 16, maxHeight: "280px", overflowY: "auto", paddingRight: 4 }}>
+                {ALL_ENTERSYS_MODULE_KEYS.map((item) => {
+                  const included =
+                    item.key === "enterCore" ||
+                    item.key === pkg?.managerModule;
+                  const cat = catalogRowForModule(item.key);
+                  const amt = cat
+                    ? amountForCurrency(cat, enterSysCurrencyDraft)
+                    : null;
+                  const isEvent = cat?.vrsta === "EVENT";
+                  let priceHint = "";
+                  if (included) {
+                    priceHint = t("studioLicence.enterSysIncludedInPackage");
+                  } else if (isEvent && amt != null) {
+                    priceHint = `${amt} ${liveCalc.displayCurrency} / ${t("studioLicence.enterSysEventDay")}`;
+                  } else if (amt != null) {
+                    priceHint = `+${amt} ${liveCalc.displayCurrency}`;
+                  }
+                  return (
                   <label
                     key={item.key}
                     style={{
                       display: "flex",
-                      alignItems: "center",
+                      alignItems: "flex-start",
                       gap: 8,
                       fontSize: 12,
-                      cursor: "pointer",
+                      cursor: included ? "default" : "pointer",
                       padding: "6px 10px",
                       background: "rgba(15, 23, 42, 0.6)",
                       borderRadius: 6,
@@ -2562,11 +3099,60 @@ export default function LicenceClient() {
                     <input
                       type="checkbox"
                       checked={!!enterSysModulesDraft[item.key]}
+                      disabled={included}
                       onChange={(e) => setEnterSysModulesDraft(prev => ({ ...prev, [item.key]: e.target.checked }))}
                     />
-                    {item.label}
+                    <span>
+                      {item.label}
+                      {priceHint ? (
+                        <span
+                          style={{
+                            display: "block",
+                            fontSize: 10,
+                            fontWeight: 600,
+                            opacity: 0.8,
+                            marginTop: 2,
+                          }}
+                        >
+                          {priceHint}
+                        </span>
+                      ) : null}
+                    </span>
                   </label>
-                ))}
+                  );
+                })}
+              </div>
+
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  background: "rgba(34, 197, 94, 0.1)",
+                  border: "1px solid rgba(34, 197, 94, 0.35)",
+                }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#86efac", marginBottom: 6 }}>
+                  {t("studioLicence.enterSysLiveTotal")}
+                </div>
+                {liveCalc.lines.length === 0 ? (
+                  <div style={{ fontSize: 12, opacity: 0.75 }}>
+                    {t("studioLicence.enterSysNoCatalog")}
+                  </div>
+                ) : (
+                  <ul style={{ margin: "0 0 8px", paddingLeft: 18, fontSize: 12 }}>
+                    {liveCalc.lines.map((line) => (
+                      <li key={line.key}>
+                        {line.naziv}: {line.amount} {liveCalc.displayCurrency}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div style={{ fontSize: 15, fontWeight: 800 }}>
+                  {isPilotModal
+                    ? `0 ${liveCalc.displayCurrency} (${t("studioLicence.enterSysPilotPriceHint")} ${liveCalc.total} ${liveCalc.displayCurrency})`
+                    : `${liveCalc.total} ${liveCalc.displayCurrency} / ${t("studioLicence.enterSysPerMonth")}`}
+                </div>
               </div>
 
               <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
@@ -2577,7 +3163,7 @@ export default function LicenceClient() {
                   onClick={handleEnterSysSave}
                   style={{ background: "#0284c7", borderColor: "#38bdf8", color: "#fff", fontWeight: "bold" }}
                 >
-                  {enterSysSaving ? "Snimanje..." : "Sačuvaj Module"}
+                  {enterSysSaving ? "Snimanje..." : t("studioLicence.enterSysSave")}
                 </button>
                 <button
                   type="button"
@@ -2586,6 +3172,122 @@ export default function LicenceClient() {
                   onClick={() => setEnterSysModalRow(null)}
                 >
                   Odustani
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
+
+      {cjenovnikOpen && (
+        <div
+          className="studio-modal"
+          style={overlayStyle()}
+          onClick={() => !cjenovnikSaving && setCjenovnikOpen(false)}
+        >
+          <div style={modalStyle(820)} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: 24, maxHeight: "90vh", overflow: "auto" }}>
+              <h3 style={{ marginTop: 0 }}>
+                {t("studioLicence.enterSysCjenovnikTitle")}
+              </h3>
+              <p style={{ fontSize: 13, opacity: 0.85, marginTop: 0 }}>
+                {t("studioLicence.enterSysCjenovnikHint")}
+              </p>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr>
+                      <th style={thTd}>{t("studioLicence.cjenovnikStavka")}</th>
+                      <th style={thTd}>{t("studioLicence.cjenovnikVrsta")}</th>
+                      <th style={thTd}>{t("studioLicence.currencyLocalKm")}</th>
+                      <th style={thTd}>{t("studioLicence.currencyInoEur")}</th>
+                      <th style={thTd}>{t("studioLicence.currencyInoUsd")}</th>
+                      <th style={thTd}>{t("studioLicence.cjenovnikAktivan")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cjenovnikDraft.map((row) => (
+                      <tr key={row.stavka_key}>
+                        <td style={thTd}>
+                          <div style={{ fontWeight: 700 }}>{row.naziv}</div>
+                          <code style={{ fontSize: 10, opacity: 0.7 }}>
+                            {row.stavka_key}
+                          </code>
+                        </td>
+                        <td style={thTd}>
+                          {row.vrsta === "PAKET"
+                            ? t("studioLicence.cjenovnikPaket")
+                            : row.vrsta === "EVENT"
+                              ? t("studioLicence.cjenovnikEvent")
+                              : t("studioLicence.cjenovnikDodatak")}
+                        </td>
+                        {(["cijena_bam", "cijena_eur", "cijena_usd"] as const).map(
+                          (field) => (
+                            <td key={field} style={thTd}>
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                value={row[field]}
+                                onChange={(e) => {
+                                  const n = Number(e.target.value);
+                                  setCjenovnikDraft((prev) =>
+                                    prev.map((r) =>
+                                      r.stavka_key === row.stavka_key
+                                        ? { ...r, [field]: Number.isFinite(n) ? n : 0 }
+                                        : r,
+                                    ),
+                                  );
+                                }}
+                                style={{
+                                  width: 88,
+                                  padding: "4px 6px",
+                                  borderRadius: 6,
+                                  background: "rgba(15, 23, 42, 0.7)",
+                                  border: "1px solid var(--border)",
+                                  color: "inherit",
+                                }}
+                              />
+                            </td>
+                          ),
+                        )}
+                        <td style={thTd}>
+                          <input
+                            type="checkbox"
+                            checked={Number(row.aktivan) === 1}
+                            onChange={(e) =>
+                              setCjenovnikDraft((prev) =>
+                                prev.map((r) =>
+                                  r.stavka_key === row.stavka_key
+                                    ? { ...r, aktivan: e.target.checked ? 1 : 0 }
+                                    : r,
+                                ),
+                              )
+                            }
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={cjenovnikSaving}
+                  onClick={() => void handleCjenovnikSave()}
+                >
+                  {cjenovnikSaving ? t("common.loading") : t("common.save")}
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={cjenovnikSaving}
+                  onClick={() => setCjenovnikOpen(false)}
+                >
+                  {t("common.cancel")}
                 </button>
               </div>
             </div>

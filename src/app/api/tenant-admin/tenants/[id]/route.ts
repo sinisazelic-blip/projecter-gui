@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
 import { query } from "@/lib/db";
+import { isEnterSysBasePackageId } from "@/lib/entersys-activation";
 import { normalizeStudioLicenceProfile } from "@/lib/studio-licence-profile";
 
 export const dynamic = "force-dynamic";
@@ -145,7 +146,12 @@ export async function PATCH(
   }
   if (body.status != null) {
     const s = String(body.status).trim().toUpperCase();
-    if (s === "SUSPENDOVAN" || s === "AKTIVAN" || s === "ISTEKLO") {
+    if (
+      s === "SUSPENDOVAN" ||
+      s === "AKTIVAN" ||
+      s === "ISTEKLO" ||
+      s === "PILOT"
+    ) {
       updates.push("status = ?");
       paramsList.push(s);
     }
@@ -156,7 +162,7 @@ export async function PATCH(
       body.soccs_tier == null
         ? ""
         : String(body.soccs_tier).trim().toUpperCase();
-    const allowed = [
+    const soccsAllowed = [
       "BASIC",
       "BASIC_PLUS",
       "PROFESSIONAL",
@@ -165,7 +171,7 @@ export async function PATCH(
     ];
     if (!raw) {
       updates.push("soccs_tier = NULL");
-    } else if (allowed.includes(raw)) {
+    } else if (soccsAllowed.includes(raw) || isEnterSysBasePackageId(raw)) {
       updates.push("soccs_tier = ?");
       paramsList.push(raw);
     }

@@ -47,7 +47,7 @@ const TENANT_SELECT = `SELECT
       AND (sac.valid_until IS NULL OR sac.valid_until >= NOW())
   ) AS meet_remaining
 FROM tenants t
-WHERE UPPER(TRIM(t.status)) = 'AKTIVAN'`;
+WHERE UPPER(TRIM(t.status)) IN ('AKTIVAN', 'PILOT')`;
 
 async function dispatchLicenceAlert(
   payload: Record<string, unknown>,

@@ -1,5 +1,12 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const fluxaRoot = path.dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // D:\Dev ima tuđe lockfile-ove; bez ovoga Next uzme D:\Dev kao workspace root.
+  outputFileTracingRoot: fluxaRoot,
   // Omogućava dev pristup sa lokalne mreže bez budućih blokada.
   // Važi samo za `next dev`.
   allowedDevOrigins: [

@@ -1,19 +1,9 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import LoginForm from "./LoginForm";
 import FluxaLogo from "@/components/FluxaLogo";
 import { FLUXA_BUILD_LABEL } from "@/lib/fluxaVersion";
 
-function isDemoInstanceHost(host) {
-  if (!host || typeof host !== "string") return false;
-  return host.includes("demo.studiotaf.xyz") || host.startsWith("demo.");
-}
-
 export default async function HomePage() {
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-  const isDemoInstance = isDemoInstanceHost(host);
-
   return (
     <main
       style={{
@@ -69,8 +59,7 @@ export default async function HomePage() {
           {FLUXA_BUILD_LABEL}
         </p>
 
-        <LoginForm isDemoInstance={isDemoInstance} />
-        {!isDemoInstance && (
+        <LoginForm />
         <Link
           href="/owner-login"
           style={{
@@ -86,7 +75,6 @@ export default async function HomePage() {
         >
           OA
         </Link>
-        )}
       </div>
     </main>
   );

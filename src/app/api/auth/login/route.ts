@@ -6,7 +6,7 @@ import {
   createSessionToken,
   getSessionCookieAttributes,
 } from "@/lib/auth/session";
-import { getDemoPoolOrNull, getStudioPoolExport } from "@/lib/db";
+import { getStudioPoolExport } from "@/lib/db";
 import { isFluxaActivated } from "@/lib/fluxa-activation";
 
 export const dynamic = "force-dynamic";
@@ -99,7 +99,6 @@ export async function POST(req: NextRequest) {
         role_id: null,
         nivo: 10,
         bootstrap: true,
-        isDemo: false,
       });
       const attrs = getSessionCookieAttributes();
       const res = NextResponse.json({ ok: true, activation_required: true });
@@ -113,109 +112,11 @@ export async function POST(req: NextRequest) {
       return res;
     }
 
-    const isDemoLogin =
-      username.toLowerCase() === "demo" && password === "demo";
-    let poolToUse: Pool;
-    let isDemoSession = false;
-    if (isDemoLogin) {
-      let demoPool = getDemoPoolOrNull();
-      if (!demoPool && process.env.DB_NAME?.toLowerCase().includes("demo")) {
-        demoPool = getStudioPoolExport();
-      }
-      if (!demoPool) {
-        return NextResponse.json(
-          { ok: false, error: "DEMO_NOT_CONFIGURED" },
-          { status: 503 },
-        );
-      }
-      poolToUse = demoPool;
-      isDemoSession = true;
-    } else {
-      poolToUse = getStudioPoolExport();
-    }
+    const poolToUse = getStudioPoolExport();
+    const rows = await queryUser(poolToUse, username);
 
-    const loginUsername = isDemoLogin ? "demo" : username;
-    let rows: UserRow[];
-    try {
-      rows = await queryUser(poolToUse, loginUsername);
-    } catch (demoErr) {
-      if (isDemoLogin) {
-        console.error("[auth/login] demo pool query failed:", demoErr);
-        return NextResponse.json(
-          {
-            ok: false,
-            error: "DEMO_DB_ERROR",
-            message:
-              demoErr instanceof Error ? demoErr.message : String(demoErr),
-          },
-          { status: 503 },
-        );
-      }
-      throw demoErr;
-    }
-
-    let user = rows?.[0];
-    if (!user && isDemoLogin) {
-      // Samopopravka: korisnik demo ne postoji – kreiraj ga u demo bazi (bez seeda)
-      try {
-        const demoHash = await bcrypt.hash("demo", 10);
-        const [roleRows] = await poolToUse.query(
-          "SELECT role_id FROM roles ORDER BY role_id LIMIT 1",
-        );
-        const roleRowsTyped = roleRows as { role_id: number }[];
-        let roleId = roleRowsTyped?.[0]?.role_id ?? 1;
-        if (!roleRowsTyped?.length) {
-          try {
-            await poolToUse
-              .query(
-                "INSERT INTO roles (naziv, nivo_ovlastenja) VALUES ('Demo', 10)",
-              )
-              .catch(() =>
-                poolToUse.query(
-                  "INSERT INTO roles (naziv, nivo_ovlascenja) VALUES ('Demo', 10)",
-                ),
-              );
-            const [r] = await poolToUse.query(
-              "SELECT role_id FROM roles ORDER BY role_id DESC LIMIT 1",
-            );
-            roleId = (r as { role_id: number }[])?.[0]?.role_id ?? 1;
-          } catch {
-            // možda kolona drugačije zove
-          }
-        }
-        try {
-          await poolToUse.query(
-            "INSERT INTO users (username, password_hash, role_id, aktivan) VALUES ('demo', ?, ?, 1)",
-            [demoHash, roleId],
-          );
-        } catch (insErr: unknown) {
-          const m = insErr instanceof Error ? insErr.message : String(insErr);
-          if (m.includes("password_hash") || m.includes("Unknown column")) {
-            await poolToUse.query(
-              "INSERT INTO users (username, password, role_id, aktivan) VALUES ('demo', ?, ?, 1)",
-              [demoHash, roleId],
-            );
-          } else {
-            throw insErr;
-          }
-        }
-        const newRows = await queryUser(poolToUse, "demo");
-        user = newRows?.[0];
-      } catch (insertErr) {
-        console.error("[auth/login] demo user create failed:", insertErr);
-        return NextResponse.json(
-          { ok: false, error: "DEMO_USER_MISSING" },
-          { status: 401 },
-        );
-      }
-    }
+    const user = rows?.[0];
     if (!user) {
-      if (isDemoLogin) {
-        return NextResponse.json(
-          { ok: false, error: "DEMO_USER_MISSING" },
-          { status: 401 },
-        );
-      }
       return NextResponse.json(
         { ok: false, error: "INVALID_CREDENTIALS" },
         { status: 401 },
@@ -232,23 +133,6 @@ export async function POST(req: NextRequest) {
       valid = passwordNorm === storedPassword || password === storedPassword;
     }
 
-    if (!valid && isDemoLogin) {
-      const correctHash = await bcrypt.hash("demo", 10);
-      try {
-        await poolToUse.query(
-          "UPDATE users SET password_hash = ? WHERE user_id = ?",
-          [correctHash, user.user_id],
-        );
-      } catch {
-        await poolToUse
-          .query("UPDATE users SET password = ? WHERE user_id = ?", [
-            correctHash,
-            user.user_id,
-          ])
-          .catch(() => null);
-      }
-      valid = true;
-    }
     if (!valid) {
       return NextResponse.json(
         { ok: false, error: "INVALID_CREDENTIALS" },
@@ -269,7 +153,6 @@ export async function POST(req: NextRequest) {
       username: user.username,
       role_id: user.role_id,
       nivo,
-      isDemo: isDemoSession,
     });
 
     const attrs = getSessionCookieAttributes();

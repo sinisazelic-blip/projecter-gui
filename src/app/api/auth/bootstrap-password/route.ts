@@ -103,7 +103,6 @@ export async function POST(req: Request) {
     username: "fluxa",
     role_id: fluxaUser.role_id,
     nivo: 10,
-    isDemo: false,
     bootstrap: false,
     mustChangePassword: false,
   });
