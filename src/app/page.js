@@ -2,8 +2,10 @@ import Link from "next/link";
 import LoginForm from "./LoginForm";
 import FluxaLogo from "@/components/FluxaLogo";
 import { FLUXA_BUILD_LABEL } from "@/lib/fluxaVersion";
+import { isEnterInstance } from "@/lib/fluxa-instance";
 
 export default async function HomePage() {
+  const enter = isEnterInstance();
   return (
     <main
       style={{
@@ -44,7 +46,7 @@ export default async function HomePage() {
             color: "var(--muted)",
           }}
         >
-          Project & Finance Engine
+          {enter ? "Deal, Ops & Finance" : "Project & Finance Engine"}
         </p>
         <p
           style={{

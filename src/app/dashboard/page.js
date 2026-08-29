@@ -5,6 +5,7 @@ import { getValidLocale } from "@/lib/i18n";
 import DashboardTopActions from "./DashboardTopActions";
 import DashboardBody from "./DashboardBody";
 import FluxaLogo from "@/components/FluxaLogo";
+import { getFluxaInstance } from "@/lib/fluxa-instance";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,8 @@ export default async function Page() {
   const cookieStore = await cookies();
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
   const t = getT(locale);
+  const instance = getFluxaInstance();
+  const enter = instance === "ENTER";
   return (
     <div className="container dashboardPage">
       <style>{`
@@ -245,6 +248,42 @@ export default async function Page() {
           opacity: 1;
         }
 
+        .deskMainBtn--amber {
+          background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(217, 119, 6, 0.14));
+          border-color: rgba(245, 158, 11, 0.4);
+          color: #ffffff;
+          box-shadow: 0 4px 16px rgba(245, 158, 11, 0.15);
+        }
+
+        .deskMainBtn--amber .deskMainBtnSubtitle {
+          color: #ffffff;
+          opacity: 1;
+        }
+
+        .deskMainBtn--violet {
+          background: linear-gradient(135deg, rgba(139, 92, 246, 0.22), rgba(109, 40, 217, 0.14));
+          border-color: rgba(139, 92, 246, 0.4);
+          color: #ffffff;
+          box-shadow: 0 4px 16px rgba(139, 92, 246, 0.15);
+        }
+
+        .deskMainBtn--violet .deskMainBtnSubtitle {
+          color: #ffffff;
+          opacity: 1;
+        }
+
+        .deskMainBtn--rose {
+          background: linear-gradient(135deg, rgba(244, 63, 94, 0.22), rgba(190, 18, 60, 0.14));
+          border-color: rgba(244, 63, 94, 0.4);
+          color: #ffffff;
+          box-shadow: 0 4px 16px rgba(244, 63, 94, 0.15);
+        }
+
+        .deskMainBtn--rose .deskMainBtnSubtitle {
+          color: #ffffff;
+          opacity: 1;
+        }
+
         .deskMainBtnSubtitle {
           font-size: 12px;
           font-weight: 600;
@@ -281,6 +320,38 @@ export default async function Page() {
         .finansijeGroup {
           background: rgba(255, 165, 0, 0.05);
           border-color: rgba(255, 165, 0, 0.15);
+        }
+
+        /* Enter desk — blage naznake po domenu, ne full fill */
+        .enterGroup--saas {
+          background: rgba(34, 197, 94, 0.06);
+          border-color: rgba(34, 197, 94, 0.18);
+        }
+
+        .enterGroup--finance {
+          background: rgba(239, 68, 68, 0.055);
+          border-color: rgba(239, 68, 68, 0.18);
+        }
+
+        .enterGroup--finance .btn {
+          min-height: 44px;
+          padding-top: 10px;
+          padding-bottom: 10px;
+        }
+
+        .enterGroup--haas {
+          background: rgba(59, 130, 246, 0.06);
+          border-color: rgba(59, 130, 246, 0.2);
+        }
+
+        .enterGroup--magacin {
+          background: rgba(234, 179, 8, 0.07);
+          border-color: rgba(234, 179, 8, 0.22);
+        }
+
+        .enterGroup--reports {
+          background: rgba(236, 72, 153, 0.08);
+          border-color: rgba(236, 72, 153, 0.28);
         }
 
         .finansijeRow {
@@ -512,15 +583,21 @@ export default async function Page() {
               <div className="brandWrap">
                 <div className="brandLogoBlock">
                   <FluxaLogo />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <span className="brandSlogan">
+                    {enter ? "Deal, Ops & Finance" : "Project & Finance Engine"}
+                  </span>
                 </div>
                 <div>
-                  <div className="brandTitle">{t("dashboard.title")}</div>
-                  <div className="brandSub">{t("dashboard.subtitle")}</div>
+                  <div className="brandTitle">
+                    {enter ? t("dashboard.enterTitle") : t("dashboard.title")}
+                  </div>
+                  <div className="brandSub">
+                    {enter ? t("dashboard.enterSubtitle") : t("dashboard.subtitle")}
+                  </div>
                 </div>
               </div>
 
-              <DashboardTopActions />
+              <DashboardTopActions instance={instance} />
             </div>
 
             <div className="divider" />
@@ -529,7 +606,7 @@ export default async function Page() {
 
         <div className="bodyWrap">
           <div className="dashboardWrap">
-            <DashboardBody />
+            <DashboardBody instance={instance} />
           </div>
         </div>
       </div>

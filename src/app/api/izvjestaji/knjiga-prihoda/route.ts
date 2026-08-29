@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { formatDateDMY } from "@/lib/format";
+import { includeStudioArchive } from "@/lib/reports/archive";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ async function loadArchiveKnjiga(
   dateFrom: string | null,
   dateTo: string | null
 ): Promise<{ datum: string; broj_fakture: string; kupac: string; osnovica: number; pdv: number; ukupno: number; iz_arhive: true }[]> {
+  if (!includeStudioArchive()) return [];
   const conditions: string[] = ["datum_fakture IS NOT NULL", "datum_fakture <= ?"];
   const params: any[] = [ARHIVA_CUTOFF];
   const having: string[] = [];
@@ -38,7 +40,7 @@ async function loadArchiveKnjiga(
   try {
     rows = (await query(
       `SELECT broj_fakture, MAX(datum_fakture) AS datum_fakture,
-              MAX(COALESCE(narucilac_id, krajnji_klijent_id)) AS klijent_id,
+              MAX(narucilac_id) AS klijent_id,
               ROUND(SUM(COALESCE(iznos_km, 0)), 2) AS iznos_km,
               ROUND(SUM(COALESCE(iznos_ukupno_km, iznos_sa_pdv_km, iznos_km)), 2) AS ukupno_faktura
        FROM stg_master_finansije
@@ -53,7 +55,7 @@ async function loadArchiveKnjiga(
     try {
       rows = (await query(
         `SELECT broj_fakture, MAX(datum_fakture) AS datum_fakture,
-                MAX(COALESCE(narucilac_id, krajnji_klijent_id)) AS klijent_id,
+                MAX(narucilac_id) AS klijent_id,
                 ROUND(SUM(COALESCE(iznos_km, 0)), 2) AS iznos_km
          FROM stg_master_finansije
          WHERE ${conditions.join(" AND ")}

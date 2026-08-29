@@ -56,6 +56,22 @@ export const ENTERSYS_BASE_PACKAGES = [
 
 export type EnterSysBasePackageId = (typeof ENTERSYS_BASE_PACKAGES)[number]["id"];
 
+export const ENTERSYS_MODULE_KEYS = [
+  { key: "enterCore", label: "ENTER (osnovni prolazi i kasa)" },
+  { key: "poolManager", label: "PoolManager" },
+  { key: "hallManager", label: "HallManager" },
+  { key: "fieldManager", label: "FieldManager" },
+  { key: "gymManager", label: "GymManager" },
+  { key: "doorMan", label: "DoorMan" },
+  { key: "lockers", label: "Locker" },
+  { key: "rentals", label: "Rentals" },
+  { key: "mojRadio", label: "MojRadio" },
+  { key: "mojTv", label: "MojTV" },
+  { key: "cctvGate", label: "CCTV Gate" },
+  { key: "eventManager", label: "EventManager" },
+  { key: "webShop", label: "WebShop" },
+] as const;
+
 const MANAGER_MODULE_KEYS = [
   "poolManager",
   "hallManager",

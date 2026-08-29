@@ -47,7 +47,13 @@ function fmtPct(v: number | null | undefined): string {
   return `${(Math.round(v * 10) / 10).toFixed(1)}%`;
 }
 
-export default function ProfitReportClient({ initialView }: { initialView: "monthly" | "yearly" }) {
+export default function ProfitReportClient({
+  initialView,
+  hideArchive = false,
+}: {
+  initialView: "monthly" | "yearly";
+  hideArchive?: boolean;
+}) {
   const { t } = useTranslation();
   const searchParams = useSearchParams();
   const view = (searchParams?.get("view") === "yearly" ? "yearly" : "monthly") as "monthly" | "yearly";
@@ -285,8 +291,16 @@ export default function ProfitReportClient({ initialView }: { initialView: "mont
       </div>
 
       <div className="reportNote no-print" style={{ marginTop: 24 }}>
-        Profit = Realizovano (sa VAT) − Troškovi − VAT. Margin % = Profit / Troškovi × 100. Izvor: fakture i projektni_troskovi (od 2026).{" "}
-        <Link href="/finance/profit/arhiva" className="link">Arhiva (staging)</Link>: po mjesecu po godini vrijednost − troškovi (stg_master_finansije).
+        Profit = Realizovano (sa VAT) − Troškovi − VAT. Margin % = Profit / Troškovi × 100. Izvor: fakture i projektni_troskovi.
+        {!hideArchive ? (
+          <>
+            {" "}
+            <Link href="/finance/profit/arhiva" className="link">
+              Arhiva (staging)
+            </Link>
+            : po mjesecu po godini vrijednost − troškovi (stg_master_finansije).
+          </>
+        ) : null}
       </div>
     </div>
   );

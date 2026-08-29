@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { formatDateDMY } from "@/lib/format";
+import { includeStudioArchive } from "@/lib/reports/archive";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ async function loadArchivePdv(
   dateFrom: string | null,
   dateTo: string | null
 ): Promise<{ datum: string; osnovica: number; pdv_izlazni: number; iz_arhive: true }[]> {
+  if (!includeStudioArchive()) return [];
   const conditions: string[] = ["datum_fakture IS NOT NULL", "datum_fakture <= ?"];
   const params: any[] = [ARHIVA_CUTOFF];
   const having: string[] = [];

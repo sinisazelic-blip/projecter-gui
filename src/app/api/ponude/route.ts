@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
           { status: 404 },
         );
       }
-      const klijent_id = deal.narucilac_id ?? deal.krajnji_klijent_id;
+      const klijent_id = deal.narucilac_id;
       if (!klijent_id) {
         return NextResponse.json(
           { ok: false, error: "Deal nema naručioca ni krajnjeg klijenta." },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { formatDateDMY } from "@/lib/format";
+import { includeStudioArchive } from "@/lib/reports/archive";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ type StgByPo = { id_po: number; stg_budzet: number; stg_troskovi: number };
  */
 async function loadStagingByProjekat(): Promise<Map<number, { budzet: number; troskovi: number }>> {
   const map = new Map<number, { budzet: number; troskovi: number }>();
+  if (!includeStudioArchive()) return map;
   try {
     const rows = (await query(
       `SELECT id_po,

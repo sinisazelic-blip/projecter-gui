@@ -4,6 +4,7 @@ import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
 import FluxaLogo from "@/components/FluxaLogo";
 import GrafickiClient from "./GrafickiClient";
+import { isEnterInstance } from "@/lib/fluxa-instance";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ export default async function GrafickiPage() {
   const cookieStore = await cookies();
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
   const t = getT(locale);
+  const enter = isEnterInstance();
 
   return (
     <div className="container">
@@ -20,7 +22,7 @@ export default async function GrafickiPage() {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">{enter ? "Deal, Ops & Finance" : "Project & Finance Engine"}</span>
                 </div>
                 <div>
                   <div className="brandTitle">{t("izvjestajiGraficki.title")}</div>
@@ -38,7 +40,7 @@ export default async function GrafickiPage() {
         </div>
 
         <div className="bodyWrap">
-          <GrafickiClient />
+          <GrafickiClient hideArchive={enter} />
         </div>
       </div>
     </div>

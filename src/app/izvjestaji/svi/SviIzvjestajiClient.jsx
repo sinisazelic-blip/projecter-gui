@@ -34,14 +34,20 @@ const API_MAP = {
   fiksni: "/api/izvjestaji/fiksni-troskovi",
 };
 
-export default function SviIzvjestajiClient() {
+export default function SviIzvjestajiClient({
+  hideArchive = false,
+  hideTalenti = false,
+} = {}) {
   const { t, locale } = useTranslation();
   const ccy = getCurrencySuffix(locale).trim();
   const fmt = (x) => formatReportNum(x, locale);
 
   const TIP_OPCIJE = useMemo(
-    () => TIP_OPCIJE_KEYS.map((o) => ({ ...o, label: t(o.labelKey), desc: t(o.descKey) })),
-    [t],
+    () =>
+      TIP_OPCIJE_KEYS.filter((o) => !(hideTalenti && o.value === "talenti")).map(
+        (o) => ({ ...o, label: t(o.labelKey), desc: t(o.descKey) }),
+      ),
+    [t, hideTalenti],
   );
   const [tip, setTip] = useState("");
   const [datumOd, setDatumOd] = useState("");
@@ -117,20 +123,28 @@ export default function SviIzvjestajiClient() {
       }
       downloadExcel({ filename: fn, sheetName: "Potraživanja", headers, rows, footerRows: footer });
     } else if (tip === "lista_faktura") {
-      const headers = ["Broj", "Datum", "Naručilac", "Osnovica", "PDV", "Ukupno", "Izvor"];
-      const rows = (data.items || []).map((r) => [
-        r.broj_fakture ?? "",
-        r.datum_izdavanja ?? "",
-        r.narucilac_naziv ?? "",
-        r.iznos_bez_pdv ?? "",
-        r.pdv_iznos ?? "",
-        r.iznos_sa_pdv ?? "",
-        r.iz_arhive ? "Arhiva" : "Live",
-      ]);
+      const headers = hideArchive
+        ? ["Broj", "Datum", "Naručilac", "Osnovica", "PDV", "Ukupno"]
+        : ["Broj", "Datum", "Naručilac", "Osnovica", "PDV", "Ukupno", "Izvor"];
+      const rows = (data.items || []).map((r) => {
+        const base = [
+          r.broj_fakture ?? "",
+          r.datum_izdavanja ?? "",
+          r.narucilac_naziv ?? "",
+          r.iznos_bez_pdv ?? "",
+          r.pdv_iznos ?? "",
+          r.iznos_sa_pdv ?? "",
+        ];
+        return hideArchive ? base : [...base, r.iz_arhive ? "Arhiva" : "Live"];
+      });
       const footer = [];
       if (data.summary) {
         footer.push([]);
-        footer.push(["", "", "UKUPNO", data.summary.ukupno_bez_pdv ?? "", data.summary.ukupno_pdv ?? "", data.summary.ukupno_sa_pdv ?? "", ""]);
+        footer.push(
+          hideArchive
+            ? ["", "", "UKUPNO", data.summary.ukupno_bez_pdv ?? "", data.summary.ukupno_pdv ?? "", data.summary.ukupno_sa_pdv ?? ""]
+            : ["", "", "UKUPNO", data.summary.ukupno_bez_pdv ?? "", data.summary.ukupno_pdv ?? "", data.summary.ukupno_sa_pdv ?? "", ""],
+        );
       }
       downloadExcel({ filename: fn, sheetName: "Lista faktura", headers, rows, footerRows: footer });
     } else if (tip === "knjiga_prihoda") {
@@ -143,12 +157,21 @@ export default function SviIzvjestajiClient() {
       }
       downloadExcel({ filename: fn, sheetName: "Knjiga prihoda", headers, rows, footerRows: footer });
     } else if (tip === "pdv") {
-      const headers = ["Datum", "Osnovica", "PDV izlazni", "Izvor"];
-      const rows = (data.items || []).map((r) => [r.datum ?? "", r.osnovica ?? "", r.pdv_izlazni ?? "", r.iz_arhive ? "Arhiva" : "Live"]);
+      const headers = hideArchive
+        ? ["Datum", "Osnovica", "PDV izlazni"]
+        : ["Datum", "Osnovica", "PDV izlazni", "Izvor"];
+      const rows = (data.items || []).map((r) => {
+        const base = [r.datum ?? "", r.osnovica ?? "", r.pdv_izlazni ?? ""];
+        return hideArchive ? base : [...base, r.iz_arhive ? "Arhiva" : "Live"];
+      });
       const footer = [];
       if (data.summary) {
         footer.push([]);
-        footer.push(["UKUPNO", data.summary.osnovica_ukupno ?? "", data.summary.pdv_izlazni_ukupno ?? "", ""]);
+        footer.push(
+          hideArchive
+            ? ["UKUPNO", data.summary.osnovica_ukupno ?? "", data.summary.pdv_izlazni_ukupno ?? ""]
+            : ["UKUPNO", data.summary.osnovica_ukupno ?? "", data.summary.pdv_izlazni_ukupno ?? "", ""],
+        );
       }
       downloadExcel({ filename: fn, sheetName: "PDV", headers, rows, footerRows: footer });
     } else if (tip === "projekti") {
@@ -502,7 +525,7 @@ export default function SviIzvjestajiClient() {
               {" | "} {t("izvjestajiSvi.summary_ukupno_bez_pdv")}: <strong>{fmt(data.summary.ukupno_bez_pdv)}</strong> {ccy}
               {" | "} {t("izvjestajiSvi.col_pdv")}: <strong>{fmt(data.summary.ukupno_pdv)}</strong> {ccy}
               {" | "} {t("izvjestajiSvi.summary_ukupno_sa_pdv")}: <strong>{fmt(data.summary.ukupno_sa_pdv)}</strong> {ccy}
-              {(data.items || []).some((r) => r.iz_arhive) && (
+              {!hideArchive && (data.items || []).some((r) => r.iz_arhive) && (
                 <span style={{ marginLeft: 12, color: "var(--muted)", fontSize: 12 }}>
                   {t("izvjestajiSvi.uključujući_arhivu")}
                 </span>
@@ -519,7 +542,7 @@ export default function SviIzvjestajiClient() {
                   <th>{t("izvjestajiSvi.col_osnovica")}</th>
                   <th>{t("izvjestajiSvi.col_pdv")}</th>
                   <th>{t("izvjestajiSvi.col_ukupno")}</th>
-                  <th style={{ width: 72 }}>{t("izvjestajiSvi.col_izvor")}</th>
+                  {!hideArchive ? <th style={{ width: 72 }}>{t("izvjestajiSvi.col_izvor")}</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -531,9 +554,11 @@ export default function SviIzvjestajiClient() {
                     <td style={{ textAlign: "right" }}>{fmt(row.iznos_bez_pdv)}</td>
                     <td style={{ textAlign: "right" }}>{fmt(row.pdv_iznos)}</td>
                     <td style={{ textAlign: "right" }}>{fmt(row.iznos_sa_pdv)}</td>
-                    <td style={{ fontSize: 11, color: "var(--muted)" }}>
-                      {row.iz_arhive ? t("izvjestajiSvi.arhiva") : t("izvjestajiSvi.live")}
-                    </td>
+                    {!hideArchive ? (
+                      <td style={{ fontSize: 11, color: "var(--muted)" }}>
+                        {row.iz_arhive ? t("izvjestajiSvi.arhiva") : t("izvjestajiSvi.live")}
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -589,7 +614,7 @@ export default function SviIzvjestajiClient() {
             <div style={{ marginBottom: 16, fontSize: 13 }}>
               {t("izvjestajiSvi.summary_pdv_izlazni_ukupno")}: <strong>{fmt(data.summary.pdv_izlazni_ukupno)}</strong> {ccy}
               {" | "} {t("izvjestajiSvi.summary_osnovica_ukupno")}: <strong>{fmt(data.summary.osnovica_ukupno)}</strong> {ccy}
-              {(data.items || []).some((r) => r.iz_arhive) && (
+              {!hideArchive && (data.items || []).some((r) => r.iz_arhive) && (
                 <span style={{ marginLeft: 12, color: "var(--muted)", fontSize: 12 }}>{t("izvjestajiSvi.uključena_arhiva")}</span>
               )}
               {data.summary.napomena && (
@@ -604,7 +629,7 @@ export default function SviIzvjestajiClient() {
                   <th>{t("izvjestajiSvi.col_datum")}</th>
                   <th>{t("izvjestajiSvi.col_osnovica")}</th>
                   <th>{t("izvjestajiSvi.col_pdv_izlazni")}</th>
-                  <th style={{ width: 72 }}>{t("izvjestajiSvi.col_izvor")}</th>
+                  {!hideArchive ? <th style={{ width: 72 }}>{t("izvjestajiSvi.col_izvor")}</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -613,9 +638,11 @@ export default function SviIzvjestajiClient() {
                     <td>{row.datum ?? "—"}</td>
                     <td style={{ textAlign: "right" }}>{fmt(row.osnovica)}</td>
                     <td style={{ textAlign: "right" }}>{fmt(row.pdv_izlazni)}</td>
-                    <td style={{ fontSize: 11, color: "var(--muted)" }}>
-                      {row.iz_arhive ? t("izvjestajiSvi.arhiva") : t("izvjestajiSvi.live")}
-                    </td>
+                    {!hideArchive ? (
+                      <td style={{ fontSize: 11, color: "var(--muted)" }}>
+                        {row.iz_arhive ? t("izvjestajiSvi.arhiva") : t("izvjestajiSvi.live")}
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>

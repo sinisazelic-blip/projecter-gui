@@ -9,7 +9,7 @@ const POPUP_ITEMS = [
   { key: "ponude", href: "/ponude" },
 ];
 
-export default function FinanceMorePopup() {
+export default function FinanceMorePopup({ buttonClassName = "btn btn--orange-accent" }) {
   const { t } = useTranslation();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -34,7 +34,7 @@ export default function FinanceMorePopup() {
     <div ref={ref} style={{ position: "relative" }}>
       <button
         type="button"
-        className="btn btn--orange-accent"
+        className={buttonClassName}
         onClick={() => setOpen((v) => !v)}
         title={t("dashboard.moreTitle")}
       >

@@ -5,6 +5,7 @@ import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
 import FinanceToolsClient from "./FinanceToolsClient";
 import FinanceToolsEditionGate from "./FinanceToolsEditionGate";
+import { isEnterInstance } from "@/lib/fluxa-instance";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +14,10 @@ export default async function FinanceToolsPage() {
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
   const t = getT(locale);
 
+  const enter = isEnterInstance();
+
   return (
-    <FinanceToolsEditionGate>
+    <FinanceToolsEditionGate allowEnter={enter}>
       <div className="container">
         <div className="pageWrap">
           <div className="topBlock">
@@ -23,7 +26,9 @@ export default async function FinanceToolsPage() {
                 <div className="brandWrap">
                   <div className="brandLogoBlock">
                     <FluxaLogo />
-                    <span className="brandSlogan">Project & Finance Engine</span>
+                    <span className="brandSlogan">
+                      {enter ? "Deal, Ops & Finance" : "Project & Finance Engine"}
+                    </span>
                   </div>
                   <div>
                     <div className="brandTitle">{t("dashboard.financeTools")}</div>

@@ -147,6 +147,9 @@ export default function KlijentiClient({
   const [isPending, startTransition] = useTransition();
 
   const [q, setQ] = useState("");
+  const [roleFilter, setRoleFilter] = useState<"all" | "narucilac" | "krajnji">(
+    "all",
+  );
   const [showInactive, setShowInactive] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -170,7 +173,13 @@ export default function KlijentiClient({
   const counts = useMemo(() => {
     const total = items.length;
     const active = items.filter((x) => Number(x.aktivan) === 1).length;
-    return { total, active };
+    const narucioci = items.filter(
+      (x) => Number(x.aktivan) === 1 && Number(x.is_narucilac) === 1,
+    ).length;
+    const krajnji = items.filter(
+      (x) => Number(x.aktivan) === 1 && Number(x.is_narucilac) !== 1,
+    ).length;
+    return { total, active, narucioci, krajnji };
   }, [items]);
 
   const filtered = useMemo(() => {
@@ -178,6 +187,9 @@ export default function KlijentiClient({
 
     return items.filter((it) => {
       if (!showInactive && Number(it.aktivan) !== 1) return false;
+      const isNar = Number(it.is_narucilac) === 1;
+      if (roleFilter === "narucilac" && !isNar) return false;
+      if (roleFilter === "krajnji" && isNar) return false;
       if (!qq) return true;
 
       const hay = [
@@ -193,7 +205,7 @@ export default function KlijentiClient({
 
       return hay.includes(qq);
     });
-  }, [items, q, showInactive]);
+  }, [items, q, showInactive, roleFilter]);
 
   const selectedItem = useMemo(() => {
     if (!selectedId) return null;
@@ -205,6 +217,19 @@ export default function KlijentiClient({
   const selectedIsActive = selectedItem
     ? Number(selectedItem.aktivan) === 1
     : false;
+
+  function badgeUloga(isNarucilac: boolean) {
+    return (
+      <span
+        className="badge"
+        data-status={isNarucilac ? "active" : "planned"}
+      >
+        {isNarucilac
+          ? t("studioKlijenti.ulogaNarucilac")
+          : t("studioKlijenti.ulogaKrajnji")}
+      </span>
+    );
+  }
 
   function badgeTip(tip: TipKlijenta) {
     const label = tip === "agencija" ? t("studioKlijenti.tipAgencija") : t("studioKlijenti.tipDirektni");
@@ -564,6 +589,26 @@ export default function KlijentiClient({
               style={{ width: 420, maxWidth: "100%" }}
             />
 
+            <div style={{ display: "inline-flex", gap: 6, flexWrap: "wrap" }}>
+              {(
+                [
+                  ["all", t("studioKlijenti.filterAll")],
+                  ["narucilac", t("studioKlijenti.filterNarucioci")],
+                  ["krajnji", t("studioKlijenti.filterKrajnji")],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`btn${roleFilter === key ? " btn--active" : ""}`}
+                  onClick={() => setRoleFilter(key)}
+                  style={{ minHeight: 32, padding: "4px 10px", fontSize: 13 }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
             <label
               style={{
                 display: "inline-flex",
@@ -587,11 +632,17 @@ export default function KlijentiClient({
             {showInactive ? (
               <>
                 {t("studioKlijenti.activeCount")}: <b style={{ color: "var(--text)" }}>{counts.active}</b>{" "}
+                / {t("studioKlijenti.filterNarucioci")}: <b style={{ color: "var(--text)" }}>{counts.narucioci}</b>{" "}
+                / {t("studioKlijenti.filterKrajnji")}: <b style={{ color: "var(--text)" }}>{counts.krajnji}</b>{" "}
                 / {t("studioKlijenti.totalCount")}: <b style={{ color: "var(--text)" }}>{counts.total}</b>
               </>
             ) : (
               <>
                 {t("studioKlijenti.activeCount")}: <b style={{ color: "var(--text)" }}>{counts.active}</b>
+                {" · "}
+                {t("studioKlijenti.filterNarucioci")}: <b style={{ color: "var(--text)" }}>{counts.narucioci}</b>
+                {" · "}
+                {t("studioKlijenti.filterKrajnji")}: <b style={{ color: "var(--text)" }}>{counts.krajnji}</b>
               </>
             )}
           </div>
@@ -617,17 +668,19 @@ export default function KlijentiClient({
       <div style={tableScrollWrapStyle}>
         <table className="table" style={{ tableLayout: "fixed", minWidth: 900 }}>
           <colgroup>
-            <col style={{ width: "28%" }} />
-            <col style={{ width: "10%" }} />
-            <col style={{ width: "10%" }} />
+            <col style={{ width: "24%" }} />
             <col style={{ width: "11%" }} />
-            <col style={{ width: "15%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "13%" }} />
             <col style={{ width: "8%" }} />
-            <col style={{ width: "12%" }} />
+            <col style={{ width: "11%" }} />
           </colgroup>
           <thead>
             <tr>
               <th>{t("studioKlijenti.colNaziv")}</th>
+              <th>{t("studioKlijenti.colUloga")}</th>
               <th>{t("studioKlijenti.colTip")}</th>
               <th>{t("studioKlijenti.colTrziste")}</th>
               <th>{t("studioKlijenti.colGradDrzava")}</th>
@@ -640,7 +693,7 @@ export default function KlijentiClient({
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ color: "var(--muted)", padding: 16 }}>
+                <td colSpan={8} style={{ color: "var(--muted)", padding: 16 }}>
                   {t("studioKlijenti.noClients")}
                 </td>
               </tr>
@@ -701,6 +754,7 @@ export default function KlijentiClient({
                       ) : null}
                     </td>
 
+                    <td>{badgeUloga(Number(it.is_narucilac) === 1)}</td>
                     <td>{badgeTip(it.tip_klijenta)}</td>
 
                     <td>{badgeTrziste(isIno)}</td>
@@ -1241,27 +1295,40 @@ export default function KlijentiClient({
                   </span>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <input
-                    type="checkbox"
-                    checked={form.is_narucilac}
-                    onChange={(e) =>
-                      setForm((s) => ({ ...s, is_narucilac: e.target.checked }))
-                    }
-                    style={{ width: 16, height: 16 }}
-                  />
-                  <span
-                    style={{
-                      color: "var(--text)",
-                      fontSize: 13,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {t("studioKlijenti.labelNarucilac")}
-                  </span>
-                  <span style={{ color: "var(--muted)", fontSize: 12 }}>
-                    — {t("studioKlijenti.labelNarucilacHint")}
-                  </span>
+                <div style={{ gridColumn: "1 / -1", display: "grid", gap: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>
+                    {t("studioKlijenti.labelUloga")}
+                  </div>
+                  <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <input
+                      type="radio"
+                      name="klijent-uloga"
+                      checked={form.is_narucilac}
+                      onChange={() => setForm((s) => ({ ...s, is_narucilac: true }))}
+                      style={{ marginTop: 3 }}
+                    />
+                    <span>
+                      <b>{t("studioKlijenti.labelNarucilac")}</b>
+                      <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                        {t("studioKlijenti.labelNarucilacHint")}
+                      </div>
+                    </span>
+                  </label>
+                  <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <input
+                      type="radio"
+                      name="klijent-uloga"
+                      checked={!form.is_narucilac}
+                      onChange={() => setForm((s) => ({ ...s, is_narucilac: false }))}
+                      style={{ marginTop: 3 }}
+                    />
+                    <span>
+                      <b>{t("studioKlijenti.labelKrajnji")}</b>
+                      <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                        {t("studioKlijenti.labelKrajnjiHint")}
+                      </div>
+                    </span>
+                  </label>
                 </div>
 
                 <div style={{ gridColumn: "1 / -1" }}>

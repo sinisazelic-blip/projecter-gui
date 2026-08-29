@@ -9,6 +9,7 @@ import FiskalModal from "./FiskalModal";
 import BrojacFakturaCard from "./BrojacFakturaCard";
 import FirmaHeader from "./FirmaHeader";
 import FirmaSaveForm from "./FirmaSaveForm";
+import { isEnterInstance } from "@/lib/fluxa-instance";
 
 export const dynamic = "force-dynamic";
 
@@ -230,7 +231,7 @@ export default async function Page() {
       <div className="pageWrap">
         <div className="topBlock">
           <div className="topInner">
-            <FirmaHeader />
+            <FirmaHeader hideLanguage={isEnterInstance()} />
 
             <div className="divider" />
           </div>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { includeStudioArchive } from "@/lib/reports/archive";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +62,7 @@ export async function GET() {
     const byYear = {};
 
     // 1) Arhiva: stg_master_finansije — formula: id_po, profit = iznos_km − iznos_troska_km, završeno = datum_zavrsetka. Agregat po godini/mjesecu.
-    try {
+    if (includeStudioArchive()) try {
       const stgTable = await getStgTableName();
       const safeTable = String(stgTable).replace(/`/g, "``");
       const rows = await query(

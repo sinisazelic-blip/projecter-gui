@@ -15,6 +15,7 @@ import { COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
 import { runWithSession } from "@/lib/db";
 import { getValidLocale } from "@/lib/i18n";
 import { FLUXA_BUILD_LABEL } from "@/lib/fluxaVersion";
+import { getFluxaInstance } from "@/lib/fluxa-instance";
 
 function getFaviconPath(host) {
   if (!host || typeof host !== "string") return "/fluxa/Icon.ico";
@@ -30,9 +31,12 @@ function getFaviconPath(host) {
 export async function generateMetadata() {
   const headersList = await headers();
   const host = headersList.get("host") || "";
+  const enter = getFluxaInstance() === "ENTER";
   return {
-    title: "Fluxa · P&FE",
-    description: "Fluxa — upravljanje projektima i finansijama (GUI).",
+    title: enter ? "Enter Fluxa" : "Fluxa · P&FE",
+    description: enter
+      ? "Enter Fluxa — deal, posao, magacin i HaaS."
+      : "Fluxa — upravljanje projektima i finansijama (GUI).",
     icons: {
       icon: getFaviconPath(host),
     },
@@ -51,6 +55,7 @@ export default async function RootLayout({ children }) {
       lang={lang}
       data-theme="dark"
       data-locale={locale}
+      data-fluxa-instance={getFluxaInstance()}
       suppressHydrationWarning
     >
       <head>

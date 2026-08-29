@@ -142,7 +142,7 @@ const INITIAL_OPEN = {
   masterdata: false,
 };
 
-export default function DashboardBody() {
+export default function DashboardBody({ instance = "STUDIO" }) {
   const { t } = useTranslation();
   const { user, canSee, loading } = useAuthUser();
   const [open, setOpen] = useState(INITIAL_OPEN);
@@ -172,6 +172,203 @@ export default function DashboardBody() {
     );
   }
   // Ako je korisnik prijavljen, uvijek prikaži dashboard; prava skrivaju pojedina dugmad (PermissionGate).
+
+  if (instance === "ENTER") {
+    return (
+      <>
+        <div className="dashboardGroup deskGroup enterGroup enterGroup--saas">
+          <div className="groupHeader">
+            <div className="groupTitle">{t("dashboard.enterSaas")}</div>
+          </div>
+          <div className="groupSubtitle">{t("dashboard.enterSaasSub")}</div>
+          <div className="deskMainButtons">
+            <Link
+              href="/inicijacije"
+              className="deskMainBtn deskMainBtn--green"
+              title={t("dashboard.dealsTitle")}
+            >
+              <span>{t("dashboard.deals")}</span>
+              <span className="deskMainBtnSubtitle">
+                {t("dashboard.dealsSubtitle")}
+              </span>
+            </Link>
+            <Link
+              href="/projects"
+              className="deskMainBtn deskMainBtn--blue"
+              title={t("dashboard.enterPosloviTitle")}
+            >
+              <span>{t("dashboard.enterPoslovi")}</span>
+              <span className="deskMainBtnSubtitle">
+                {t("dashboard.enterPosloviSub")}
+              </span>
+            </Link>
+          </div>
+        </div>
+
+        <div className="dashboardGroup enterGroup enterGroup--finance">
+          <div className="groupHeader">
+            <div className="groupTitle">{t("dashboard.finansije")}</div>
+            <span className="groupPill">{t("dashboard.finansijeOperativa")}</span>
+          </div>
+          <div className="groupSubtitle">{t("dashboard.finansijeSubtitle")}</div>
+          <div className="finansijeOperativaRows">
+            <div className="finansijeRow finansijeRow--3">
+              <ActionBtn
+                label={t("dashboard.enterWizard")}
+                href="/fakture/za-fakturisanje"
+                title={t("dashboard.fakturisanjeTitle")}
+              />
+              <ActionBtn
+                label={t("dashboard.fakture")}
+                href="/fakture"
+                title={t("dashboard.faktureTitle")}
+              />
+              <ActionBtn
+                label={t("dashboard.kuf")}
+                href="/finance/kuf"
+                title={t("dashboard.kufTitle")}
+              />
+            </div>
+            <div className="finansijeRow finansijeRow--3">
+              <ActionBtn
+                label={t("dashboard.izvodi")}
+                href="/izvodi"
+                title={t("dashboard.izvodiTitle")}
+              />
+              <ActionBtn
+                label={t("dashboard.naplata")}
+                href="/naplate"
+                title={t("dashboard.naplataTitle")}
+              />
+              <ActionBtn
+                label={t("dashboard.pdv")}
+                href="/finance/pdv"
+                title={t("dashboard.pdvTitle")}
+              />
+            </div>
+            <div className="finansijeRow finansijeRow--2">
+              <ActionBtn
+                label={t("dashboard.tools")}
+                href="/studio/finance-tools"
+                title={t("dashboard.financeTools")}
+              />
+              <FinanceMorePopup buttonClassName="btn" />
+            </div>
+          </div>
+        </div>
+
+        <div className="dashboardGroup enterGroup enterGroup--haas">
+          <div className="groupHeader">
+            <div className="groupTitle">{t("dashboard.enterHaasGroup")}</div>
+          </div>
+          <div className="groupSubtitle">{t("dashboard.enterHaasGroupSub")}</div>
+          <div className="finansijeRow finansijeRow--2">
+            <ActionBtn
+              label={t("dashboard.enterHaas")}
+              href="/ops/haas"
+              title={t("dashboard.enterHaasSub")}
+            />
+            <ActionBtn
+              label={t("dashboard.enterKompletacija")}
+              href="/ops/kompletacija"
+              title={t("dashboard.enterKompletacijaSub")}
+            />
+          </div>
+        </div>
+
+        <div className="dashboardGroup enterGroup enterGroup--magacin">
+          <div className="groupHeader">
+            <div className="groupTitle">{t("dashboard.enterMagacinGroup")}</div>
+          </div>
+          <div className="groupSubtitle">{t("dashboard.enterMagacinGroupSub")}</div>
+          <div className="sifarniciRow sifarniciRow--equal">
+            <ActionBtn label={t("dashboard.enterArtikli")} href="/ops/artikli" />
+            <ActionBtn label={t("dashboard.enterMagacini")} href="/ops/magacini" />
+            <ActionBtn
+              label={t("dashboard.enterPrijemnice")}
+              href="/ops/prijemnice"
+            />
+            <ActionBtn
+              label={t("dashboard.enterSastavnice")}
+              href="/ops/sastavnice"
+            />
+          </div>
+          <div className="finansijeRow finansijeRow--2">
+            <ActionBtn
+              label={t("dashboard.enterNalozi")}
+              href="/ops/nalozi"
+              title={t("dashboard.enterNaloziSub")}
+            />
+            <ActionBtn
+              label={t("dashboard.enterQr")}
+              href="/ops/qr"
+              title={t("dashboard.enterQrSub")}
+            />
+          </div>
+        </div>
+
+        <div className="dashboardGroup enterGroup enterGroup--reports">
+          <div className="groupHeader">
+            <div className="groupTitle">{t("dashboard.enterReports")}</div>
+          </div>
+          <div className="groupSubtitle">{t("dashboard.enterReportsSub")}</div>
+          <div className="sifarniciRow sifarniciRow--equal">
+            <ActionBtn
+              label={t("dashboard.profit")}
+              href="/finance/profit"
+              title={t("dashboard.profitTitle")}
+            />
+            <ActionBtn
+              label={t("dashboard.marginPoKlijentu")}
+              href="/finance/profit/klijent"
+              title={t("dashboard.marginPoKlijentuTitle")}
+            />
+            <ActionBtn
+              label={t("dashboard.reports")}
+              href="/izvjestaji/svi"
+              title={t("dashboard.izvjestajiSviTitle")}
+            />
+            <ActionBtn
+              label={t("dashboard.charts")}
+              href="/izvjestaji/graficki"
+              title={t("dashboard.izvjestajiGrafickiTitle")}
+            />
+          </div>
+        </div>
+
+        <div className="dashboardGroup">
+          <div className="groupHeader">
+            <div className="groupTitle">{t("dashboard.sifarnici")}</div>
+          </div>
+          <div className="sifarniciRow sifarniciRow--equal">
+            <ActionBtn label={t("dashboard.klijenti")} href="/studio/klijenti" />
+            <ActionBtn
+              label={t("dashboard.dobavljaci")}
+              href="/studio/dobavljaci"
+            />
+            <ActionBtn label={t("dashboard.radnici")} href="/studio/radnici" />
+            <ActionBtn
+              label={t("dashboard.firmaSettings")}
+              href="/studio/firma"
+              icon="⚙️"
+            />
+          </div>
+          <div className="finansijeRow finansijeRow--2">
+            <ActionBtn
+              label={t("dashboard.users")}
+              href="/studio/users"
+              title={t("dashboard.usersTitle")}
+            />
+            <ActionBtn
+              label={t("dashboard.roles")}
+              href="/studio/roles"
+              title={t("dashboard.rolesTitle")}
+            />
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

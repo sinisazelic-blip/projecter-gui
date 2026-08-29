@@ -250,10 +250,7 @@ async function detailClient(partnerId, year) {
     FROM projekt_potrazivanja pp
     JOIN projekti p ON p.projekat_id = pp.projekat_id
     WHERE COALESCE(pp.fakturisano, 0) = 0
-      AND COALESCE(
-        NULLIF(p.narucilac_id, 0),
-        NULLIF(p.krajnji_klijent_id, 0)
-      ) = ?
+      AND NULLIF(p.narucilac_id, 0) = ?
       AND DATE(COALESCE(pp.datum_fakture, pp.datum_valute, pp.created_at)) >= ?
       AND DATE(COALESCE(pp.datum_fakture, pp.datum_valute, pp.created_at)) <= ?
     ORDER BY DATE(COALESCE(pp.datum_fakture, pp.datum_valute, pp.created_at)) ASC, pp.potrazivanje_id ASC
@@ -311,7 +308,7 @@ async function detailClient(partnerId, year) {
       GROUP BY fp.projekat_id
     ) pc ON pc.projekat_id = pr.projekat_id
     LEFT JOIN bank_tx_posting_prihod_link b ON b.prihod_id = pr.prihod_id AND b.aktivan = 1
-    WHERE COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0), NULLIF(pc.klijent_id, 0)) = ?
+    WHERE COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(pc.klijent_id, 0)) = ?
       AND DATE(${prDt}) >= ?
       AND DATE(${prDt}) <= ?
     ORDER BY DATE(${prDt}) ASC, pr.prihod_id ASC
@@ -365,7 +362,6 @@ async function detailClient(partnerId, year) {
       AND COALESCE(
         CASE WHEN LOWER(COALESCE(c.entity_type, '')) IN ('klijent', 'client') THEN NULLIF(c.entity_id, 0) ELSE NULL END,
         NULLIF(p.narucilac_id, 0),
-        NULLIF(p.krajnji_klijent_id, 0),
         NULLIF(pc.klijent_id, 0)
       ) = ?
     ORDER BY DATE(COALESCE(c.datum, c.created_at)) ASC, c.id ASC

@@ -97,7 +97,7 @@ function TableBlock({ title, tableData, field }) {
   );
 }
 
-export default function GrafickiClient() {
+export default function GrafickiClient({ hideArchive = false } = {}) {
   const { t } = useTranslation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -189,7 +189,9 @@ export default function GrafickiClient() {
       </div>
 
       <div className="reportNote">
-        Izvor: do 31.12.2025 — stg_master_finansije (arhiva, datum_zavrsetka). Od 1.1.2026 — redovno poslovanje: fakture (promet) i projektni_troskovi (troškovi).
+        {hideArchive
+          ? "Izvor: fakture (promet) i projektni_troskovi (troškovi)."
+          : "Izvor: do 31.12.2025 — stg_master_finansije (arhiva, datum_zavrsetka). Od 1.1.2026 — redovno poslovanje: fakture (promet) i projektni_troskovi (troškovi)."}
       </div>
     </div>
   );

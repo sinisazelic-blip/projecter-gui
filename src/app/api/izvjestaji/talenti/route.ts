@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { includeStudioArchive } from "@/lib/reports/archive";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ async function loadStagingTotals(): Promise<{
 }> {
   const byTalentId = new Map<number, number>();
   const byName = new Map<string, ByNameEntry>();
+  if (!includeStudioArchive()) return { byTalentId, byName };
 
   // 1) stg_troskovi_talenti_old — po talent_id
   try {

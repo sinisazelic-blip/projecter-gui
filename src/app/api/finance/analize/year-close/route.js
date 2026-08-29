@@ -68,18 +68,18 @@ async function clientBalances(year) {
     ) fi ON fi.klijent_id = k.klijent_id
     LEFT JOIN (
       SELECT
-        COALESCE(NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0)) AS klijent_id,
+        NULLIF(p.narucilac_id, 0) AS klijent_id,
         ROUND(SUM(COALESCE(pp.iznos, 0)), 2) AS potrazivanja
       FROM projekt_potrazivanja pp
       JOIN projekti p ON p.projekat_id = pp.projekat_id
       WHERE COALESCE(pp.fakturisano, 0) = 0
         AND DATE(COALESCE(pp.datum_fakture, pp.datum_valute, pp.created_at)) >= ?
         AND DATE(COALESCE(pp.datum_fakture, pp.datum_valute, pp.created_at)) <= ?
-        AND COALESCE(NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0)) IS NOT NULL
-      GROUP BY COALESCE(NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0))
+        AND NULLIF(p.narucilac_id, 0) IS NOT NULL
+      GROUP BY NULLIF(p.narucilac_id, 0)
     ) po ON po.klijent_id = k.klijent_id
     LEFT JOIN (
-      SELECT COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0), NULLIF(pc.klijent_id, 0)) AS klijent_id,
+      SELECT COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(pc.klijent_id, 0)) AS klijent_id,
              ROUND(SUM(COALESCE(pr.iznos_km,0)),2) AS naplaceno
       FROM projektni_prihodi pr
       LEFT JOIN fakture fpr ON fpr.faktura_id = pr.faktura_id
@@ -95,14 +95,13 @@ async function clientBalances(year) {
         GROUP BY fp.projekat_id
       ) pc ON pc.projekat_id = pr.projekat_id
       WHERE DATE(${prDt}) >= ? AND DATE(${prDt}) <= ?
-      GROUP BY COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0), NULLIF(pc.klijent_id, 0))
+      GROUP BY COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(pc.klijent_id, 0))
     ) na ON na.klijent_id = k.klijent_id
     LEFT JOIN (
       SELECT
         COALESCE(
           CASE WHEN LOWER(COALESCE(c.entity_type, '')) IN ('klijent', 'client') THEN NULLIF(c.entity_id, 0) ELSE NULL END,
           NULLIF(p.narucilac_id, 0),
-          NULLIF(p.krajnji_klijent_id, 0),
           NULLIF(pc.klijent_id, 0)
         ) AS klijent_id,
         ROUND(SUM(COALESCE(c.iznos, 0)), 2) AS naplaceno
@@ -124,7 +123,6 @@ async function clientBalances(year) {
       GROUP BY COALESCE(
         CASE WHEN LOWER(COALESCE(c.entity_type, '')) IN ('klijent', 'client') THEN NULLIF(c.entity_id, 0) ELSE NULL END,
         NULLIF(p.narucilac_id, 0),
-        NULLIF(p.krajnji_klijent_id, 0),
         NULLIF(pc.klijent_id, 0)
       )
     ) nc ON nc.klijent_id = k.klijent_id

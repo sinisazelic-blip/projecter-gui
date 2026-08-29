@@ -119,15 +119,15 @@ async function getClientSummary(year) {
   const potrazivanjaRows = await query(
     `
     SELECT
-      COALESCE(NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0)) AS klijent_id,
+      NULLIF(p.narucilac_id, 0) AS klijent_id,
       ROUND(SUM(COALESCE(pp.iznos, 0)), 2) AS s
     FROM projekt_potrazivanja pp
     JOIN projekti p ON p.projekat_id = pp.projekat_id
     WHERE COALESCE(pp.fakturisano, 0) = 0
       AND DATE(COALESCE(pp.datum_fakture, pp.datum_valute, pp.created_at)) >= ?
       AND DATE(COALESCE(pp.datum_fakture, pp.datum_valute, pp.created_at)) <= ?
-      AND COALESCE(NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0)) IS NOT NULL
-    GROUP BY COALESCE(NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0))
+      AND NULLIF(p.narucilac_id, 0) IS NOT NULL
+    GROUP BY NULLIF(p.narucilac_id, 0)
     `,
     [from, to],
   ).catch(() => []);
@@ -135,7 +135,7 @@ async function getClientSummary(year) {
   const collectedRows = await query(
     `
     SELECT
-      COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0), NULLIF(pc.klijent_id, 0)) AS klijent_id,
+      COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(pc.klijent_id, 0)) AS klijent_id,
       ROUND(SUM(COALESCE(pr.iznos_km, 0)), 2) AS s
     FROM projektni_prihodi pr
     LEFT JOIN fakture fpr ON fpr.faktura_id = pr.faktura_id
@@ -153,8 +153,8 @@ async function getClientSummary(year) {
     WHERE pr.projekat_id IS NOT NULL
       AND DATE(${prDt}) >= ?
       AND DATE(${prDt}) <= ?
-      AND COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0), NULLIF(pc.klijent_id, 0)) IS NOT NULL
-    GROUP BY COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(p.krajnji_klijent_id, 0), NULLIF(pc.klijent_id, 0))
+      AND COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(pc.klijent_id, 0)) IS NOT NULL
+    GROUP BY COALESCE(NULLIF(fpr.bill_to_klijent_id, 0), NULLIF(p.narucilac_id, 0), NULLIF(pc.klijent_id, 0))
     `,
     [from, to],
   ).catch(() => []);
@@ -165,7 +165,6 @@ async function getClientSummary(year) {
       COALESCE(
         CASE WHEN LOWER(COALESCE(c.entity_type, '')) IN ('klijent', 'client') THEN NULLIF(c.entity_id, 0) ELSE NULL END,
         NULLIF(p.narucilac_id, 0),
-        NULLIF(p.krajnji_klijent_id, 0),
         NULLIF(pc.klijent_id, 0)
       ) AS klijent_id,
       ROUND(SUM(COALESCE(c.iznos, 0)), 2) AS s
@@ -188,13 +187,11 @@ async function getClientSummary(year) {
       AND COALESCE(
         CASE WHEN LOWER(COALESCE(c.entity_type, '')) IN ('klijent', 'client') THEN NULLIF(c.entity_id, 0) ELSE NULL END,
         NULLIF(p.narucilac_id, 0),
-        NULLIF(p.krajnji_klijent_id, 0),
         NULLIF(pc.klijent_id, 0)
       ) IS NOT NULL
     GROUP BY COALESCE(
       CASE WHEN LOWER(COALESCE(c.entity_type, '')) IN ('klijent', 'client') THEN NULLIF(c.entity_id, 0) ELSE NULL END,
       NULLIF(p.narucilac_id, 0),
-      NULLIF(p.krajnji_klijent_id, 0),
       NULLIF(pc.klijent_id, 0)
     )
     `,

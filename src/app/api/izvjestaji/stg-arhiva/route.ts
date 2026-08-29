@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { includeStudioArchive } from "@/lib/reports/archive";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,9 @@ async function getStgTableName(): Promise<string> {
 }
 
 export async function GET() {
+  if (!includeStudioArchive()) {
+    return NextResponse.json({ ok: true, tableData: [] });
+  }
   try {
     const stgTableName = await getStgTableName();
     const safeTable = stgTableName.replace(/`/g, "``");

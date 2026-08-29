@@ -4,6 +4,7 @@ import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
 import FluxaLogo from "@/components/FluxaLogo";
 import SviIzvjestajiClient from "./SviIzvjestajiClient";
+import { isEnterInstance } from "@/lib/fluxa-instance";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,8 @@ export default async function SviIzvjestajiPage() {
   const cookieStore = await cookies();
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
   const t = getT(locale);
+
+  const enter = isEnterInstance();
 
   return (
     <div className="container">
@@ -20,7 +23,7 @@ export default async function SviIzvjestajiPage() {
             <div className="topRow">
               <div className="brandWrap">
                 <div className="brandLogoBlock">
-                  <FluxaLogo /><span className="brandSlogan">Project & Finance Engine</span>
+                  <FluxaLogo /><span className="brandSlogan">{enter ? "Deal, Ops & Finance" : "Project & Finance Engine"}</span>
                 </div>
                 <div>
                   <div className="brandTitle">{t("izvjestajiSvi.title")}</div>
@@ -38,7 +41,7 @@ export default async function SviIzvjestajiPage() {
         </div>
 
         <div className="bodyWrap">
-          <SviIzvjestajiClient />
+          <SviIzvjestajiClient hideArchive={enter} hideTalenti={enter} />
         </div>
       </div>
     </div>

@@ -1284,6 +1284,100 @@ option {
   background: rgba(255,255,255,0.06);
   color: rgba(255,255,255,0.95);
 }
+.opsPage .bodyWrap {
+  padding-bottom: 28px;
+}
+
+.opsNav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px 18px;
+  justify-content: flex-end;
+}
+
+.opsNavGroup {
+  display: grid;
+  gap: 6px;
+}
+
+.opsNavLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.opsNavItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.opsCard {
+  padding: 18px;
+}
+
+.opsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.opsTable th,
+.opsTable td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  vertical-align: top;
+}
+
+.opsTable th {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.opsPage h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.opsPage .opsMsgOk {
+  color: var(--good);
+}
+
+.opsPage .opsMsgErr {
+  color: var(--bad);
+}
+
+.opsPage input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.opsPage select,
+.opsPage textarea {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+}
+
+.opsPage input:focus,
+.opsPage select:focus,
+.opsPage textarea:focus {
+  outline: none;
+  border-color: rgba(125, 211, 252, 0.45);
+  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.1);
+}
+
+[data-theme="light"] .opsPage input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+[data-theme="light"] .opsPage select,
+[data-theme="light"] .opsPage textarea {
+  border: 1px solid #b0b8c4;
+  background: #fff;
+}
+
 @media (max-width: 700px) {
   .uputstvoGrid {
     grid-template-columns: 1fr !important;

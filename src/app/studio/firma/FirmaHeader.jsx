@@ -9,7 +9,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import FluxaLogo from "@/components/FluxaLogo";
 import { FLUXA_SLOGAN_WITH_VERSION } from "@/lib/fluxaVersion";
 
-export default function FirmaHeader() {
+export default function FirmaHeader({ hideLanguage = false }) {
   const { t } = useTranslation();
   const router = useRouter();
   const { requestTourOnce } = useAuthUser();
@@ -41,7 +41,7 @@ export default function FirmaHeader() {
         }}
       >
         <ThemeToggle />
-        <LanguageSwitcher />
+        {!hideLanguage && <LanguageSwitcher />}
         <button
           type="button"
           className="btn"

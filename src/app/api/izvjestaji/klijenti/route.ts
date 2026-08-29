@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { includeStudioArchive } from "@/lib/reports/archive";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ type LegacyClientRow = {
 async function loadLegacyByClient(): Promise<
   Map<number, { broj_projekata: number; ukupno_fakturisano: number; budzet: number; naplaceno: number }>
 > {
+  if (!includeStudioArchive()) return new Map();
   const map = new Map<
     number,
     { broj_projekata: number; ukupno_fakturisano: number; budzet: number; naplaceno: number }

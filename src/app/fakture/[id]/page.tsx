@@ -36,6 +36,14 @@ type FakturaData = {
   valuta: string;
   status: string;
   projekti_ids: number[];
+  haas_stavke?: Array<{
+    sifra: string;
+    naziv: string;
+    kolicina: number;
+    cijena: number;
+    serije: string[];
+  }>;
+  haas_event?: string | null;
 };
 
 export default function FakturaDetailPage() {
@@ -161,6 +169,10 @@ export default function FakturaDetailPage() {
 
   // Redirect na preview sa podacima iz fakture
   const goToPreview = () => {
+    if (faktura.haas_stavke?.length) {
+      router.push(`/ops/haas/${faktura.faktura_id}`);
+      return;
+    }
     if (!faktura.projekti_ids || faktura.projekti_ids.length === 0) {
       alert(t("fakture.noProjectsMessage").replace("{{id}}", String(faktura.faktura_id)));
       console.error("Faktura bez projekata:", faktura);
@@ -313,6 +325,19 @@ export default function FakturaDetailPage() {
                 <div style={{ fontSize: 18, fontWeight: 600 }}>{(faktura.valuta === "BAM" || faktura.valuta === "KM") ? "KM" : faktura.valuta}</div>
               </div>
             </div>
+            {faktura.haas_stavke?.length ? (
+              <div style={{ marginTop: 20 }}>
+                <div className="muted" style={{ marginBottom: 8 }}>
+                  HaaS najam{faktura.haas_event ? ` — ${faktura.haas_event}` : ""}
+                </div>
+                {faktura.haas_stavke.map((l) => (
+                  <div key={l.sifra} style={{ fontSize: 14, marginBottom: 4 }}>
+                    {l.kolicina}× {l.sifra} — {l.naziv} · {Number(l.cijena).toFixed(2)}
+                    {l.serije?.length ? ` (${l.serije.join(", ")})` : ""}
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
         ok: true,
         deal: {
           inicijacija_id: deal.inicijacija_id,
-          klijent_id: deal.narucilac_id ?? deal.krajnji_klijent_id,
+          klijent_id: deal.narucilac_id,
           naziv_klijenta: deal.naziv_klijenta,
           is_ino: isIno,
           valuta,

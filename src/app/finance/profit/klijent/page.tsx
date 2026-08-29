@@ -4,6 +4,7 @@ import { getValidLocale } from "@/lib/i18n";
 import ProfitKlijentClient from "./ProfitKlijentClient";
 import ProfitTopActions from "../ProfitTopActions";
 import FluxaLogo from "@/components/FluxaLogo";
+import { isEnterInstance } from "@/lib/fluxa-instance";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ export default async function ProfitKlijentPage() {
   const cookieStore = await cookies();
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
   const t = getT(locale);
+  const enter = isEnterInstance();
 
   return (
     <div className="container profitPageWrap">
@@ -53,7 +55,9 @@ export default async function ProfitKlijentPage() {
               <div className="brandWrap">
                 <div className="brandLogoBlock">
                   <FluxaLogo />
-                  <span className="brandSlogan">Project & Finance Engine</span>
+                  <span className="brandSlogan">
+                    {enter ? "Deal, Ops & Finance" : "Project & Finance Engine"}
+                  </span>
                 </div>
                 <div>
                   <div className="brandTitle">{t("dashboard.marginPoKlijentuTitle")}</div>

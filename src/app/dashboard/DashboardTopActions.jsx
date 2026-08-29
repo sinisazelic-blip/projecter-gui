@@ -7,7 +7,7 @@ import { useAuthUser } from "@/components/AuthUserProvider";
 import { useState, useRef, useEffect } from "react";
 import { FLUXA_EDITIONS } from "@/lib/fluxa-edition";
 
-export default function DashboardTopActions() {
+export default function DashboardTopActions({ instance = "STUDIO" }) {
   const { t } = useTranslation();
   const { edition, setEdition, isOwner, isFeatureVisible } = useFluxaEdition();
   const [versionOpen, setVersionOpen] = useState(false);
@@ -25,11 +25,16 @@ export default function DashboardTopActions() {
 
   const { canSee, onboardingCompleted, completeOnboarding } = useAuthUser();
   const tenantAdminEnabled = process.env.NEXT_PUBLIC_ENABLE_TENANT_ADMIN === "true";
-  const showLicenceLink = isFeatureVisible(3) && tenantAdminEnabled;
-  const showLicenceComingSoon = isFeatureVisible(3) && !tenantAdminEnabled;
+  const showLicenceLink =
+    instance !== "ENTER" && isFeatureVisible(3) && tenantAdminEnabled;
+  const showLicenceComingSoon =
+    instance !== "ENTER" && isFeatureVisible(3) && !tenantAdminEnabled;
   const showVerzijaDropdown = isOwner;
-  const showMobile = isFeatureVisible(5) && canSee("Mobile dashboard", "-");
+  const enter = instance === "ENTER";
+  const showMobile =
+    !enter && isFeatureVisible(5) && canSee("Mobile dashboard", "-");
   const showBlagajna = isFeatureVisible(6) && canSee("Blagajna", "");
+  const showUputstvo = !enter;
 
   return (
     <div className="actions" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -133,10 +138,16 @@ export default function DashboardTopActions() {
           💰 {t("nav.cash")}
         </Link>
       )}
-
-      <Link href="/uputstvo" className="btn" title={t("nav.uputstvoTitle")}>
-        📖 {t("nav.uputstvo")}
-      </Link>
+      {enter && (
+        <Link href="/ops/tenanti" className="btn" title={t("dashboard.enterTenantiTitle")}>
+          {t("dashboard.enterTenanti")}
+        </Link>
+      )}
+      {showUputstvo && (
+        <Link href="/uputstvo" className="btn" title={t("nav.uputstvoTitle")}>
+          📖 {t("nav.uputstvo")}
+        </Link>
+      )}
 
       <button
         type="button"

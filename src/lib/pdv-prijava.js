@@ -1,6 +1,7 @@
 // Obračun PDV za prijavu: izlazni (KIF) − ulazni (KUF) = za prijavu. Liste dokumenata.
 import { query } from "@/lib/db";
 import { isFakturaPlacenaStatus } from "@/lib/invoicePaidStatus";
+import { includeStudioArchive } from "@/lib/reports/archive";
 
 const LIST_LIMIT = 5000;
 
@@ -234,7 +235,7 @@ export async function getPdvPrijavaData(from, to, opts = {}) {
     iz_arhive: false,
   }));
 
-  try {
+  if (includeStudioArchive()) try {
     const archRows = await query(
       `SELECT broj_fakture, MAX(datum_fakture) AS datum_fakture,
               ROUND(SUM(COALESCE(iznos_km, 0)), 2) AS iznos_km,
@@ -430,7 +431,7 @@ export async function getPdvYearOverview(year, opts = {}) {
     // ignore
   }
 
-  try {
+  if (includeStudioArchive()) try {
     const archRows = await query(
       `SELECT MONTH(t.datum_fakture) AS m,
               ROUND(SUM(t.pdv_izlazni), 2) AS pdv_izlazni

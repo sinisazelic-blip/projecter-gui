@@ -1,0 +1,2 @@
+-- Referenca P1 (tabele kreira i seeda src/lib/ops/schema.ts pri prvom ENTER pristupu).
+-- FLUXA_INSTANCE=ENTER

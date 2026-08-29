@@ -626,7 +626,12 @@ export default function CashClient() {
                             </td>
                             <td>#{p.id_po || p.projekat_id}</td>
                             <td>
-                              {clientNameById.get(Number(p.narucilac_id || p.krajnji_klijent_id || 0)) || "—"}
+                              {(() => {
+                                const naru = clientNameById.get(Number(p.narucilac_id || 0));
+                                const kraj = clientNameById.get(Number(p.krajnji_klijent_id || 0));
+                                if (naru && kraj && naru !== kraj) return `${naru} → ${kraj}`;
+                                return naru || "—";
+                              })()}
                             </td>
                             <td>{p.radni_naziv || "—"}</td>
                             <td style={{ textAlign: "right" }}>{fmtMoney(p.budzet_planirani || 0, localeCurrency)}</td>

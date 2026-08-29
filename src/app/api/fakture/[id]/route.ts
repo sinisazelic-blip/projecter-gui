@@ -120,6 +120,23 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       .filter(Number.isFinite);
 
     await conn.query(`DELETE FROM faktura_projekti WHERE faktura_id = ?`, [fakturaId]);
+    try {
+      await conn.query(
+        `UPDATE ops_kompletacije SET faktura_id = NULL WHERE faktura_id = ?`,
+        [fakturaId],
+      );
+      const [haasRows]: any = await conn.query(
+        `SELECT haas_faktura_id FROM ops_haas_fakture WHERE faktura_id = ?`,
+        [fakturaId],
+      );
+      const haasId = Number(haasRows?.[0]?.haas_faktura_id ?? 0);
+      if (haasId) {
+        await conn.query(`DELETE FROM ops_haas_stavke WHERE haas_faktura_id = ?`, [haasId]);
+        await conn.query(`DELETE FROM ops_haas_fakture WHERE faktura_id = ?`, [fakturaId]);
+      }
+    } catch {
+      /* ops tabele možda još ne postoje */
+    }
     await conn.query(`DELETE FROM fakture WHERE faktura_id = ?`, [fakturaId]);
 
     // Oslobodi broj u brojaču (sljedeća faktura ponovo dobija ovaj broj)
@@ -387,6 +404,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       console.warn(`⚠️ Faktura ${fakturaId} nema povezanih projekata ni iz faktura_projekti ni iz audit loga`);
     }
 
+    let haas_stavke: unknown[] = [];
+    let haas_event: string | null = null;
+    try {
+      const { getOpsHaasByFaktura } = await import("@/lib/ops/haas");
+      const haas = await getOpsHaasByFaktura(fakturaId);
+      if (haas) {
+        haas_stavke = haas.lines;
+        haas_event = haas.event_naziv ?? null;
+      }
+    } catch {
+      haas_stavke = [];
+    }
+
     return NextResponse.json({
       ok: true,
       faktura: {
@@ -396,6 +426,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         projekti_ids: projektiIds,
         project_sub_items: projectSubItems,
         project_names: projectNames,
+        haas_stavke,
+        haas_event,
       },
     });
   } catch (err: any) {

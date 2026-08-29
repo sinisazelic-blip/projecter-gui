@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { formatDateDMY } from "@/lib/format";
+import { includeStudioArchive } from "@/lib/reports/archive";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ async function loadArchiveFaktureNaplate(
   dateFrom: string | null,
   dateTo: string | null
 ): Promise<{ broj_fakture: string; datum_izdavanja: string; datum_dospijeca: string | null; narucilac_naziv: string; iznos_sa_pdv: number; naplaceno: number; neplaceno: number; iz_arhive: true }[]> {
+  if (!includeStudioArchive()) return [];
   const conditions: string[] = ["datum_fakture IS NOT NULL", "datum_fakture <= ?"];
   const params: any[] = [ARHIVA_CUTOFF];
   const having: string[] = [];
@@ -31,7 +33,7 @@ async function loadArchiveFaktureNaplate(
   try {
     const rows = (await query(
       `SELECT broj_fakture, MAX(datum_fakture) AS datum_fakture,
-              MAX(COALESCE(narucilac_id, krajnji_klijent_id)) AS klijent_id,
+              MAX(narucilac_id) AS klijent_id,
               ROUND(SUM(COALESCE(iznos_km, 0)), 2) AS iznos_km
        FROM stg_master_finansije
        WHERE ${conditions.join(" AND ")}

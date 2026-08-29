@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { includeStudioArchive } from "@/lib/reports/archive";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +73,9 @@ export async function GET(req: NextRequest) {
     // Arhiva: stg_master_finansije — narucilac_id, krajnji_klijent_id (ID; imena u tabeli klijenti). Stvarno ime tabele iz baze zbog case-sensitivity.
     let archiveSource: "direct" | "join" | "none" = "none";
     let archiveRowCount = 0;
-    const stgTableName = await getStgTableName();
+    let stgTableName = "";
+    if (includeStudioArchive()) {
+    stgTableName = await getStgTableName();
 
     // stg_master_finansije ima iznos_km, iznos_troska_km, datum_zavrsetka; iznos_ukupno_km/iznos_sa_pdv_km ne postoje u svim okruženjima
     const safeTable = stgTableName.replace(/`/g, "``");
@@ -130,6 +133,7 @@ export async function GET(req: NextRequest) {
       } catch (e2) {
         console.warn("Margin po klijentu: arhiva (join projekti):", (e2 as Error)?.message);
       }
+    }
     }
 
     // Od 2026: fakture (bill_to_klijent_id) i troškovi po projektima tog klijenta

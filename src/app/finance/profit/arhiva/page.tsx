@@ -4,10 +4,13 @@ import { getValidLocale } from "@/lib/i18n";
 import ArhivaClient from "./ArhivaClient";
 import ProfitTopActions from "../ProfitTopActions";
 import FluxaLogo from "@/components/FluxaLogo";
+import { isEnterInstance } from "@/lib/fluxa-instance";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProfitArhivaPage() {
+  if (isEnterInstance()) redirect("/finance/profit");
   const cookieStore = await cookies();
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
   const t = getT(locale);

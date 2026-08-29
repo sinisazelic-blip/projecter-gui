@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { includeStudioArchive } from "@/lib/reports/archive";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,7 @@ export async function GET() {
     const byYear: Record<number, YearRow> = {};
 
     // Arhiva: stg_master_finansije — samo iznos_km, iznos_troska_km (kolone iznos_ukupno_km/iznos_sa_pdv_km ne postoje)
-    try {
+    if (includeStudioArchive()) try {
       const archiveRows = await query(
         `
         SELECT
