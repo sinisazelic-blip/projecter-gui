@@ -285,7 +285,7 @@ export async function updateEnterTenantModules(input: {
     throw new Error("INVALID_PACKAGE");
   }
 
-  const allowed = new Set(ENTERSYS_MODULE_KEYS.map((m) => m.key));
+  const allowed = new Set<string>(ENTERSYS_MODULE_KEYS.map((m) => m.key));
   const modules = Array.from(
     new Set(input.modules.map((k) => String(k).trim()).filter((k) => allowed.has(k))),
   );

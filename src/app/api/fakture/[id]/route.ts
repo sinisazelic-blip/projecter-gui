@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query, pool } from "@/lib/db";
 import { assertOwner } from "@/lib/auth/owner";
+import { getOpsHaasByFaktura } from "@/lib/ops/haas";
 
 export const dynamic = "force-dynamic";
 
@@ -407,7 +408,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     let haas_stavke: unknown[] = [];
     let haas_event: string | null = null;
     try {
-      const { getOpsHaasByFaktura } = await import("@/lib/ops/haas");
       const haas = await getOpsHaasByFaktura(fakturaId);
       if (haas) {
         haas_stavke = haas.lines;

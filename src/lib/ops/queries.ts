@@ -111,7 +111,7 @@ async function nextPrijemnicaBroj(
   const [rows] = (await conn.query(
     `SELECT broj FROM ops_prijemnice WHERE broj LIKE ? ORDER BY prijemnica_id DESC LIMIT 1`,
     [`${prefix}%`],
-  )) as [{ broj: string }[]];
+  )) as unknown as [{ broj: string }[]];
   const last = String(rows?.[0]?.broj ?? "");
   const n = Number(last.slice(prefix.length)) || 0;
   return `${prefix}${String(n + 1).padStart(4, "0")}`;
@@ -373,7 +373,7 @@ async function nextRnBroj(
   const [rows] = (await conn.query(
     `SELECT broj FROM ops_radni_nalozi WHERE broj LIKE ? ORDER BY rn_id DESC LIMIT 1`,
     [`${prefix}%`],
-  )) as [{ broj: string }[]];
+  )) as unknown as [{ broj: string }[]];
   const last = String(rows?.[0]?.broj ?? "");
   const n = Number(last.slice(prefix.length)) || 0;
   return `${prefix}${String(n + 1).padStart(4, "0")}`;
@@ -445,7 +445,7 @@ export async function createOpsRadniNalog(input: {
         closer,
         String(input.napomena ?? "").trim() || null,
       ],
-    )) as [{ insertId?: number }];
+    )) as unknown as [{ insertId?: number }];
     const rnId = Number(ins?.insertId ?? 0);
     if (!rnId) throw new Error("RN_INSERT");
 
@@ -466,7 +466,7 @@ export async function createOpsRadniNalog(input: {
            LIMIT ${take}
            FOR UPDATE`,
           [line.komponenta_artikal_id],
-        )) as [{ jedinica_id: number }[]];
+        )) as unknown as [{ jedinica_id: number }[]];
         if (!Array.isArray(units) || units.length < take) {
           throw new Error(
             `Nedostaje ${line.sifra}: treba ${take} kom, slobodno ${units?.length ?? 0}`,
@@ -486,7 +486,7 @@ export async function createOpsRadniNalog(input: {
            WHERE magacin_id = ? AND artikal_id = ?
            FOR UPDATE`,
           [line.default_magacin_id, line.komponenta_artikal_id],
-        )) as [{ kolicina: number }[]];
+        )) as unknown as [{ kolicina: number }[]];
         const have = Number(stockRows?.[0]?.kolicina ?? 0);
         if (have + 1e-9 < need) {
           throw new Error(
@@ -498,7 +498,7 @@ export async function createOpsRadniNalog(input: {
            SET kolicina = kolicina - ?
            WHERE magacin_id = ? AND artikal_id = ? AND kolicina >= ?`,
           [need, line.default_magacin_id, line.komponenta_artikal_id, need],
-        )) as [{ affectedRows?: number }];
+        )) as unknown as [{ affectedRows?: number }];
         if (!Number(upd?.affectedRows)) {
           throw new Error(`Nedostaje ${line.sifra}: stanje se promijenilo`);
         }
@@ -514,7 +514,7 @@ export async function createOpsRadniNalog(input: {
     const [cntRows] = (await conn.query(
       `SELECT COUNT(*) AS c FROM ops_jedinice_opreme WHERE artikal_id = ?`,
       [sablonId],
-    )) as [{ c: number }[]];
+    )) as unknown as [{ c: number }[]];
     let n = Number(cntRows?.[0]?.c ?? 0);
     for (let i = 0; i < qty; i++) {
       n += 1;
@@ -678,7 +678,7 @@ async function nextKompletacijaBroj(
   const [rows] = (await conn.query(
     `SELECT broj FROM ops_kompletacije WHERE broj LIKE ? ORDER BY kompletacija_id DESC LIMIT 1`,
     [`${prefix}%`],
-  )) as [{ broj: string }[]];
+  )) as unknown as [{ broj: string }[]];
   const last = String(rows?.[0]?.broj ?? "");
   const n = Number(last.slice(prefix.length)) || 0;
   return `${prefix}${String(n + 1).padStart(4, "0")}`;
@@ -758,7 +758,7 @@ export async function createOpsKompletacija(input: {
         krajnjiNaziv,
         objekat,
       ],
-    )) as [{ insertId?: number }];
+    )) as unknown as [{ insertId?: number }];
     kompletacijaId = Number(ins?.insertId ?? 0);
     if (!kompletacijaId) throw new Error("KOMPLETACIJA_INSERT");
   });
@@ -772,7 +772,7 @@ async function refreshKompletacijaStatus(
   const [rows] = (await conn.query(
     `SELECT faza FROM ops_kompletacija_stavke WHERE kompletacija_id = ?`,
     [kompletacijaId],
-  )) as [{ faza: string }[]];
+  )) as unknown as [{ faza: string }[]];
   const list = Array.isArray(rows) ? rows : [];
   const active = list.filter((r) => r.faza !== "VRACENO");
   let status = "OTVOREN";
@@ -811,7 +811,7 @@ export async function skenOpsJedinica(input: {
        WHERE UPPER(kod) = ?
        FOR UPDATE`,
       [kod],
-    )) as [OpsJedinicaOpreme[]];
+    )) as unknown as [OpsJedinicaOpreme[]];
     const unit = Array.isArray(units) ? units[0] : null;
     if (!unit) throw new Error("KOD_NOT_FOUND");
     if (unit.stanje === "UGRADJENO") throw new Error("UGRADJENO_NIJE_SKEN");
@@ -847,7 +847,7 @@ export async function skenOpsJedinica(input: {
         `SELECT kompletacija_id, klasa_rizika, status
          FROM ops_kompletacije WHERE kompletacija_id = ? FOR UPDATE`,
         [kid],
-      )) as [{ kompletacija_id: number; klasa_rizika: string; status: string }[]];
+      )) as unknown as [{ kompletacija_id: number; klasa_rizika: string; status: string }[]];
       const ev = Array.isArray(hdr) ? hdr[0] : null;
       if (!ev) throw new Error("KOMPLETACIJA_INVALID");
       if (ev.status === "ZATVOREN") throw new Error("KOMPLETACIJA_ZATVORENA");
@@ -881,7 +881,7 @@ export async function skenOpsJedinica(input: {
       `SELECT kompletacija_id, klasa_rizika, status
        FROM ops_kompletacije WHERE kompletacija_id = ? FOR UPDATE`,
       [eventId],
-    )) as [{ kompletacija_id: number; klasa_rizika: string; status: string }[]];
+    )) as unknown as [{ kompletacija_id: number; klasa_rizika: string; status: string }[]];
     const ev = Array.isArray(hdr) ? hdr[0] : null;
     if (!ev) throw new Error("KOMPLETACIJA_INVALID");
 

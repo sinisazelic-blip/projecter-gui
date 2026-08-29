@@ -6,6 +6,7 @@ import {
   type OpsHaasFaktura,
   type OpsHaasStavka,
 } from "@/lib/ops/schema";
+import { assertOpsNarucilac } from "@/lib/ops/queries";
 
 export async function listOpsHaasCjenovnik(): Promise<OpsHaasCijena[]> {
   await ensureOpsTables();
@@ -176,7 +177,6 @@ export async function createOpsHaasFaktura(input: {
 }): Promise<{ faktura_id: number; broj_fakture: string }> {
   await ensureOpsTables();
   const preview = await previewOpsHaas(input.kompletacija_id, input.valuta);
-  const { assertOpsNarucilac } = await import("@/lib/ops/queries");
   const billTo = await assertOpsNarucilac(input.klijent_id);
   const klijentId = billTo.klijent_id;
   const datum = String(input.datum ?? "").slice(0, 10);
@@ -209,7 +209,7 @@ export async function createOpsHaasFaktura(input: {
     const [lock] = (await conn.query(
       `SELECT faktura_id FROM ops_kompletacije WHERE kompletacija_id = ? FOR UPDATE`,
       [input.kompletacija_id],
-    )) as [{ faktura_id: number | null }[]];
+    )) as unknown as [{ faktura_id: number | null }[]];
     if (lock?.[0]?.faktura_id) throw new Error("VEC_FAKTURISANO");
 
     const [ins] = (await conn.query(
@@ -232,7 +232,7 @@ export async function createOpsHaasFaktura(input: {
         ukupno,
         pnb,
       ],
-    )) as [{ insertId?: number }];
+    )) as unknown as [{ insertId?: number }];
     fakturaId = Number(ins?.insertId ?? 0);
     if (!fakturaId) throw new Error("FAKTURA_INSERT");
 
@@ -251,7 +251,7 @@ export async function createOpsHaasFaktura(input: {
          (faktura_id, kompletacija_id, klijent_id, valuta, osnovica)
        VALUES (?, ?, ?, ?, ?)`,
       [fakturaId, input.kompletacija_id, klijentId, valuta, osnovica],
-    )) as [{ insertId?: number }];
+    )) as unknown as [{ insertId?: number }];
     const haasId = Number(hins?.insertId ?? 0);
     if (!haasId) throw new Error("HAAS_INSERT");
 

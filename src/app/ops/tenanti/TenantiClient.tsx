@@ -7,6 +7,8 @@ import {
 } from "@/lib/entersys-activation";
 import type { EnterTenantAuditRow, EnterTenantRow } from "@/lib/ops/tenanti";
 
+type EnterPackageId = (typeof ENTERSYS_BASE_PACKAGES)[number]["id"];
+
 const ERR: Record<string, string> = {
   TENANT_NOT_FOUND: "Objekat nije pronađen ili nije Enter licence.",
   INVALID_DATE: "Datum produženja nije ispravan.",
@@ -62,7 +64,9 @@ export default function TenantiClient({
   const [busyId, setBusyId] = useState<number | null>(null);
   const [extendDraft, setExtendDraft] = useState<Record<number, string>>({});
   const [moduleRow, setModuleRow] = useState<EnterTenantRow | null>(null);
-  const [packageId, setPackageId] = useState(ENTERSYS_BASE_PACKAGES[0].id);
+  const [packageId, setPackageId] = useState<EnterPackageId>(
+    ENTERSYS_BASE_PACKAGES[0].id,
+  );
   const [modules, setModules] = useState<Record<string, boolean>>({});
   const [blagajni, setBlagajni] = useState(1);
 
