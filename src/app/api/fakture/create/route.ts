@@ -33,6 +33,10 @@ export async function POST(req: NextRequest) {
       popust, // popust prije PDV-a (KM)
       project_names, // override nazivi projekata (format: "id:naziv,id2:naziv2")
       project_sub_items, // opisne stavke (format: "id:item1|item2,id2:item1")
+      fiskal_verification_url,
+      fiskal_qr_code,
+      fiskal_sdc_date_time,
+      fiskal_journal,
     } = body;
 
     const projekatIds = parseIds(ids);
@@ -278,6 +282,10 @@ export async function POST(req: NextRequest) {
           pdvObracunat,
           iznosUkupnoKm,
           String(pnb || "").trim() || null,
+          fiskal_verification_url ?? null,
+          fiskal_qr_code ?? null,
+          fiskal_sdc_date_time ?? null,
+          fiskal_journal ?? null,
         ],
       );
       fakturaId = Number(insertResult.insertId);

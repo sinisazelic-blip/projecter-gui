@@ -11,7 +11,7 @@ export default async function OpsArtikliPage() {
   return (
     <OpsShell
       title="Šifarnik"
-      sub="Materijal, oprema i sabloni kompleta. Roba još ne mora postojati."
+      sub="Materijal, oprema, sabloni"
     >
       <ArtikliClient initial={catalog} />
     </OpsShell>

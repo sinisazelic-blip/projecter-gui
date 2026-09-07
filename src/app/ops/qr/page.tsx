@@ -11,7 +11,7 @@ export default async function OpsQrPage() {
   return (
     <OpsShell
       title="QR naljepnice"
-      sub="Šifra artikla ili serija komada (kad je oprema primljena)."
+      sub="Naljepnice"
     >
       <QrClient artikli={artikli} jediniceOpreme={jediniceOpreme} />
     </OpsShell>

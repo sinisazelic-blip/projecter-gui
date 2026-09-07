@@ -15,6 +15,13 @@ import {
   type OpsSastavnicaLinija,
   type OpsStanje,
 } from "@/lib/ops/schema";
+import { assertOtpisSamoRadionica } from "@/lib/ops/process";
+import {
+  assertRnSpecAllows,
+  createOpsRdn,
+  listOpsRdn,
+  normalizePrijemIzvor,
+} from "@/lib/ops/nalozi";
 
 export async function listOpsCatalog() {
   await ensureOpsTables();
@@ -25,7 +32,7 @@ export async function listOpsCatalog() {
     `SELECT magacin_id, kod, naziv, vrsta FROM ops_magacini ORDER BY magacin_id ASC`,
   );
   const artikli = await query<OpsArtikal>(
-    `SELECT a.artikal_id, a.sifra, a.naziv, a.vrsta, a.jm_id, j.oznaka AS jm_oznaka,
+    `SELECT a.artikal_id, a.sifra, a.naziv, a.vrsta, a.saas_linija, a.jm_id, j.oznaka AS jm_oznaka,
             a.default_magacin_id, m.kod AS magacin_kod, a.aktivan
      FROM ops_artikli a
      JOIN ops_jedinice j ON j.jm_id = a.jm_id
@@ -77,12 +84,14 @@ export type OpsPrijemnica = {
   datum: string;
   dobavljac_naziv: string | null;
   racun: string | null;
+  izvor?: string;
+  kuf_id?: number | null;
 };
 
 export async function listOpsPrijemnice(): Promise<OpsPrijemnica[]> {
   await ensureOpsTables();
   const rows = await query<OpsPrijemnica>(
-    `SELECT prijemnica_id, broj, datum, dobavljac_naziv, racun
+    `SELECT prijemnica_id, broj, datum, dobavljac_naziv, racun, izvor, kuf_id
      FROM ops_prijemnice
      ORDER BY prijemnica_id DESC
      LIMIT 80`,
@@ -127,6 +136,8 @@ export async function createOpsPrijemnica(input: {
   dobavljac_naziv?: string | null;
   racun?: string | null;
   napomena?: string | null;
+  izvor?: string | null;
+  kuf_id?: number | null;
   lines: Array<{ artikal_id: number; kolicina: number }>;
 }): Promise<{ broj: string; serije: string[] }> {
   await ensureOpsTables();
@@ -146,12 +157,15 @@ export async function createOpsPrijemnica(input: {
   await withTransaction(async (conn) => {
     broj = await nextPrijemnicaBroj(conn);
     await conn.query(
-      `INSERT INTO ops_prijemnice (broj, datum, dobavljac_id, dobavljac_naziv, racun, napomena)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO ops_prijemnice
+         (broj, datum, dobavljac_id, kuf_id, izvor, dobavljac_naziv, racun, napomena)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         broj,
         datum,
         input.dobavljac_id || null,
+        input.kuf_id ? Number(input.kuf_id) : null,
+        normalizePrijemIzvor(input.izvor),
         String(input.dobavljac_naziv ?? "").trim() || null,
         String(input.racun ?? "").trim() || null,
         String(input.napomena ?? "").trim() || null,
@@ -220,6 +234,7 @@ export async function createOpsArtikal(input: {
   vrsta: OpsArtikalVrsta;
   jm_id: number;
   default_magacin_id?: number;
+  saas_linija?: string | null;
 }): Promise<number> {
   await ensureOpsTables();
   const sifra = String(input.sifra ?? "")
@@ -243,9 +258,20 @@ export async function createOpsArtikal(input: {
     (vrsta === "MATERIJAL" ? m1?.magacin_id : m2?.magacin_id);
   if (!magId) throw new Error("MAGACIN_REQUIRED");
   await query(
-    `INSERT INTO ops_artikli (sifra, naziv, vrsta, jm_id, default_magacin_id, aktivan)
-     VALUES (?, ?, ?, ?, ?, 1)`,
-    [sifra, naziv, vrsta, Number(input.jm_id), magId],
+    `INSERT INTO ops_artikli (sifra, naziv, vrsta, saas_linija, jm_id, default_magacin_id, aktivan)
+     VALUES (?, ?, ?, ?, ?, ?, 1)`,
+    [
+      sifra,
+      naziv,
+      vrsta,
+      vrsta === "OPREMA" || vrsta === "SABLON"
+        ? String(input.saas_linija ?? "").trim() || null
+        : input.saas_linija === "ALAT"
+          ? "ALAT"
+          : null,
+      Number(input.jm_id),
+      magId,
+    ],
   );
   const row = await query<{ artikal_id: number }>(
     `SELECT artikal_id FROM ops_artikli WHERE sifra = ? LIMIT 1`,
@@ -262,6 +288,7 @@ export async function updateOpsArtikal(
     jm_id: number;
     default_magacin_id: number;
     aktivan: number;
+    saas_linija: string | null;
   }>,
 ): Promise<void> {
   await ensureOpsTables();
@@ -286,6 +313,10 @@ export async function updateOpsArtikal(
   if (input.aktivan != null) {
     sets.push("aktivan = ?");
     vals.push(Number(input.aktivan) ? 1 : 0);
+  }
+  if (input.saas_linija !== undefined) {
+    sets.push("saas_linija = ?");
+    vals.push(input.saas_linija ? String(input.saas_linija).trim() : null);
   }
   if (!sets.length) return;
   vals.push(id);
@@ -334,49 +365,21 @@ export async function listOpsRadnici(): Promise<
 }
 
 export async function listOpsRadniNalozi(): Promise<OpsRadniNalog[]> {
-  await ensureOpsTables();
-  const rows = await query<OpsRadniNalog>(
-    `SELECT r.rn_id, r.broj, r.datum, r.sablon_artikal_id, a.sifra AS sablon_sifra,
-            a.naziv AS sablon_naziv, r.kolicina, r.sati, r.radnik_naziv, r.napomena
-     FROM ops_radni_nalozi r
-     JOIN ops_artikli a ON a.artikal_id = r.sablon_artikal_id
-     ORDER BY r.rn_id DESC
-     LIMIT 80`,
-  );
-  const serije = await query<{ rn_id: number; kod: string; artikal_id: number }>(
-    `SELECT e.rn_id, e.kod, e.artikal_id
-     FROM ops_jedinice_opreme e
-     WHERE e.rn_id IS NOT NULL
-     ORDER BY e.jedinica_id ASC`,
-  );
-  const byRn = new Map<number, string[]>();
-  for (const s of serije ?? []) {
-    const row = (rows ?? []).find((r) => r.rn_id === s.rn_id);
-    if (!row || s.artikal_id !== row.sablon_artikal_id) continue;
-    const list = byRn.get(s.rn_id) ?? [];
-    list.push(s.kod);
-    byRn.set(s.rn_id, list);
-  }
-  return (rows ?? []).map((r) => ({
-    ...r,
-    kolicina: Number(r.kolicina),
-    sati: r.sati == null ? null : Number(r.sati),
-    serije: byRn.get(r.rn_id) ?? [],
-  }));
-}
-
-async function nextRnBroj(
-  conn: { query: (sql: string, params?: unknown[]) => Promise<unknown> },
-): Promise<string> {
-  const year = new Date().getFullYear();
-  const prefix = `RN-${year}-`;
-  const [rows] = (await conn.query(
-    `SELECT broj FROM ops_radni_nalozi WHERE broj LIKE ? ORDER BY rn_id DESC LIMIT 1`,
-    [`${prefix}%`],
-  )) as unknown as [{ broj: string }[]];
-  const last = String(rows?.[0]?.broj ?? "");
-  const n = Number(last.slice(prefix.length)) || 0;
-  return `${prefix}${String(n + 1).padStart(4, "0")}`;
+  const rdn = await listOpsRdn();
+  return rdn
+    .filter((r) => r.vrsta === "SKLAPANJE")
+    .map((r) => ({
+      rn_id: r.rdn_id,
+      broj: r.broj,
+      datum: r.datum,
+      sablon_artikal_id: Number(r.sablon_artikal_id ?? 0),
+      sablon_sifra: r.sablon_sifra ?? undefined,
+      kolicina: r.kolicina,
+      sati: r.sati,
+      radnik_naziv: r.radnik_naziv,
+      napomena: r.napomena,
+      serije: r.serije ?? [],
+    }));
 }
 
 export async function createOpsRadniNalog(input: {
@@ -388,148 +391,17 @@ export async function createOpsRadniNalog(input: {
   radnik_naziv?: string | null;
   napomena?: string | null;
 }): Promise<{ broj: string; serije: string[] }> {
-  await ensureOpsTables();
-  const datum = String(input.datum ?? "").slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(datum)) throw new Error("DATUM_REQUIRED");
-  const sablonId = Number(input.sablon_artikal_id);
-  const qty = Number(input.kolicina);
-  if (!sablonId) throw new Error("SABLON_REQUIRED");
-  if (!Number.isInteger(qty) || qty < 1) throw new Error("KOLICINA_CIJELI");
-  const closer = String(input.radnik_naziv ?? "").trim();
-  if (!closer) throw new Error("KO_ZATVORIO");
-
-  const sablon = await query<OpsArtikal>(
-    `SELECT artikal_id, sifra, naziv, vrsta, jm_id, default_magacin_id, aktivan
-     FROM ops_artikli WHERE artikal_id = ? LIMIT 1`,
-    [sablonId],
-  );
-  const sablonArt = sablon?.[0];
-  if (!sablonArt || sablonArt.vrsta !== "SABLON" || !sablonArt.aktivan) {
-    throw new Error("SABLON_INVALID");
-  }
-
-  const bom = await query<{
-    komponenta_artikal_id: number;
-    kolicina: number;
-    sifra: string;
-    vrsta: string;
-    default_magacin_id: number;
-    jm_oznaka: string;
-  }>(
-    `SELECT s.komponenta_artikal_id, s.kolicina, k.sifra, k.vrsta,
-            k.default_magacin_id, j.oznaka AS jm_oznaka
-     FROM ops_sastavnice s
-     JOIN ops_artikli k ON k.artikal_id = s.komponenta_artikal_id
-     JOIN ops_jedinice j ON j.jm_id = k.jm_id
-     WHERE s.sablon_artikal_id = ?`,
-    [sablonId],
-  );
-  if (!bom?.length) throw new Error("BOM_REQUIRED");
-
-  const serije: string[] = [];
-  let broj = "";
-
-  await withTransaction(async (conn) => {
-    broj = await nextRnBroj(conn);
-    const [ins] = (await conn.query(
-      `INSERT INTO ops_radni_nalozi
-         (broj, datum, sablon_artikal_id, kolicina, sati, radnik_id, radnik_naziv, napomena)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        broj,
-        datum,
-        sablonId,
-        qty,
-        input.sati != null && Number(input.sati) > 0 ? Number(input.sati) : null,
-        input.radnik_id || null,
-        closer,
-        String(input.napomena ?? "").trim() || null,
-      ],
-    )) as unknown as [{ insertId?: number }];
-    const rnId = Number(ins?.insertId ?? 0);
-    if (!rnId) throw new Error("RN_INSERT");
-
-    for (const line of bom) {
-      if (line.vrsta === "SABLON") throw new Error("SABLON_NIJE_KOMPONENTA");
-      const need = Number(line.kolicina) * qty;
-      if (!(need > 0)) continue;
-
-      if (line.vrsta === "OPREMA") {
-        if (Math.abs(need - Math.round(need)) > 1e-9) {
-          throw new Error("OPREMA_CIJELI_KOMADI");
-        }
-        const take = Math.round(need);
-        const [units] = (await conn.query(
-          `SELECT jedinica_id FROM ops_jedinice_opreme
-           WHERE artikal_id = ? AND stanje = 'U_MAGACINU'
-           ORDER BY jedinica_id ASC
-           LIMIT ${take}
-           FOR UPDATE`,
-          [line.komponenta_artikal_id],
-        )) as unknown as [{ jedinica_id: number }[]];
-        if (!Array.isArray(units) || units.length < take) {
-          throw new Error(
-            `Nedostaje ${line.sifra}: treba ${take} kom, slobodno ${units?.length ?? 0}`,
-          );
-        }
-        for (const u of units) {
-          await conn.query(
-            `UPDATE ops_jedinice_opreme
-             SET stanje = 'UGRADJENO', rn_id = ?
-             WHERE jedinica_id = ?`,
-            [rnId, u.jedinica_id],
-          );
-        }
-      } else {
-        const [stockRows] = (await conn.query(
-          `SELECT kolicina FROM ops_stanje
-           WHERE magacin_id = ? AND artikal_id = ?
-           FOR UPDATE`,
-          [line.default_magacin_id, line.komponenta_artikal_id],
-        )) as unknown as [{ kolicina: number }[]];
-        const have = Number(stockRows?.[0]?.kolicina ?? 0);
-        if (have + 1e-9 < need) {
-          throw new Error(
-            `Nedostaje ${line.sifra}: treba ${need} ${line.jm_oznaka}, na stanju ${have}`,
-          );
-        }
-        const [upd] = (await conn.query(
-          `UPDATE ops_stanje
-           SET kolicina = kolicina - ?
-           WHERE magacin_id = ? AND artikal_id = ? AND kolicina >= ?`,
-          [need, line.default_magacin_id, line.komponenta_artikal_id, need],
-        )) as unknown as [{ affectedRows?: number }];
-        if (!Number(upd?.affectedRows)) {
-          throw new Error(`Nedostaje ${line.sifra}: stanje se promijenilo`);
-        }
-      }
-
-      await conn.query(
-        `INSERT INTO ops_rn_potrosnja (rn_id, artikal_id, magacin_id, kolicina)
-         VALUES (?, ?, ?, ?)`,
-        [rnId, line.komponenta_artikal_id, line.default_magacin_id, need],
-      );
-    }
-
-    const [cntRows] = (await conn.query(
-      `SELECT COUNT(*) AS c FROM ops_jedinice_opreme WHERE artikal_id = ?`,
-      [sablonId],
-    )) as unknown as [{ c: number }[]];
-    let n = Number(cntRows?.[0]?.c ?? 0);
-    for (let i = 0; i < qty; i++) {
-      n += 1;
-      const kod = formatOpremaKod(sablonArt.sifra, n);
-      serije.push(kod);
-      await conn.query(
-        `INSERT INTO ops_jedinice_opreme
-           (kod, artikal_id, magacin_id, rn_id, stanje)
-         VALUES (?, ?, ?, ?, 'U_MAGACINU')`,
-        [kod, sablonId, sablonArt.default_magacin_id, rnId],
-      );
-    }
+  const created = await createOpsRdn({
+    vrsta: "SKLAPANJE",
+    datum: input.datum,
+    sablon_artikal_id: input.sablon_artikal_id,
+    kolicina: input.kolicina,
+    sati: input.sati,
+    radnik_id: input.radnik_id,
+    radnik_naziv: input.radnik_naziv,
+    napomena: input.napomena,
   });
-
-  return { broj, serije };
+  return { broj: created.broj, serije: created.serije };
 }
 
 export type OpsKlijentOption = {
@@ -622,7 +494,7 @@ export async function listOpsKompletacije(): Promise<OpsKompletacija[]> {
   await ensureOpsTables();
   const rows = await query<OpsKompletacija>(
     `SELECT k.kompletacija_id, k.broj, k.event_naziv, k.klasa_rizika, k.projekat_id,
-            k.klijent_id, k.klijent_naziv, k.krajnji_klijent_id, k.krajnji_klijent_naziv,
+            k.rn_posao_id, k.klijent_id, k.klijent_naziv, k.krajnji_klijent_id, k.krajnji_klijent_naziv,
             k.objekat, k.status, k.faktura_id, k.created_at,
             (SELECT COUNT(*) FROM ops_kompletacija_stavke s
              WHERE s.kompletacija_id = k.kompletacija_id) AS jedinica_count
@@ -688,6 +560,7 @@ export async function createOpsKompletacija(input: {
   event_naziv: string;
   klasa_rizika: OpsKlasaRizika;
   projekat_id?: number | null;
+  rn_posao_id?: number | null;
   klijent_id?: number | null;
   klijent_naziv?: string | null;
   krajnji_klijent_id?: number | null;
@@ -710,9 +583,29 @@ export async function createOpsKompletacija(input: {
   let krajnjiNaziv = String(input.krajnji_klijent_naziv ?? "").trim() || null;
   let objekat = String(input.objekat ?? "").trim() || null;
 
-  if (input.projekat_id) {
+  let projekatId = input.projekat_id ? Number(input.projekat_id) : null;
+  const rnPosaoId = input.rn_posao_id ? Number(input.rn_posao_id) : null;
+  if (rnPosaoId) {
+    const rn = await query<{
+      projekat_id: number;
+      objekat: string | null;
+      status: string;
+    }>(
+      `SELECT projekat_id, objekat, status FROM ops_nalozi_posla WHERE rn_posao_id = ? LIMIT 1`,
+      [rnPosaoId],
+    );
+    const hdr = rn?.[0];
+    if (!hdr) throw new Error("RN_POSAO_INVALID");
+    if (["RAZDUZEN", "ZATVOREN"].includes(String(hdr.status))) {
+      throw new Error("RN_POSAO_ZATVOREN");
+    }
+    if (!projekatId) projekatId = hdr.projekat_id;
+    if (!objekat && hdr.objekat) objekat = hdr.objekat;
+  }
+
+  if (projekatId) {
     const jobs = await listOpsProjekti();
-    const job = jobs.find((p) => p.projekat_id === Number(input.projekat_id));
+    const job = jobs.find((p) => p.projekat_id === Number(projekatId));
     if (job) {
       if (!narucilacId && job.narucilac_id) {
         narucilacId = job.narucilac_id;
@@ -744,14 +637,15 @@ export async function createOpsKompletacija(input: {
     broj = await nextKompletacijaBroj(conn);
     const [ins] = (await conn.query(
       `INSERT INTO ops_kompletacije
-         (broj, event_naziv, klasa_rizika, projekat_id, klijent_id, klijent_naziv,
+         (broj, event_naziv, klasa_rizika, projekat_id, rn_posao_id, klijent_id, klijent_naziv,
           krajnji_klijent_id, krajnji_klijent_naziv, objekat, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'OTVOREN')`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OTVOREN')`,
       [
         broj,
         event,
         klasa,
-        input.projekat_id || null,
+        projekatId,
+        rnPosaoId,
         narucilacId,
         narucilacNaziv,
         krajnjiId,
@@ -788,7 +682,7 @@ async function refreshKompletacijaStatus(
 
 export async function skenOpsJedinica(input: {
   kod: string;
-  akcija: "IZDATO" | "MONTAZA" | "POVRAT" | "SERVIS_GOTOVO";
+  akcija: "IZDATO" | "UTOVAR" | "MONTAZA" | "POVRAT" | "SERVIS_GOTOVO";
   kompletacija_id?: number | null;
   osoba: string;
   povrat_stanje?: OpsPovratStanje | null;
@@ -844,18 +738,27 @@ export async function skenOpsJedinica(input: {
       if (unit.stanje !== "U_MAGACINU") throw new Error("NIJE_U_MAGACINU");
       if (!kid) throw new Error("KOMPLETACIJA_REQUIRED");
       const [hdr] = (await conn.query(
-        `SELECT kompletacija_id, klasa_rizika, status
+        `SELECT kompletacija_id, klasa_rizika, status, rn_posao_id
          FROM ops_kompletacije WHERE kompletacija_id = ? FOR UPDATE`,
         [kid],
-      )) as unknown as [{ kompletacija_id: number; klasa_rizika: string; status: string }[]];
+      )) as unknown as [{
+        kompletacija_id: number;
+        klasa_rizika: string;
+        status: string;
+        rn_posao_id: number | null;
+      }[]];
       const ev = Array.isArray(hdr) ? hdr[0] : null;
       if (!ev) throw new Error("KOMPLETACIJA_INVALID");
       if (ev.status === "ZATVOREN") throw new Error("KOMPLETACIJA_ZATVORENA");
+      const rnPosaoId = Number(ev.rn_posao_id || 0) || null;
+      if (rnPosaoId) {
+        await assertRnSpecAllows(conn, rnPosaoId, Number(unit.artikal_id));
+      }
       await conn.query(
         `UPDATE ops_jedinice_opreme
-         SET stanje = 'IZDATO', kompletacija_id = ?
+         SET stanje = 'IZDATO', kompletacija_id = ?, rn_posao_id = ?
          WHERE jedinica_id = ?`,
-        [kid, unit.jedinica_id],
+        [kid, rnPosaoId, unit.jedinica_id],
       );
       await conn.query(
         `INSERT INTO ops_kompletacija_stavke
@@ -885,22 +788,22 @@ export async function skenOpsJedinica(input: {
     const ev = Array.isArray(hdr) ? hdr[0] : null;
     if (!ev) throw new Error("KOMPLETACIJA_INVALID");
 
-    if (akcija === "MONTAZA") {
-      if (unit.stanje !== "IZDATO") throw new Error("NIJE_IZDATO");
+    if (akcija === "UTOVAR" || akcija === "MONTAZA") {
+      if (unit.stanje !== "IZDATO") throw new Error("NIJE_NA_RAMP");
       await conn.query(
-        `UPDATE ops_jedinice_opreme SET stanje = 'MONTAZA' WHERE jedinica_id = ?`,
+        `UPDATE ops_jedinice_opreme SET stanje = 'NA_TERENU' WHERE jedinica_id = ?`,
         [unit.jedinica_id],
       );
       await conn.query(
         `UPDATE ops_kompletacija_stavke
-         SET faza = 'MONTAZA', montaza_naziv = ?, montaza_at = ?
+         SET faza = 'UTOVAR', montaza_naziv = ?, montaza_at = ?
          WHERE kompletacija_id = ? AND jedinica_id = ?`,
         [osoba, stamp, eventId, unit.jedinica_id],
       );
       await conn.query(
         `INSERT INTO ops_jedinica_zivot
            (jedinica_id, kod, kompletacija_id, akcija, klasa_rizika, osoba)
-         VALUES (?, ?, ?, 'MONTAZA', ?, ?)`,
+         VALUES (?, ?, ?, 'UTOVAR', ?, ?)`,
         [unit.jedinica_id, unit.kod, eventId, ev.klasa_rizika, osoba],
       );
       await refreshKompletacijaStatus(conn, eventId);
@@ -908,19 +811,19 @@ export async function skenOpsJedinica(input: {
     }
 
     if (akcija === "POVRAT") {
-      if (unit.stanje !== "MONTAZA" && unit.stanje !== "IZDATO") {
+      if (
+        unit.stanje !== "MONTAZA" &&
+        unit.stanje !== "IZDATO" &&
+        unit.stanje !== "NA_TERENU"
+      ) {
         throw new Error("NIJE_NA_TERENU");
       }
       const stanje = input.povrat_stanje;
-      if (!stanje || !["ISPRAVAN", "OSTECEN", "SERVIS", "OTPIS"].includes(stanje)) {
+      assertOtpisSamoRadionica(akcija, stanje);
+      if (!stanje || !["ISPRAVAN", "OSTECEN", "SERVIS"].includes(stanje)) {
         throw new Error("POVRAT_STANJE");
       }
-      const nextStanje =
-        stanje === "ISPRAVAN"
-          ? "U_MAGACINU"
-          : stanje === "OTPIS"
-            ? "OTPIS"
-            : "SERVIS";
+      const nextStanje = stanje === "ISPRAVAN" ? "U_MAGACINU" : "SERVIS";
       const teski =
         ev.klasa_rizika === "STADION" ? Number(unit.teski_eventi ?? 0) + 1 : null;
       await conn.query(

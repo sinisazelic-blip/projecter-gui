@@ -11,7 +11,7 @@ export default async function OpsSastavnicePage() {
   return (
     <OpsShell
       title="Sastavnice"
-      sub="Obavezna receptura sablona. Bez ovoga nema radnog naloga."
+      sub="Sastavnica sablona"
     >
       <SastavniceClient
         initial={{ artikli: catalog.artikli, sastavnice: catalog.sastavnice }}

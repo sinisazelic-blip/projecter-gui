@@ -22,8 +22,9 @@ export function OpsShell({
                   <span className="brandSlogan">Deal, Ops &amp; Finance</span>
                 </div>
                 <div>
-                  <div className="brandTitle">{title}</div>
-                  <div className="brandSub">{sub}</div>
+                  <div className="brandTitle" title={sub || undefined}>
+                    {title}
+                  </div>
                 </div>
               </div>
               <OpsNav />

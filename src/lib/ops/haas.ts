@@ -1,12 +1,10 @@
-import { query, withTransaction } from "@/lib/db";
-import { computeNextInvoiceNumbers } from "@/lib/fakture/next-invoice-numbers";
+import { query } from "@/lib/db";
 import {
   ensureOpsTables,
   type OpsHaasCijena,
   type OpsHaasFaktura,
   type OpsHaasStavka,
 } from "@/lib/ops/schema";
-import { assertOpsNarucilac } from "@/lib/ops/queries";
 
 export async function listOpsHaasCjenovnik(): Promise<OpsHaasCijena[]> {
   await ensureOpsTables();
@@ -167,7 +165,7 @@ export async function getOpsHaasByFaktura(fakturaId: number): Promise<{
   };
 }
 
-export async function createOpsHaasFaktura(input: {
+export async function createOpsHaasFaktura(_input: {
   kompletacija_id: number;
   klijent_id: number;
   datum: string;
@@ -175,108 +173,5 @@ export async function createOpsHaasFaktura(input: {
   vat: "BH_17" | "INO_0";
   lines?: Array<{ artikal_id: number; cijena: number }>;
 }): Promise<{ faktura_id: number; broj_fakture: string }> {
-  await ensureOpsTables();
-  const preview = await previewOpsHaas(input.kompletacija_id, input.valuta);
-  const billTo = await assertOpsNarucilac(input.klijent_id);
-  const klijentId = billTo.klijent_id;
-  const datum = String(input.datum ?? "").slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(datum)) throw new Error("DATUM_REQUIRED");
-
-  const overrides = new Map(
-    (input.lines ?? []).map((l) => [Number(l.artikal_id), Number(l.cijena)]),
-  );
-  const lines = preview.lines.map((l) => ({
-    ...l,
-    cijena: overrides.has(l.artikal_id) ? Number(overrides.get(l.artikal_id)) : l.cijena,
-  }));
-  if (lines.some((l) => !(l.cijena > 0))) throw new Error("CIJENA_REQUIRED");
-  const osnovica = Math.round(
-    lines.reduce((acc, l) => acc + l.kolicina * l.cijena, 0) * 100,
-  ) / 100;
-  if (!(osnovica > 0)) throw new Error("OSNOVICA_REQUIRED");
-
-  const vatMode = input.vat === "INO_0" ? "INO_0" : "BH_17";
-  const pdvStopa = vatMode === "BH_17" ? 17 : 0;
-  const pdvIznos = vatMode === "BH_17" ? Math.round(osnovica * 0.17 * 100) / 100 : 0;
-  const ukupno = Math.round((osnovica + pdvIznos) * 100) / 100;
-  const godina = Number(datum.slice(0, 4));
-  const nums = await computeNextInvoiceNumbers(godina);
-  const valuta = input.valuta === "EUR" ? "EUR" : "BAM";
-  const pnb = `${String(godina).slice(2)}${String(nums.next_broj_u_godini).padStart(6, "0")}`;
-
-  let fakturaId = 0;
-  await withTransaction(async (conn) => {
-    const [lock] = (await conn.query(
-      `SELECT faktura_id FROM ops_kompletacije WHERE kompletacija_id = ? FOR UPDATE`,
-      [input.kompletacija_id],
-    )) as unknown as [{ faktura_id: number | null }[]];
-    if (lock?.[0]?.faktura_id) throw new Error("VEC_FAKTURISANO");
-
-    const [ins] = (await conn.query(
-      `INSERT INTO fakture
-         (bill_to_klijent_id, godina, broj_u_godini, broj_fiskalni, fiskalni_status,
-          datum_izdavanja, tip, valuta, osnovica_km, pdv_stopa, pdv_iznos_km,
-          pdv_obracunat, iznos_ukupno_km, poziv_na_broj)
-       VALUES (?, ?, ?, ?, 'DODIJELJEN', ?, 'obicna', ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        klijentId,
-        godina,
-        nums.next_broj_u_godini,
-        nums.next_pfr,
-        datum,
-        valuta,
-        osnovica,
-        pdvStopa,
-        pdvIznos,
-        vatMode === "BH_17" ? 1 : 0,
-        ukupno,
-        pnb,
-      ],
-    )) as unknown as [{ insertId?: number }];
-    fakturaId = Number(ins?.insertId ?? 0);
-    if (!fakturaId) throw new Error("FAKTURA_INSERT");
-
-    try {
-      await conn.query(
-        `INSERT INTO brojac_faktura (godina, zadnji_broj_u_godini) VALUES (?, ?)
-         ON DUPLICATE KEY UPDATE zadnji_broj_u_godini = GREATEST(zadnji_broj_u_godini, ?)`,
-        [godina, nums.next_broj_u_godini, nums.next_broj_u_godini],
-      );
-    } catch {
-      /* brojac optional */
-    }
-
-    const [hins] = (await conn.query(
-      `INSERT INTO ops_haas_fakture
-         (faktura_id, kompletacija_id, klijent_id, valuta, osnovica)
-       VALUES (?, ?, ?, ?, ?)`,
-      [fakturaId, input.kompletacija_id, klijentId, valuta, osnovica],
-    )) as unknown as [{ insertId?: number }];
-    const haasId = Number(hins?.insertId ?? 0);
-    if (!haasId) throw new Error("HAAS_INSERT");
-
-    for (const line of lines) {
-      await conn.query(
-        `INSERT INTO ops_haas_stavke
-           (haas_faktura_id, artikal_id, sifra, naziv, kolicina, cijena, serije)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          haasId,
-          line.artikal_id,
-          line.sifra,
-          line.naziv,
-          line.kolicina,
-          line.cijena,
-          line.serije.join(","),
-        ],
-      );
-    }
-
-    await conn.query(
-      `UPDATE ops_kompletacije SET faktura_id = ? WHERE kompletacija_id = ?`,
-      [fakturaId, input.kompletacija_id],
-    );
-  });
-
-  return { faktura_id: fakturaId, broj_fakture: nums.next_broj_fakture };
+  throw new Error("HAAS_FAKTURA_ZABRANJENA");
 }

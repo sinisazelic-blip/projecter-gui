@@ -14,7 +14,7 @@ export default async function OpsTenantiPage() {
   return (
     <OpsShell
       title="Enter tenanti"
-      sub="Status licence, produženje i moduli. Novi objekat otvara samo vlasnik na Studiju."
+      sub="Licence i moduli"
     >
       <TenantiClient initialTenants={tenants} initialAudit={audit} />
     </OpsShell>

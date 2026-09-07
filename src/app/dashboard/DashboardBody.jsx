@@ -178,39 +178,35 @@ export default function DashboardBody({ instance = "STUDIO" }) {
       <>
         <div className="dashboardGroup deskGroup enterGroup enterGroup--saas">
           <div className="groupHeader">
-            <div className="groupTitle">{t("dashboard.enterSaas")}</div>
+            <div className="groupTitle" title={t("dashboard.enterSaasSub")}>
+              {t("dashboard.enterSaas")}
+            </div>
           </div>
-          <div className="groupSubtitle">{t("dashboard.enterSaasSub")}</div>
           <div className="deskMainButtons">
             <Link
               href="/inicijacije"
               className="deskMainBtn deskMainBtn--green"
-              title={t("dashboard.dealsTitle")}
+              title={t("dashboard.dealsSubtitle")}
             >
               <span>{t("dashboard.deals")}</span>
-              <span className="deskMainBtnSubtitle">
-                {t("dashboard.dealsSubtitle")}
-              </span>
             </Link>
             <Link
               href="/projects"
               className="deskMainBtn deskMainBtn--blue"
-              title={t("dashboard.enterPosloviTitle")}
+              title={t("dashboard.enterPosloviSub")}
             >
               <span>{t("dashboard.enterPoslovi")}</span>
-              <span className="deskMainBtnSubtitle">
-                {t("dashboard.enterPosloviSub")}
-              </span>
             </Link>
           </div>
         </div>
 
         <div className="dashboardGroup enterGroup enterGroup--finance">
           <div className="groupHeader">
-            <div className="groupTitle">{t("dashboard.finansije")}</div>
+            <div className="groupTitle" title={t("dashboard.finansijeSubtitle")}>
+              {t("dashboard.finansije")}
+            </div>
             <span className="groupPill">{t("dashboard.finansijeOperativa")}</span>
           </div>
-          <div className="groupSubtitle">{t("dashboard.finansijeSubtitle")}</div>
           <div className="finansijeOperativaRows">
             <div className="finansijeRow finansijeRow--3">
               <ActionBtn
@@ -259,14 +255,15 @@ export default function DashboardBody({ instance = "STUDIO" }) {
 
         <div className="dashboardGroup enterGroup enterGroup--haas">
           <div className="groupHeader">
-            <div className="groupTitle">{t("dashboard.enterHaasGroup")}</div>
+            <div className="groupTitle" title={t("dashboard.enterHaasGroupSub")}>
+              {t("dashboard.enterHaasGroup")}
+            </div>
           </div>
-          <div className="groupSubtitle">{t("dashboard.enterHaasGroupSub")}</div>
           <div className="finansijeRow finansijeRow--2">
             <ActionBtn
-              label={t("dashboard.enterHaas")}
-              href="/ops/haas"
-              title={t("dashboard.enterHaasSub")}
+              label={t("dashboard.enterRn")}
+              href="/ops/rn"
+              title={t("dashboard.enterRnSub")}
             />
             <ActionBtn
               label={t("dashboard.enterKompletacija")}
@@ -278,19 +275,30 @@ export default function DashboardBody({ instance = "STUDIO" }) {
 
         <div className="dashboardGroup enterGroup enterGroup--magacin">
           <div className="groupHeader">
-            <div className="groupTitle">{t("dashboard.enterMagacinGroup")}</div>
+            <div className="groupTitle" title={t("dashboard.enterMagacinGroupSub")}>
+              {t("dashboard.enterMagacinGroup")}
+            </div>
           </div>
-          <div className="groupSubtitle">{t("dashboard.enterMagacinGroupSub")}</div>
           <div className="sifarniciRow sifarniciRow--equal">
-            <ActionBtn label={t("dashboard.enterArtikli")} href="/ops/artikli" />
-            <ActionBtn label={t("dashboard.enterMagacini")} href="/ops/magacini" />
+            <ActionBtn
+              label={t("dashboard.enterArtikli")}
+              href="/ops/artikli"
+              title={t("dashboard.enterArtikliSub")}
+            />
+            <ActionBtn
+              label={t("dashboard.enterMagacini")}
+              href="/ops/magacini"
+              title={t("dashboard.enterMagaciniSub")}
+            />
             <ActionBtn
               label={t("dashboard.enterPrijemnice")}
               href="/ops/prijemnice"
+              title={t("dashboard.enterPrijemniceSub")}
             />
             <ActionBtn
               label={t("dashboard.enterSastavnice")}
               href="/ops/sastavnice"
+              title={t("dashboard.enterSastavniceSub")}
             />
           </div>
           <div className="finansijeRow finansijeRow--2">
@@ -309,9 +317,10 @@ export default function DashboardBody({ instance = "STUDIO" }) {
 
         <div className="dashboardGroup enterGroup enterGroup--reports">
           <div className="groupHeader">
-            <div className="groupTitle">{t("dashboard.enterReports")}</div>
+            <div className="groupTitle" title={t("dashboard.enterReportsSub")}>
+              {t("dashboard.enterReports")}
+            </div>
           </div>
-          <div className="groupSubtitle">{t("dashboard.enterReportsSub")}</div>
           <div className="sifarniciRow sifarniciRow--equal">
             <ActionBtn
               label={t("dashboard.profit")}

@@ -24,6 +24,7 @@ export default function PrijemniceClient({
   const [dobavljacId, setDobavljacId] = useState("");
   const [dobavljacNaziv, setDobavljacNaziv] = useState("");
   const [racun, setRacun] = useState("");
+  const [izvor, setIzvor] = useState<"KUF" | "KES" | "PROIZVODNJA">("KUF");
   const [lines, setLines] = useState<Line[]>([
     { key: "1", artikal_id: "", kolicina: "" },
   ]);
@@ -47,6 +48,7 @@ export default function PrijemniceClient({
             dobavljaci.find((d) => String(d.dobavljac_id) === dobavljacId)
               ?.naziv || dobavljacNaziv,
           racun,
+          izvor,
           lines: lines
             .filter((l) => l.artikal_id && Number(l.kolicina) > 0)
             .map((l) => ({
@@ -114,6 +116,20 @@ export default function PrijemniceClient({
               />
             </label>
           ) : null}
+          <label style={{ display: "grid", gap: 4, fontSize: 12 }}>
+            Izvor
+            <select
+              value={izvor}
+              onChange={(e) =>
+                setIzvor(e.target.value as "KUF" | "KES" | "PROIZVODNJA")
+              }
+              style={{ padding: 8 }}
+            >
+              <option value="KUF">KUF (ulazni račun)</option>
+              <option value="KES">Keš</option>
+              <option value="PROIZVODNJA">Proizvodnja → M2</option>
+            </select>
+          </label>
           <label style={{ display: "grid", gap: 4, fontSize: 12 }}>
             Račun / carina
             <input
@@ -201,7 +217,7 @@ export default function PrijemniceClient({
       >
         <thead>
           <tr>
-            {["Broj", "Datum", "Dobavljač", "Račun"].map((h) => (
+            {["Broj", "Datum", "Izvor", "Dobavljač", "Račun"].map((h) => (
               <th
                 key={h}
                 style={{
@@ -222,6 +238,7 @@ export default function PrijemniceClient({
               <td style={{ padding: "8px 10px" }}>
                 {String(d.datum).slice(0, 10).split("-").reverse().join(".")}
               </td>
+              <td style={{ padding: "8px 10px" }}>{d.izvor || "KUF"}</td>
               <td style={{ padding: "8px 10px" }}>{d.dobavljac_naziv || "—"}</td>
               <td style={{ padding: "8px 10px" }}>{d.racun || "—"}</td>
             </tr>

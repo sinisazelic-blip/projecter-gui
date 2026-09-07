@@ -7,6 +7,7 @@ import {
   updateOpsArtikal,
 } from "@/lib/ops/queries";
 import type { OpsArtikalVrsta } from "@/lib/ops/schema";
+import { OPS_SAAS_LINIJE } from "@/lib/ops/process";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export async function GET() {
   if (auth.error) return auth.error;
   try {
     const data = await listOpsCatalog();
-    return NextResponse.json({ ok: true, ...data });
+    return NextResponse.json({ ok: true, linije: OPS_SAAS_LINIJE, ...data });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
     vrsta?: OpsArtikalVrsta;
     jm_id?: number;
     default_magacin_id?: number;
+    saas_linija?: string | null;
   };
   try {
     body = await req.json();
@@ -46,9 +48,10 @@ export async function POST(req: NextRequest) {
       default_magacin_id: body.default_magacin_id
         ? Number(body.default_magacin_id)
         : undefined,
+      saas_linija: body.saas_linija,
     });
     const data = await listOpsCatalog();
-    return NextResponse.json({ ok: true, artikal_id, ...data });
+    return NextResponse.json({ ok: true, artikal_id, linije: OPS_SAAS_LINIJE, ...data });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: msg }, { status: 400 });
@@ -65,6 +68,7 @@ export async function PATCH(req: NextRequest) {
     jm_id?: number;
     default_magacin_id?: number;
     aktivan?: number;
+    saas_linija?: string | null;
   };
   try {
     body = await req.json();

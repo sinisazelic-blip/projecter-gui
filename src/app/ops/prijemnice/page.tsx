@@ -19,7 +19,7 @@ export default async function OpsPrijemnicePage() {
   return (
     <OpsShell
       title="Prijemnice"
-      sub="Ulaz s carine / dobavljača. Materijal na količinu, oprema dobija ime (seriju)."
+      sub="Ulaz robe"
     >
       <PrijemniceClient
         artikli={catalog.artikli}

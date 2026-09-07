@@ -1,4 +1,5 @@
 import { requireEnterPage } from "@/lib/ops/access";
+import { listOpsNaloziPosla } from "@/lib/ops/nalozi";
 import {
   listOpsKlijenti,
   listOpsKompletacije,
@@ -12,19 +13,21 @@ export const dynamic = "force-dynamic";
 
 export default async function OpsKompletacijaPage() {
   requireEnterPage();
-  const [events, radnici, klijenti, projekti] = await Promise.all([
+  const [events, naloziPosla, radnici, klijenti, projekti] = await Promise.all([
     listOpsKompletacije(),
+    listOpsNaloziPosla(),
     listOpsRadnici(),
     listOpsKlijenti(),
     listOpsProjekti(),
   ]);
   return (
     <OpsShell
-      title="Kompletacija"
-      sub="Sken M2 → event → montaža → povrat. Životna knjiga pamti klasu rizika."
+      title="KC"
+      sub="Kompletacioni centar"
     >
       <KompletacijaClient
         initialEvents={events}
+        naloziPosla={naloziPosla}
         radnici={radnici}
         klijenti={klijenti}
         projekti={projekti}

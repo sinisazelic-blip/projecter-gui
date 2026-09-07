@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { OPS_SAAS_LINIJE } from "@/lib/ops/process";
 import type { OpsArtikal, OpsArtikalVrsta, OpsJm, OpsMagacin } from "@/lib/ops/schema";
 
 type Catalog = {
@@ -18,6 +19,7 @@ export default function ArtikliClient({ initial }: { initial: Catalog }) {
     sifra: "",
     naziv: "",
     vrsta: "MATERIJAL" as OpsArtikalVrsta,
+    saas_linija: "",
     jm_id: String(initial.jedinice[0]?.jm_id ?? ""),
   });
 
@@ -48,11 +50,12 @@ export default function ArtikliClient({ initial }: { initial: Catalog }) {
           sifra: form.sifra,
           naziv: form.naziv,
           vrsta: form.vrsta,
+          saas_linija: form.saas_linija || null,
           jm_id: Number(form.jm_id),
         }),
       });
       await refreshFrom(res);
-      setForm((f) => ({ ...f, sifra: "", naziv: "" }));
+      setForm((f) => ({ ...f, sifra: "", naziv: "", saas_linija: "" }));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -125,6 +128,21 @@ export default function ArtikliClient({ initial }: { initial: Catalog }) {
           </select>
         </label>
         <label style={{ display: "grid", gap: 4, fontSize: 12 }}>
+          Linija
+          <select
+            value={form.saas_linija}
+            onChange={(e) => setForm((f) => ({ ...f, saas_linija: e.target.value }))}
+            style={{ padding: 8 }}
+          >
+            <option value="">—</option>
+            {OPS_SAAS_LINIJE.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label style={{ display: "grid", gap: 4, fontSize: 12 }}>
           JM
           <select
             value={form.jm_id}
@@ -171,7 +189,7 @@ export default function ArtikliClient({ initial }: { initial: Catalog }) {
         >
           <thead>
             <tr>
-              {["Šifra", "Naziv", "Vrsta", "JM", "Magacin", "Aktivan"].map((h) => (
+              {["Šifra", "Naziv", "Vrsta", "Linija", "JM", "Magacin", "Aktivan"].map((h) => (
                 <th
                   key={h}
                   style={{
@@ -193,6 +211,7 @@ export default function ArtikliClient({ initial }: { initial: Catalog }) {
                 </td>
                 <td style={{ padding: "8px 10px" }}>{row.naziv}</td>
                 <td style={{ padding: "8px 10px" }}>{row.vrsta}</td>
+                <td style={{ padding: "8px 10px" }}>{row.saas_linija || "—"}</td>
                 <td style={{ padding: "8px 10px" }}>{row.jm_oznaka}</td>
                 <td style={{ padding: "8px 10px" }}>{row.magacin_kod}</td>
                 <td style={{ padding: "8px 10px" }}>

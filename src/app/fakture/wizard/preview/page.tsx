@@ -448,16 +448,24 @@ export default function Page() {
           ? parseInt(brojUGodini, 10)
           : undefined;
 
+        const isEur = ccy === "EUR";
+        const rateToBam = isEur ? EUR_TO_BAM : 1;
+
         const payload = {
           items: items.map((it) => ({
             name: [it.title, it.sub].filter(Boolean).join(" – ").slice(0, 2048),
             quantity: it.qty,
-            unitPrice: it.unit,
-            totalAmount: it.total,
+            unitPrice: Math.round(it.unit * rateToBam * 100) / 100,
+            totalAmount: Math.round(it.total * rateToBam * 100) / 100,
             vatRate: vatRate * 100,
           })),
-          totalAmount,
-          discountNet: popustKm > 0 ? popustKm : 0,
+          totalAmount: Math.round(totalAmount * rateToBam * 100) / 100,
+          discountNet:
+            popustKm > 0
+              ? isEur
+                ? Math.round(popustKm * rateToBam * 100) / 100
+                : popustKm
+              : 0,
           dateISO: invoiceDateISO || undefined,
           buyerName: buyer?.naziv_klijenta
             ? String(buyer.naziv_klijenta).trim().slice(0, 500)
@@ -811,8 +819,8 @@ export default function Page() {
   const buyerCityLine = safeLineJoin([buyer?.postanski_broj, buyer?.grad], " ");
   const buyerCountry = String(buyer?.drzava ?? "—").trim();
   const buyerTax = isBhDoc
-    ? String(buyer?.jib ?? "").trim() || "—"
-    : String(buyer?.porezni_id ?? "—").trim();
+    ? String(buyer?.jib ?? buyer?.porezni_id ?? "").trim() || "—"
+    : String(buyer?.porezni_id ?? buyer?.jib ?? "—").trim();
 
   // PDF filename: broj-2026 Naručioc (npr. 012-2026 Udruženje poslodavaca RS)
   const pdfFilename = useMemo(() => {

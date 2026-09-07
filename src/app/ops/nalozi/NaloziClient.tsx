@@ -134,6 +134,7 @@ export default function NaloziClient({
       {error ? <p className="opsMsgErr">{error}</p> : null}
       {info ? <p className="opsMsgOk">{info}</p> : null}
       <form onSubmit={(e) => void submit(e)} style={{ marginBottom: 28 }}>
+        <h3 style={{ margin: "0 0 8px" }}>Sklapanje</h3>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
           <label style={{ display: "grid", gap: 4, fontSize: 12 }}>
             Datum
@@ -276,7 +277,7 @@ export default function NaloziClient({
         ) : null}
       </form>
 
-      <h3 style={{ marginTop: 0 }}>Zadnji nalozi</h3>
+      <h3 style={{ marginTop: 0 }}>Zadnji radionički nalozi</h3>
       <table
         style={{
           width: "100%",

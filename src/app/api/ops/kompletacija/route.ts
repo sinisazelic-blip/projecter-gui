@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { requireEnterApi } from "@/lib/ops/access";
 import type { OpsKlasaRizika } from "@/lib/ops/schema";
+import { listOpsNaloziPosla } from "@/lib/ops/nalozi";
 import {
   createOpsKompletacija,
   listOpsKlijenti,
@@ -17,12 +18,14 @@ export async function GET(req: NextRequest) {
   if (auth.error) return auth.error;
   const id = Number(req.nextUrl.searchParams.get("id") ?? 0);
   try {
-    const [kompletacije, radnici, klijenti, projekti] = await Promise.all([
-      listOpsKompletacije(),
-      listOpsRadnici(),
-      listOpsKlijenti(),
-      listOpsProjekti(),
-    ]);
+    const [kompletacije, radnici, klijenti, projekti, nalozi_posla] =
+      await Promise.all([
+        listOpsKompletacije(),
+        listOpsRadnici(),
+        listOpsKlijenti(),
+        listOpsProjekti(),
+        listOpsNaloziPosla(),
+      ]);
     const stavke = id ? await listOpsKompletacijaStavke(id) : [];
     return NextResponse.json({
       ok: true,
@@ -30,6 +33,7 @@ export async function GET(req: NextRequest) {
       radnici,
       klijenti,
       projekti,
+      nalozi_posla,
       stavke,
     });
   } catch (e: unknown) {
@@ -45,6 +49,7 @@ export async function POST(req: NextRequest) {
     event_naziv?: string;
     klasa_rizika?: OpsKlasaRizika;
     projekat_id?: number | null;
+    rn_posao_id?: number | null;
     klijent_id?: number | null;
     klijent_naziv?: string | null;
     krajnji_klijent_id?: number | null;
@@ -61,6 +66,7 @@ export async function POST(req: NextRequest) {
       event_naziv: String(body.event_naziv ?? ""),
       klasa_rizika: (body.klasa_rizika ?? "OSTALO") as OpsKlasaRizika,
       projekat_id: body.projekat_id ? Number(body.projekat_id) : null,
+      rn_posao_id: body.rn_posao_id ? Number(body.rn_posao_id) : null,
       klijent_id: body.klijent_id ? Number(body.klijent_id) : null,
       klijent_naziv: body.klijent_naziv,
       krajnji_klijent_id: body.krajnji_klijent_id

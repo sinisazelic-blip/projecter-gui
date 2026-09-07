@@ -14,7 +14,7 @@ export default async function OpsMagaciniPage() {
   return (
     <OpsShell
       title="Dva magacina"
-      sub="M1 broji materijal. M2 drži opremu po seriji. RN skida M1 i rađa serije."
+      sub="M1 materijal · M2 oprema"
     >
       <div
         style={{

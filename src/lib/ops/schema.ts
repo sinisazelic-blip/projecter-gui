@@ -1,6 +1,6 @@
 import { query } from "@/lib/db";
 
-const OPS_SCHEMA_VERSION = 7;
+const OPS_SCHEMA_VERSION = 8;
 let ensuredVersion = 0;
 let ensureInFlight: Promise<void> | null = null;
 
@@ -60,7 +60,48 @@ export type OpsArtikal = {
   jm_oznaka?: string;
   default_magacin_id: number;
   magacin_kod?: string;
+  saas_linija?: string | null;
   aktivan: number;
+};
+
+export type OpsRnPosao = {
+  rn_posao_id: number;
+  broj: string;
+  projekat_id: number;
+  projekat_naziv?: string | null;
+  datum: string;
+  objekat: string | null;
+  voditelj_naziv: string | null;
+  datum_od: string | null;
+  datum_do: string | null;
+  status: string;
+  napomena: string | null;
+};
+
+export type OpsRnSpec = {
+  spec_id: number;
+  rn_posao_id: number;
+  artikal_id: number;
+  kolicina: number;
+  sifra?: string;
+  naziv?: string;
+};
+
+export type OpsRdn = {
+  rdn_id: number;
+  broj: string;
+  vrsta: string;
+  datum: string;
+  sablon_artikal_id: number | null;
+  sablon_sifra?: string | null;
+  jedinica_id: number | null;
+  jedinica_kod?: string | null;
+  kolicina: number;
+  sati: number | null;
+  radnik_naziv: string | null;
+  status: string;
+  napomena: string | null;
+  serije?: string[];
 };
 
 export type OpsStanje = {
@@ -95,6 +136,7 @@ export type OpsKompletacija = {
   event_naziv: string;
   klasa_rizika: OpsKlasaRizika;
   projekat_id: number | null;
+  rn_posao_id?: number | null;
   klijent_id?: number | null;
   klijent_naziv: string | null;
   krajnji_klijent_id?: number | null;
@@ -476,9 +518,112 @@ async function runEnsureOpsTables(): Promise<void> {
 
   await query(
     `INSERT IGNORE INTO ops_magacini (kod, naziv, vrsta) VALUES
-      ('M1', 'Materijal', 'MATERIJAL'),
-      ('M2', 'Oprema', 'OPREMA')`,
+      ('M1', 'Repromaterijal i alat', 'MATERIJAL'),
+      ('M2', 'HaaS oprema', 'OPREMA')`,
   );
+  await query(`UPDATE ops_magacini SET naziv = 'Repromaterijal i alat' WHERE kod = 'M1'`);
+  await query(`UPDATE ops_magacini SET naziv = 'HaaS oprema' WHERE kod = 'M2'`);
+
+  await addOpsColumnIfMissing(
+    "ops_artikli",
+    "saas_linija",
+    "VARCHAR(24) NULL AFTER vrsta",
+  );
+  await addOpsColumnIfMissing(
+    "ops_prijemnice",
+    "kuf_id",
+    "INT NULL AFTER dobavljac_id",
+  );
+  await addOpsColumnIfMissing(
+    "ops_prijemnice",
+    "izvor",
+    "VARCHAR(16) NOT NULL DEFAULT 'KUF' AFTER kuf_id",
+  );
+  await addOpsColumnIfMissing(
+    "ops_jedinice_opreme",
+    "rdn_id",
+    "INT NULL AFTER rn_id",
+  );
+  await addOpsColumnIfMissing(
+    "ops_jedinice_opreme",
+    "rn_posao_id",
+    "INT NULL AFTER rdn_id",
+  );
+  await addOpsColumnIfMissing(
+    "ops_kompletacije",
+    "rn_posao_id",
+    "INT NULL AFTER projekat_id",
+  );
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS ops_nalozi_posla (
+      rn_posao_id INT NOT NULL AUTO_INCREMENT,
+      broj VARCHAR(32) NOT NULL,
+      projekat_id INT NOT NULL,
+      datum DATE NOT NULL,
+      objekat VARCHAR(160) NULL,
+      voditelj_naziv VARCHAR(160) NULL,
+      datum_od DATE NULL,
+      datum_do DATE NULL,
+      status VARCHAR(16) NOT NULL DEFAULT 'OTVOREN',
+      napomena VARCHAR(255) NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (rn_posao_id),
+      UNIQUE KEY uq_ops_rn_posao_broj (broj),
+      KEY idx_ops_rn_posao_proj (projekat_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS ops_nalog_posla_spec (
+      spec_id INT NOT NULL AUTO_INCREMENT,
+      rn_posao_id INT NOT NULL,
+      artikal_id INT NOT NULL,
+      kolicina INT NOT NULL DEFAULT 1,
+      PRIMARY KEY (spec_id),
+      KEY idx_ops_rn_spec (rn_posao_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS ops_nalog_posla_saas (
+      rn_posao_id INT NOT NULL,
+      modul_key VARCHAR(40) NOT NULL,
+      PRIMARY KEY (rn_posao_id, modul_key)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS ops_rdn (
+      rdn_id INT NOT NULL AUTO_INCREMENT,
+      broj VARCHAR(32) NOT NULL,
+      vrsta VARCHAR(16) NOT NULL,
+      datum DATE NOT NULL,
+      sablon_artikal_id INT NULL,
+      jedinica_id INT NULL,
+      kolicina INT NOT NULL DEFAULT 1,
+      sati DECIMAL(8,2) NULL,
+      radnik_id INT NULL,
+      radnik_naziv VARCHAR(160) NULL,
+      status VARCHAR(16) NOT NULL DEFAULT 'OTVOREN',
+      napomena VARCHAR(255) NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (rdn_id),
+      UNIQUE KEY uq_ops_rdn_broj (broj)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS ops_rdn_potrosnja (
+      potrosnja_id INT NOT NULL AUTO_INCREMENT,
+      rdn_id INT NOT NULL,
+      artikal_id INT NOT NULL,
+      magacin_id INT NOT NULL,
+      kolicina DECIMAL(14,3) NOT NULL,
+      PRIMARY KEY (potrosnja_id),
+      KEY idx_ops_rdn_pot (rdn_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
 
   const jmRows = await query<OpsJm>(`SELECT jm_id, oznaka, naziv FROM ops_jedinice`);
   const magRows = await query<OpsMagacin>(

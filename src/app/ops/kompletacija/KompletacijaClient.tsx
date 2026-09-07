@@ -8,25 +8,35 @@ import type {
   OpsKompletacija,
   OpsKompletacijaStavka,
   OpsPovratStanje,
+  OpsRnPosao,
+  OpsRnSpec,
 } from "@/lib/ops/schema";
 
+type RnRow = OpsRnPosao & { spec: OpsRnSpec[]; saas: string[] };
+
 const ERR: Record<string, string> = {
-  EVENT_REQUIRED: "Ime eventa je obavezno.",
+  EVENT_REQUIRED: "Naziv KC je obavezan.",
   KLASA_REQUIRED: "Izaberi klasu rizika.",
   NARUCILAC_REQUIRED: "Naručilac mora biti klijent koji plaća, ne krajnji objekat.",
   KOD_REQUIRED: "Upiši ili skeniraj kod.",
   KOD_NOT_FOUND: "Taj kod ne postoji.",
   OSOBA_REQUIRED: "Ko skenira?",
-  KOMPLETACIJA_REQUIRED: "Prvo otvori ili izaberi event.",
-  KOMPLETACIJA_ZATVORENA: "Taj event je već zatvoren.",
+  KOMPLETACIJA_REQUIRED: "Prvo otvori ili izaberi KC.",
+  KOMPLETACIJA_ZATVORENA: "Taj KC je već zatvoren.",
   NIJE_U_MAGACINU: "Komad nije u M2.",
-  NIJE_IZDATO: "Komad još nije izdat na event.",
+  NIJE_IZDATO: "Komad još nije izdat na KC.",
   NIJE_NA_TERENU: "Komad nije na terenu.",
-  NIJE_NA_EVENTU: "Komad nije vezan za event.",
+  NIJE_NA_EVENTU: "Komad nije vezan za ovaj KC.",
+  NIJE_NA_RAMP: "Komad nije na KC ovog naloga.",
   NIJE_U_SERVISU: "Komad nije u servisu.",
   UGRADJENO_NIJE_SKEN: "To je ugrađena komponenta, ne sklop.",
   OTPIS_ZATVOREN: "Otpisani komad se ne skenira.",
+  OTPIS_SAMO_RADIONICA: "Otpis ide samo iz radionice, ne s rampe.",
   POVRAT_STANJE: "Izaberi stanje povrata.",
+  NIJE_NA_SPEC_RN: "Ovaj komad nije na speci radnog naloga.",
+  SPEC_RN_PUN: "Spec ovog naloga je već puna za tu šifru.",
+  RN_POSAO_INVALID: "Radni nalog nije pronađen.",
+  RN_POSAO_ZATVOREN: "Taj radni nalog je već razdužen.",
 };
 
 function fmtWhen(raw?: string | null) {
@@ -37,11 +47,13 @@ function fmtWhen(raw?: string | null) {
 
 export default function KompletacijaClient({
   initialEvents,
+  naloziPosla,
   radnici,
   klijenti,
   projekti,
 }: {
   initialEvents: OpsKompletacija[];
+  naloziPosla: RnRow[];
   radnici: Array<{ radnik_id: number; naziv: string }>;
   klijenti: Array<{ klijent_id: number; naziv: string; is_narucilac?: number }>;
   projekti: Array<{
@@ -55,17 +67,21 @@ export default function KompletacijaClient({
 }) {
   const narucioci = klijenti.filter((k) => Number(k.is_narucilac) === 1);
   const krajnjiKlijenti = klijenti.filter((k) => Number(k.is_narucilac) !== 1);
+  const openRn = naloziPosla.filter(
+    (r) => !["RAZDUZEN", "ZATVOREN"].includes(String(r.status || "").toUpperCase()),
+  );
   const [events, setEvents] = useState(initialEvents);
   const [eventId, setEventId] = useState(
     String(initialEvents.find((e) => e.status !== "ZATVOREN")?.kompletacija_id ?? ""),
   );
   const [stavke, setStavke] = useState<OpsKompletacijaStavka[]>([]);
+  const [rnId, setRnId] = useState(String(openRn[0]?.rn_posao_id ?? ""));
   const [eventNaziv, setEventNaziv] = useState("");
-  const [klasa, setKlasa] = useState<OpsKlasaRizika>("POZORISTE");
-  const [objekat, setObjekat] = useState("");
+  const [klasa, setKlasa] = useState<OpsKlasaRizika>("OSTALO");
+  const [objekat, setObjekat] = useState(openRn[0]?.objekat ?? "");
   const [klijentId, setKlijentId] = useState("");
   const [krajnjiId, setKrajnjiId] = useState("");
-  const [projekatId, setProjekatId] = useState("");
+  const [projekatId, setProjekatId] = useState(String(openRn[0]?.projekat_id ?? ""));
   const [kod, setKod] = useState("");
   const [osobaId, setOsobaId] = useState("");
   const [osobaNaziv, setOsobaNaziv] = useState("");
@@ -80,18 +96,34 @@ export default function KompletacijaClient({
   const activeEvent = events.find(
     (e) => String(e.kompletacija_id) === eventId,
   );
+  const selectedRn = naloziPosla.find((r) => String(r.rn_posao_id) === rnId);
+  const rampRn = naloziPosla.find(
+    (r) => r.rn_posao_id === Number(activeEvent?.rn_posao_id || 0),
+  );
 
   const nextAction = useMemo(() => {
     const s = jedinica?.stanje;
     if (s === "U_MAGACINU") return "IZDATO" as const;
-    if (s === "IZDATO") return "MONTAZA" as const;
-    if (s === "MONTAZA") return "POVRAT" as const;
+    if (s === "IZDATO") return "UTOVAR" as const;
+    if (s === "NA_TERENU" || s === "MONTAZA") return "POVRAT" as const;
     if (s === "SERVIS") return "SERVIS_GOTOVO" as const;
     return null;
   }, [jedinica]);
 
   function fail(code: string) {
     setError(ERR[code] || code);
+  }
+
+  function applyRn(id: string) {
+    setRnId(id);
+    const rn = naloziPosla.find((r) => String(r.rn_posao_id) === id);
+    if (!rn) return;
+    setProjekatId(String(rn.projekat_id));
+    if (rn.objekat) setObjekat(rn.objekat);
+    setEventNaziv(`${rn.broj}${rn.objekat ? ` · ${rn.objekat}` : ""}`);
+    const job = projekti.find((p) => p.projekat_id === rn.projekat_id);
+    if (job?.narucilac_id) setKlijentId(String(job.narucilac_id));
+    if (job?.krajnji_klijent_id) setKrajnjiId(String(job.krajnji_klijent_id));
   }
 
   async function refreshEvents(id?: string) {
@@ -106,17 +138,25 @@ export default function KompletacijaClient({
 
   async function createEvent(e: React.FormEvent) {
     e.preventDefault();
+    if (!rnId) {
+      fail("RN_POSAO_INVALID");
+      return;
+    }
     setSaving(true);
     setError(null);
     setInfo(null);
     try {
+      const rn = naloziPosla.find((r) => String(r.rn_posao_id) === rnId);
       const res = await fetch("/api/ops/kompletacija", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          event_naziv: eventNaziv,
+          event_naziv:
+            eventNaziv ||
+            `${rn?.broj ?? "KC"}${objekat ? ` · ${objekat}` : ""}`,
           klasa_rizika: klasa,
           objekat,
+          rn_posao_id: Number(rnId),
           klijent_id: klijentId ? Number(klijentId) : null,
           klijent_naziv: narucioci.find((k) => String(k.klijent_id) === klijentId)
             ?.naziv,
@@ -124,7 +164,7 @@ export default function KompletacijaClient({
           krajnji_klijent_naziv: krajnjiKlijenti.find(
             (k) => String(k.klijent_id) === krajnjiId,
           )?.naziv,
-          projekat_id: projekatId ? Number(projekatId) : null,
+          projekat_id: projekatId ? Number(projekatId) : rn?.projekat_id ?? null,
         }),
       });
       const json = await res.json();
@@ -132,9 +172,7 @@ export default function KompletacijaClient({
       setEvents(json.kompletacije ?? []);
       setEventId(String(json.kompletacija_id));
       setStavke([]);
-      setEventNaziv("");
-      setObjekat("");
-      setInfo(`Event ${json.broj} otvoren.`);
+      setInfo(`KC ${json.broj} · ${rn?.broj ?? "RN"}`);
     } catch (err) {
       fail(err instanceof Error ? err.message : String(err));
     } finally {
@@ -161,7 +199,10 @@ export default function KompletacijaClient({
     }
   }
 
-  async function act(akcija: NonNullable<typeof nextAction>, povrat?: OpsPovratStanje) {
+  async function act(
+    akcija: NonNullable<typeof nextAction>,
+    povrat?: OpsPovratStanje,
+  ) {
     if (!osoba.trim()) {
       fail("OSOBA_REQUIRED");
       return;
@@ -212,9 +253,18 @@ export default function KompletacijaClient({
 
   useEffect(() => {
     if (eventId) void pickEvent(eventId);
-    // load stavke for the preselected open event
+    if (rnId) applyRn(rnId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const specVsLoaded = (rampRn?.spec ?? []).map((s) => {
+    const loaded = stavke.filter(
+      (x) =>
+        x.sifra === s.sifra &&
+        ["IZDATO", "UTOVAR", "MONTAZA", "NA_TERENU"].includes(x.faza),
+    ).length;
+    return { ...s, loaded };
+  });
 
   return (
     <div>
@@ -222,60 +272,47 @@ export default function KompletacijaClient({
       {info ? <p className="opsMsgOk">{info}</p> : null}
 
       <form onSubmit={(e) => void createEvent(e)} style={{ marginBottom: 22 }}>
-        <h3 style={{ margin: "0 0 10px" }}>Novi event</h3>
+        <h3 style={{ margin: "0 0 10px" }}>Novi KC</h3>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          <select
+            value={rnId}
+            onChange={(e) => applyRn(e.target.value)}
+            style={{ padding: 8, minWidth: 280 }}
+            required
+          >
+            <option value="">— radni nalog —</option>
+            {openRn.map((r) => (
+              <option key={r.rn_posao_id} value={r.rn_posao_id}>
+                {r.broj} · {r.projekat_naziv || `#${r.projekat_id}`}
+                {r.objekat ? ` · ${r.objekat}` : ""} · {r.status}
+              </option>
+            ))}
+          </select>
           <input
-            placeholder="Naziv eventa"
+            placeholder="Naziv"
             value={eventNaziv}
             onChange={(e) => setEventNaziv(e.target.value)}
-            style={{ padding: 8, minWidth: 220 }}
-            required
+            style={{ padding: 8, minWidth: 200 }}
           />
           <select
             value={klasa}
             onChange={(e) => setKlasa(e.target.value as OpsKlasaRizika)}
             style={{ padding: 8 }}
           >
+            <option value="OSTALO">Ostalo</option>
             <option value="POZORISTE">Pozorište</option>
             <option value="STADION">Stadion (teški)</option>
-            <option value="OSTALO">Ostalo</option>
           </select>
           <input
-            placeholder="Objekat / destinacija"
+            placeholder="Objekat"
             value={objekat}
             onChange={(e) => setObjekat(e.target.value)}
-            style={{ padding: 8, minWidth: 180 }}
+            style={{ padding: 8, minWidth: 160 }}
           />
-          <select
-            value={projekatId}
-            onChange={(e) => {
-              const id = e.target.value;
-              setProjekatId(id);
-              const job = projekti.find((p) => String(p.projekat_id) === id);
-              if (!job) return;
-              if (job.narucilac_id) setKlijentId(String(job.narucilac_id));
-              if (job.krajnji_klijent_id) {
-                setKrajnjiId(String(job.krajnji_klijent_id));
-                setObjekat((prev) => prev || job.krajnji_naziv || "");
-              }
-            }}
-            style={{ padding: 8, minWidth: 180 }}
-          >
-            <option value="">— posao —</option>
-            {projekti.map((p) => (
-              <option key={p.projekat_id} value={p.projekat_id}>
-                #{p.projekat_id} {p.naziv}
-                {p.narucilac_naziv
-                  ? ` · ${p.narucilac_naziv}${p.krajnji_naziv && p.krajnji_naziv !== p.narucilac_naziv ? ` → ${p.krajnji_naziv}` : ""}`
-                  : ""}
-              </option>
-            ))}
-          </select>
           <select
             value={klijentId}
             onChange={(e) => setKlijentId(e.target.value)}
             style={{ padding: 8, minWidth: 180 }}
-            required
           >
             <option value="">— naručilac (plaća) —</option>
             {narucioci.map((k) => (
@@ -284,32 +321,21 @@ export default function KompletacijaClient({
               </option>
             ))}
           </select>
-          <select
-            value={krajnjiId}
-            onChange={(e) => {
-              const id = e.target.value;
-              setKrajnjiId(id);
-              const k = krajnjiKlijenti.find((x) => String(x.klijent_id) === id);
-              if (k) setObjekat((prev) => prev || k.naziv);
-            }}
-            style={{ padding: 8, minWidth: 180 }}
-          >
-            <option value="">— krajnji (objekat) —</option>
-            {krajnjiKlijenti.map((k) => (
-              <option key={k.klijent_id} value={k.klijent_id}>
-                {k.naziv}
-              </option>
-            ))}
-          </select>
-          <button type="submit" className="btn" disabled={saving}>
-            Otvori kompletaciju
+          <button type="submit" className="btn" disabled={saving || !rnId}>
+            Otvori KC
           </button>
         </div>
+        {selectedRn?.spec.length ? (
+          <p style={{ fontSize: 12, opacity: 0.75, margin: "8px 0 0" }}>
+            Spec:{" "}
+            {selectedRn.spec.map((s) => `${s.sifra}×${s.kolicina}`).join(", ")}
+          </p>
+        ) : null}
       </form>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
         <label style={{ display: "grid", gap: 4, fontSize: 12 }}>
-          Aktivni event
+          Aktivni KC
           <select
             value={eventId}
             onChange={(e) => void pickEvent(e.target.value)}
@@ -318,7 +344,7 @@ export default function KompletacijaClient({
             <option value="">— izaberi —</option>
             {events.map((ev) => (
               <option key={ev.kompletacija_id} value={ev.kompletacija_id}>
-                {ev.broj} · {ev.event_naziv} · {ev.klasa_rizika} · {ev.status}
+                {ev.broj} · {ev.event_naziv} · {ev.status}
               </option>
             ))}
           </select>
@@ -357,8 +383,15 @@ export default function KompletacijaClient({
             : activeEvent.objekat
               ? ` → ${activeEvent.objekat}`
               : ""}{" "}
-          · komada na nalogu:{" "}
-          {activeEvent.jedinica_count ?? stavke.length}
+          · {activeEvent.jedinica_count ?? stavke.length}
+        </p>
+      ) : null}
+      {specVsLoaded.length ? (
+        <p style={{ fontSize: 12, opacity: 0.8, marginTop: 0 }}>
+          Spec:{" "}
+          {specVsLoaded
+            .map((s) => `${s.sifra} ${s.loaded}/${s.kolicina}`)
+            .join(" · ")}
         </p>
       ) : null}
 
@@ -402,17 +435,17 @@ export default function KompletacijaClient({
               disabled={saving}
               onClick={() => void act("IZDATO")}
             >
-              Izdaj na event
+              Izdaj na KC
             </button>
           ) : null}
-          {nextAction === "MONTAZA" ? (
+          {nextAction === "UTOVAR" ? (
             <button
               type="button"
               className="btn"
               disabled={saving}
-              onClick={() => void act("MONTAZA")}
+              onClick={() => void act("UTOVAR")}
             >
-              Predaj montaži
+              Utovar
             </button>
           ) : null}
           {nextAction === "POVRAT" ? (
@@ -422,7 +455,6 @@ export default function KompletacijaClient({
                   ["ISPRAVAN", "Ispravan → M2"],
                   ["OSTECEN", "Oštećen → servis"],
                   ["SERVIS", "Za servis"],
-                  ["OTPIS", "Otpis"],
                 ] as Array<[OpsPovratStanje, string]>
               ).map(([st, label]) => (
                 <button
@@ -464,7 +496,7 @@ export default function KompletacijaClient({
           >
             <thead>
               <tr>
-                {["Kad", "Akcija", "Event", "Klasa", "Stanje", "Ko"].map((h) => (
+                {["Kad", "Akcija", "KC", "Klasa", "Stanje", "Ko"].map((h) => (
                   <th
                     key={h}
                     style={{
@@ -494,7 +526,7 @@ export default function KompletacijaClient({
         </>
       ) : null}
 
-      <h3 style={{ margin: "0 0 8px" }}>Komadi na eventu</h3>
+      <h3 style={{ margin: "0 0 8px" }}>Komadi</h3>
       {stavke.length ? (
         <table
           style={{
@@ -506,7 +538,7 @@ export default function KompletacijaClient({
         >
           <thead>
             <tr>
-              {["Kod", "Šifra", "Faza", "Povrat", "Izdao", "Montaža", "Vratio"].map(
+              {["Kod", "Šifra", "Faza", "Povrat", "Izdao", "Utovar", "Vratio"].map(
                 (h) => (
                   <th
                     key={h}
@@ -538,7 +570,7 @@ export default function KompletacijaClient({
         </table>
       ) : (
         <p style={{ fontSize: 13, opacity: 0.7 }}>
-          Sken iz M2 puni ovaj nalog. Kad svi komadi budu vraćeni, event se zatvara.
+          Nema skeniranih komada.
         </p>
       )}
     </div>

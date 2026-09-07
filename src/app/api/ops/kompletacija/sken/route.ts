@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   if (auth.error) return auth.error;
   let body: {
     kod?: string;
-    akcija?: "IZDATO" | "MONTAZA" | "POVRAT" | "SERVIS_GOTOVO";
+    akcija?: "IZDATO" | "UTOVAR" | "MONTAZA" | "POVRAT" | "SERVIS_GOTOVO";
     kompletacija_id?: number | null;
     osoba?: string;
     povrat_stanje?: OpsPovratStanje | null;

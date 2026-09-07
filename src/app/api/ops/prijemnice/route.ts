@@ -32,6 +32,8 @@ export async function POST(req: NextRequest) {
     dobavljac_naziv?: string | null;
     racun?: string | null;
     napomena?: string | null;
+    izvor?: string | null;
+    kuf_id?: number | null;
     lines?: Array<{ artikal_id: number; kolicina: number }>;
   };
   try {
@@ -46,6 +48,8 @@ export async function POST(req: NextRequest) {
       dobavljac_naziv: body.dobavljac_naziv,
       racun: body.racun,
       napomena: body.napomena,
+      izvor: body.izvor,
+      kuf_id: body.kuf_id ? Number(body.kuf_id) : null,
       lines: Array.isArray(body.lines) ? body.lines : [],
     });
     const prijemnice = await listOpsPrijemnice();

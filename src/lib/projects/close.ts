@@ -1,5 +1,7 @@
 // src/lib/projects/close.ts
 import { query } from "@/lib/db";
+import { isEnterInstance } from "@/lib/fluxa-instance";
+import { listOpenRnForProjekat } from "@/lib/ops/nalozi";
 
 type CloseCheck = {
   projekat_id: number;
@@ -105,6 +107,22 @@ export async function getCloseCheck(
   }
 
   const production_not_finished = status_id > 0 && status_id < 7;
+
+  if (isEnterInstance()) {
+    try {
+      const openRn = await listOpenRnForProjekat(projekatId);
+      if (openRn.length > 0) {
+        hard_blocks.push({
+          code: "HAAS_NIJE_RAZDUZEN",
+          message:
+            "Posao se ne može zatvoriti dok radni nalozi nisu razduženi (oprema mora biti vraćena s rampe).",
+          count: openRn.length,
+        });
+      }
+    } catch {
+      /* ops tabele još nisu na Studiju — ignorisi */
+    }
+  }
 
   // HARD BLOCK: bank postinzi za projekat koji nisu prebačeni u troškove (trosak_row_id je NULL)
   const bRows = await query(

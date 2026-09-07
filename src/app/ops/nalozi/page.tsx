@@ -18,8 +18,8 @@ export default async function OpsNaloziPage() {
   ]);
   return (
     <OpsShell
-      title="Radni nalozi"
-      sub="Bez sastavnice nalog ne postoji. Skida M1, rađa serije u M2."
+      title="Radionički nalozi"
+      sub="Sklapanje i servis"
     >
       <NaloziClient
         artikli={catalog.artikli}

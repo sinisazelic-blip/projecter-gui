@@ -5,5 +5,5 @@ export const dynamic = "force-dynamic";
 
 export default function OpsIndexPage() {
   requireEnterPage();
-  redirect("/ops/artikli");
+  redirect("/ops/rn");
 }
