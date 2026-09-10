@@ -2429,7 +2429,8 @@
       "SOCCS_SWIMVOICE": "SOCCS / SwimVoice only",
       "FLUXA_AND_SOCCS": "Fluxa + SOCCS/SwimVoice",
       "DOCENTRE": "Dokumentar",
-      "ENTERSYS": "EnterSYS"
+      "ENTERSYS": "EnterSYS",
+      "FLUXAPOS": "FluxaPOS (POS & Hospitality)"
     },
     "wizardNext": "Next",
     "wizardBack": "Back",
@@ -2441,6 +2442,7 @@
       "FLUXA_AND_SOCCS": "Fluxa+SOCCS",
       "DOCENTRE": "Dokumentar",
       "ENTERSYS": "EnterSYS",
+      "FLUXAPOS": "FluxaPOS",
       "POOL_MANAGER": "Pool Mgr"
     },
     "profileHint": {
@@ -2448,13 +2450,15 @@
       "SOCCS_SWIMVOICE": "Tenant is defined as SOCCS/SwimVoice-only.",
       "FLUXA_AND_SOCCS": "Tenant includes both Fluxa and SOCCS/SwimVoice.",
       "DOCENTRE": "Tenant is Dokumentar (SOCCS-style activation — first-install code).",
-      "ENTERSYS": "Tenant is EnterSYS (ticketing platform)."
+      "ENTERSYS": "Tenant is EnterSYS (ticketing platform).",
+      "FLUXAPOS": "Tenant is FluxaPOS (cash register & hospitality)."
     },
     "productTab": {
       "FLUXA": "Fluxa",
       "SOCCS_SV": "SOCCS / SwimVoice",
       "DOCENTRE": "Dokumentar",
-      "ENTERSYS": "EnterSYS"
+      "ENTERSYS": "EnterSYS",
+      "FLUXAPOS": "FluxaPOS"
     },
     "groupActivation": "Activation",
     "activationButton": "Activation",

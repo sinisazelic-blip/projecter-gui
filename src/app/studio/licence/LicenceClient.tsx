@@ -29,6 +29,13 @@ import {
   type EnterSysCjenovnikRow,
 } from "@/lib/entersys-cjenovnik-calc";
 import { restoreStatusAfterSuspend } from "@/lib/tenant-licence-status";
+import {
+  FLUXAPOS_BASE_PACKAGES,
+  FLUXAPOS_MODULE_KEYS,
+  getFluxaPosBasePackage,
+  defaultModulesForFluxaPosPackage,
+  type FluxaPosBasePackageId,
+} from "@/lib/fluxapos-activation";
 
 import { useAuthUser } from "@/components/AuthUserProvider";
 
@@ -187,6 +194,14 @@ export default function LicenceClient() {
   const [enterSysPackageDraft, setEnterSysPackageDraft] =
     useState<EnterSysBasePackageId>("POOL_MANAGER");
   const [enterSysSaving, setEnterSysSaving] = useState(false);
+  const [newTenantFluxaPosPackage, setNewTenantFluxaPosPackage] =
+    useState<FluxaPosBasePackageId>("FLUXAPOS_START");
+  const [fluxaPosModalRow, setFluxaPosModalRow] = useState<TenantRow | null>(null);
+  const [fluxaPosModulesDraft, setFluxaPosModulesDraft] = useState<Record<string, boolean>>({});
+  const [fluxaPosPackageDraft, setFluxaPosPackageDraft] =
+    useState<FluxaPosBasePackageId>("FLUXAPOS_START");
+  const [fluxaPosBlagajniDraft, setFluxaPosBlagajniDraft] = useState<number>(1);
+  const [fluxaPosSaving, setFluxaPosSaving] = useState(false);
   const [enterSysCurrencyDraft, setEnterSysCurrencyDraft] = useState("KM");
   const [enterSysCatalog, setEnterSysCatalog] = useState<EnterSysCjenovnikRow[]>(
     [],
@@ -198,6 +213,64 @@ export default function LicenceClient() {
   const [cjenovnikSaving, setCjenovnikSaving] = useState(false);
   const [newTenantEnterSysPackage, setNewTenantEnterSysPackage] =
     useState<EnterSysBasePackageId>("POOL_MANAGER");
+
+  const openFluxaPosModulesModal = (row: TenantRow) => {
+    setFluxaPosModalRow(row);
+    setFluxaPosBlagajniDraft(row.broj_blagajni ?? 1);
+    const scopeStr = String(row.soccs_platform_scope ?? "").trim();
+    const active = scopeStr ? scopeStr.split(",").map((s) => s.trim()) : [];
+    const hasFilter = active.length > 0;
+    const pkgId = (row.soccs_tier as FluxaPosBasePackageId) || "FLUXAPOS_START";
+    setFluxaPosPackageDraft(pkgId);
+
+    const draft: Record<string, boolean> = {};
+    const defaultMods = defaultModulesForFluxaPosPackage(pkgId);
+    for (const item of FLUXAPOS_MODULE_KEYS) {
+      if (!hasFilter) {
+        draft[item.key] = defaultMods[item.key as keyof typeof defaultMods] ?? false;
+      } else {
+        draft[item.key] = active.includes(item.key);
+      }
+    }
+    setFluxaPosModulesDraft(draft);
+  };
+
+  const handleFluxaPosSave = async () => {
+    if (!fluxaPosModalRow) return;
+    setFluxaPosSaving(true);
+    try {
+      const selected = FLUXAPOS_MODULE_KEYS.filter(
+        (item) => fluxaPosModulesDraft[item.key],
+      ).map((item) => item.key);
+      const pkg = getFluxaPosBasePackage(fluxaPosPackageDraft);
+      const isPilot = String(fluxaPosModalRow.status).toUpperCase() === "PILOT";
+
+      const res = await fetch(
+        `/api/tenant-admin/tenants/${fluxaPosModalRow.tenant_id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            soccs_tier: fluxaPosPackageDraft,
+            soccs_platform_scope: selected.join(","),
+            broj_blagajni: fluxaPosBlagajniDraft,
+            monthly_price: isPilot ? 0 : (pkg?.priceKm ?? 60),
+          }),
+        },
+      );
+      const data = await res.json();
+      if (data.ok) {
+        setFluxaPosModalRow(null);
+        await load();
+      } else {
+        setError(data.error ?? t("common.error"));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setFluxaPosSaving(false);
+    }
+  };
 
   const openEnterSysModulesModal = (row: TenantRow) => {
     setEnterSysModalRow(row);
@@ -808,6 +881,18 @@ export default function LicenceClient() {
     return `${calc.billedTotal} ${calc.displayCurrency}`;
   };
 
+  const formatFluxaPosPrice = (row: TenantRow) => {
+    const isPilot = String(row.status).toUpperCase() === "PILOT";
+    const pkgId = (row.soccs_tier as FluxaPosBasePackageId) || "FLUXAPOS_START";
+    const pkg = getFluxaPosBasePackage(pkgId);
+    const catalogPrice = pkg?.priceKm ?? 60;
+    const curr = "KM";
+    if (isPilot) {
+      return `0 ${curr} (${t("studioLicence.enterSysPilotPriceHint") || "katalog"} ${catalogPrice} ${curr})`;
+    }
+    return `${catalogPrice} ${curr}`;
+  };
+
   /** Tab u kojem se red prikazuje — svaki proizvod ima svoj sloj. */
   const rowVisibleInTab = (row: TenantRow, tab: TenantProductTab) =>
     profileToTabs(resolveDisplayStudioProfile(row)).includes(tab);
@@ -1063,7 +1148,21 @@ export default function LicenceClient() {
       <div style={{ overflowX: "auto" }}>
         <table style={tableStyle}>
           <thead>
-            {activeTab === "ENTERSYS" ? (
+            {activeTab === "FLUXAPOS" ? (
+              <tr>
+                <th style={thTd}>Naziv Tenanta</th>
+                <th style={thTd}>FluxaPOS Paket</th>
+                <th style={thTd}>Zakupljene Kase</th>
+                <th style={thTd}>Režim</th>
+                {!isKasicaRole && <th style={thTd}>Cijena / Način Naplate</th>}
+                <th style={thTd}>Ističe Datum</th>
+                <th style={thTd}>Dana do Isteka</th>
+                <th style={thTd}>Stanje</th>
+                <th style={thFlux}>Moduli & Paket</th>
+                <th style={thFluxCont}>Licencni Token</th>
+                {!isKasicaRole && <th style={{ ...thTd, textAlign: "center" }}>Akcije</th>}
+              </tr>
+            ) : activeTab === "ENTERSYS" ? (
               <tr>
                 <th style={thTd}>Naziv Tenanta</th>
                 <th style={thTd}>Kontekst Objekta</th>
@@ -1170,7 +1269,247 @@ export default function LicenceClient() {
                       openContactModal(row);
                     }}
                   >
-                    {activeTab === "ENTERSYS" ? (
+                    {activeTab === "FLUXAPOS" ? (
+                      <>
+                        <td style={thTd}>
+                          <div style={{ fontWeight: 700 }}>{row.naziv}</div>
+                          {row.tenant_public_id && (
+                            <code style={{ fontSize: 10, opacity: 0.6, display: "block" }}>
+                              {row.tenant_public_id}
+                            </code>
+                          )}
+                        </td>
+                        <td style={thTd}>
+                          <span
+                            style={{
+                              display: "inline-block",
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: "3px 9px",
+                              borderRadius: 999,
+                              background: "rgba(59, 130, 246, 0.2)",
+                              color: "#60a5fa",
+                              border: "1px solid rgba(59, 130, 246, 0.35)",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {(() => {
+                              const pkg = getFluxaPosBasePackage(
+                                (row.soccs_tier as FluxaPosBasePackageId) || "FLUXAPOS_START",
+                              );
+                              return pkg?.label ?? "FLUXAPOS START";
+                            })()}
+                          </span>
+                        </td>
+                        <td style={thTd}>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                              fontWeight: 700,
+                              fontSize: 11,
+                              color: "#38bdf8",
+                              background: "rgba(56, 189, 248, 0.15)",
+                              padding: "3px 8px",
+                              borderRadius: 6,
+                              border: "1px solid rgba(56, 189, 248, 0.3)",
+                            }}
+                          >
+                            🖥️ {row.broj_blagajni ?? 1} {(row.broj_blagajni ?? 1) === 1 ? "kasa" : (row.broj_blagajni ?? 1) < 5 ? "kase" : "kasa"}
+                          </span>
+                        </td>
+                        <td style={thTd}>
+                          {isKasicaRole ? (
+                            String(row.status).toUpperCase() === "PILOT"
+                              ? t("studioLicence.rezimPilot")
+                              : t("studioLicence.rezimNormal")
+                          ) : (
+                            <select
+                              value={
+                                String(row.status).toUpperCase() === "PILOT"
+                                  ? "PILOT"
+                                  : "NORMAL"
+                              }
+                              disabled={
+                                statusSavingId === row.tenant_id ||
+                                String(row.status).toUpperCase() ===
+                                  "SUSPENDOVAN"
+                              }
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                const next =
+                                  e.target.value === "PILOT"
+                                    ? "PILOT"
+                                    : "AKTIVAN";
+                                handleSetStatus(row.tenant_id, next, row);
+                              }}
+                              title={t("studioLicence.rezimHint")}
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: 8,
+                                background: "rgba(15, 23, 42, 0.7)",
+                                border: "1px solid var(--border)",
+                                color: "inherit",
+                                fontSize: 12,
+                                fontWeight: 700,
+                              }}
+                            >
+                              <option value="NORMAL">
+                                {t("studioLicence.rezimNormal")}
+                              </option>
+                              <option value="PILOT">
+                                {t("studioLicence.rezimPilot")}
+                              </option>
+                            </select>
+                          )}
+                        </td>
+                        {!isKasicaRole && (
+                          <td style={thTd}>{formatFluxaPosPrice(row)}</td>
+                        )}
+                        <td style={thTd}>
+                          {formatDateBiH(row.subscription_ends_at)}
+                        </td>
+                        <td style={thTd}>
+                          {row.days_until_end > 0
+                            ? row.days_until_end
+                            : row.days_until_end === 0
+                              ? "0"
+                              : t("studioLicence.expired")}
+                        </td>
+                        <td style={thTd}>{renderStatusCell(row, lamp, 12)}</td>
+                        <td style={tdFlux}>
+                          <button
+                            type="button"
+                            className="btn"
+                            style={{
+                              fontSize: 11,
+                              padding: "4px 8px",
+                              color: "#60a5fa",
+                              borderColor: "rgba(96, 165, 250, 0.45)",
+                              background: "rgba(59, 130, 246, 0.12)",
+                              whiteSpace: "nowrap",
+                            }}
+                            onClick={() => openFluxaPosModulesModal(row)}
+                            title="Upravljaj zakupljenim modulima i kasama"
+                          >
+                            Moduli & Paket
+                          </button>
+                        </td>
+                        <td style={tdFluxCont}>
+                          <code style={{ fontSize: 10, opacity: 0.85 }}>
+                            {row.licence_token
+                              ? `${String(row.licence_token).substring(0, 12)}...`
+                              : "—"}
+                          </code>
+                        </td>
+                        {!isKasicaRole && (
+                          <td style={{ ...thTd, textAlign: "center" }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                flexWrap: "nowrap",
+                                gap: 6,
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              <button
+                                type="button"
+                                className="btn"
+                                style={{ fontSize: 11, padding: "4px 8px" }}
+                                onClick={() => setTokenModalRow(row)}
+                                title={t("studioLicence.tokenTooltip")}
+                              >
+                                {row.licence_token
+                                  ? "🔑 Token"
+                                  : t("studioLicence.noToken")}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn"
+                                style={{
+                                  fontSize: 11,
+                                  padding: "4px 8px",
+                                  color: "#60a5fa",
+                                  borderColor: "rgba(96, 165, 250, 0.45)",
+                                  background: "rgba(59, 130, 246, 0.12)",
+                                  whiteSpace: "nowrap",
+                                }}
+                                onClick={() => openExtendModal(row)}
+                                title={t("studioLicence.extend")}
+                              >
+                                {t("studioLicence.enterSysValidTo")}
+                              </button>
+                              {String(row.status).toUpperCase() ===
+                              "SUSPENDOVAN" ? (
+                                <button
+                                  type="button"
+                                  className="btn"
+                                  style={{
+                                    fontSize: 11,
+                                    padding: "4px 8px",
+                                    color: "#f8fafc",
+                                    borderColor: "rgba(248, 250, 252, 0.35)",
+                                    background: "rgba(148, 163, 184, 0.2)",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                  disabled={statusSavingId === row.tenant_id}
+                                  onClick={() =>
+                                    handleSetStatus(
+                                      row.tenant_id,
+                                      restoreStatusAfterSuspend(
+                                        row.monthly_price,
+                                      ),
+                                      row,
+                                    )
+                                  }
+                                  title={t("studioLicence.restoreAccess")}
+                                >
+                                  {statusSavingId === row.tenant_id
+                                    ? t("common.loading")
+                                    : t("studioLicence.enterSysLive")}
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn"
+                                  style={{
+                                    fontSize: 11,
+                                    padding: "4px 8px",
+                                    color: "#f87171",
+                                    borderColor: "rgba(248, 113, 113, 0.45)",
+                                    background: "rgba(239, 68, 68, 0.12)",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                  disabled={statusSavingId === row.tenant_id}
+                                  onClick={() =>
+                                    handleSetStatus(
+                                      row.tenant_id,
+                                      "SUSPENDOVAN",
+                                      row,
+                                    )
+                                  }
+                                  title={`${t("studioLicence.suspendAccess")} (${t("studioLicence.suspendAppliesToAll")})`}
+                                >
+                                  {statusSavingId === row.tenant_id
+                                    ? t("common.loading")
+                                    : t("studioLicence.enterSysKill")}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="btn btn-sm"
+                                style={{ fontSize: 11, padding: "2px 8px" }}
+                                onClick={() => openContactModal(row)}
+                              >
+                                Upravljaj
+                              </button>
+                            </div>
+                          </td>
+                        )}
+                      </>
+                    ) : activeTab === "ENTERSYS" ? (
                       <>
                         <td style={thTd}>{row.naziv}</td>
                         <td style={thTd}>
@@ -1502,7 +1841,7 @@ export default function LicenceClient() {
                         </td>
                       </>
                     )}
-                    {activeTab !== "ENTERSYS" && (
+                    {activeTab !== "ENTERSYS" && activeTab !== "FLUXAPOS" && (
                     <>
                     <td style={tdFluxCont}>
                       <button
@@ -2037,6 +2376,7 @@ export default function LicenceClient() {
                         "FLUXA_AND_SOCCS",
                         "DOCENTRE",
                         "ENTERSYS",
+                        "FLUXAPOS",
                       ] as const
                     ).map((p) => (
                       <button
@@ -2045,7 +2385,7 @@ export default function LicenceClient() {
                         className="btn"
                         onClick={() => {
                           setWizardProfile(p);
-                          if (p === "ENTERSYS") setNewTenantCurrency("KM");
+                          if (p === "ENTERSYS" || p === "FLUXAPOS") setNewTenantCurrency("KM");
                         }}
                         style={{
                           textAlign: "left",
@@ -2369,6 +2709,48 @@ export default function LicenceClient() {
                     >
                       {t("studioLicence.wizardActivationHint")}
                     </p>
+                  )}
+                  {wizardProfile === "FLUXAPOS" && (
+                    <>
+                      <label style={{ display: "block", marginBottom: 4 }}>
+                        Odaberite osnovni FluxaPOS paket:
+                      </label>
+                      <select
+                        value={newTenantFluxaPosPackage}
+                        onChange={(e) =>
+                          setNewTenantFluxaPosPackage(
+                            e.target.value as FluxaPosBasePackageId,
+                          )
+                        }
+                        style={{
+                          padding: 8,
+                          marginBottom: 12,
+                          width: "100%",
+                          maxWidth: 340,
+                        }}
+                      >
+                        {FLUXAPOS_BASE_PACKAGES.map((pkg) => (
+                          <option key={pkg.id} value={pkg.id}>
+                            {pkg.label} ({pkg.priceKm} KM / mj)
+                          </option>
+                        ))}
+                      </select>
+                      <label style={{ display: "block", marginBottom: 4 }}>
+                        Broj zakupljenih kasa (instanci):
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={newTenantBrojBlagajni}
+                        onChange={(e) => setNewTenantBrojBlagajni(Math.max(1, Number(e.target.value)))}
+                        style={{
+                          padding: 8,
+                          marginBottom: 12,
+                          width: 120,
+                        }}
+                      />
+                    </>
                   )}
                   {wizardProfile === "ENTERSYS" && (
                     <>
@@ -2941,6 +3323,132 @@ export default function LicenceClient() {
         </div>
       )}
 
+      {/* Modal Upravljanje FluxaPOS Modulima i Kasama */}
+      {fluxaPosModalRow && (
+        <div
+          className="studio-modal"
+          style={overlayStyle()}
+          onClick={() => !fluxaPosSaving && setFluxaPosModalRow(null)}
+        >
+          <div style={modalStyle(560)} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: 24 }}>
+              <h3 style={{ marginTop: 0, color: "#60a5fa" }}>
+                FluxaPOS Paket & Moduli — {fluxaPosModalRow.naziv}
+              </h3>
+              <div style={{ marginBottom: 16, padding: "10px 12px", background: "rgba(15, 23, 42, 0.6)", borderRadius: 8, border: "1px solid rgba(96, 165, 250, 0.25)" }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#60a5fa" }}>
+                  Osnovni Paket:
+                </label>
+                <select
+                  value={fluxaPosPackageDraft}
+                  onChange={(e) => {
+                    const id = e.target.value as FluxaPosBasePackageId;
+                    setFluxaPosPackageDraft(id);
+                    const def = defaultModulesForFluxaPosPackage(id);
+                    setFluxaPosModulesDraft((prev) => ({ ...prev, ...def }));
+                  }}
+                  style={{
+                    padding: "6px 10px",
+                    width: "100%",
+                    maxWidth: 360,
+                    marginBottom: 12,
+                    borderRadius: 6,
+                    background: "rgba(15, 23, 42, 0.9)",
+                    border: "1px solid rgba(96, 165, 250, 0.4)",
+                    color: "#fff",
+                    fontSize: 14,
+                  }}
+                >
+                  {FLUXAPOS_BASE_PACKAGES.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label} — {p.priceKm} KM / mj
+                    </option>
+                  ))}
+                </select>
+
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#60a5fa" }}>
+                  Zakupljeni broj radnih mjesta (kasa):
+                </label>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                  <input
+                    type="number"
+                    min={1}
+                    value={fluxaPosBlagajniDraft}
+                    onChange={(e) => setFluxaPosBlagajniDraft(Math.max(1, Number(e.target.value)))}
+                    style={{
+                      padding: "6px 10px",
+                      width: 100,
+                      borderRadius: 6,
+                      background: "rgba(15, 23, 42, 0.9)",
+                      border: "1px solid rgba(96, 165, 250, 0.4)",
+                      color: "#fff",
+                      fontSize: 14,
+                      fontWeight: 700,
+                    }}
+                  />
+                  <span style={{ fontSize: 12, opacity: 0.8 }}>
+                    maksimalno istovremeno aktivnih POS terminala
+                  </span>
+                </div>
+
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#60a5fa" }}>
+                  Aktivni Moduli Kase:
+                </label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {FLUXAPOS_MODULE_KEYS.map((m) => (
+                    <label
+                      key={m.key}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        fontSize: 12,
+                        cursor: "pointer",
+                        padding: "4px 6px",
+                        borderRadius: 4,
+                        background: fluxaPosModulesDraft[m.key] ? "rgba(59, 130, 246, 0.15)" : "transparent",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={Boolean(fluxaPosModulesDraft[m.key])}
+                        onChange={(e) =>
+                          setFluxaPosModulesDraft((prev) => ({
+                            ...prev,
+                            [m.key]: e.target.checked,
+                          }))
+                        }
+                      />
+                      <span>{m.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={fluxaPosSaving}
+                  onClick={() => setFluxaPosModalRow(null)}
+                >
+                  Odustani
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ background: "#2563eb", color: "#fff" }}
+                  disabled={fluxaPosSaving}
+                  onClick={handleFluxaPosSave}
+                >
+                  {fluxaPosSaving ? "Snimanje..." : "Sačuvaj Promjene"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Upravljanje EnterSYS Modulima */}
       {enterSysModalRow && (() => {
         const selectedKeys = ALL_ENTERSYS_MODULE_KEYS.filter(
@@ -3180,7 +3688,170 @@ export default function LicenceClient() {
         );
       })()}
 
-      {cjenovnikOpen && (
+            {/* Modal za upravljanje FluxaPOS modulima i brojem kasa */}
+      {fluxaPosModalRow && (() => {
+        const pkg = getFluxaPosBasePackage(fluxaPosPackageDraft);
+        const isPilotModal = String(fluxaPosModalRow.status).toUpperCase() === "PILOT";
+        const priceKm = pkg?.priceKm ?? 60;
+        return (
+          <div
+            className="studio-modal"
+            style={overlayStyle()}
+            onClick={() => !fluxaPosSaving && setFluxaPosModalRow(null)}
+          >
+            <div style={modalStyle(560)} onClick={(e) => e.stopPropagation()}>
+              <div style={{ padding: 24 }}>
+                <h3 style={{ marginTop: 0, color: "#38bdf8" }}>
+                  ⚙️ FluxaPOS Moduli & Kase — {fluxaPosModalRow.naziv}
+                </h3>
+                <div style={{ marginBottom: 16, padding: "10px 12px", background: "rgba(15, 23, 42, 0.6)", borderRadius: 8, border: "1px solid rgba(56, 189, 248, 0.25)" }}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
+                    Osnovni FluxaPOS Paket:
+                  </label>
+                  <select
+                    value={fluxaPosPackageDraft}
+                    onChange={(e) => {
+                      const id = e.target.value as FluxaPosBasePackageId;
+                      setFluxaPosPackageDraft(id);
+                      const defs = defaultModulesForFluxaPosPackage(id);
+                      const draft: Record<string, boolean> = {};
+                      for (const item of FLUXAPOS_MODULE_KEYS) {
+                        draft[item.key] = defs[item.key as keyof typeof defs] ?? false;
+                      }
+                      setFluxaPosModulesDraft(draft);
+                    }}
+                    style={{
+                      padding: "6px 10px",
+                      width: "100%",
+                      maxWidth: 360,
+                      marginBottom: 12,
+                      borderRadius: 6,
+                      background: "rgba(15, 23, 42, 0.9)",
+                      border: "1px solid rgba(56, 189, 248, 0.4)",
+                      color: "#fff",
+                      fontSize: 14,
+                    }}
+                  >
+                    {FLUXAPOS_BASE_PACKAGES.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label} — {p.priceKm} KM / mj ({p.maxKasa} kasa uključeno)
+                      </option>
+                    ))}
+                  </select>
+                  <p style={{ margin: "0 0 12px", fontSize: 12, opacity: 0.8, color: "#94a3b8" }}>
+                    {pkg?.description}
+                  </p>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
+                    Broj zakupljenih kasa (instanci):
+                  </label>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={fluxaPosBlagajniDraft}
+                      onChange={(e) => setFluxaPosBlagajniDraft(Math.max(1, Number(e.target.value)))}
+                      style={{
+                        padding: "6px 10px",
+                        width: 100,
+                        borderRadius: 6,
+                        background: "rgba(15, 23, 42, 0.9)",
+                        border: "1px solid rgba(56, 189, 248, 0.4)",
+                        color: "#fff",
+                        fontSize: 14,
+                        fontWeight: "bold",
+                      }}
+                    />
+                    <span style={{ fontSize: 12, opacity: 0.8, color: "#94a3b8" }}>
+                      {fluxaPosBlagajniDraft === 1 ? "1 aktivna kasa" : `${fluxaPosBlagajniDraft} aktivne kase / instance`}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px", marginBottom: 16, maxHeight: "280px", overflowY: "auto", paddingRight: 4 }}>
+                  {FLUXAPOS_MODULE_KEYS.map((item) => {
+                    const included = item.key === "posCore";
+                    return (
+                      <label
+                        key={item.key}
+                        style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: 8,
+                          fontSize: 12,
+                          cursor: included ? "default" : "pointer",
+                          padding: "6px 10px",
+                          background: "rgba(15, 23, 42, 0.6)",
+                          borderRadius: 6,
+                          border: fluxaPosModulesDraft[item.key] ? "1px solid rgba(56, 189, 248, 0.4)" : "1px solid rgba(255, 255, 255, 0.08)",
+                          color: fluxaPosModulesDraft[item.key] ? "#38bdf8" : "#94a3b8",
+                          fontWeight: fluxaPosModulesDraft[item.key] ? "bold" : "normal",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={!!fluxaPosModulesDraft[item.key]}
+                          disabled={included}
+                          onChange={(e) => setFluxaPosModulesDraft(prev => ({ ...prev, [item.key]: e.target.checked }))}
+                        />
+                        <span>
+                          {item.label}
+                          {included ? (
+                            <span style={{ display: "block", fontSize: 10, opacity: 0.7, marginTop: 2 }}>
+                              Uključeno u osnovu
+                            </span>
+                          ) : null}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                <div
+                  style={{
+                    marginBottom: 16,
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    background: "rgba(34, 197, 94, 0.1)",
+                    border: "1px solid rgba(34, 197, 94, 0.35)",
+                  }}
+                >
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#86efac", marginBottom: 4 }}>
+                    Mesečni iznos pretplate za klijenta:
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 800 }}>
+                    {isPilotModal
+                      ? `0 KM (${t("studioLicence.enterSysPilotPriceHint") || "katalog"} ${priceKm} KM)`
+                      : `${priceKm} KM / mjesečno`}
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={fluxaPosSaving}
+                    onClick={handleFluxaPosSave}
+                    style={{ background: "#0284c7", borderColor: "#38bdf8", color: "#fff", fontWeight: "bold" }}
+                  >
+                    {fluxaPosSaving ? "Snimanje..." : "Snimi Izmjene"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={fluxaPosSaving}
+                    onClick={() => setFluxaPosModalRow(null)}
+                  >
+                    Odustani
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+{cjenovnikOpen && (
         <div
           className="studio-modal"
           style={overlayStyle()}

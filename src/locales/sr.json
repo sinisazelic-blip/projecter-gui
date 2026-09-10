@@ -2456,7 +2456,8 @@
       "SOCCS_SWIMVOICE": "Samo SOCCS / SwimVoice",
       "FLUXA_AND_SOCCS": "Fluxa + SOCCS/SwimVoice",
       "DOCENTRE": "Dokumentar",
-      "ENTERSYS": "EnterSYS"
+      "ENTERSYS": "EnterSYS",
+      "FLUXAPOS": "FluxaPOS (Kasa & Ugostiteljstvo)"
     },
     "wizardNext": "Dalje",
     "wizardBack": "Nazad",
@@ -2468,6 +2469,7 @@
       "FLUXA_AND_SOCCS": "Fluxa+SOCCS",
       "DOCENTRE": "Dokumentar",
       "ENTERSYS": "EnterSYS",
+      "FLUXAPOS": "FluxaPOS",
       "POOL_MANAGER": "Pool Mgr"
     },
     "profileHint": {
@@ -2475,13 +2477,15 @@
       "SOCCS_SWIMVOICE": "Tenant je definisan kao samo SOCCS/SwimVoice.",
       "FLUXA_AND_SOCCS": "Tenant uključuje i Fluxa i SOCCS/SwimVoice.",
       "DOCENTRE": "Tenant je Dokumentar (aktivacija kao SOCCS — first install kod).",
-      "ENTERSYS": "Tenant je EnterSYS (platforma za prodaju karata)."
+      "ENTERSYS": "Tenant je EnterSYS (platforma za prodaju karata).",
+      "FLUXAPOS": "Tenant je FluxaPOS (kasa, ugostiteljstvo i maloprodaja)."
     },
     "productTab": {
       "FLUXA": "Fluxa",
       "SOCCS_SV": "SOCCS / SwimVoice",
       "DOCENTRE": "Dokumentar",
-      "ENTERSYS": "EnterSYS"
+      "ENTERSYS": "EnterSYS",
+      "FLUXAPOS": "FluxaPOS"
     },
     "groupActivation": "Aktivacija",
     "activationButton": "Aktivacija",

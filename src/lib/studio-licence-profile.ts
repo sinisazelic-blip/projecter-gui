@@ -7,6 +7,7 @@ export const STUDIO_LICENCE_PROFILES = [
   "FLUXA_AND_SOCCS",
   "DOCENTRE",
   "ENTERSYS",
+  "FLUXAPOS",
   /** Legacy — više se ne nudi u UI; ostaje radi starih redova u bazi. */
   "POOL_MANAGER",
 ] as const;
@@ -19,6 +20,7 @@ export const TENANT_PRODUCT_TABS = [
   "SOCCS_SV",
   "DOCENTRE",
   "ENTERSYS",
+  "FLUXAPOS",
 ] as const;
 
 export type TenantProductTab = (typeof TENANT_PRODUCT_TABS)[number];
@@ -36,6 +38,8 @@ export function profileToTabs(profile: StudioLicenceProfile): TenantProductTab[]
       return ["DOCENTRE"];
     case "ENTERSYS":
       return ["ENTERSYS"];
+    case "FLUXAPOS":
+      return ["FLUXAPOS"];
     case "POOL_MANAGER":
       // Legacy: nema više taba — ne prikazuj u listama proizvoda.
       return [];
@@ -46,7 +50,7 @@ export function profileToTabs(profile: StudioLicenceProfile): TenantProductTab[]
 export function profileUsesActivationCodes(
   profile: StudioLicenceProfile,
 ): boolean {
-  return profile !== "FLUXA_ONLY" && profile !== "ENTERSYS";
+  return profile !== "FLUXA_ONLY" && profile !== "ENTERSYS" && profile !== "FLUXAPOS";
 }
 
 /** App vrijednost za aktivacione kodove i verify (kolona soccs_activation_codes.app). */

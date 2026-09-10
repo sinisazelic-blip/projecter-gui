@@ -9,6 +9,11 @@ import {
 } from "@/lib/entersys-cjenovnik";
 import { getEnterSysBasePackage, isEnterSysBasePackageId } from "@/lib/entersys-activation";
 import {
+  defaultModulesForFluxaPosPackage,
+  getFluxaPosBasePackage,
+  isFluxaPosBasePackageId,
+} from "@/lib/fluxapos-activation";
+import {
   normalizeStudioLicenceProfile,
   STUDIO_STUB_NO_FLUXA_PLAN_NAZIV,
 } from "@/lib/studio-licence-profile";
@@ -536,6 +541,18 @@ export async function POST(req: NextRequest) {
   if (profile === "FLUXA_ONLY" || profile === "DOCENTRE") {
     soccsPlatformRole = null;
     soccsPlatformScope = null;
+  }
+  if (profile === "FLUXAPOS") {
+    soccsPlatformRole = null;
+    if (!soccsPlatformScope && soccsTier) {
+      const defs = defaultModulesForFluxaPosPackage(soccsTier as any);
+      const mods = Object.entries(defs).filter(([, v]) => v).map(([k]) => k);
+      soccsPlatformScope = mods.join(",");
+    }
+    if (!wantsPilot) {
+      const pkg = getFluxaPosBasePackage(soccsTier);
+      monthlyPrice = pkg?.priceKm ?? 60;
+    }
   }
   if (profile === "ENTERSYS") {
     soccsPlatformRole = null;
