@@ -57,7 +57,8 @@ export const ENTERSYS_BASE_PACKAGES = [
 export type EnterSysBasePackageId = (typeof ENTERSYS_BASE_PACKAGES)[number]["id"];
 
 export const ENTERSYS_MODULE_KEYS = [
-  { key: "enterCore", label: "ENTER (osnovni prolazi i kasa)" },
+  { key: "enterCore", label: "ENTER (osnovni prolazi i tripodi)" },
+  { key: "fluxaPos", label: "FluxaPOS (fiskalna touch blagajna i biletarnica)" },
   { key: "poolManager", label: "PoolManager" },
   { key: "hallManager", label: "HallManager" },
   { key: "fieldManager", label: "FieldManager" },

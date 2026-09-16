@@ -34,6 +34,7 @@ import {
   FLUXAPOS_MODULE_KEYS,
   getFluxaPosBasePackage,
   defaultModulesForFluxaPosPackage,
+  calculateFluxaPosPrice,
   type FluxaPosBasePackageId,
 } from "@/lib/fluxapos-activation";
 
@@ -242,8 +243,12 @@ export default function LicenceClient() {
       const selected = FLUXAPOS_MODULE_KEYS.filter(
         (item) => fluxaPosModulesDraft[item.key],
       ).map((item) => item.key);
-      const pkg = getFluxaPosBasePackage(fluxaPosPackageDraft);
       const isPilot = String(fluxaPosModalRow.status).toUpperCase() === "PILOT";
+      const calc = calculateFluxaPosPrice(
+        fluxaPosPackageDraft,
+        fluxaPosModulesDraft,
+        fluxaPosBlagajniDraft,
+      );
 
       const res = await fetch(
         `/api/tenant-admin/tenants/${fluxaPosModalRow.tenant_id}`,
@@ -254,7 +259,7 @@ export default function LicenceClient() {
             soccs_tier: fluxaPosPackageDraft,
             soccs_platform_scope: selected.join(","),
             broj_blagajni: fluxaPosBlagajniDraft,
-            monthly_price: isPilot ? 0 : (pkg?.priceKm ?? 60),
+            monthly_price: isPilot ? 0 : calc.totalMonthly,
           }),
         },
       );
@@ -3692,138 +3697,281 @@ export default function LicenceClient() {
       {fluxaPosModalRow && (() => {
         const pkg = getFluxaPosBasePackage(fluxaPosPackageDraft);
         const isPilotModal = String(fluxaPosModalRow.status).toUpperCase() === "PILOT";
-        const priceKm = pkg?.priceKm ?? 60;
+        const calc = calculateFluxaPosPrice(
+          fluxaPosPackageDraft,
+          fluxaPosModulesDraft,
+          fluxaPosBlagajniDraft,
+        );
+        const defaultMods = defaultModulesForFluxaPosPackage(fluxaPosPackageDraft);
+        const extraKase = Math.max(0, fluxaPosBlagajniDraft - (pkg?.maxKasa ?? 1));
+
+        const categories: Array<{
+          key: "CORE" | "HORECA" | "TICKETING" | "ENTERPRISE";
+          title: string;
+          color: string;
+        }> = [
+          { key: "CORE", title: "📋 Osnovne Funkcije (Uključeno u sve pakete - 0 KM)", color: "#38bdf8" },
+          { key: "HORECA", title: "🍽️ Ugostiteljstvo & Prozivka (HORECA Add-ons)", color: "#fbbf24" },
+          { key: "TICKETING", title: "🎟️ Biletarnica, Eventi & Kontrola Ulaza", color: "#c084fc" },
+          { key: "ENTERPRISE", title: "🏢 Uprava, Telemetrija & ERP Integracije", color: "#4ade80" },
+        ];
+
         return (
           <div
             className="studio-modal"
             style={overlayStyle()}
             onClick={() => !fluxaPosSaving && setFluxaPosModalRow(null)}
           >
-            <div style={modalStyle(560)} onClick={(e) => e.stopPropagation()}>
-              <div style={{ padding: 24 }}>
-                <h3 style={{ marginTop: 0, color: "#38bdf8" }}>
-                  ⚙️ FluxaPOS Moduli & Kase — {fluxaPosModalRow.naziv}
-                </h3>
-                <div style={{ marginBottom: 16, padding: "10px 12px", background: "rgba(15, 23, 42, 0.6)", borderRadius: 8, border: "1px solid rgba(56, 189, 248, 0.25)" }}>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
-                    Osnovni FluxaPOS Paket:
-                  </label>
-                  <select
-                    value={fluxaPosPackageDraft}
-                    onChange={(e) => {
-                      const id = e.target.value as FluxaPosBasePackageId;
-                      setFluxaPosPackageDraft(id);
-                      const defs = defaultModulesForFluxaPosPackage(id);
-                      const draft: Record<string, boolean> = {};
-                      for (const item of FLUXAPOS_MODULE_KEYS) {
-                        draft[item.key] = defs[item.key as keyof typeof defs] ?? false;
-                      }
-                      setFluxaPosModulesDraft(draft);
-                    }}
-                    style={{
-                      padding: "6px 10px",
-                      width: "100%",
-                      maxWidth: 360,
-                      marginBottom: 12,
-                      borderRadius: 6,
-                      background: "rgba(15, 23, 42, 0.9)",
-                      border: "1px solid rgba(56, 189, 248, 0.4)",
-                      color: "#fff",
-                      fontSize: 14,
-                    }}
-                  >
-                    {FLUXAPOS_BASE_PACKAGES.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.label} — {p.priceKm} KM / mj ({p.maxKasa} kasa uključeno)
-                      </option>
-                    ))}
-                  </select>
-                  <p style={{ margin: "0 0 12px", fontSize: 12, opacity: 0.8, color: "#94a3b8" }}>
-                    {pkg?.description}
-                  </p>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
-                    Broj zakupljenih kasa (instanci):
-                  </label>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <input
-                      type="number"
-                      min={1}
-                      max={100}
-                      value={fluxaPosBlagajniDraft}
-                      onChange={(e) => setFluxaPosBlagajniDraft(Math.max(1, Number(e.target.value)))}
-                      style={{
-                        padding: "6px 10px",
-                        width: 100,
-                        borderRadius: 6,
-                        background: "rgba(15, 23, 42, 0.9)",
-                        border: "1px solid rgba(56, 189, 248, 0.4)",
-                        color: "#fff",
-                        fontSize: 14,
-                        fontWeight: "bold",
-                      }}
-                    />
-                    <span style={{ fontSize: 12, opacity: 0.8, color: "#94a3b8" }}>
-                      {fluxaPosBlagajniDraft === 1 ? "1 aktivna kasa" : `${fluxaPosBlagajniDraft} aktivne kase / instance`}
-                    </span>
-                  </div>
+            <div style={modalStyle(680)} onClick={(e) => e.stopPropagation()}>
+              <div style={{ padding: 24, maxHeight: "90vh", overflowY: "auto" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <h3 style={{ margin: 0, color: "#38bdf8", display: "flex", alignItems: "center", gap: 8 }}>
+                    <span>⚙️</span>
+                    <span>FluxaPOS Moduli & Cjenovnik — {fluxaPosModalRow.naziv}</span>
+                  </h3>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px", marginBottom: 16, maxHeight: "280px", overflowY: "auto", paddingRight: 4 }}>
-                  {FLUXAPOS_MODULE_KEYS.map((item) => {
-                    const included = item.key === "posCore";
-                    return (
-                      <label
-                        key={item.key}
+                {/* Paket & Kase Selection Box */}
+                <div
+                  style={{
+                    marginBottom: 16,
+                    padding: "12px 14px",
+                    background: "rgba(15, 23, 42, 0.7)",
+                    borderRadius: 8,
+                    border: "1px solid rgba(56, 189, 248, 0.3)",
+                  }}
+                >
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
+                        Predefinisani FluxaPOS Paket:
+                      </label>
+                      <select
+                        value={fluxaPosPackageDraft}
+                        onChange={(e) => {
+                          const id = e.target.value as FluxaPosBasePackageId;
+                          setFluxaPosPackageDraft(id);
+                          const defs = defaultModulesForFluxaPosPackage(id);
+                          const draft: Record<string, boolean> = {};
+                          for (const item of FLUXAPOS_MODULE_KEYS) {
+                            draft[item.key] = defs[item.key as keyof typeof defs] ?? false;
+                          }
+                          setFluxaPosModulesDraft(draft);
+                        }}
                         style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: 8,
-                          fontSize: 12,
-                          cursor: included ? "default" : "pointer",
-                          padding: "6px 10px",
-                          background: "rgba(15, 23, 42, 0.6)",
+                          padding: "8px 10px",
+                          width: "100%",
                           borderRadius: 6,
-                          border: fluxaPosModulesDraft[item.key] ? "1px solid rgba(56, 189, 248, 0.4)" : "1px solid rgba(255, 255, 255, 0.08)",
-                          color: fluxaPosModulesDraft[item.key] ? "#38bdf8" : "#94a3b8",
-                          fontWeight: fluxaPosModulesDraft[item.key] ? "bold" : "normal",
+                          background: "rgba(15, 23, 42, 0.95)",
+                          border: "1px solid rgba(56, 189, 248, 0.5)",
+                          color: "#fff",
+                          fontSize: 13,
+                          fontWeight: "bold",
                         }}
                       >
-                        <input
-                          type="checkbox"
-                          checked={!!fluxaPosModulesDraft[item.key]}
-                          disabled={included}
-                          onChange={(e) => setFluxaPosModulesDraft(prev => ({ ...prev, [item.key]: e.target.checked }))}
-                        />
-                        <span>
-                          {item.label}
-                          {included ? (
-                            <span style={{ display: "block", fontSize: 10, opacity: 0.7, marginTop: 2 }}>
-                              Uključeno u osnovu
-                            </span>
-                          ) : null}
-                        </span>
+                        {FLUXAPOS_BASE_PACKAGES.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.label} — {p.priceKm} KM / mj
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
+                        Broj Kasa (Instanci):
                       </label>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <input
+                          type="number"
+                          min={1}
+                          max={100}
+                          value={fluxaPosBlagajniDraft}
+                          onChange={(e) => setFluxaPosBlagajniDraft(Math.max(1, Number(e.target.value)))}
+                          style={{
+                            padding: "8px 10px",
+                            width: 80,
+                            borderRadius: 6,
+                            background: "rgba(15, 23, 42, 0.95)",
+                            border: "1px solid rgba(56, 189, 248, 0.5)",
+                            color: "#fff",
+                            fontSize: 13,
+                            fontWeight: "bold",
+                            textAlign: "center",
+                          }}
+                        />
+                        <span style={{ fontSize: 11, opacity: 0.85, color: "#cbd5e1" }}>
+                          (Uključeno do {pkg?.maxKasa} {pkg?.maxKasa === 1 ? "kasa" : "kase"}; svaka dodatna +25 KM/mj)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p style={{ margin: "10px 0 0", fontSize: 12, opacity: 0.85, color: "#94a3b8", fontStyle: "italic" }}>
+                    ℹ️ {pkg?.description}
+                  </p>
+                </div>
+
+                {/* Categorized Modules Matrix */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 16 }}>
+                  {categories.map((cat) => {
+                    const modulesInCat = FLUXAPOS_MODULE_KEYS.filter((m) => m.category === cat.key);
+                    return (
+                      <div
+                        key={cat.key}
+                        style={{
+                          background: "rgba(15, 23, 42, 0.5)",
+                          border: "1px solid rgba(255, 255, 255, 0.08)",
+                          borderRadius: 8,
+                          padding: "10px 12px",
+                        }}
+                      >
+                        <div style={{ fontSize: 12, fontWeight: 700, color: cat.color, marginBottom: 8, letterSpacing: "0.3px" }}>
+                          {cat.title}
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 10px" }}>
+                          {modulesInCat.map((item) => {
+                            const isCore = item.isCore;
+                            const isIncludedInPkg = Boolean(defaultMods[item.key]);
+                            const isChecked = Boolean(fluxaPosModulesDraft[item.key]);
+
+                            let priceTag = "";
+                            let tagColor = "#94a3b8";
+                            if (isCore) {
+                              priceTag = "Uključeno u osnovu (0 KM)";
+                              tagColor = "#38bdf8";
+                            } else if (isIncludedInPkg) {
+                              priceTag = `U paketu (${item.priceKm} KM)`;
+                              tagColor = "#4ade80";
+                            } else {
+                              priceTag = `+${item.priceKm} KM / mj`;
+                              tagColor = "#f59e0b";
+                            }
+
+                            return (
+                              <label
+                                key={item.key}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  gap: 8,
+                                  fontSize: 12,
+                                  cursor: isCore ? "default" : "pointer",
+                                  padding: "6px 8px",
+                                  background: isChecked ? "rgba(56, 189, 248, 0.08)" : "rgba(15, 23, 42, 0.4)",
+                                  borderRadius: 6,
+                                  border: isChecked ? "1px solid rgba(56, 189, 248, 0.35)" : "1px solid rgba(255, 255, 255, 0.05)",
+                                  color: isChecked ? "#fff" : "#94a3b8",
+                                  transition: "all 0.15s ease",
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  disabled={isCore}
+                                  onChange={(e) =>
+                                    setFluxaPosModulesDraft((prev) => ({
+                                      ...prev,
+                                      [item.key]: e.target.checked,
+                                    }))
+                                  }
+                                  style={{ marginTop: 2 }}
+                                />
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                                    <span style={{ fontWeight: isChecked ? 700 : 500 }}>
+                                      {item.icon} {item.label}
+                                    </span>
+                                    <span style={{ fontSize: 10, fontWeight: 700, color: tagColor, whiteSpace: "nowrap" }}>
+                                      {priceTag}
+                                    </span>
+                                  </div>
+                                  <div style={{ fontSize: 11, opacity: 0.75, color: "#cbd5e1", marginTop: 2 }}>
+                                    {item.shortDesc}
+                                  </div>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
 
+                {/* Price Breakdown & Bundle Savings */}
                 <div
                   style={{
-                    marginBottom: 16,
-                    padding: "10px 12px",
+                    marginBottom: 14,
+                    padding: "12px 14px",
                     borderRadius: 8,
-                    background: "rgba(34, 197, 94, 0.1)",
+                    background: "rgba(34, 197, 94, 0.08)",
                     border: "1px solid rgba(34, 197, 94, 0.35)",
                   }}
                 >
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#86efac", marginBottom: 4 }}>
-                    Mesečni iznos pretplate za klijenta:
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#86efac", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                        Struktura Mjesečne Pretplate
+                      </div>
+                      <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 4, display: "flex", gap: 14, flexWrap: "wrap" }}>
+                        <span>Osnovni paket: <strong style={{ color: "#fff" }}>{calc.basePrice} KM</strong></span>
+                        {calc.addonsPrice > 0 && (
+                          <span>Dodatni moduli: <strong style={{ color: "#f59e0b" }}>+{calc.addonsPrice} KM</strong></span>
+                        )}
+                        {extraKase > 0 && (
+                          <span>Dodatne kase ({extraKase}x): <strong style={{ color: "#38bdf8" }}>+{extraKase * 25} KM</strong></span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 11, color: "#94a3b8" }}>Ukupno za klijenta:</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: "#4ade80" }}>
+                        {isPilotModal
+                          ? `0 KM (PILOT — katalog ${calc.totalMonthly} KM)`
+                          : `${calc.totalMonthly} KM / mjesečno`}
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 15, fontWeight: 800 }}>
-                    {isPilotModal
-                      ? `0 KM (${t("studioLicence.enterSysPilotPriceHint") || "katalog"} ${priceKm} KM)`
-                      : `${priceKm} KM / mjesečno`}
-                  </div>
+
+                  {calc.savings > 0 && (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        padding: "4px 8px",
+                        background: "rgba(34, 197, 94, 0.2)",
+                        borderRadius: 4,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: "#86efac",
+                        display: "inline-block",
+                      }}
+                    >
+                      🎉 Ušteda u paketu: {calc.savings} KM / mjesečno u odnosu na pojedinačni zakup modula!
+                    </div>
+                  )}
+                </div>
+
+                {/* Safety Net & Offline-First Badge */}
+                <div
+                  style={{
+                    marginBottom: 16,
+                    padding: "8px 12px",
+                    borderRadius: 6,
+                    background: "rgba(56, 189, 248, 0.08)",
+                    border: "1px solid rgba(56, 189, 248, 0.2)",
+                    fontSize: 11,
+                    color: "#93c5fd",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span>🛡️</span>
+                  <span>
+                    <strong>100% Offline-First (SQLite WAL):</strong> Kasa radi potpuno nezavisno. Podaci su sigurni na lokaciji i nikada ne blokiraju rad objekta usljed pada interneta ili kašnjenja uplate.
+                  </span>
                 </div>
 
                 <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
