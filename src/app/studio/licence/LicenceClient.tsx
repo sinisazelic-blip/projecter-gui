@@ -3722,26 +3722,64 @@ export default function LicenceClient() {
             style={overlayStyle()}
             onClick={() => !fluxaPosSaving && setFluxaPosModalRow(null)}
           >
-            <div style={modalStyle(680)} onClick={(e) => e.stopPropagation()}>
+            <div style={modalStyle(1080)} onClick={(e) => e.stopPropagation()}>
               <div style={{ padding: 24, maxHeight: "90vh", overflowY: "auto" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <h3 style={{ margin: 0, color: "#38bdf8", display: "flex", alignItems: "center", gap: 8 }}>
-                    <span>⚙️</span>
-                    <span>FluxaPOS Moduli & Cjenovnik — {fluxaPosModalRow.naziv}</span>
-                  </h3>
-                </div>
-
-                {/* Paket & Kase Selection Box */}
+                
+                {/* 1. SEPARATED TENANT HEADER BANNER */}
                 <div
                   style={{
-                    marginBottom: 16,
-                    padding: "12px 14px",
-                    background: "rgba(15, 23, 42, 0.7)",
-                    borderRadius: 8,
-                    border: "1px solid rgba(56, 189, 248, 0.3)",
+                    marginBottom: 18,
+                    padding: "16px 20px",
+                    background: "linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95))",
+                    borderRadius: 10,
+                    border: "1px solid rgba(56, 189, 248, 0.35)",
+                    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.35)",
                   }}
                 >
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#38bdf8", textTransform: "uppercase", letterSpacing: "1px" }}>
+                        ⚙️ FLUXAPOS LICENCA & POSTAVKE MODULA
+                      </div>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", marginTop: 2, display: "flex", alignItems: "center", gap: 10 }}>
+                        <span>{fluxaPosModalRow.naziv}</span>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: "2px 8px",
+                            borderRadius: 4,
+                            background: isPilotModal ? "rgba(234, 179, 8, 0.2)" : "rgba(34, 197, 94, 0.2)",
+                            color: isPilotModal ? "#fde047" : "#86efac",
+                            border: isPilotModal ? "1px solid rgba(234, 179, 8, 0.4)" : "1px solid rgba(34, 197, 94, 0.4)",
+                          }}
+                        >
+                          {String(fluxaPosModalRow.status || "AKTIVAN").toUpperCase()}
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 400, color: "#94a3b8" }}>
+                          (ID #{fluxaPosModalRow.tenant_id})
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => !fluxaPosSaving && setFluxaPosModalRow(null)}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "#94a3b8",
+                        fontSize: 20,
+                        cursor: "pointer",
+                        padding: "4px 8px",
+                      }}
+                      title="Zatvori"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, alignItems: "center", background: "rgba(15, 23, 42, 0.6)", padding: "12px 14px", borderRadius: 8, border: "1px solid rgba(255, 255, 255, 0.06)" }}>
                     <div>
                       <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
                         Predefinisani FluxaPOS Paket:
@@ -3759,7 +3797,7 @@ export default function LicenceClient() {
                           setFluxaPosModulesDraft(draft);
                         }}
                         style={{
-                          padding: "8px 10px",
+                          padding: "8px 12px",
                           width: "100%",
                           borderRadius: 6,
                           background: "rgba(15, 23, 42, 0.95)",
@@ -3771,7 +3809,7 @@ export default function LicenceClient() {
                       >
                         {FLUXAPOS_BASE_PACKAGES.map((p) => (
                           <option key={p.id} value={p.id}>
-                            {p.label} — {p.priceKm} KM / mj
+                            {p.label} — {p.priceKm} KM / mj ({p.maxKasa} kasa uključeno)
                           </option>
                         ))}
                       </select>
@@ -3781,7 +3819,7 @@ export default function LicenceClient() {
                       <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
                         Broj Kasa (Instanci):
                       </label>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <input
                           type="number"
                           min={1}
@@ -3789,19 +3827,19 @@ export default function LicenceClient() {
                           value={fluxaPosBlagajniDraft}
                           onChange={(e) => setFluxaPosBlagajniDraft(Math.max(1, Number(e.target.value)))}
                           style={{
-                            padding: "8px 10px",
+                            padding: "8px 12px",
                             width: 80,
                             borderRadius: 6,
                             background: "rgba(15, 23, 42, 0.95)",
                             border: "1px solid rgba(56, 189, 248, 0.5)",
                             color: "#fff",
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: "bold",
                             textAlign: "center",
                           }}
                         />
-                        <span style={{ fontSize: 11, opacity: 0.85, color: "#cbd5e1" }}>
-                          (Uključeno do {pkg?.maxKasa} {pkg?.maxKasa === 1 ? "kasa" : "kase"}; svaka dodatna +25 KM/mj)
+                        <span style={{ fontSize: 12, opacity: 0.85, color: "#cbd5e1" }}>
+                          (Uključeno {pkg?.maxKasa} {pkg?.maxKasa === 1 ? "kasa" : "kase"}; dodatne +25 KM/mj)
                         </span>
                       </div>
                     </div>
@@ -3812,8 +3850,8 @@ export default function LicenceClient() {
                   </p>
                 </div>
 
-                {/* Categorized Modules Matrix */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 16 }}>
+                {/* 2. CATEGORIZED MODULES MATRIX (2x2 GRID) */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
                   {categories.map((cat) => {
                     const modulesInCat = FLUXAPOS_MODULE_KEYS.filter((m) => m.category === cat.key);
                     return (
@@ -3823,13 +3861,15 @@ export default function LicenceClient() {
                           background: "rgba(15, 23, 42, 0.5)",
                           border: "1px solid rgba(255, 255, 255, 0.08)",
                           borderRadius: 8,
-                          padding: "10px 12px",
+                          padding: "12px 14px",
+                          display: "flex",
+                          flexDirection: "column",
                         }}
                       >
-                        <div style={{ fontSize: 12, fontWeight: 700, color: cat.color, marginBottom: 8, letterSpacing: "0.3px" }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: cat.color, marginBottom: 10, letterSpacing: "0.3px" }}>
                           {cat.title}
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 10px" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
                           {modulesInCat.map((item) => {
                             const isCore = item.isCore;
                             const isIncludedInPkg = Boolean(defaultMods[item.key]);
@@ -3838,7 +3878,7 @@ export default function LicenceClient() {
                             let priceTag = "";
                             let tagColor = "#94a3b8";
                             if (isCore) {
-                              priceTag = "Uključeno u osnovu (0 KM)";
+                              priceTag = "Uključeno (0 KM)";
                               tagColor = "#38bdf8";
                             } else if (isIncludedInPkg) {
                               priceTag = `U paketu (${item.priceKm} KM)`;
@@ -3854,10 +3894,10 @@ export default function LicenceClient() {
                                 style={{
                                   display: "flex",
                                   alignItems: "flex-start",
-                                  gap: 8,
+                                  gap: 10,
                                   fontSize: 12,
                                   cursor: isCore ? "default" : "pointer",
-                                  padding: "6px 8px",
+                                  padding: "8px 10px",
                                   background: isChecked ? "rgba(56, 189, 248, 0.08)" : "rgba(15, 23, 42, 0.4)",
                                   borderRadius: 6,
                                   border: isChecked ? "1px solid rgba(56, 189, 248, 0.35)" : "1px solid rgba(255, 255, 255, 0.05)",
@@ -3879,7 +3919,7 @@ export default function LicenceClient() {
                                 />
                                 <div style={{ flex: 1 }}>
                                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
-                                    <span style={{ fontWeight: isChecked ? 700 : 500 }}>
+                                    <span style={{ fontWeight: isChecked ? 700 : 500, fontSize: 13 }}>
                                       {item.icon} {item.label}
                                     </span>
                                     <span style={{ fontSize: 10, fontWeight: 700, color: tagColor, whiteSpace: "nowrap" }}>
@@ -3899,22 +3939,22 @@ export default function LicenceClient() {
                   })}
                 </div>
 
-                {/* Price Breakdown & Bundle Savings */}
+                {/* 3. PRICE BREAKDOWN & BUNDLE SAVINGS */}
                 <div
                   style={{
                     marginBottom: 14,
-                    padding: "12px 14px",
+                    padding: "14px 18px",
                     borderRadius: 8,
                     background: "rgba(34, 197, 94, 0.08)",
                     border: "1px solid rgba(34, 197, 94, 0.35)",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 700, color: "#86efac", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                         Struktura Mjesečne Pretplate
                       </div>
-                      <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 4, display: "flex", gap: 14, flexWrap: "wrap" }}>
+                      <div style={{ fontSize: 13, color: "#cbd5e1", marginTop: 4, display: "flex", gap: 16, flexWrap: "wrap" }}>
                         <span>Osnovni paket: <strong style={{ color: "#fff" }}>{calc.basePrice} KM</strong></span>
                         {calc.addonsPrice > 0 && (
                           <span>Dodatni moduli: <strong style={{ color: "#f59e0b" }}>+{calc.addonsPrice} KM</strong></span>
@@ -3927,7 +3967,7 @@ export default function LicenceClient() {
 
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 11, color: "#94a3b8" }}>Ukupno za klijenta:</div>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: "#4ade80" }}>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: "#4ade80" }}>
                         {isPilotModal
                           ? `0 KM (PILOT — katalog ${calc.totalMonthly} KM)`
                           : `${calc.totalMonthly} KM / mjesečno`}
@@ -3938,11 +3978,11 @@ export default function LicenceClient() {
                   {calc.savings > 0 && (
                     <div
                       style={{
-                        marginTop: 8,
-                        padding: "4px 8px",
+                        marginTop: 10,
+                        padding: "5px 10px",
                         background: "rgba(34, 197, 94, 0.2)",
                         borderRadius: 4,
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: 700,
                         color: "#86efac",
                         display: "inline-block",
@@ -3953,34 +3993,35 @@ export default function LicenceClient() {
                   )}
                 </div>
 
-                {/* Safety Net & Offline-First Badge */}
+                {/* 4. SAFETY NET & OFFLINE-FIRST BADGE */}
                 <div
                   style={{
                     marginBottom: 16,
-                    padding: "8px 12px",
+                    padding: "10px 14px",
                     borderRadius: 6,
                     background: "rgba(56, 189, 248, 0.08)",
                     border: "1px solid rgba(56, 189, 248, 0.2)",
-                    fontSize: 11,
+                    fontSize: 12,
                     color: "#93c5fd",
                     display: "flex",
                     alignItems: "center",
-                    gap: 8,
+                    gap: 10,
                   }}
                 >
-                  <span>🛡️</span>
+                  <span style={{ fontSize: 16 }}>🛡️</span>
                   <span>
-                    <strong>100% Offline-First (SQLite WAL):</strong> Kasa radi potpuno nezavisno. Podaci su sigurni na lokaciji i nikada ne blokiraju rad objekta usljed pada interneta ili kašnjenja uplate.
+                    <strong>100% Offline-First (SQLite WAL):</strong> Kasa radi potpuno nezavisno na lokalnom uređaju. Podaci su sigurni i nikada ne blokiraju rad objekta usljed pada interneta ili kratkog kašnjenja uplate.
                   </span>
                 </div>
 
+                {/* 5. ACTION BUTTONS */}
                 <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
                   <button
                     type="button"
                     className="btn"
                     disabled={fluxaPosSaving}
                     onClick={handleFluxaPosSave}
-                    style={{ background: "#0284c7", borderColor: "#38bdf8", color: "#fff", fontWeight: "bold" }}
+                    style={{ background: "#0284c7", borderColor: "#38bdf8", color: "#fff", fontWeight: "bold", padding: "8px 20px" }}
                   >
                     {fluxaPosSaving ? "Snimanje..." : "Snimi Izmjene"}
                   </button>
@@ -3989,6 +4030,7 @@ export default function LicenceClient() {
                     className="btn"
                     disabled={fluxaPosSaving}
                     onClick={() => setFluxaPosModalRow(null)}
+                    style={{ padding: "8px 16px" }}
                   >
                     Odustani
                   </button>
