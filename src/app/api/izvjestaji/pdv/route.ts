@@ -130,7 +130,8 @@ export async function GET(req: NextRequest) {
       SELECT
         f.datum_izdavanja,
         f.pdv_iznos_km AS pdv_izlazni,
-        f.osnovica_km AS osnovica
+        f.osnovica_km AS osnovica,
+        f.valuta
       FROM fakture f
       WHERE ${where.join(" AND ")}
       ORDER BY f.datum_izdavanja ASC
@@ -139,12 +140,15 @@ export async function GET(req: NextRequest) {
       params,
     );
 
-    const stavke = (Array.isArray(rows) ? rows : []).map((r: any) => ({
-      datum: r.datum_izdavanja ? formatDateDMY(r.datum_izdavanja) : null,
-      pdv_izlazni: Number(r.pdv_izlazni) || 0,
-      osnovica: Number(r.osnovica) || 0,
-      iz_arhive: false,
-    }));
+    const stavke = (Array.isArray(rows) ? rows : []).map((r: any) => {
+      const isEur = String(r.valuta || "").trim().toUpperCase() === "EUR";
+      return {
+        datum: r.datum_izdavanja ? formatDateDMY(r.datum_izdavanja) : null,
+        pdv_izlazni: isEur ? 0 : (Number(r.pdv_izlazni) || 0),
+        osnovica: (Number(r.osnovica) || 0) * (isEur ? 1.95583 : 1.0),
+        iz_arhive: false,
+      };
+    });
 
     const archiveItems = await loadArchivePdv(dateFrom, dateTo);
     for (const a of archiveItems) {

@@ -72,7 +72,9 @@ export async function GET(req: NextRequest) {
       const daysOverdue = dueDate && dueDate < today ? Math.floor((today.getTime() - dueDate.getTime()) / (24 * 60 * 60 * 1000)) : 0;
       const bucket = agingBucket(daysOverdue);
       const iznos = Number(r.iznos_sa_pdv) || 0;
-      bucketSums[bucket] = (bucketSums[bucket] || 0) + iznos;
+      const rate = String(r.valuta || "").trim().toUpperCase() === "EUR" ? 1.95583 : 1.0;
+      const iznosBAM = iznos * rate;
+      bucketSums[bucket] = (bucketSums[bucket] || 0) + iznosBAM;
 
       let brojFakture = r.broj_fakture;
       if (brojFakture && typeof brojFakture === "string") {
@@ -95,7 +97,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const ukupno = items.reduce((s, i) => s + i.iznos_sa_pdv, 0);
+    const ukupno = items.reduce((s, i) => s + i.iznos_sa_pdv * (String(i.valuta || "").trim().toUpperCase() === "EUR" ? 1.95583 : 1.0), 0);
 
     return NextResponse.json({
       ok: true,

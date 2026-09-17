@@ -92,7 +92,7 @@ export default async function PrihodiListPage({ searchParams }) {
     `
     SELECT
       COUNT(*) AS broj_faktura,
-      COALESCE(SUM(f.iznos_ukupno_km), 0) AS ukupno_fakturisano_km
+      COALESCE(SUM(f.iznos_ukupno_km * CASE WHEN UPPER(TRIM(COALESCE(f.valuta, 'BAM'))) = 'EUR' THEN 1.95583 ELSE 1.0 END), 0) AS ukupno_fakturisano_km
     FROM fakture f
     ${faktureSql}
     `,
@@ -137,7 +137,7 @@ export default async function PrihodiListPage({ searchParams }) {
 
   const faktureByMonthRows = await query(
     `
-    SELECT MONTH(f.datum_izdavanja) AS m, COALESCE(SUM(f.iznos_ukupno_km), 0) AS s
+    SELECT MONTH(f.datum_izdavanja) AS m, COALESCE(SUM(f.iznos_ukupno_km * CASE WHEN UPPER(TRIM(COALESCE(f.valuta, 'BAM'))) = 'EUR' THEN 1.95583 ELSE 1.0 END), 0) AS s
     FROM fakture f
     WHERE YEAR(f.datum_izdavanja) = ?
       AND (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))
@@ -178,7 +178,7 @@ export default async function PrihodiListPage({ searchParams }) {
       MONTH(b.value_date) AS m,
       COALESCE(SUM(
         CASE
-          WHEN UPPER(TRIM(COALESCE(b.currency, ''))) = 'EUR' THEN b.amount * 1.95
+          WHEN UPPER(TRIM(COALESCE(b.currency, ''))) = 'EUR' THEN b.amount * 1.95583
           ELSE b.amount
         END
       ), 0) AS s

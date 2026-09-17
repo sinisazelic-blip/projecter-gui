@@ -195,11 +195,12 @@ export async function GET(req: NextRequest) {
       return String(b.broj_fakture ?? "").localeCompare(String(a.broj_fakture ?? ""), "hr");
     });
 
-    const ukupnoFakturisano = items.reduce((s, i) => s + i.iznos_sa_pdv, 0);
-    const ukupnoNaplaceno = items.reduce((s, i) => s + i.naplaceno, 0);
-    const ukupnoNeplaceno = items.reduce((s, i) => s + i.neplaceno, 0);
-    const ukupnoBezPdv = items.reduce((s, i) => s + i.iznos_bez_pdv, 0);
-    const ukupnoPdv = items.reduce((s, i) => s + i.pdv_iznos, 0);
+    const isEur = (i: any) => String(i.valuta || "").trim().toUpperCase() === "EUR";
+    const ukupnoFakturisano = items.reduce((s, i) => s + (isEur(i) ? i.iznos_sa_pdv * 1.95583 : i.iznos_sa_pdv), 0);
+    const ukupnoNaplaceno = items.reduce((s, i) => s + (isEur(i) ? i.naplaceno * 1.95583 : i.naplaceno), 0);
+    const ukupnoNeplaceno = items.reduce((s, i) => s + (isEur(i) ? i.neplaceno * 1.95583 : i.neplaceno), 0);
+    const ukupnoBezPdv = items.reduce((s, i) => s + (isEur(i) ? i.iznos_bez_pdv * 1.95583 : i.iznos_bez_pdv), 0);
+    const ukupnoPdv = items.reduce((s, i) => s + (isEur(i) ? 0 : i.pdv_iznos), 0);
 
     return NextResponse.json({
       ok: true,

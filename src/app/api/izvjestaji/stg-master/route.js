@@ -94,7 +94,9 @@ export async function GET() {
         SELECT
           YEAR(datum_izdavanja) AS godina,
           MONTH(datum_izdavanja) AS mjesec,
-          ROUND(SUM(COALESCE(iznos_ukupno_km, 0)), 2) AS promet,
+          ROUND(SUM(
+            COALESCE(iznos_ukupno_km, 0) * CASE WHEN UPPER(TRIM(COALESCE(valuta, 'BAM'))) = 'EUR' THEN 1.95583 ELSE 1.0 END
+          ), 2) AS promet,
           0 AS troskovi,
           0 AS zarada
         FROM fakture

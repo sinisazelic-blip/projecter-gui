@@ -207,9 +207,10 @@ export async function GET(req: NextRequest) {
       return String(a.broj_fakture ?? "").localeCompare(String(b.broj_fakture ?? ""), "hr");
     });
 
-    const ukupno_bez_pdv = items.reduce((s, i) => s + i.iznos_bez_pdv, 0);
-    const ukupno_pdv = items.reduce((s, i) => s + i.pdv_iznos, 0);
-    const ukupno_sa_pdv = items.reduce((s, i) => s + i.iznos_sa_pdv, 0);
+    const isEur = (i: any) => String(i.valuta || "").trim().toUpperCase() === "EUR";
+    const ukupno_bez_pdv = items.reduce((s, i) => s + (isEur(i) ? i.iznos_bez_pdv * 1.95583 : i.iznos_bez_pdv), 0);
+    const ukupno_pdv = items.reduce((s, i) => s + (isEur(i) ? 0 : i.pdv_iznos), 0);
+    const ukupno_sa_pdv = items.reduce((s, i) => s + (isEur(i) ? i.iznos_sa_pdv * 1.95583 : i.iznos_sa_pdv), 0);
 
     return NextResponse.json({
       ok: true,

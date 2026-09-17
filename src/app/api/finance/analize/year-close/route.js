@@ -59,7 +59,7 @@ async function clientBalances(year) {
       GROUP BY p.klijent_id
     ) ps ON ps.klijent_id = k.klijent_id
     LEFT JOIN (
-      SELECT f.bill_to_klijent_id AS klijent_id, ROUND(SUM(COALESCE(f.iznos_ukupno_km,0)),2) AS fakturisano
+      SELECT f.bill_to_klijent_id AS klijent_id, ROUND(SUM(COALESCE(f.iznos_ukupno_km,0) * CASE WHEN UPPER(TRIM(COALESCE(f.valuta, 'BAM'))) = 'EUR' THEN 1.95583 ELSE 1.0 END),2) AS fakturisano
       FROM fakture f
       WHERE f.bill_to_klijent_id IS NOT NULL
         AND DATE(f.datum_izdavanja) >= ? AND DATE(f.datum_izdavanja) <= ?

@@ -143,8 +143,8 @@ export async function GET(req: NextRequest) {
         SELECT
           YEAR(datum_izdavanja) AS godina,
           MONTH(datum_izdavanja) AS mjesec,
-          ROUND(SUM(COALESCE(iznos_ukupno_km, 0)), 2) AS iznos_ukupno_km,
-          ROUND(SUM(COALESCE(pdv_iznos_km, 0)), 2) AS pdv_iznos_km
+          ROUND(SUM(COALESCE(iznos_ukupno_km, 0) * CASE WHEN UPPER(TRIM(COALESCE(valuta, 'BAM'))) = 'EUR' THEN 1.95583 ELSE 1.0 END), 2) AS iznos_ukupno_km,
+          ROUND(SUM(CASE WHEN UPPER(TRIM(COALESCE(valuta, 'BAM'))) = 'EUR' THEN 0 ELSE COALESCE(pdv_iznos_km, 0) END), 2) AS pdv_iznos_km
         FROM fakture
         WHERE (fiskalni_status IS NULL OR fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))
           AND datum_izdavanja >= ?

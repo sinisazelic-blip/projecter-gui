@@ -114,7 +114,7 @@ export async function GET() {
           ), 2) AS osnovica_km,
           ROUND(SUM(
             CASE WHEN UPPER(COALESCE(valuta, 'BAM')) IN ('BAM', 'KM') THEN COALESCE(pdv_iznos_km, 0)
-            ELSE COALESCE(pdv_iznos_km, 0) * 1.95583
+            ELSE 0
             END
           ), 2) AS pdv_iznos_km
         FROM fakture

@@ -178,19 +178,16 @@ export default async function PotrazivanjaListPage({ searchParams }) {
     };
   });
 
-  // Napomena: iznosi mogu biti u više valuta (BAM/EUR). Ne sabiramo preko valuta.
   const bucketSums = { "0-30": 0, "31-60": 0, "61-90": 0, "90+": 0 };
   for (const r of list) {
-    // bucketSums ostaje informativan samo za BAM (legacy). Zadržano radi kompatibilnosti.
-    if (String(r.valuta || "").toUpperCase() === "BAM") {
-      bucketSums[r.aging_bucket] =
-        (bucketSums[r.aging_bucket] || 0) + (Number(r.unpaid_km) || 0);
-    }
+    const isEur = String(r.valuta || "").toUpperCase() === "EUR";
+    const unpaidBam = (Number(r.unpaid_km) || 0) * (isEur ? 1.95583 : 1.0);
+    bucketSums[r.aging_bucket] =
+      (bucketSums[r.aging_bucket] || 0) + unpaidBam;
   }
   const ukupnoNeplaceno = list.reduce((s, r) => {
-    // zbir preko BAM samo (da ne miješamo valute u jedan broj)
-    if (String(r.valuta || "").toUpperCase() !== "BAM") return s;
-    return s + (Number(r.unpaid_km) || 0);
+    const isEur = String(r.valuta || "").toUpperCase() === "EUR";
+    return s + (Number(r.unpaid_km) || 0) * (isEur ? 1.95583 : 1.0);
   }, 0);
 
   return (

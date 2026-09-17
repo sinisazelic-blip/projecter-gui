@@ -188,6 +188,7 @@ export async function getPdvPrijavaData(from, to, opts = {}) {
     kifRows = await query(
       `SELECT f.faktura_id, f.broj_fakture_puni AS broj_fakture, f.datum_izdavanja,
               f.osnovica_km, f.pdv_iznos_km AS pdv_iznos, f.iznos_ukupno_km,
+              f.valuta,
               f.fiskalni_status,
               c.naziv_klijenta AS kupac,
               c.pib AS kupac_pib,
@@ -204,6 +205,7 @@ export async function getPdvPrijavaData(from, to, opts = {}) {
       kifRows = await query(
         `SELECT f.faktura_id, f.broj_fakture_puni AS broj_fakture, f.datum_izdavanja,
                 f.osnovica_km, f.pdv_iznos_km AS pdv_iznos, f.iznos_ukupno_km,
+                f.valuta,
                 f.fiskalni_status,
                 c.naziv_klijenta AS kupac,
                 NULL AS kupac_pib,
@@ -220,20 +222,24 @@ export async function getPdvPrijavaData(from, to, opts = {}) {
     }
   }
 
-  const kif = (kifRows || []).map((r) => ({
-    tip: "KIF",
-    id: r.faktura_id,
-    broj: r.broj_fakture ?? `#${r.faktura_id}`,
-    datum: toIsoDate(r.datum_izdavanja),
-    kupac: r.kupac ?? "—",
-    kupac_pib: r.kupac_pib ?? null,
-    kupac_jib: r.kupac_jib ?? null,
-    osnovica_km: Number(r.osnovica_km) || 0,
-    pdv_km: Number(r.pdv_iznos) || 0,
-    ukupno_km: Number(r.iznos_ukupno_km) || 0,
-    fiskalni_status: r.fiskalni_status ?? null,
-    iz_arhive: false,
-  }));
+  const kif = (kifRows || []).map((r) => {
+    const isEur = String(r.valuta || "").trim().toUpperCase() === "EUR";
+    const rate = isEur ? 1.95583 : 1.0;
+    return {
+      tip: "KIF",
+      id: r.faktura_id,
+      broj: r.broj_fakture ?? `#${r.faktura_id}`,
+      datum: toIsoDate(r.datum_izdavanja),
+      kupac: r.kupac ?? "—",
+      kupac_pib: r.kupac_pib ?? null,
+      kupac_jib: r.kupac_jib ?? null,
+      osnovica_km: Math.round((Number(r.osnovica_km) || 0) * rate * 100) / 100,
+      pdv_km: isEur ? 0 : Math.round((Number(r.pdv_iznos) || 0) * 100) / 100,
+      ukupno_km: Math.round((Number(r.iznos_ukupno_km) || 0) * rate * 100) / 100,
+      fiskalni_status: r.fiskalni_status ?? null,
+      iz_arhive: false,
+    };
+  });
 
   if (includeStudioArchive()) try {
     const archRows = await query(
@@ -414,7 +420,7 @@ export async function getPdvYearOverview(year, opts = {}) {
   try {
     const rows = await query(
       `SELECT MONTH(f.datum_izdavanja) AS m,
-              ROUND(SUM(COALESCE(f.pdv_iznos_km, 0)), 2) AS pdv_izlazni
+              ROUND(SUM(CASE WHEN UPPER(TRIM(COALESCE(f.valuta, 'BAM'))) = 'EUR' THEN 0 ELSE COALESCE(f.pdv_iznos_km, 0) END), 2) AS pdv_izlazni
        FROM fakture f
        WHERE f.datum_izdavanja >= ? AND f.datum_izdavanja <= ?
          AND (f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN'))

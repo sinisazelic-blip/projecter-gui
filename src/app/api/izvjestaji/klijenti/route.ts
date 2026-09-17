@@ -114,9 +114,9 @@ export async function GET(req: NextRequest) {
       "  SELECT " +
       "    f.bill_to_klijent_id, " +
       "    COUNT(DISTINCT f.faktura_id) AS broj_faktura, " +
-      "    COALESCE(SUM(CASE WHEN f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN') THEN f.iznos_ukupno_km ELSE 0 END), 0) AS ukupno_fakturisano, " +
-      "    COALESCE(SUM(CASE WHEN f.fiskalni_status IN ('PLACENA', 'DJELIMICNO') THEN f.iznos_ukupno_km ELSE 0 END), 0) AS ukupno_naplaceno, " +
-      "    COALESCE(SUM(CASE WHEN f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('PLACENA', 'DJELIMICNO', 'STORNIRAN', 'ZAMIJENJEN') THEN f.iznos_ukupno_km ELSE 0 END), 0) AS potrazivanja " +
+      "    COALESCE(SUM(CASE WHEN f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('STORNIRAN', 'ZAMIJENJEN') THEN f.iznos_ukupno_km * CASE WHEN UPPER(TRIM(COALESCE(f.valuta, 'BAM'))) = 'EUR' THEN 1.95583 ELSE 1.0 END ELSE 0 END), 0) AS ukupno_fakturisano, " +
+      "    COALESCE(SUM(CASE WHEN f.fiskalni_status IN ('PLACENA', 'DJELIMICNO') THEN f.iznos_ukupno_km * CASE WHEN UPPER(TRIM(COALESCE(f.valuta, 'BAM'))) = 'EUR' THEN 1.95583 ELSE 1.0 END ELSE 0 END), 0) AS ukupno_naplaceno, " +
+      "    COALESCE(SUM(CASE WHEN f.fiskalni_status IS NULL OR f.fiskalni_status NOT IN ('PLACENA', 'DJELIMICNO', 'STORNIRAN', 'ZAMIJENJEN') THEN f.iznos_ukupno_km * CASE WHEN UPPER(TRIM(COALESCE(f.valuta, 'BAM'))) = 'EUR' THEN 1.95583 ELSE 1.0 END ELSE 0 END), 0) AS potrazivanja " +
       "  FROM fakture f " +
       faktureWhereClause +
       " " +
