@@ -140,6 +140,16 @@ export async function POST(req: NextRequest) {
     const stornoFakturaId = Number(insertResult.insertId);
     const brojStorno = `${String(sledeciBroj).padStart(3, "0")}/${godina}`;
 
+    // 6b) Označi originalnu fakturu kao STORNIRAN da se više ne vodi kao otvoreno dugovanje
+    try {
+      await conn.query(
+        `UPDATE fakture SET fiskalni_status = 'STORNIRAN' WHERE faktura_id = ?`,
+        [originalFakturaId],
+      );
+    } catch (e) {
+      console.warn("[STORNO] Greška pri ažuriranju statusa originalne fakture:", e);
+    }
+
     // 7) Kopiraj faktura_projekti (opisne stavke, naziv)
     if (projekatIds.length > 0) {
       const [fpFullRows]: any = await conn.query(

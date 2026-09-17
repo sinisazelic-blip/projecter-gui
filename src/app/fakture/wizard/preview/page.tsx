@@ -961,14 +961,14 @@ export default function Page() {
           border-radius: 0;
           box-shadow: 0 18px 60px rgba(0,0,0,.35);
           border: none;
-          padding: 18mm 16mm;
+          padding: 14mm 14mm;
           box-sizing: border-box;
           overflow-x: hidden;
           display: flex;
           flex-direction: column;
         }
         @media (max-width: 980px){
-          .paper{ width: min(100%, 210mm); padding: 16px; }
+          .paper{ width: min(100%, 210mm); padding: 14px; }
         }
 
         .invRow{ display:flex; gap:14px; justify-content:space-between; align-items:flex-start; }
@@ -983,7 +983,7 @@ export default function Page() {
         .meta .kStrong{ font-weight: 850; color:#000 !important; }
         .meta .v{ font-weight: 650; color:#000 !important; }
 
-        .hr{ height: 1px; background: #000 !important; margin: 14px 0; }
+        .hr{ height: 1px; background: #000 !important; margin: 10px 0; }
 
         .cols2{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         @media (max-width: 760px){ .cols2{ grid-template-columns: 1fr; } }
@@ -1012,13 +1012,13 @@ export default function Page() {
 
         .tblWrap{
           overflow:hidden;
-          margin-top: 10px;
+          margin-top: 8px;
         }
         table{ width:100%; border-collapse:collapse; page-break-inside: auto; }
         thead { display: table-header-group; }
         thead tr{ background: #F7F7F7 !important; }
         th{
-          padding: 7px 8px !important;
+          padding: 5px 6px !important;
           font-size: 11px !important;
           text-transform: uppercase !important;
           letter-spacing: .35px !important;
@@ -1030,21 +1030,21 @@ export default function Page() {
           background: #F7F7F7 !important;
         }
         td{
-          padding: 6px 8px !important;
-          font-size: 12px !important;
+          padding: 4px 6px !important;
+          font-size: 11.5px !important;
           vertical-align: top !important;
           color:#000 !important;
-          line-height: 1.25 !important;
+          line-height: 1.2 !important;
         }
         tr { page-break-inside: avoid !important; break-inside: avoid !important; }
         .num{ text-align:right !important; white-space:nowrap !important; color:#000 !important; }
-        .desc{ color:#000 !important; font-weight: 650 !important; line-height: 1.22 !important; }
-        .mutedSmall{ font-size: 10px !important; color:#000 !important; margin-top: 1px !important; line-height: 1.2 !important; }
+        .desc{ color:#000 !important; font-weight: normal !important; line-height: 1.18 !important; }
+        .mutedSmall{ font-size: 10px !important; color:#000 !important; margin-top: 1px !important; line-height: 1.18 !important; }
 
         .totalsRow{
           display: flex;
           justify-content: flex-end;
-          margin-top: 12px;
+          margin-top: 10px;
           width: 100%;
         }
         .fiscalSection{

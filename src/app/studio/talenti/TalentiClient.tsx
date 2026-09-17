@@ -572,7 +572,21 @@ export default function TalentiClient({
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={t("studioTalenti.searchPlaceholder")}
-              style={{ width: 420, maxWidth: "100%" }}
+              className="input"
+              style={{
+                width: 320,
+                maxWidth: "100%",
+                height: 34,
+                minHeight: 34,
+                padding: "0 12px",
+                fontSize: 13,
+                borderRadius: 10,
+                border: "1px solid var(--border)",
+                background: "rgba(255, 255, 255, 0.05)",
+                color: "var(--text)",
+                boxSizing: "border-box",
+                outline: "none",
+              }}
             />
 
             <label

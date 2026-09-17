@@ -300,7 +300,7 @@ async function getClientSummary(year) {
   ).catch(() => []);
   const nameMap = new Map((names || []).map((r) => [Number(r.partner_id), String(r.naziv || "—")]));
 
-  const items = idList
+  const allItems = idList
     .map((id) => {
       const p = round2(opening.get(id) || 0);
       const f = round2(invoiced.get(id) || 0);
@@ -318,10 +318,32 @@ async function getClientSummary(year) {
         prikaz_valuta: pv?.valuta || "BAM",
       };
     })
-    .filter((x) => Math.abs(x.saldo) >= 0.01)
     .sort((a, b) => a.partner_naziv.localeCompare(b.partner_naziv, "sr"));
 
-  return items;
+  let totalPocetnoKM = 0;
+  let totalRealizovanoKM = 0;
+  let totalPlacenoKM = 0;
+  let totalSaldoKM = 0;
+
+  for (const it of allItems) {
+    const rate = it.prikaz_valuta === "EUR" ? 1.95583 : 1.0;
+    totalPocetnoKM += it.pocetno_stanje * rate;
+    totalRealizovanoKM += it.ukupno_realizovano * rate;
+    totalPlacenoKM += it.ukupno_placeno * rate;
+    totalSaldoKM += it.saldo * rate;
+  }
+
+  const openItems = allItems.filter((x) => Math.abs(x.saldo) >= 0.01);
+
+  return {
+    items: openItems,
+    summary: {
+      pocetno_stanje: round2(totalPocetnoKM),
+      ukupno_realizovano: round2(totalRealizovanoKM),
+      ukupno_placeno: round2(totalPlacenoKM),
+      saldo: round2(totalSaldoKM),
+    },
+  };
 }
 
 async function getPayableSummary(kind, year) {
@@ -422,7 +444,12 @@ async function getPayableSummary(kind, year) {
   }
 
   const idList = [...ids].filter((x) => Number.isFinite(x));
-  if (!idList.length) return [];
+  if (!idList.length) {
+    return {
+      items: [],
+      summary: { pocetno_stanje: 0, ukupno_realizovano: 0, ukupno_placeno: 0, saldo: 0 },
+    };
+  }
   const placeholders = idList.map(() => "?").join(",");
   const names = await query(
     `SELECT ${idCol} AS partner_id, ${nameCol} AS naziv FROM ${table} WHERE ${idCol} IN (${placeholders})`,
@@ -430,7 +457,7 @@ async function getPayableSummary(kind, year) {
   ).catch(() => []);
   const nameMap = new Map((names || []).map((r) => [Number(r.partner_id), String(r.naziv || "—")]));
 
-  return idList
+  const allItems = idList
     .map((id) => {
       const p = round2(opening.get(id) || 0);
       const w = round2(worked.get(id) || 0);
@@ -443,10 +470,34 @@ async function getPayableSummary(kind, year) {
         ukupno_realizovano: w,
         ukupno_placeno: pl,
         saldo,
+        prikaz_valuta: "BAM",
       };
     })
-    .filter((x) => Math.abs(x.saldo) >= 0.01)
     .sort((a, b) => a.partner_naziv.localeCompare(b.partner_naziv, "sr"));
+
+  let totalPocetnoKM = 0;
+  let totalRealizovanoKM = 0;
+  let totalPlacenoKM = 0;
+  let totalSaldoKM = 0;
+
+  for (const it of allItems) {
+    totalPocetnoKM += it.pocetno_stanje;
+    totalRealizovanoKM += it.ukupno_realizovano;
+    totalPlacenoKM += it.ukupno_placeno;
+    totalSaldoKM += it.saldo;
+  }
+
+  const openItems = allItems.filter((x) => Math.abs(x.saldo) >= 0.01);
+
+  return {
+    items: openItems,
+    summary: {
+      pocetno_stanje: round2(totalPocetnoKM),
+      ukupno_realizovano: round2(totalRealizovanoKM),
+      ukupno_placeno: round2(totalPlacenoKM),
+      saldo: round2(totalSaldoKM),
+    },
+  };
 }
 
 export async function GET(req) {
@@ -458,33 +509,17 @@ export async function GET(req) {
       return NextResponse.json({ ok: false, error: "Neispravan type." }, { status: 400 });
     }
 
-    const items =
+    const result =
       type === TYPE_CLIENT
         ? await getClientSummary(year)
         : await getPayableSummary(type, year);
-
-    const summary = items.reduce(
-      (acc, it) => {
-        acc.pocetno_stanje += it.pocetno_stanje;
-        acc.ukupno_realizovano += it.ukupno_realizovano;
-        acc.ukupno_placeno += it.ukupno_placeno;
-        acc.saldo += it.saldo;
-        return acc;
-      },
-      { pocetno_stanje: 0, ukupno_realizovano: 0, ukupno_placeno: 0, saldo: 0 },
-    );
 
     return NextResponse.json({
       ok: true,
       type,
       year,
-      items,
-      summary: {
-        pocetno_stanje: round2(summary.pocetno_stanje),
-        ukupno_realizovano: round2(summary.ukupno_realizovano),
-        ukupno_placeno: round2(summary.ukupno_placeno),
-        saldo: round2(summary.saldo),
-      },
+      items: result.items,
+      summary: result.summary,
     });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e?.message || String(e) }, { status: 500 });

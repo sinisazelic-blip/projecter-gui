@@ -440,14 +440,14 @@ export default function PonudaPreviewClient() {
         .addr .muted{ color:#000 !important; }
         .addr .bankList{ margin-top: 8px; }
         .addr .bankLine{ color:#000 !important; margin-top: 3px; }
-        .tblWrap{ overflow:hidden; margin-top: 14px; }
+        .tblWrap{ overflow:hidden; margin-top: 8px; }
         table{ width:100%; border-collapse:collapse; }
         thead tr{ background: #F7F7F7 !important; }
-        th{ padding: 10px 10px !important; font-size: 11px !important; text-transform: uppercase !important; letter-spacing: .35px !important; color:#000 !important; font-weight: 700 !important; text-align:left !important; border-bottom: 1px solid #000 !important; white-space: nowrap !important; background: #F7F7F7 !important; }
-        td{ padding: 10px 10px !important; font-size: 12px !important; vertical-align: top !important; color:#000 !important; }
+        th{ padding: 5px 6px !important; font-size: 11px !important; text-transform: uppercase !important; letter-spacing: .35px !important; color:#000 !important; font-weight: 700 !important; text-align:left !important; border-bottom: 1px solid #000 !important; white-space: nowrap !important; background: #F7F7F7 !important; }
+        td{ padding: 4px 6px !important; font-size: 11.5px !important; vertical-align: top !important; color:#000 !important; line-height: 1.2 !important; }
         .num{ text-align:right !important; white-space:nowrap !important; color:#000 !important; }
-        .desc{ color:#000 !important; font-weight: 650 !important; }
-        .mutedSmall{ font-size: 11px !important; color:#000 !important; margin-top: 2px !important; }
+        .desc{ color:#000 !important; font-weight: normal !important; line-height: 1.18 !important; }
+        .mutedSmall{ font-size: 10px !important; color:#000 !important; margin-top: 1px !important; line-height: 1.18 !important; }
         .totalsRow{ display:flex; justify-content:flex-end; gap: 18px; margin-top: 8px; }
         .totalsBox{ width: 50%; max-width: 320px; border: 1px solid #000 !important; background: #F7F7F7 !important; padding: 10px 12px !important; }
         .totLine{ display:flex !important; justify-content:space-between !important; gap: 12px !important; font-size: 12px !important; padding: 6px 0 !important; border-top: 1px solid rgba(0,0,0,.06) !important; }

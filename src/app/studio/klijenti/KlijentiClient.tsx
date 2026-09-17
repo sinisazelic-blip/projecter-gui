@@ -586,10 +586,24 @@ export default function KlijentiClient({
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={t("studioKlijenti.searchPlaceholder")}
-              style={{ width: 420, maxWidth: "100%" }}
+              className="input"
+              style={{
+                width: 320,
+                maxWidth: "100%",
+                height: 34,
+                minHeight: 34,
+                padding: "0 12px",
+                fontSize: 13,
+                borderRadius: 10,
+                border: "1px solid var(--border)",
+                background: "rgba(255, 255, 255, 0.05)",
+                color: "var(--text)",
+                boxSizing: "border-box",
+                outline: "none",
+              }}
             />
 
-            <div style={{ display: "inline-flex", gap: 6, flexWrap: "wrap" }}>
+            <div style={{ display: "inline-flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
               {(
                 [
                   ["all", t("studioKlijenti.filterAll")],
@@ -602,7 +616,16 @@ export default function KlijentiClient({
                   type="button"
                   className={`btn${roleFilter === key ? " btn--active" : ""}`}
                   onClick={() => setRoleFilter(key)}
-                  style={{ minHeight: 32, padding: "4px 10px", fontSize: 13 }}
+                  style={{
+                    height: 34,
+                    minHeight: 34,
+                    padding: "0 14px",
+                    fontSize: 13,
+                    borderRadius: 10,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                 >
                   {label}
                 </button>

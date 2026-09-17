@@ -108,6 +108,33 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    // Identifikuj sve PFR brojeve koji imaju storno račun (negativan iznos)
+    const storniraniPfrSet = new Set<number>();
+    for (const f of faktureSaDatumom) {
+      if (f.iznos_sa_pdv < 0 && f.broj_fiskalni != null && f.broj_fiskalni > 0) {
+        storniraniPfrSet.add(Number(f.broj_fiskalni));
+      }
+    }
+
+    let finalneFakture = faktureSaDatumom.map((f: any) => {
+      const isStorno =
+        (f.broj_fiskalni != null && storniraniPfrSet.has(Number(f.broj_fiskalni))) ||
+        String(f.status || "").trim().toUpperCase() === "STORNIRAN" ||
+        String(f.status || "").trim().toUpperCase() === "STORNO" ||
+        Number(f.iznos_sa_pdv) < 0;
+
+      return {
+        ...f,
+        status: isStorno ? "STORNIRAN" : f.status,
+      };
+    });
+
+    if (neplacene) {
+      finalneFakture = finalneFakture.filter(
+        (f: any) => f.status !== "STORNIRAN" && Number(f.iznos_sa_pdv) > 0
+      );
+    }
+
     // Učitaj naručioca za filter dropdown
     let narucioci: any[] = [];
     try {
@@ -132,7 +159,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      fakture: faktureSaDatumom,
+      fakture: finalneFakture,
       narucioci: Array.isArray(narucioci) ? narucioci : [],
     });
   } catch (err: any) {
