@@ -7,6 +7,7 @@ import { getPocetnaStanja } from "@/lib/pocetna-stanja";
 import PocetnaStanjaImport from "./PocetnaStanjaImport";
 import OtpisPocetnoStanjeButton from "./OtpisPocetnoStanjeButton";
 import EvidentirajUplatuButton from "./EvidentirajUplatuButton";
+import ZakljuciGodinuModal from "./ZakljuciGodinuModal";
 import FluxaLogo from "@/components/FluxaLogo";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +58,8 @@ export default async function PocetnaStanjaPage() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <ZakljuciGodinuModal />
                 <Link href="/finance" className="btn" title={t("finance.title")}>
                   {t("finance.title")}
                 </Link>

@@ -210,16 +210,13 @@ export default async function PrihodiListPage({ searchParams }) {
   );
 
   const monthNums = Array.from({ length: 12 }, (_, i) => i + 1);
-  const rowProfitNow = monthNums.map((m) => {
-    const fakt = faktureByMonth.get(m) ?? 0;
-    const trosk = troskoviByMonth.get(m) ?? 0;
-    return fakt - trosk;
-  });
-  const rowDeferred = monthNums.map((m) => {
-    const fakt = faktureByMonth.get(m) ?? 0;
-    const naplate = (bankaNaplateByMonth.get(m) ?? 0) + (blagajnaNaplateByMonth.get(m) ?? 0);
-    return fakt - naplate;
-  });
+  const rowFakturisano = monthNums.map((m) => faktureByMonth.get(m) ?? 0);
+  const rowNaplaceno = monthNums.map((m) => (bankaNaplateByMonth.get(m) ?? 0) + (blagajnaNaplateByMonth.get(m) ?? 0));
+  const rowRazlika = monthNums.map((m, idx) => rowFakturisano[idx] - rowNaplaceno[idx]);
+
+  const totalFakturisano = rowFakturisano.reduce((a, b) => a + b, 0);
+  const totalNaplaceno = rowNaplaceno.reduce((a, b) => a + b, 0);
+  const totalRazlika = totalFakturisano - totalNaplaceno;
 
   return (
     <div className="container">
@@ -317,46 +314,82 @@ export default async function PrihodiListPage({ searchParams }) {
       </div>
 
       <div className="card" style={{ marginBottom: 14 }}>
-        <form method="GET" style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap", marginBottom: 12 }}>
-          <input type="hidden" name="q" value={q} />
-          <input type="hidden" name="projekat_id" value={projekatId} />
-          <input type="hidden" name="godina" value={godina} />
-          <div>
-            <div className="label">{t("prihodi.metricYearLabel")}</div>
-            <select className="input" name="metric_year" defaultValue={String(selectedMetricYear)} style={{ minWidth: 140 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>
+            📊 Mjesečni pregled realizacije i naplate ({selectedMetricYear}. godina)
+          </div>
+          <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input type="hidden" name="q" value={q} />
+            <input type="hidden" name="projekat_id" value={projekatId} />
+            <input type="hidden" name="godina" value={godina} />
+            <select className="input" name="metric_year" defaultValue={String(selectedMetricYear)} style={{ minWidth: 120 }}>
               {metricYearOptions.map((y) => (
-                <option key={y} value={y}>{y}</option>
+                <option key={y} value={y}>{y}. godina</option>
               ))}
             </select>
-          </div>
-          <button type="submit" className="btn btn--active">{t("prihodi.apply")}</button>
-        </form>
+            <button type="submit" className="btn btn--active">{t("prihodi.apply")}</button>
+          </form>
+        </div>
         <div className="table-wrap">
           <table className="table" style={{ tableLayout: "fixed" }}>
             <thead>
               <tr>
-                <th style={{ width: 290 }}>{t("prihodi.metricFormula")}</th>
+                <th style={{ width: 220 }}>Kategorija</th>
                 {monthNames.map((mn, idx) => (
-                  <th key={`${mn}-${idx}`} className="num">{mn}</th>
+                  <th key={`${mn}-${idx}`} className="num" style={{ fontSize: 12 }}>{mn}</th>
                 ))}
+                <th className="num" style={{ fontWeight: 800, background: "rgba(255,255,255,0.04)" }}>UKUPNO</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td style={{ fontWeight: 700 }} title={t("prihodi.metricRowProfitNowTooltip")}>
-                  {t("prihodi.metricRowProfitNow")}
+                <td style={{ fontWeight: 700, color: "#38bdf8" }}>
+                  📄 Fakturisano (Izdati računi)
                 </td>
-                {rowProfitNow.map((v, idx) => (
-                  <td key={`p-${idx}`} className="num">{formatAmount(v, locale)}</td>
+                {rowFakturisano.map((v, idx) => (
+                  <td key={`f-${idx}`} className="num">{formatAmount(v, locale)}</td>
                 ))}
+                <td className="num" style={{ fontWeight: 800, color: "#38bdf8", background: "rgba(255,255,255,0.04)" }}>
+                  {formatAmount(totalFakturisano, locale)}
+                </td>
               </tr>
               <tr>
-                <td style={{ fontWeight: 700 }} title={t("prihodi.metricRowDeferredTooltip")}>
-                  {t("prihodi.metricRowDeferred")}
+                <td style={{ fontWeight: 700, color: "#4ade80" }}>
+                  💰 Naplaćeno (Banka + Kasa)
                 </td>
-                {rowDeferred.map((v, idx) => (
-                  <td key={`d-${idx}`} className="num">{formatAmount(v, locale)}</td>
+                {rowNaplaceno.map((v, idx) => (
+                  <td key={`n-${idx}`} className="num">{formatAmount(v, locale)}</td>
                 ))}
+                <td className="num" style={{ fontWeight: 800, color: "#4ade80", background: "rgba(255,255,255,0.04)" }}>
+                  {formatAmount(totalNaplaceno, locale)}
+                </td>
+              </tr>
+              <tr style={{ borderTop: "1px solid var(--border)" }}>
+                <td style={{ fontWeight: 700, color: totalRazlika > 0 ? "#fbbf24" : "var(--muted)" }}>
+                  ⏳ Nenaplaćeno / Razlika
+                </td>
+                {rowRazlika.map((v, idx) => (
+                  <td
+                    key={`r-${idx}`}
+                    className="num"
+                    style={{
+                      fontWeight: 600,
+                      color: v > 0.01 ? "#fbbf24" : v < -0.01 ? "var(--muted)" : "inherit",
+                    }}
+                  >
+                    {formatAmount(v, locale)}
+                  </td>
+                ))}
+                <td
+                  className="num"
+                  style={{
+                    fontWeight: 800,
+                    color: totalRazlika > 0 ? "#fbbf24" : "inherit",
+                    background: "rgba(255,255,255,0.04)",
+                  }}
+                >
+                  {formatAmount(totalRazlika, locale)}
+                </td>
               </tr>
             </tbody>
           </table>

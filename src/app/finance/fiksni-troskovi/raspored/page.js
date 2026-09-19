@@ -80,89 +80,125 @@ export default async function FiksniRasporedPage({ searchParams }) {
   const sp = await Promise.resolve(searchParams);
 
   const q = (sp?.q ?? "").trim();
-  const onlyDue = sp?.only_due === "1"; // prikazi samo dospjele i uskoro
-  const dueTo = (sp?.due_to ?? "").trim(); // YYYY-MM-DD
-  const dueFrom = (sp?.due_from ?? "").trim(); // YYYY-MM-DD
+  const onlyDue = sp?.only_due === "1";
+  const dueTo = (sp?.due_to ?? "").trim();
+  const dueFrom = (sp?.due_from ?? "").trim();
 
-  const where = [];
+  const where = ["f.aktivan = 1"];
   const params = [];
 
-  // tekst pretraga: naziv
   if (q) {
-    where.push("(r.naziv_troska LIKE ?)");
-    params.push(`%${q}%`);
-  }
-
-  // period dospijeća (ako view ima due_date / datum_dospijeca - koristimo COALESCE)
-  if (dueFrom) {
-    where.push("(COALESCE(r.due_date, r.datum_dospijeca) >= ?)");
-    params.push(dueFrom);
-  }
-  if (dueTo) {
-    where.push("(COALESCE(r.due_date, r.datum_dospijeca) <= ?)");
-    params.push(dueTo);
-  }
-
-  // only_due: kasni ili u narednih 7 dana
-  // Pošto je view nepoznat, radimo s datumom i MySQL DATEDIFF.
-  if (onlyDue) {
-    where.push(
-      "(DATEDIFF(COALESCE(r.due_date, r.datum_dospijeca), CURDATE()) <= 7)",
-    );
+    where.push("(f.naziv_troska LIKE ? OR CAST(f.trosak_id AS CHAR) LIKE ?)");
+    params.push(`%${q}%`, `%${q}%`);
   }
 
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-  // 1) Statusi (summary)
-  const statusRows = await query(
-    `
-    SELECT *
-    FROM vw_fiksni_troskovi_status
-    ORDER BY trosak_id DESC
-    LIMIT 500
-    `,
-  ).catch(async () => []);
-
-  // 2) Raspored (next due list)
-  // Ne znamo kolone; prvo pokušamo "friendly" select, pa fallback na SELECT *
-  const scheduleRows = await query(
+  // Učitaj aktivne fiksne troškove
+  const rawRows = await query(
     `
     SELECT
-      r.trosak_id,
-      r.naziv_troska,
-      r.frekvencija,
-      r.dan_u_mjesecu,
-      r.due_date,
-      r.datum_dospijeca,
-      r.amount_km,
-      r.iznos_km,
-      r.zadnje_placeno,
-      r.status
-    FROM vw_fiksni_troskovi_raspored r
+      f.trosak_id,
+      f.naziv_troska,
+      f.frekvencija,
+      f.dan_u_mjesecu,
+      f.datum_dospijeca,
+      f.zadnje_placeno,
+      f.iznos,
+      f.valuta,
+      f.nacin_placanja,
+      f.napomena
+    FROM fiksni_troskovi f
     ${whereSql}
-    ORDER BY COALESCE(r.due_date, r.datum_dospijeca) ASC, r.trosak_id ASC
-    LIMIT 200
+    ORDER BY f.dan_u_mjesecu ASC, f.trosak_id ASC
     `,
     params,
-  ).catch(async () => {
-    return await query(
-      `
-      SELECT *
-      FROM vw_fiksni_troskovi_raspored r
-      ${whereSql}
-      ORDER BY 1
-      LIMIT 200
-      `,
-      params,
-    );
+  ).catch(() => []);
+
+  // Učitaj ugovorne obaveze za 2026. godinu da provjerimo statuse po mjesecima
+  const ugovorneRows = await query(
+    `
+    SELECT
+      u.obaveza_id,
+      u.naziv,
+      u.kategorija,
+      m.godina,
+      m.mjesec,
+      m.status,
+      m.iznos_km,
+      m.placeno_km,
+      m.datum_placanja
+    FROM ugovorne_obaveze u
+    JOIN ugovorne_obaveze_mjeseci m ON m.obaveza_id = u.obaveza_id
+    WHERE m.godina = YEAR(CURDATE()) AND m.mjesec = MONTH(CURDATE())
+    `,
+  ).catch(() => []);
+
+  const ugovorneByNaziv = new Map();
+  for (const u of ugovorneRows ?? []) {
+    ugovorneByNaziv.set(String(u.naziv || "").toLowerCase().trim(), u);
+  }
+
+  const now = new Date();
+  const curYear = now.getFullYear();
+  const curMonth = now.getMonth() + 1;
+
+  // Izračunaj dinamičko dospijeće za tekući period
+  const scheduleRows = (rawRows ?? []).map((f) => {
+    let dueStr = null;
+    const dan = Number(f.dan_u_mjesecu) || 10;
+
+    if (f.datum_dospijeca) {
+      dueStr = f.datum_dospijeca;
+    } else {
+      const dayPad = String(Math.min(28, Math.max(1, dan))).padStart(2, "0");
+      const monthPad = String(curMonth).padStart(2, "0");
+      dueStr = `${curYear}-${monthPad}-${dayPad}`;
+    }
+
+    // Provjeri status uplate za tekući mjesec
+    const fNaziv = String(f.naziv_troska || "").toLowerCase().trim();
+    let isPaidThisMonth = false;
+    let zadnjePlaceno = f.zadnje_placeno;
+
+    for (const [key, u] of ugovorneByNaziv.entries()) {
+      if (fNaziv.includes(key) || key.includes(fNaziv) || (fNaziv.includes("porez") && key.includes("porez"))) {
+        if (u.status === "PLACENO") {
+          isPaidThisMonth = true;
+          zadnjePlaceno = u.datum_placanja || zadnjePlaceno || `${curYear}-${String(curMonth).padStart(2, "0")}-01`;
+        }
+        break;
+      }
+    }
+
+    return {
+      trosak_id: f.trosak_id,
+      naziv_troska: f.naziv_troska,
+      frekvencija: f.frekvencija,
+      dan_u_mjesecu: f.dan_u_mjesecu,
+      due_date: dueStr,
+      datum_dospijeca: dueStr,
+      amount_km: f.iznos,
+      iznos_km: f.iznos,
+      zadnje_placeno: zadnjePlaceno,
+      is_paid_this_month: isPaidThisMonth,
+      status: isPaidThisMonth ? "PLAĆENO" : "AKTIVNO",
+    };
   });
 
-  // helper: map statusRows by trosak_id (ako postoji)
-  const statusById = new Map();
-  for (const r of statusRows || []) {
-    const id = Number(r.trosak_id);
-    if (Number.isFinite(id)) statusById.set(id, r);
-  }
+  // Filtriranje po datumima i onlyDue ako je traženo
+  const filteredRows = scheduleRows.filter((r) => {
+    if (dueFrom && r.due_date < dueFrom) return false;
+    if (dueTo && r.due_date > dueTo) return false;
+    if (onlyDue) {
+      const todayStr = now.toISOString().slice(0, 10);
+      if (r.is_paid_this_month) return false;
+      const diffMs = new Date(r.due_date).getTime() - now.getTime();
+      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+      return diffDays <= 7;
+    }
+    return true;
+  });
 
   return (
     <div className="container">
@@ -175,8 +211,7 @@ export default async function FiksniRasporedPage({ searchParams }) {
             <div>
               <h1 className="h1" style={{ margin: 0 }}>{t("fiksniTroskovi.rasporedTitle")}</h1>
               <div className="subtle">
-                {t("fiksniTroskovi.rasporedSubtitle")} <code>vw_fiksni_troskovi_raspored</code> +{" "}
-                <code>vw_fiksni_troskovi_status</code>
+                Dinamički raspored dospijeća fiksnih i ugovornih obaveza za {curYear}. godinu
               </div>
             </div>
           </div>
@@ -250,7 +285,7 @@ export default async function FiksniRasporedPage({ searchParams }) {
       <div className="card">
         <div className="card-row" style={{ justifyContent: "space-between" }}>
           <div className="subtle">
-            {(t("fiksniTroskovi.shownCount") || "").replace("{{count}}", scheduleRows?.length ?? 0)}
+            {(t("fiksniTroskovi.shownCount") || "").replace("{{count}}", filteredRows.length)}
           </div>
           <div className="subtle">{t("fiksniTroskovi.signalHint")}</div>
         </div>
@@ -280,18 +315,15 @@ export default async function FiksniRasporedPage({ searchParams }) {
               </tr>
             </thead>
             <tbody>
-              {scheduleRows?.length
-                ? scheduleRows.map((r, idx) => {
-                    const id = Number(r.trosak_id);
+              {filteredRows.length
+                ? filteredRows.map((r, idx) => {
                     const due = r.due_date ?? r.datum_dospijeca ?? null;
-                    const sig = classifyDue(t, due);
+                    const sig = r.is_paid_this_month
+                      ? { text: "Plaćeno", kind: "ok" }
+                      : classifyDue(t, due);
 
                     const iznos = r.amount_km ?? r.iznos_km ?? r.iznos ?? null;
-
-                    const st = Number.isFinite(id) ? statusById.get(id) : null;
-                    // ako status view ima "zadnje_placeno" ili sl., preferiraj
-                    const zadnje =
-                      st?.zadnje_placeno ?? r.zadnje_placeno ?? null;
+                    const zadnje = r.zadnje_placeno ?? null;
 
                     return (
                       <tr key={`${r.trosak_id ?? "x"}-${idx}`}>
@@ -325,8 +357,8 @@ export default async function FiksniRasporedPage({ searchParams }) {
         </div>
 
         <div className="hr" />
-        <div className="subtle">
-          {t("fiksniTroskovi.rasporedNote")}
+        <div className="subtle" style={{ fontSize: 13, lineHeight: 1.6 }}>
+          💡 Pregled kombinuje definisane fiksne troškove firme sa stvarnim stanjem uplata iz banke i ugovornih obaveza za {curYear}. godinu.
         </div>
       </div>
     </div>

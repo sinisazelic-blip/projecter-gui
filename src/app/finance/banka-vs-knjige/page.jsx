@@ -115,76 +115,114 @@ export default function BankaVsKnjigePage() {
 
           {!loading && data && (
             <>
+              {/* GLAVNE KARTICE */}
               <div
                 className="card"
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
                   gap: 16,
                   marginBottom: 16,
                 }}
               >
                 <div>
-                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{(t("bankaVsKnjige.stanjeBanke") || "").replace("{{date}}", fmtDate(data.to_date))}</div>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>🏦 Bankovni saldo (do {fmtDate(data.to_date)})</div>
                   <div style={{ fontSize: 22, fontWeight: 800 }}>{fmtAmount(data.stanje_banke_km, ccySuffix)}</div>
-                </div>
-                <div>
-                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t("bankaVsKnjige.stanjeKnjige")}</div>
-                  <div style={{ fontSize: 22, fontWeight: 800 }}>{fmtAmount(data.stanje_knjige_km, ccySuffix)}</div>
                   <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
-                    {(t("bankaVsKnjige.prihodiMinusPlacanja") || "").replace("{{prihodi}}", fmtAmount(data.suma_prihodi_km, ccySuffix)).replace("{{placanja}}", fmtAmount(data.suma_placanja_km, ccySuffix))}
+                    Prilivi: <span style={{ color: "#4ade80" }}>+{fmtAmount(data.banka_prilivi_km, ccySuffix)}</span> · Odlivi: <span style={{ color: "#f87171" }}>-{fmtAmount(data.banka_odlivi_km, ccySuffix)}</span>
                   </div>
                 </div>
+
                 <div>
-                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t("bankaVsKnjige.kreditObaveze")}</div>
-                  <div style={{ fontSize: 22, fontWeight: 800 }}>{fmtAmount(data.kredit_obaveze_km, ccySuffix)}</div>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>📄 Fakturisano kupcima</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#38bdf8" }}>{fmtAmount(data.fakturisano_km, ccySuffix)}</div>
                   <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
-                    {t("bankaVsKnjige.kreditObavezeHint")}
+                    Ukupno izdate izlazne fakture u sistemu
                   </div>
                 </div>
+
                 <div>
-                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t("bankaVsKnjige.razlika")}</div>
-                  <div
-                    style={{
-                      fontSize: 22,
-                      fontWeight: 800,
-                      color: data.u_ravnotezi ? "var(--good)" : "var(--warn)",
-                    }}
-                  >
-                    {fmtAmount(data.razlika_km, ccySuffix)}
-                  </div>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>📦 KUF troškovi dobavljača</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#fbbf24" }}>{fmtAmount(data.kuf_troskovi_km, ccySuffix)}</div>
                   <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
-                    {data.u_ravnotezi ? t("bankaVsKnjige.uRavnotezi") : t("bankaVsKnjige.nijeURavnotezi")}
+                    Evidentirane ulazne fakture i fiksne obaveze
+                  </div>
+                </div>
+
+                <div>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>💳 Kreditne obaveze ({data.kredit_naziv || "EKI"})</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#fb923c" }}>{fmtAmount(data.kredit_obaveze_km, ccySuffix)}</div>
+                  <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+                    Preostali dug aktivnog poslovnog kredita
                   </div>
                 </div>
               </div>
 
-              <div className="card" style={{ marginBottom: 16 }}>
-                <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
-                  {t("bankaVsKnjige.stanjeKnjigeNeto")}
+              {/* REKONCILIJACIJA & NEALOCIRANO */}
+              <div
+                className="card"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                  gap: 16,
+                  marginBottom: 16,
+                  background: data.u_ravnotezi ? "rgba(16,185,129,0.05)" : "rgba(234,179,8,0.05)",
+                  border: data.u_ravnotezi ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(234,179,8,0.3)",
+                }}
+              >
+                <div>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
+                    ⏳ Nealocirani prilivi (čekaju vezu na fakturu)
+                  </div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: data.nealocirani_prilivi_km > 0 ? "#fbbf24" : "inherit" }}>
+                    {fmtAmount(data.nealocirani_prilivi_km, ccySuffix)}
+                  </div>
+                  <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+                    {data.nealocirani_prilivi_km > 0 ? "Potrebno povezati uplate sa izlaznim računima" : "Svi prilivi su uspješno povezani"}
+                  </div>
                 </div>
-                <div style={{ fontSize: 22, fontWeight: 800 }}>
-                  {fmtAmount(data.stanje_knjige_neto_km, ccySuffix)}
+
+                <div>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
+                    ⏳ Nealocirani odlivi (čekaju vezu na KUF)
+                  </div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: data.nealocirani_odlivi_km > 0 ? "#fbbf24" : "inherit" }}>
+                    {fmtAmount(data.nealocirani_odlivi_km, ccySuffix)}
+                  </div>
+                  <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+                    {data.nealocirani_odlivi_km > 0 ? "Potrebno povezati isplate sa ulaznim računima" : "Svi odlivi su uspješno povezani"}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
+                    🎯 Status usklađenosti izvoda i knjiga
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: data.u_ravnotezi ? "#4ade80" : "#fbbf24" }}>
+                    {data.u_ravnotezi ? "✅ Potpuno usklađeno (100%)" : "⚠️ Potrebna alokacija stavki"}
+                  </div>
+                  <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+                    Automatsko praćenje bankovnih izvoda i knjiženja
+                  </div>
                 </div>
               </div>
 
               {data.promet_u_periodu && (
                 <div className="card" style={{ marginBottom: 16 }}>
                   <div style={{ fontWeight: 700, marginBottom: 10 }}>
-                    {(t("bankaVsKnjige.prometUPeriodu") || "").replace("{{from}}", fmtDate(data.from_date)).replace("{{to}}", fmtDate(data.to_date))}
+                    Promet u periodu ({fmtDate(data.from_date)} – {fmtDate(data.to_date)})
                   </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
-                    <span>{t("bankaVsKnjige.bankaPromet")}: {fmtAmount(data.promet_u_periodu.banka_km, ccySuffix)}</span>
-                    <span>{t("bankaVsKnjige.prihodi")}: {fmtAmount(data.promet_u_periodu.prihodi_km, ccySuffix)}</span>
-                    <span>{t("bankaVsKnjige.placanja")}: {fmtAmount(data.promet_u_periodu.placanja_km, ccySuffix)}</span>
-                    <span>{t("bankaVsKnjige.knjigeNeto")}: {fmtAmount(data.promet_u_periodu.knjige_neto_km, ccySuffix)}</span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
+                    <span>🏦 Banka neto: <b>{fmtAmount(data.promet_u_periodu.banka_neto_km, ccySuffix)}</b></span>
+                    <span>📄 Fakturisano: <b>{fmtAmount(data.promet_u_periodu.fakturisano_km, ccySuffix)}</b></span>
+                    <span>📦 KUF troškovi: <b>{fmtAmount(data.promet_u_periodu.kuf_troskovi_km, ccySuffix)}</b></span>
                   </div>
                 </div>
               )}
 
               <div className="card" style={{ background: "rgba(255,255,255,0.02)" }}>
                 <div className="subtle" style={{ fontSize: 13, lineHeight: 1.6 }}>
-                  {t("bankaVsKnjige.opisNote")}
+                  💡 Modul Banka vs Knjige služi za verifikaciju da su sve uplate i isplate sa poslovnog bankovnog računa Studio TAF uredno proknjižene i povezane sa izdatim računima (prihodi) i primljenim računima dobavljača (KUF), uz transparentan uvid u stanje kredita.
                 </div>
               </div>
             </>

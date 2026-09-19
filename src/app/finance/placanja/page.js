@@ -41,27 +41,46 @@ export default async function PlacanjaListPage({ searchParams }) {
 
     if (q) {
       where.push(
-        "(CAST(placanje_id AS CHAR) LIKE ? OR partner LIKE ? OR opis LIKE ? OR napomena LIKE ?)",
+        "(CAST(p.placanje_id AS CHAR) LIKE ? OR p.opis LIKE ? OR p.napomena LIKE ? OR d.naziv LIKE ? OR t.ime_prezime LIKE ?)",
       );
-      params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
+      params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
     }
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
     rows = await query(
       `
-      SELECT placanje_id, datum, iznos_km, partner, opis, napomena, status
-      FROM placanja
+      SELECT
+        p.placanje_id,
+        COALESCE(p.datum_placanja, p.datum, p.created_at) AS datum,
+        p.iznos_km,
+        COALESCE(
+          CASE 
+            WHEN p.entity_type = 'vendor' THEN d.naziv
+            WHEN p.entity_type = 'talent' THEN t.ime_prezime
+            ELSE NULL
+          END,
+          p.partner,
+          p.opis,
+          '—'
+        ) AS partner,
+        p.opis,
+        p.napomena,
+        COALESCE(p.status, 'AKTIVAN') AS status
+      FROM placanja p
+      LEFT JOIN dobavljaci d ON p.entity_type = 'vendor' AND p.entity_id = d.dobavljac_id
+      LEFT JOIN talenti t ON p.entity_type = 'talent' AND p.entity_id = t.talent_id
       ${whereSql}
-      ORDER BY datum DESC, placanje_id DESC
+      ORDER BY datum DESC, p.placanje_id DESC
       LIMIT 200
       `,
       params,
     );
-  } catch {
+  } catch (err) {
+    console.error("placanja query error:", err);
     rows = await query(
-      `SELECT * FROM placanja ORDER BY placanje_id DESC LIMIT 200`,
+      `SELECT placanje_id, COALESCE(datum_placanja, created_at) AS datum, iznos_km, opis, napomena, COALESCE(status, 'AKTIVAN') AS status FROM placanja ORDER BY placanje_id DESC LIMIT 200`,
       [],
-    );
+    ).catch(() => []);
   }
 
   const list = Array.isArray(rows) ? rows : [];
