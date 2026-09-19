@@ -14,27 +14,45 @@ export default async function SwimMeetsPage() {
   const t = getT(locale);
 
   // Učitaj projekte koji su plivačka takmičenja ili povezani sa savezima/klubovima
-  const projects = await query(
+  const projects: any = await query(
     `
     SELECT
       p.projekat_id,
       p.radni_naziv AS naziv_projekta,
       p.status_id,
-      sp.status_name,
+      sp.naziv_statusa AS status_name,
       p.narucilac_id,
       k.naziv_klijenta,
-      p.datum_pocetka,
-      p.datum_zavrsetka,
-      p.budzet_km,
+      COALESCE(p.rok_glavni, p.created_at) AS datum_pocetka,
+      p.event_kraj AS datum_zavrsetka,
+      COALESCE(stavke_sum.ukupno_stavke_km, p.budzet_planirani, 0) AS budzet_km,
       p.napomena,
-      COALESCE(SUM(pt.iznos_km), 0) AS ukupno_troskovi_km,
+      COALESCE(troskovi_sum.ukupno_troskovi_km, 0) AS ukupno_troskovi_km,
       f.faktura_id,
-      f.broj_fakture,
-      f.status_naplate AS faktura_status_naplate
+      COALESCE(f.broj_fakture_puni, CONCAT(f.godina, '-', f.broj_u_godini)) AS broj_fakture,
+      COALESCE(bl_in.kes_uplata_km, 0) AS kes_uplata_km,
+      CASE
+        WHEN COALESCE(bl_in.kes_uplata_km, 0) > 0 THEN 'UPLATA_KES'
+        WHEN f.fiskalni_status = 'PLACENA' THEN 'PLACENA'
+        WHEN f.fiskalni_status = 'STORNIRAN' THEN 'STORNIRAN'
+        WHEN f.faktura_id IS NOT NULL THEN 'IZDATA'
+        ELSE 'NEMA_FAKTURE'
+      END AS faktura_status_naplate
     FROM projekti p
     LEFT JOIN statusi_projekta sp ON sp.status_id = p.status_id
     LEFT JOIN klijenti k ON k.klijent_id = p.narucilac_id
-    LEFT JOIN projektni_troskovi pt ON pt.projekat_id = p.projekat_id AND pt.status <> 'STORNIRANO'
+    LEFT JOIN (
+      SELECT projekat_id, SUM(line_total) AS ukupno_stavke_km
+      FROM projekat_stavke
+      WHERE snapshot_id IS NULL
+      GROUP BY projekat_id
+    ) stavke_sum ON stavke_sum.projekat_id = p.projekat_id
+    LEFT JOIN (
+      SELECT projekat_id, SUM(iznos_km) AS ukupno_troskovi_km
+      FROM projektni_troskovi
+      WHERE status <> 'STORNIRANO'
+      GROUP BY projekat_id
+    ) troskovi_sum ON troskovi_sum.projekat_id = p.projekat_id
     LEFT JOIN (
       SELECT fp.projekat_id, MAX(fak.faktura_id) AS faktura_id
       FROM faktura_projekti fp
@@ -43,24 +61,30 @@ export default async function SwimMeetsPage() {
       GROUP BY fp.projekat_id
     ) fp_link ON fp_link.projekat_id = p.projekat_id
     LEFT JOIN fakture f ON f.faktura_id = fp_link.faktura_id
+    LEFT JOIN (
+      SELECT project_id, SUM(iznos) AS kes_uplata_km
+      FROM blagajna_stavke
+      WHERE smjer = 'IN' AND status = 'AKTIVAN' AND project_id IS NOT NULL
+      GROUP BY project_id
+    ) bl_in ON bl_in.project_id = p.projekat_id
     WHERE (
-      LOWER(p.radni_naziv) LIKE '%kup%'
-      OR LOWER(p.radni_naziv) LIKE '%prvenstvo%'
-      OR LOWER(p.radni_naziv) LIKE '%takmičenje%'
-      OR LOWER(p.radni_naziv) LIKE '%takmicenje%'
-      OR LOWER(p.radni_naziv) LIKE '%miting%'
+      p.projekat_id IN (SELECT DISTINCT projekat_id FROM projekat_stavke WHERE LOWER(naziv) LIKE '%swim%' OR LOWER(naziv) LIKE '%mjer%')
+      OR LOWER(p.radni_naziv) LIKE '%-swmm%'
+      OR LOWER(p.radni_naziv) LIKE '%swmm%'
       OR LOWER(p.radni_naziv) LIKE '%swim%'
-      OR LOWER(p.radni_naziv) LIKE '%pliva%'
-      OR LOWER(p.radni_naziv) LIKE '%memorijal%'
-      OR LOWER(COALESCE(k.naziv_klijenta, '')) LIKE '%pliv%'
-      OR LOWER(COALESCE(k.naziv_klijenta, '')) LIKE '%savez%'
-      OR LOWER(COALESCE(k.naziv_klijenta, '')) LIKE '%klub%'
+      OR LOWER(COALESCE(k.naziv_klijenta, '')) LIKE '%pliva%'
+      OR LOWER(COALESCE(k.naziv_klijenta, '')) LIKE '%leotar%'
+      OR LOWER(COALESCE(k.naziv_klijenta, '')) LIKE '%olymp%'
+      OR LOWER(COALESCE(k.naziv_klijenta, '')) LIKE '%aquastar%'
+      OR LOWER(COALESCE(k.naziv_klijenta, '')) LIKE '%22. april%'
     )
-    GROUP BY p.projekat_id, p.radni_naziv, p.status_id, sp.status_name, p.narucilac_id, k.naziv_klijenta, p.datum_pocetka, p.datum_zavrsetka, p.budzet_km, p.napomena, f.faktura_id, f.broj_fakture, f.status_naplate
-    ORDER BY COALESCE(p.datum_pocetka, p.created_at) DESC
+    ORDER BY COALESCE(p.rok_glavni, p.created_at) DESC
     LIMIT 200
     `,
-  ).catch(() => []);
+  ).catch((err) => {
+    console.error("Greška pri učitavanju plivačkih projekata:", err);
+    return [];
+  });
 
   // Učitaj samo naručioce koji plaćaju (plivački klubovi, savezi, partneri)
   const klijenti = await query(

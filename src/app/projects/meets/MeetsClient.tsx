@@ -19,6 +19,7 @@ export type MeetProject = {
   ukupno_troskovi_km?: number | null;
   faktura_id?: number | null;
   broj_fakture?: string | null;
+  kes_uplata_km?: number | null;
   faktura_status_naplate?: string | null;
 };
 
@@ -935,49 +936,88 @@ export default function MeetsClient({
               <table className="table">
                 <thead>
                   <tr>
-                    <th style={{ width: 140 }}>Datum</th>
+                    <th style={{ width: 130 }}>Datum</th>
                     <th>Takmičenje / Miting</th>
                     <th>Klub / Savez (Naručilac)</th>
                     <th style={{ width: 140, textAlign: "right" }}>Ugovoreni paušal</th>
-                    <th style={{ width: 140, textAlign: "right" }}>Troškovi</th>
-                    <th style={{ width: 140, textAlign: "right" }}>Neto dobit</th>
-                    <th style={{ width: 130, textAlign: "center" }}>Faktura</th>
+                    <th style={{ width: 130, textAlign: "right" }}>Troškovi</th>
+                    <th style={{ width: 130, textAlign: "right" }}>Neto dobit</th>
+                    <th style={{ width: 180, textAlign: "center" }}>Naplata / Faktura</th>
                     <th style={{ width: 130, textAlign: "center" }}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {initialProjects.map((p) => (
-                    <tr key={p.projekat_id}>
-                      <td>{fmtDate(p.datum_pocetka)}</td>
-                      <td>
-                        <Link href={`/projects/${p.projekat_id}`} style={{ fontWeight: 700, color: "var(--accent)" }}>
-                          {p.naziv_projekta}
-                        </Link>
-                      </td>
-                      <td>{p.naziv_klijenta || "—"}</td>
-                      <td style={{ textAlign: "right", fontWeight: 700 }}>
-                        {formatAmount(p.budzet_km, locale)}
-                      </td>
-                      <td style={{ textAlign: "right", color: "#f87171" }}>
-                        {formatAmount(p.ukupno_troskovi_km, locale)}
-                      </td>
-                      <td style={{ textAlign: "right", fontWeight: 800, color: "#4ade80" }}>
-                        {formatAmount((Number(p.budzet_km) || 0) - (Number(p.ukupno_troskovi_km) || 0), locale)}
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        {p.broj_fakture ? (
-                          <span className="badge badge-blue">{p.broj_fakture}</span>
-                        ) : (
-                          <span className="subtle" style={{ fontSize: 11 }}>Nije izdata</span>
-                        )}
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        <span className="badge badge-green" style={{ fontSize: 11 }}>
-                          {p.status_name || "Aktivno"}
-                        </span>
+                  {initialProjects.length ? (
+                    initialProjects.map((p) => {
+                      const iznos = Number(p.budzet_km) || 0;
+                      const trosak = Number(p.ukupno_troskovi_km) || 0;
+                      const dobit = iznos - trosak;
+                      const kesUplata = Number(p.kes_uplata_km) || 0;
+
+                      return (
+                        <tr key={p.projekat_id}>
+                          <td>{fmtDate(p.datum_pocetka)}</td>
+                          <td>
+                            <Link href={`/projects/${p.projekat_id}`} style={{ fontWeight: 700, color: "var(--accent)" }}>
+                              {p.naziv_projekta}
+                            </Link>
+                          </td>
+                          <td>{p.naziv_klijenta || "—"}</td>
+                          <td style={{ textAlign: "right", fontWeight: 700 }}>
+                            {formatAmount(iznos, locale)}
+                          </td>
+                          <td style={{ textAlign: "right", color: trosak > 0 ? "#f87171" : "#64748b" }}>
+                            {formatAmount(trosak, locale)}
+                          </td>
+                          <td style={{ textAlign: "right", fontWeight: 800, color: dobit >= 0 ? "#4ade80" : "#f87171" }}>
+                            {formatAmount(dobit, locale)}
+                          </td>
+                          <td style={{ textAlign: "center" }}>
+                            {kesUplata > 0 ? (
+                              <span
+                                className="badge"
+                                style={{
+                                  fontSize: 11,
+                                  backgroundColor: "rgba(34, 197, 94, 0.15)",
+                                  color: "#4ade80",
+                                  border: "1px solid rgba(34, 197, 94, 0.4)",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                💵 Keš ({formatAmount(kesUplata, locale)})
+                              </span>
+                            ) : p.broj_fakture ? (
+                              <span
+                                className="badge"
+                                style={{
+                                  fontSize: 11,
+                                  backgroundColor: p.faktura_status_naplate === "PLACENA" ? "rgba(16, 185, 129, 0.2)" : "rgba(59, 130, 246, 0.2)",
+                                  color: p.faktura_status_naplate === "PLACENA" ? "#34d399" : "#60a5fa",
+                                  border: `1px solid ${p.faktura_status_naplate === "PLACENA" ? "#10b981" : "#3b82f6"}`,
+                                  fontWeight: 700,
+                                }}
+                              >
+                                📄 {p.broj_fakture} ({p.faktura_status_naplate === "PLACENA" ? "Plaćeno" : "Fakturisano"})
+                              </span>
+                            ) : (
+                              <span className="subtle" style={{ fontSize: 11 }}>Nije fakturisano</span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: "center" }}>
+                            <span className="badge badge-green" style={{ fontSize: 11 }}>
+                              {p.status_name || "Završeno"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={8} className="subtle" style={{ padding: 24, textAlign: "center" }}>
+                        Nema pronađenih realizovanih plivačkih projekata.
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
