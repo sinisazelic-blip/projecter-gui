@@ -67,6 +67,8 @@ const ROUTE_TO_MODULE: RouteModuleMap[] = [
   { path: "/finance/rasknjizavanje", module: "Finansije - Banka", inPage: "" },
   { path: "/finance/cashflow", module: "Finansije - Banka", inPage: "" },
   { path: "/finance/banka-vs-knjige", module: "Finansije - Banka", inPage: "" },
+  { path: "/finance/godisnji-izvjestaj", module: "Owner", inPage: "" },
+  { path: "/finance/osnovna-sredstva", module: "Owner", inPage: "" },
   {
     path: "/finance/fiksni-troskovi",
     module: "Finansije - Dugovanja",

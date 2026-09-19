@@ -1113,8 +1113,12 @@
     "fiksniTroskoviDesc": "Fixed cost catalogue and due schedule (read-only).",
     "raspored": "Schedule",
     "financeToolsDesc": "Helper tools for financial analysis.",
+    "osnovnaSredstva": "Fixed Assets & Equipment",
+    "osnovnaSredstvaDesc": "Equipment inventory (DI-1), automatic 20% depreciation & Personal asset transfer resolutions.",
+    "pursPrijava": "PURS Annual Tax Return",
+    "pursPrijavaDesc": "Form 1004 & 1006 — Official annual tax return for sole entrepreneur (s.p.).",
     "note": "Note",
-    "noteText": "Some modules are still being extended (linking, rules). Navigation and views are stable."
+    "noteText": "Certain modules are continuously expanded. Navigation and views are stable."
   },
   "vat": {
     "pdv": "PDV",

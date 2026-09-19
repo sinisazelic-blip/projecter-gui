@@ -1113,6 +1113,10 @@
     "fiksniTroskoviDesc": "Šifrarnik fiksnih troškova + raspored dospijeća (read-only).",
     "raspored": "Raspored",
     "financeToolsDesc": "Pomoćni alati za finansijsku analizu.",
+    "osnovnaSredstva": "Osnovna sredstva & Oprema",
+    "osnovnaSredstvaDesc": "Popis opreme (DI-1), automatska amortizacija (20%) i Odluke o unošenju lične imovine.",
+    "pursPrijava": "PURS Godišnji izvještaj",
+    "pursPrijavaDesc": "Obrazac 1004 & 1006 — Zvanična godišnja poreska prijava za samostalnu djelatnost (s.p.).",
     "note": "Napomena",
     "noteText": "Pojedini moduli se i dalje proširuju (linkovanje, pravila). Navigacija i prikazi su stabilni."
   },
