@@ -446,27 +446,17 @@ export default function DashboardBody({ instance = "STUDIO" }) {
           </PermissionGate>
           <Link
             href="/studio/talenti/honorari"
-            className="deskMainBtn deskMainBtn--blue"
-            style={{ borderColor: "rgba(56, 189, 248, 0.4)" }}
-            title="Praćenje i isplata honorara spikerima i saradnicima"
+            className="deskMainBtn deskMainBtn--compact deskMainBtn--compact-violet"
+            title="Honorari saradnika — Isplata i evidencija spikera i muzičara"
           >
-            <span style={{ fontSize: 28 }}>🎙️</span>
-            <span>Honorari</span>
-            <span className="deskMainBtnSubtitle">
-              Spikeri & Saradnici
-            </span>
+            <span style={{ fontSize: 32 }}>🎙️</span>
           </Link>
           <Link
             href="/projects/meets"
-            className="deskMainBtn deskMainBtn--blue"
-            style={{ borderColor: "rgba(14, 165, 233, 0.4)" }}
-            title="Plivačka takmičenja, mjerenje vremena i rezultati"
+            className="deskMainBtn deskMainBtn--compact deskMainBtn--compact-cyan"
+            title="Plivačka takmičenja — Kalendar PSBiH, logistika i mjerenje vremena"
           >
-            <span style={{ fontSize: 28 }}>🏊</span>
-            <span>Takmičenja</span>
-            <span className="deskMainBtnSubtitle">
-              Plivački timing
-            </span>
+            <span style={{ fontSize: 32 }}>🏊</span>
           </Link>
         </div>
       </div>

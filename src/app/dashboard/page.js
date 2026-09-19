@@ -316,6 +316,50 @@ export default async function Page() {
           display: none;
         }
 
+        .deskMainBtn--compact {
+          flex: 0 0 auto;
+          min-width: 72px;
+          max-width: 88px;
+          min-height: 100px;
+          padding: clamp(10px, 1.2vh, 14px) 10px;
+          font-size: clamp(15px, 1.6vh, 17px);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+        }
+
+        .deskMainBtn--compact .deskMainBtnSubtitle {
+          display: none;
+        }
+
+        .deskMainBtn--compact-violet {
+          border-color: rgba(168, 85, 247, 0.5);
+          background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(126, 34, 206, 0.14));
+          color: #ffffff;
+          box-shadow: 0 4px 16px rgba(168, 85, 247, 0.15);
+        }
+
+        .deskMainBtn--compact-violet:hover {
+          border-color: rgba(192, 132, 252, 0.7);
+          background: linear-gradient(135deg, rgba(168, 85, 247, 0.35), rgba(126, 34, 206, 0.22));
+          box-shadow: 0 8px 24px rgba(168, 85, 247, 0.3);
+        }
+
+        .deskMainBtn--compact-cyan {
+          border-color: rgba(6, 182, 212, 0.5);
+          background: linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(14, 116, 144, 0.14));
+          color: #ffffff;
+          box-shadow: 0 4px 16px rgba(6, 182, 212, 0.15);
+        }
+
+        .deskMainBtn--compact-cyan:hover {
+          border-color: rgba(34, 211, 238, 0.7);
+          background: linear-gradient(135deg, rgba(6, 182, 212, 0.35), rgba(14, 116, 144, 0.22));
+          box-shadow: 0 8px 24px rgba(6, 182, 212, 0.3);
+        }
+
         /* Finansije grupa */
         .finansijeGroup {
           background: rgba(255, 165, 0, 0.05);

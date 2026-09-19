@@ -4,7 +4,6 @@ import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
 import { query } from "@/lib/db";
 import FluxaLogo from "@/components/FluxaLogo";
-import { formatAmount } from "@/lib/format";
 import HonorariClient from "./HonorariClient";
 
 export const dynamic = "force-dynamic";
@@ -14,34 +13,81 @@ export default async function TalentHonorariPage() {
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) ?? "sr";
   const t = getT(locale);
 
-  // Učitaj sve troškove talenata sa statusom povezanog projekta, fakture i isplate
-  const rows = await query(
+  // 1) Učitaj zbir isplata iz blagajne po talentu (gotovinske isplate saradnicima)
+  const blagajnaRows: any = await query(
+    `
+    SELECT entity_id AS talent_id, SUM(iznos) AS total_paid
+    FROM blagajna_stavke
+    WHERE entity_type = 'talent' AND smjer = 'OUT' AND status = 'AKTIVAN'
+    GROUP BY entity_id
+    `,
+  ).catch((err) => {
+    console.error("Greška pri učitavanju isplata iz blagajne:", err);
+    return [];
+  });
+
+  const payoutPoolByTalent: Record<number, number> = {};
+  for (const r of blagajnaRows || []) {
+    payoutPoolByTalent[Number(r.talent_id)] = Number(r.total_paid) || 0;
+  }
+
+  // 2) Učitaj istorijska početna stanja (stari dugovi prema talentima)
+  const pocetnaRows: any = await query(
+    `
+    SELECT
+      CONCAT('PS-', ps.talent_id) AS trosak_id,
+      NULL AS projekat_id,
+      'Istorijsko dugovanje / Početno stanje' AS naziv_projekta,
+      'Studio TAF obaveza' AS naziv_klijenta,
+      tal.talent_id,
+      tal.ime_prezime AS talent_naziv,
+      tal.vrsta AS talent_vrsta,
+      CAST(ps.iznos_duga AS DECIMAL(10,2)) AS honorar_iznos_km,
+      COALESCE(ps.napomena, 'Početno stanje duga prema saradniku') AS honorar_opis,
+      ps.datum_stanja AS datum_angazmana,
+      'POČETNO_STANJE' AS trosak_status,
+      NULL AS faktura_id,
+      NULL AS broj_fakture,
+      NULL AS faktura_datum,
+      NULL AS faktura_iznos_km,
+      'PLACENO' AS faktura_status_naplate
+    FROM talent_pocetno_stanje ps
+    JOIN talenti tal ON tal.talent_id = ps.talent_id
+    WHERE COALESCE(ps.otpisano, 0) = 0
+    ORDER BY ps.datum_stanja ASC, ps.talent_id ASC
+    `,
+  ).catch((err) => {
+    console.error("Greška pri učitavanju početnih stanja talenata:", err);
+    return [];
+  });
+
+  // 3) Učitaj sve angažmane talenata sa projekata
+  const projectRows: any = await query(
     `
     SELECT
       t.trosak_id,
       t.projekat_id,
-      p.naziv_projekta,
+      p.radni_naziv AS naziv_projekta,
       k.naziv_klijenta,
       tal.talent_id,
       tal.ime_prezime AS talent_naziv,
       tal.vrsta AS talent_vrsta,
-      t.iznos_km AS honorar_iznos_km,
+      CAST(t.iznos_km AS DECIMAL(10,2)) AS honorar_iznos_km,
       t.opis AS honorar_opis,
       COALESCE(t.datum_troska, t.created_at) AS datum_angazmana,
       t.status AS trosak_status,
       f.faktura_id,
-      f.broj_fakture,
+      COALESCE(f.broj_fakture_puni, CONCAT(f.godina, '-', f.broj_u_godini)) AS broj_fakture,
       f.datum_izdavanja AS faktura_datum,
       f.iznos_ukupno_km AS faktura_iznos_km,
       COALESCE(
         CASE 
           WHEN f.fiskalni_status = 'STORNIRAN' THEN 'STORNIRANO'
-          WHEN f.datum_placanja IS NOT NULL OR f.status_naplate = 'PLACENO' THEN 'PLACENO'
+          WHEN f.faktura_id IS NOT NULL THEN 'PLACENO'
           ELSE 'NEPLACENO'
         END,
         'NEMA_FAKTURE'
-      ) AS faktura_status_naplate,
-      COALESCE(ps_sum.isplaceno_km, 0) + COALESCE(bl_sum.isplaceno_km, 0) AS vec_isplaceno_km
+      ) AS faktura_status_naplate
     FROM projektni_troskovi t
     JOIN talenti tal ON (t.entity_type = 'talent' AND t.entity_id = tal.talent_id) OR (t.talent_id = tal.talent_id)
     LEFT JOIN projekti p ON p.projekat_id = t.projekat_id
@@ -54,24 +100,51 @@ export default async function TalentHonorariPage() {
       GROUP BY fp.projekat_id
     ) fp_link ON fp_link.projekat_id = t.projekat_id
     LEFT JOIN fakture f ON f.faktura_id = fp_link.faktura_id
-    LEFT JOIN (
-      SELECT trosak_id, SUM(iznos_km) AS isplaceno_km
-      FROM placanja_stavke
-      GROUP BY trosak_id
-    ) ps_sum ON ps_sum.trosak_id = t.trosak_id
-    LEFT JOIN (
-      SELECT project_id, entity_id, SUM(iznos) AS isplaceno_km
-      FROM blagajna_stavke
-      WHERE entity_type = 'talent' AND smjer = 'OUT' AND status = 'AKTIVAN'
-      GROUP BY project_id, entity_id
-    ) bl_sum ON bl_sum.project_id = t.projekat_id AND bl_sum.entity_id = tal.talent_id
     WHERE COALESCE(t.status, '') <> 'STORNIRANO'
-    ORDER BY datum_angazmana DESC, t.trosak_id DESC
-    LIMIT 500
+    ORDER BY datum_angazmana ASC, t.trosak_id ASC
     `,
   ).catch((err) => {
-    console.error("Greška pri učitavanju honorara:", err);
+    console.error("Greška pri učitavanju projektnih honorara:", err);
     return [];
+  });
+
+  // 4) FIFO raspodjela isplata iz blagajne po svakom talentu pojedinačno
+  const allChronological = [...(pocetnaRows || []), ...(projectRows || [])];
+  
+  // Grupiši stavke po talentu
+  const itemsByTalent: Record<number, any[]> = {};
+  for (const it of allChronological) {
+    const tid = Number(it.talent_id);
+    if (!itemsByTalent[tid]) itemsByTalent[tid] = [];
+    itemsByTalent[tid].push(it);
+  }
+
+  // Raspodijeli raspoloživi iznos isplata iz blagajne hronološki (FIFO)
+  const processedRows: any[] = [];
+  for (const [tidStr, items] of Object.entries(itemsByTalent)) {
+    const tid = Number(tidStr);
+    let pool = payoutPoolByTalent[tid] || 0;
+
+    for (const it of items) {
+      const iznos = Number(it.honorar_iznos_km) || 0;
+      const isplaceno = Math.min(iznos, pool);
+      pool = Math.max(0, pool - isplaceno);
+      const preostalo = Math.max(0, iznos - isplaceno);
+
+      processedRows.push({
+        ...it,
+        honorar_iznos_km: iznos,
+        vec_isplaceno_km: isplaceno,
+        preostalo_km: preostalo,
+      });
+    }
+  }
+
+  // Sortiraj za prikaz: novije prvo, početna stanja na vrhu ili po datumu
+  processedRows.sort((a, b) => {
+    const da = a.datum_angazmana ? new Date(a.datum_angazmana).getTime() : 0;
+    const db = b.datum_angazmana ? new Date(b.datum_angazmana).getTime() : 0;
+    return db - da;
   });
 
   return (
@@ -87,7 +160,7 @@ export default async function TalentHonorariPage() {
                 <div>
                   <div className="brandTitle">🎙️ Honorari saradnika i talenata</div>
                   <div className="brandSub">
-                    Pregled angažmana spikera, muzičara i saradnika uz direktnu vezu sa naplatom faktura
+                    Pregled svih dugovanja, angažmana spikera i saradnika uz status naplate od klijenata
                   </div>
                 </div>
               </div>
@@ -107,7 +180,7 @@ export default async function TalentHonorariPage() {
         </div>
 
         <div className="bodyWrap">
-          <HonorariClient initialRows={rows ?? []} locale={locale} />
+          <HonorariClient initialRows={processedRows} locale={locale} />
         </div>
       </div>
     </div>

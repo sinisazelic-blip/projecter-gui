@@ -18,7 +18,7 @@ export default async function SwimMeetsPage() {
     `
     SELECT
       p.projekat_id,
-      p.naziv_projekta,
+      p.radni_naziv AS naziv_projekta,
       p.status_id,
       sp.status_name,
       p.narucilac_id,
@@ -44,28 +44,34 @@ export default async function SwimMeetsPage() {
     ) fp_link ON fp_link.projekat_id = p.projekat_id
     LEFT JOIN fakture f ON f.faktura_id = fp_link.faktura_id
     WHERE (
-      LOWER(p.naziv_projekta) LIKE '%kup%'
-      OR LOWER(p.naziv_projekta) LIKE '%prvenstvo%'
-      OR LOWER(p.naziv_projekta) LIKE '%takmičenje%'
-      OR LOWER(p.naziv_projekta) LIKE '%takmicenje%'
-      OR LOWER(p.naziv_projekta) LIKE '%miting%'
-      OR LOWER(p.naziv_projekta) LIKE '%swim%'
-      OR LOWER(p.naziv_projekta) LIKE '%pliva%'
-      OR LOWER(p.naziv_projekta) LIKE '%memorijal%'
+      LOWER(p.radni_naziv) LIKE '%kup%'
+      OR LOWER(p.radni_naziv) LIKE '%prvenstvo%'
+      OR LOWER(p.radni_naziv) LIKE '%takmičenje%'
+      OR LOWER(p.radni_naziv) LIKE '%takmicenje%'
+      OR LOWER(p.radni_naziv) LIKE '%miting%'
+      OR LOWER(p.radni_naziv) LIKE '%swim%'
+      OR LOWER(p.radni_naziv) LIKE '%pliva%'
+      OR LOWER(p.radni_naziv) LIKE '%memorijal%'
       OR LOWER(COALESCE(k.naziv_klijenta, '')) LIKE '%pliv%'
       OR LOWER(COALESCE(k.naziv_klijenta, '')) LIKE '%savez%'
       OR LOWER(COALESCE(k.naziv_klijenta, '')) LIKE '%klub%'
     )
-    GROUP BY p.projekat_id, p.naziv_projekta, p.status_id, sp.status_name, p.narucilac_id, k.naziv_klijenta, p.datum_pocetka, p.datum_zavrsetka, p.budzet_km, p.napomena, f.faktura_id, f.broj_fakture, f.status_naplate
+    GROUP BY p.projekat_id, p.radni_naziv, p.status_id, sp.status_name, p.narucilac_id, k.naziv_klijenta, p.datum_pocetka, p.datum_zavrsetka, p.budzet_km, p.napomena, f.faktura_id, f.broj_fakture, f.status_naplate
     ORDER BY COALESCE(p.datum_pocetka, p.created_at) DESC
     LIMIT 200
     `,
   ).catch(() => []);
 
-  // Učitaj naručioce (plivački klubovi, savezi itd.)
+  // Učitaj samo naručioce koji plaćaju (plivački klubovi, savezi, partneri)
   const klijenti = await query(
-    `SELECT klijent_id, naziv_klijenta FROM klijenti WHERE aktivan = 1 ORDER BY naziv_klijenta ASC LIMIT 500`,
+    `SELECT klijent_id, naziv_klijenta FROM klijenti WHERE aktivan = 1 AND (is_narucilac = 1 OR is_narucilac IS NULL) ORDER BY naziv_klijenta ASC LIMIT 500`,
   ).catch(() => []);
+
+  // Učitaj defaultnu tarifu iz šifarnika cjenovnika (usluge mjerenja plivačkih takmičenja)
+  const cjenovnikStavka: any = await query(
+    `SELECT cijena_default FROM cjenovnik_stavke WHERE (LOWER(naziv) LIKE '%pliva%' OR LOWER(naziv) LIKE '%mjer%') AND active = 1 ORDER BY stavka_id ASC LIMIT 1`,
+  ).catch(() => []);
+  const defaultDnevnaTarifa = Number(cjenovnikStavka?.[0]?.cijena_default) || 500;
 
   return (
     <div className="container">
@@ -100,7 +106,12 @@ export default async function SwimMeetsPage() {
         </div>
 
         <div className="bodyWrap">
-          <MeetsClient initialProjects={projects ?? []} klijenti={klijenti ?? []} locale={locale} />
+          <MeetsClient
+            initialProjects={projects ?? []}
+            klijenti={klijenti ?? []}
+            defaultDnevnaTarifa={defaultDnevnaTarifa}
+            locale={locale}
+          />
         </div>
       </div>
     </div>

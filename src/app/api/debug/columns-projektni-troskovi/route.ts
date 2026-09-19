@@ -40,10 +40,25 @@ export async function GET() {
       connectTimeout: 8000,
     });
 
-    const [rows] = await conn.query("SHOW COLUMNS FROM projektni_troskovi");
+    const [tables]: any = await conn.query("SHOW TABLES LIKE '%talent%'");
+    const [pocetna]: any = await conn.query("SELECT * FROM talent_pocetno_stanje LIMIT 10").catch(() => []);
+    const [pocetnaSum]: any = await conn.query("SELECT SUM(iznos_duga) AS total_dug FROM talent_pocetno_stanje WHERE COALESCE(otpisano,0) = 0").catch(() => []);
+    const [troskoviTalenti]: any = await conn.query("SELECT COUNT(*) AS cnt, SUM(iznos_km) AS total FROM projektni_troskovi WHERE entity_type = 'talent' OR talent_id IS NOT NULL").catch(() => []);
+    const [dugovanjaTalenti]: any = await conn.query("SELECT COUNT(*) AS cnt, SUM(iznos_km) AS total FROM projekt_dugovanja WHERE talent_id IS NOT NULL").catch(() => []);
+    const [stgTalenti]: any = await conn.query("SELECT COUNT(*) AS cnt, SUM(COALESCE(iznos_km, iznos, 0)) AS total FROM stg_troskovi_talenti_old").catch(() => []);
+    const [talenti]: any = await conn.query("SELECT COUNT(*) AS cnt FROM talenti").catch(() => []);
     await conn.end();
 
-    return NextResponse.json({ ok: true, rows });
+    return NextResponse.json({
+      ok: true,
+      tables,
+      pocetnaSum,
+      pocetnaSample: pocetna,
+      troskoviTalenti,
+      dugovanjaTalenti,
+      stgTalenti,
+      talenti,
+    });
   } catch (e: any) {
     return NextResponse.json(
       {
