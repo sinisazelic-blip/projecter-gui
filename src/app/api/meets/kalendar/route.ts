@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getSessionFromRequest, isOwnerLike } from "@/lib/projects/deal-edit-guard";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
+    const session = getSessionFromRequest(req);
+    if (!session || !isOwnerLike(session)) {
+      return NextResponse.json({ ok: false, error: "Pristup zabranjen." }, { status: 403 });
+    }
+
     const url = new URL(req.url);
     const year = Number(url.searchParams.get("godina")) || new Date().getFullYear();
 
@@ -41,6 +47,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = getSessionFromRequest(req);
+    if (!session || !isOwnerLike(session)) {
+      return NextResponse.json({ ok: false, error: "Pristup zabranjen." }, { status: 403 });
+    }
+
     const body = await req.json();
     const {
       godina = new Date().getFullYear(),
@@ -222,6 +233,11 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
+    const session = getSessionFromRequest(req);
+    if (!session || !isOwnerLike(session)) {
+      return NextResponse.json({ ok: false, error: "Pristup zabranjen." }, { status: 403 });
+    }
+
     const body = await req.json();
     const { kalendar_id, kreiraj_deal, ...updates } = body;
     const id = Number(kalendar_id);
@@ -365,6 +381,11 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    const session = getSessionFromRequest(req);
+    if (!session || !isOwnerLike(session)) {
+      return NextResponse.json({ ok: false, error: "Pristup zabranjen." }, { status: 403 });
+    }
+
     const url = new URL(req.url);
     const id = Number(url.searchParams.get("id"));
     if (!id) return NextResponse.json({ ok: false, error: "Nedostaje id" }, { status: 400 });

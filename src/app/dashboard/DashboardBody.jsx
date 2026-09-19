@@ -147,6 +147,7 @@ import { getStoredWorkspace } from "@/components/WorkspaceSwitcher";
 export default function DashboardBody({ instance = "STUDIO" }) {
   const { t } = useTranslation();
   const { user, canSee, loading } = useAuthUser();
+  const isOwner = user?.user_id === 0 || user?.username === "Owner" || Number(user?.nivo ?? 0) >= 10;
   const [open, setOpen] = useState(INITIAL_OPEN);
   const [workspaceMode, setWorkspaceMode] = useState("STUDIO");
 
@@ -444,20 +445,24 @@ export default function DashboardBody({ instance = "STUDIO" }) {
               </Link>
             </FluxaFeature>
           </PermissionGate>
-          <Link
-            href="/studio/talenti/honorari"
-            className="deskMainBtn deskMainBtn--compact deskMainBtn--compact-violet"
-            title="Honorari saradnika — Isplata i evidencija spikera i muzičara"
-          >
-            <span style={{ fontSize: 32 }}>🎙️</span>
-          </Link>
-          <Link
-            href="/projects/meets"
-            className="deskMainBtn deskMainBtn--compact deskMainBtn--compact-cyan"
-            title="Plivačka takmičenja — Kalendar PSBiH, logistika i mjerenje vremena"
-          >
-            <span style={{ fontSize: 32 }}>🏊</span>
-          </Link>
+          {isOwner && (
+            <>
+              <Link
+                href="/studio/talenti/honorari"
+                className="deskMainBtn deskMainBtn--compact deskMainBtn--compact-violet"
+                title="Honorari saradnika — Isplata i evidencija spikera i muzičara"
+              >
+                <span style={{ fontSize: 32 }}>🎙️</span>
+              </Link>
+              <Link
+                href="/projects/meets"
+                className="deskMainBtn deskMainBtn--compact deskMainBtn--compact-cyan"
+                title="Plivačka takmičenja — Kalendar PSBiH, logistika i mjerenje vremena"
+              >
+                <span style={{ fontSize: 32 }}>🏊</span>
+              </Link>
+            </>
+          )}
         </div>
       </div>
 

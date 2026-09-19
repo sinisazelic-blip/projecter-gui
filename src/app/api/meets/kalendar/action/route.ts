@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getSessionFromRequest, isOwnerLike } from "@/lib/projects/deal-edit-guard";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = getSessionFromRequest(req);
+    if (!session || !isOwnerLike(session)) {
+      return NextResponse.json({ ok: false, error: "Pristup zabranjen." }, { status: 403 });
+    }
+
     const body = await req.json();
     const { action, kalendar_id, iznos, datum, napomena } = body;
     const id = Number(kalendar_id);
@@ -36,11 +42,10 @@ export async function POST(req: NextRequest) {
         const projRes: any = await query(
           `
           INSERT INTO projekti
-          (radni_naziv, naziv_za_fakturu, narucilac_id, status_id, budzet_km, datum_pocetka, datum_zavrsetka, napomena)
-          VALUES (?, ?, ?, 8, ?, ?, ?, ?)
+          (radni_naziv, narucilac_id, status_id, budzet_planirani, rok_glavni, event_kraj, napomena)
+          VALUES (?, ?, 8, ?, ?, ?, ?)
           `,
           [
-            meet.naziv_takmicenja,
             meet.naziv_takmicenja,
             meet.klub_savez_id,
             fakturniIznos,
@@ -81,7 +86,7 @@ export async function POST(req: NextRequest) {
         }
       } else {
         // Ako već postoji projekat, osiguraj da mu je status 8 (Zatvoren / Spreman za fakturisanje)
-        await query("UPDATE projekti SET status_id = 8, budzet_km = ? WHERE projekat_id = ?", [fakturniIznos, projekatId]);
+        await query("UPDATE projekti SET status_id = 8, budzet_planirani = ? WHERE projekat_id = ?", [fakturniIznos, projekatId]);
       }
 
       // Ažuriraj kalendar

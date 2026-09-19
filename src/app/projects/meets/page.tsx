@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
 import { query } from "@/lib/db";
+import { COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
+import { isOwnerLike } from "@/lib/projects/deal-edit-guard";
 import FluxaLogo from "@/components/FluxaLogo";
 import MeetsClient from "./MeetsClient";
 
@@ -10,6 +13,12 @@ export const dynamic = "force-dynamic";
 
 export default async function SwimMeetsPage() {
   const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get(COOKIE_NAME)?.value;
+  const session = sessionCookie ? verifySessionToken(sessionCookie) : null;
+  if (!session || !isOwnerLike(session)) {
+    redirect("/dashboard");
+  }
+
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) ?? "sr";
   const t = getT(locale);
 

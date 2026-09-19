@@ -40,6 +40,7 @@ const ROUTE_TO_MODULE: RouteModuleMap[] = [
   { path: "/dashboard", module: "Dashboard", inPage: "" },
   { path: "/inicijacije", module: "Deals", inPage: "-" },
   { path: "/studio/strategic-core", module: "Strategic Core", inPage: "" },
+  { path: "/projects/meets", module: "Owner", inPage: "" },
   { path: "/projects", module: "PP", inPage: "-" },
   { path: "/projects/", module: "Projekat", inPage: "-" },
   { path: "/fakture/za-fakturisanje", module: "Fakture", inPage: "" },
@@ -75,6 +76,7 @@ const ROUTE_TO_MODULE: RouteModuleMap[] = [
   { path: "/finance", module: "Finansije - Potraživanja", inPage: "" },
   { path: "/cash", module: "Blagajna", inPage: "" },
   { path: "/mobile", module: "Mobile dashboard", inPage: "-" },
+  { path: "/studio/talenti/honorari", module: "Owner", inPage: "" },
   { path: "/studio/klijenti", module: "Šifarnici - Klijenti", inPage: "" },
   { path: "/studio/talenti", module: "Šifarnici - Saradnici", inPage: "" },
   { path: "/studio/dobavljaci", module: "Šifarnici - Dobavljači", inPage: "" },
@@ -138,6 +140,8 @@ export function mayAccessPath(
   if (nivo >= OWNER_NIVO) return true;
 
   if (nivo === SARADNIK_NIVO) {
+    if (pathname === "/projects/meets" || pathname.startsWith("/projects/meets"))
+      return false;
     if (pathname === "/dashboard") return true;
     if (pathname === "/projects" || pathname.startsWith("/projects/"))
       return true;
@@ -146,6 +150,7 @@ export function mayAccessPath(
 
   const map = getModuleForPath(pathname);
   if (!map) return true;
+  if (map.module === "Owner") return false;
 
   if (aclMap && Object.keys(aclMap).length > 0) {
     const keys = new Set<string>();
