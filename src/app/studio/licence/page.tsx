@@ -9,10 +9,6 @@ import FluxaLogo from "@/components/FluxaLogo";
 export const dynamic = "force-dynamic";
 
 export default async function LicencePage() {
-  if (process.env.ENABLE_TENANT_ADMIN !== "true") {
-    notFound();
-  }
-
   const cookieStore = await cookies();
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) ?? "sr";
   const t = getT(locale);

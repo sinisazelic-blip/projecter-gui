@@ -142,13 +142,23 @@ const INITIAL_OPEN = {
   masterdata: false,
 };
 
+import { getStoredWorkspace } from "@/components/WorkspaceSwitcher";
+
 export default function DashboardBody({ instance = "STUDIO" }) {
   const { t } = useTranslation();
   const { user, canSee, loading } = useAuthUser();
   const [open, setOpen] = useState(INITIAL_OPEN);
+  const [workspaceMode, setWorkspaceMode] = useState("STUDIO");
 
   useEffect(() => {
     setOpen(getStoredOpen());
+    setWorkspaceMode(getStoredWorkspace());
+
+    const handleWsChange = () => {
+      setWorkspaceMode(getStoredWorkspace());
+    };
+    window.addEventListener("workspace-changed", handleWsChange);
+    return () => window.removeEventListener("workspace-changed", handleWsChange);
   }, []);
 
   const toggle = useCallback((id) => {
@@ -171,9 +181,10 @@ export default function DashboardBody({ instance = "STUDIO" }) {
       </div>
     );
   }
-  // Ako je korisnik prijavljen, uvijek prikaži dashboard; prava skrivaju pojedina dugmad (PermissionGate).
 
-  if (instance === "ENTER") {
+  const isEnterMode = instance === "ENTER" || workspaceMode === "ENTERSYS";
+
+  if (isEnterMode) {
     return (
       <>
         <div className="dashboardGroup deskGroup enterGroup enterGroup--saas">
@@ -433,6 +444,30 @@ export default function DashboardBody({ instance = "STUDIO" }) {
               </Link>
             </FluxaFeature>
           </PermissionGate>
+          <Link
+            href="/studio/talenti/honorari"
+            className="deskMainBtn deskMainBtn--blue"
+            style={{ borderColor: "rgba(56, 189, 248, 0.4)" }}
+            title="Praćenje i isplata honorara spikerima i saradnicima"
+          >
+            <span style={{ fontSize: 28 }}>🎙️</span>
+            <span>Honorari</span>
+            <span className="deskMainBtnSubtitle">
+              Spikeri & Saradnici
+            </span>
+          </Link>
+          <Link
+            href="/projects/meets"
+            className="deskMainBtn deskMainBtn--blue"
+            style={{ borderColor: "rgba(14, 165, 233, 0.4)" }}
+            title="Plivačka takmičenja, mjerenje vremena i rezultati"
+          >
+            <span style={{ fontSize: 28 }}>🏊</span>
+            <span>Takmičenja</span>
+            <span className="deskMainBtnSubtitle">
+              Plivački timing
+            </span>
+          </Link>
         </div>
       </div>
 

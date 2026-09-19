@@ -7,6 +7,8 @@ import { useAuthUser } from "@/components/AuthUserProvider";
 import { useState, useRef, useEffect } from "react";
 import { FLUXA_EDITIONS } from "@/lib/fluxa-edition";
 
+import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
+
 export default function DashboardTopActions({ instance = "STUDIO" }) {
   const { t } = useTranslation();
   const { edition, setEdition, isOwner, isFeatureVisible } = useFluxaEdition();
@@ -24,11 +26,8 @@ export default function DashboardTopActions({ instance = "STUDIO" }) {
   }, []);
 
   const { canSee, onboardingCompleted, completeOnboarding } = useAuthUser();
-  const tenantAdminEnabled = process.env.NEXT_PUBLIC_ENABLE_TENANT_ADMIN === "true";
-  const showLicenceLink =
-    instance !== "ENTER" && isFeatureVisible(3) && tenantAdminEnabled;
-  const showLicenceComingSoon =
-    instance !== "ENTER" && isFeatureVisible(3) && !tenantAdminEnabled;
+  const showLicenceLink = isOwner || isFeatureVisible(3);
+  const showLicenceComingSoon = false;
   const showVerzijaDropdown = isOwner;
   const enter = instance === "ENTER";
   const showMobile =
@@ -38,6 +37,7 @@ export default function DashboardTopActions({ instance = "STUDIO" }) {
 
   return (
     <div className="actions" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      <WorkspaceSwitcher />
       {!onboardingCompleted && (
         <button type="button" className="btn" onClick={completeOnboarding} style={{ fontSize: 13 }}>
           Skip tour
