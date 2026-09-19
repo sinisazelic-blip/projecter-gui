@@ -6,6 +6,8 @@ import { useTranslation } from "@/components/LocaleProvider";
 import FluxaLogo from "@/components/FluxaLogo";
 import { getCurrencyForLocale, getLocaleFromDocument } from "@/lib/i18n";
 import styles from "./CashClient.module.css";
+import OwnerPrivateFinance from "./OwnerPrivateFinance";
+import OwnerOperativniPlan from "./OwnerOperativniPlan";
 
 type CashDirection = "IN" | "OUT";
 
@@ -92,6 +94,7 @@ function fmtMoney(amount: number, currency: string) {
 
 export default function CashClient() {
   const { t, locale } = useTranslation();
+  const [activeHubTab, setActiveHubTab] = useState<"plan" | "privatno" | "blagajna">("plan");
   const [data, setData] = useState<CashResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -499,10 +502,77 @@ export default function CashClient() {
       </div>
 
       <div className="bodyWrap">
-      {err ? <div className={styles.error}>{err}</div> : null}
+        {/* GLAVNA NAVIGACIJA BLAGAJNA / OWNER TREZOR */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 20, borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 12, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={() => setActiveHubTab("plan")}
+            style={{
+              background: activeHubTab === "plan" ? "rgba(34, 197, 94, 0.25)" : "rgba(30, 41, 59, 0.5)",
+              color: activeHubTab === "plan" ? "#4ade80" : "#94a3b8",
+              border: activeHubTab === "plan" ? "1px solid #22c55e" : "1px solid rgba(255,255,255,0.1)",
+              padding: "10px 18px",
+              borderRadius: 8,
+              fontWeight: 800,
+              fontSize: 14,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span>📊</span> Operativni Plan & Hodogram
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveHubTab("privatno")}
+            style={{
+              background: activeHubTab === "privatno" ? "rgba(99, 102, 241, 0.25)" : "rgba(30, 41, 59, 0.5)",
+              color: activeHubTab === "privatno" ? "#818cf8" : "#94a3b8",
+              border: activeHubTab === "privatno" ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.1)",
+              padding: "10px 18px",
+              borderRadius: 8,
+              fontWeight: 800,
+              fontSize: 14,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span>🔒</span> Privatni Finansijski Registar (Pretplate & Krediti)
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveHubTab("blagajna")}
+            style={{
+              background: activeHubTab === "blagajna" ? "rgba(56, 189, 248, 0.25)" : "rgba(30, 41, 59, 0.5)",
+              color: activeHubTab === "blagajna" ? "#38bdf8" : "#94a3b8",
+              border: activeHubTab === "blagajna" ? "1px solid #38bdf8" : "1px solid rgba(255,255,255,0.1)",
+              padding: "10px 18px",
+              borderRadius: 8,
+              fontWeight: 800,
+              fontSize: 14,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span>💵</span> Gotovinski Trezor / Isplate
+          </button>
+        </div>
 
-      <div className={styles.grid}>
-        <div className={styles.card}>
+        {activeHubTab === "plan" && <OwnerOperativniPlan />}
+
+        {activeHubTab === "privatno" && <OwnerPrivateFinance />}
+
+        {activeHubTab === "blagajna" && (
+          <>
+            {err ? <div className={styles.error}>{err}</div> : null}
+
+            <div className={styles.grid}>
+              <div className={styles.card}>
           <div className={styles.label}>{t("cash.balanceDraft")}</div>
           <div className={styles.big}>
             {data ? fmtMoney(data.balance ?? 0, localeCurrency) : "—"}
@@ -983,7 +1053,9 @@ export default function CashClient() {
           )}
         </div>
       </div>
-      </div>
-    </div>
-  );
+    </>
+  )}
+</div>
+</div>
+);
 }

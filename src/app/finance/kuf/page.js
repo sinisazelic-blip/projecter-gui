@@ -5,6 +5,7 @@ import { getValidLocale } from "@/lib/i18n";
 import { formatAmount } from "@/lib/format";
 import { query } from "@/lib/db";
 import KufImportForm from "./KufImportForm";
+import KufStatusToggle from "./KufStatusToggle";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
 import FluxaLogo from "@/components/FluxaLogo";
 
@@ -282,6 +283,7 @@ export default async function KufPage({ searchParams }) {
                     <th style={{ minWidth: 220 }}>{t("kuf.tableColOpis")}</th>
                     <th style={{ minWidth: 130 }}>{t("kuf.tableColRasknj")}</th>
                     <th style={{ minWidth: 120 }}>{t("kuf.tableColVeza")}</th>
+                    <th style={{ width: 130 }}>Status Plaćanja</th>
                     <th style={{ width: 90 }}>{t("kuf.tableColAkcije")}</th>
                   </tr>
                 </thead>
@@ -330,6 +332,13 @@ export default async function KufPage({ searchParams }) {
                             ) : (
                               "—"
                             )}
+                          </td>
+                          <td>
+                            <KufStatusToggle
+                              kufId={r.kuf_id}
+                              initialStatus={r.status}
+                              datumDospijeca={r.datum_dospijeca}
+                            />
                           </td>
                           <td>
                             <a

@@ -428,3 +428,21 @@ export async function PUT(req) {
     );
   }
 }
+
+export async function PATCH(req) {
+  try {
+    const body = await req.json();
+    const { kuf_id, status } = body;
+    const kufIdNum = Number(kuf_id);
+
+    if (!kufIdNum || !status) {
+      return NextResponse.json({ ok: false, error: "kuf_id i status su obavezni" }, { status: 400 });
+    }
+
+    await query(`UPDATE kuf_ulazne_fakture SET status = ? WHERE kuf_id = ?`, [status, kufIdNum]);
+    return NextResponse.json({ ok: true, kuf_id: kufIdNum, status });
+  } catch (e) {
+    return NextResponse.json({ ok: false, error: e?.message || String(e) }, { status: 500 });
+  }
+}
+

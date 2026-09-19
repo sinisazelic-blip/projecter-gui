@@ -5,6 +5,7 @@ import { getValidLocale } from "@/lib/i18n";
 import { formatAmount } from "@/lib/format";
 import { query } from "@/lib/db";
 import KreditForm from "./KreditForm";
+import KreditRataAction from "./KreditRataAction";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
 import FluxaLogo from "@/components/FluxaLogo";
 
@@ -317,9 +318,17 @@ export default async function KreditiPage({ searchParams }) {
                                 {fmtMjesecGodina(r.datum_posljednja_rata)}
                               </td>
                               <td>
-                                <Link className="btn" href={`/finance/krediti?edit_id=${r.kredit_id}`}>
-                                  {t("krediti.editButton")}
-                                </Link>
+                                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                  <KreditRataAction
+                                    kreditId={r.kredit_id}
+                                    uplacenoRata={r.uplaceno_rata}
+                                    brojRata={r.broj_rata}
+                                    iznosRate={r.iznos_rate}
+                                  />
+                                  <Link className="btn" href={`/finance/krediti?edit_id=${r.kredit_id}`}>
+                                    {t("krediti.editButton")}
+                                  </Link>
+                                </div>
                               </td>
                             </tr>
                           ))

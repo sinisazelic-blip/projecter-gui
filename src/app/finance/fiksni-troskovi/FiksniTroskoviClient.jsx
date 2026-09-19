@@ -10,6 +10,7 @@ import {
   setFiksniTrosakActive,
   deleteFiksniTrosak,
 } from "./actions";
+import RacunovodstvoTrackerCard from "./RacunovodstvoTrackerCard";
 
 const FREQUENCIES = [
   { value: "MJESECNO", key: "freqMonthly" },
@@ -208,6 +209,7 @@ export default function FiksniTroskoviClient({ initialRows = [] }) {
 
   return (
     <>
+      <RacunovodstvoTrackerCard />
       <div className="card tableCard">
         <div
           style={{

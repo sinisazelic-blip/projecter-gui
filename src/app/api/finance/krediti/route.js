@@ -265,3 +265,48 @@ export async function PUT(req) {
     );
   }
 }
+
+export async function PATCH(req) {
+  try {
+    const body = await req.json();
+    const { kredit_id, action = "advance_payment", count, date } = body;
+    const kreditIdNum = Number(kredit_id);
+
+    if (!kreditIdNum) {
+      return NextResponse.json({ ok: false, error: "kredit_id je obavezan" }, { status: 400 });
+    }
+
+    const [kredit] = await query(`SELECT * FROM krediti WHERE kredit_id = ?`, [kreditIdNum]);
+    if (!kredit) {
+      return NextResponse.json({ ok: false, error: "Kredit nije pronađen" }, { status: 404 });
+    }
+
+    let newUplaceno = kredit.uplaceno_rata || 0;
+    const newDatum = date ? String(date).slice(0, 10) : new Date().toISOString().slice(0, 10);
+
+    if (action === "advance_payment") {
+      newUplaceno = Math.min(kredit.broj_rata, newUplaceno + 1);
+    } else if (action === "decrement_payment") {
+      newUplaceno = Math.max(0, newUplaceno - 1);
+    } else if (action === "set_paid_count" && count !== undefined) {
+      newUplaceno = Math.max(0, Math.min(kredit.broj_rata, Number(count)));
+    }
+
+    await query(
+      `UPDATE krediti SET uplaceno_rata = ?, datum_posljednja_rata = ? WHERE kredit_id = ?`,
+      [newUplaceno, newDatum, kreditIdNum]
+    );
+
+    return NextResponse.json({
+      ok: true,
+      kredit_id: kreditIdNum,
+      uplaceno_rata: newUplaceno,
+      broj_rata: kredit.broj_rata,
+      preostalo_rata: kredit.broj_rata - newUplaceno,
+      datum_posljednja_rata: newDatum,
+    });
+  } catch (e) {
+    return NextResponse.json({ ok: false, error: e?.message || String(e) }, { status: 500 });
+  }
+}
+
