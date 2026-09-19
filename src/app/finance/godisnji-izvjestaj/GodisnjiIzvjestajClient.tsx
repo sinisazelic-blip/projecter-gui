@@ -102,7 +102,7 @@ export default function GodisnjiIzvjestajClient() {
         <div className="card" style={{ padding: 16, borderLeft: "4px solid #3b82f6" }}>
           <div className="subtle" style={{ fontSize: 12, marginBottom: 2 }}>Ukupni Prihodi (KIF)</div>
           <div style={{ fontSize: 20, fontWeight: 800, color: "#93c5fd" }}>
-            {formatAmount(kalk?.prihodi_ukupno_km || 0, "sr")} KM
+            {formatAmount(kalk?.prihodi_ukupno_km || 0, "sr")}
           </div>
           <div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>
             {kalk?.fakture_broj || 0} izdatih faktura
@@ -112,7 +112,7 @@ export default function GodisnjiIzvjestajClient() {
         <div className="card" style={{ padding: 16, borderLeft: "4px solid #ef4444" }}>
           <div className="subtle" style={{ fontSize: 12, marginBottom: 2 }}>Priznati Rashodi (KUF + OS)</div>
           <div style={{ fontSize: 20, fontWeight: 800, color: "#fca5a5" }}>
-            {formatAmount(kalk?.rashodi_ukupno_km || 0, "sr")} KM
+            {formatAmount(kalk?.rashodi_ukupno_km || 0, "sr")}
           </div>
           <div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>
             KUF troškovi + Amortizacija
@@ -122,7 +122,7 @@ export default function GodisnjiIzvjestajClient() {
         <div className="card" style={{ padding: 16, borderLeft: "4px solid #8b5cf6" }}>
           <div className="subtle" style={{ fontSize: 12, marginBottom: 2 }}>Dohodak (Prihodi − Rashodi)</div>
           <div style={{ fontSize: 20, fontWeight: 800, color: "#c4b5fd" }}>
-            {formatAmount(kalk?.dohodak_km || 0, "sr")} KM
+            {formatAmount(kalk?.dohodak_km || 0, "sr")}
           </div>
           <div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>
             Neto poslovni dobitak
@@ -132,7 +132,7 @@ export default function GodisnjiIzvjestajClient() {
         <div className="card" style={{ padding: 16, borderLeft: "4px solid #f59e0b" }}>
           <div className="subtle" style={{ fontSize: 12, marginBottom: 2 }}>Poreska Osnovica</div>
           <div style={{ fontSize: 20, fontWeight: 800, color: "#fcd34d" }}>
-            {formatAmount(kalk?.poreska_osnovica_km || 0, "sr")} KM
+            {formatAmount(kalk?.poreska_osnovica_km || 0, "sr")}
           </div>
           <div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>
             Dohodak − Lični odbitak ({formatAmount(licniOdbitak, "sr")})
@@ -142,7 +142,7 @@ export default function GodisnjiIzvjestajClient() {
         <div className="card" style={{ padding: 16, borderLeft: "4px solid #10b981", background: "rgba(16,185,129,0.06)" }}>
           <div className="subtle" style={{ fontSize: 12, marginBottom: 2 }}>Porez na dohodak (10%)</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#34d399" }}>
-            {formatAmount(kalk?.porez_na_dohodak_km || 0, "sr")} KM
+            {formatAmount(kalk?.porez_na_dohodak_km || 0, "sr")}
           </div>
           <div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>
             Konačna poreska obaveza
@@ -188,7 +188,7 @@ export default function GodisnjiIzvjestajClient() {
                 <tr>
                   <td>Ukupan promet faktura bez PDV-a</td>
                   <td style={{ textAlign: "right", fontWeight: 700 }}>
-                    {formatAmount(kalk?.prihodi_ukupno_km || 0, "sr")} KM
+                    {formatAmount(kalk?.prihodi_ukupno_km || 0, "sr")}
                   </td>
                 </tr>
                 <tr>
@@ -198,7 +198,7 @@ export default function GodisnjiIzvjestajClient() {
                 <tr style={{ background: "rgba(255,255,255,0.03)", fontWeight: 800 }}>
                   <td>UKUPAN PRIHOD ZA PORESKU OSNOVICU:</td>
                   <td style={{ textAlign: "right", color: "#93c5fd" }}>
-                    {formatAmount(kalk?.prihodi_ukupno_km || 0, "sr")} KM
+                    {formatAmount(kalk?.prihodi_ukupno_km || 0, "sr")}
                   </td>
                 </tr>
               </tbody>
@@ -215,31 +215,31 @@ export default function GodisnjiIzvjestajClient() {
                 <tr>
                   <td>Red 2: Proizvodne usluge & PTT (slanje u inostranstvo)</td>
                   <td style={{ textAlign: "right", fontWeight: 600 }}>
-                    {formatAmount(tab8?.red_2_proizvodne_usluge_ptt || 0, "sr")} KM
+                    {formatAmount(tab8?.red_2_proizvodne_usluge_ptt || 0, "sr")}
                   </td>
                 </tr>
                 <tr>
                   <td>Red 3: Gorivo i energija (prevoz na takmičenja / teren)</td>
                   <td style={{ textAlign: "right", fontWeight: 600 }}>
-                    {formatAmount(tab8?.red_3_gorivo_energija || 0, "sr")} KM
+                    {formatAmount(tab8?.red_3_gorivo_energija || 0, "sr")}
                   </td>
                 </tr>
                 <tr>
                   <td>Red 4: Nematerijalni troškovi (knjigovodstvo, licence, IT)</td>
                   <td style={{ textAlign: "right", fontWeight: 600 }}>
-                    {formatAmount(tab8?.red_4_nematerijalni_troskovi || 0, "sr")} KM
+                    {formatAmount(tab8?.red_4_nematerijalni_troskovi || 0, "sr")}
                   </td>
                 </tr>
                 <tr>
                   <td>Red 5: Finansijski rashodi (bankarske provizije iz izvoda)</td>
                   <td style={{ textAlign: "right", fontWeight: 600 }}>
-                    {formatAmount(tab8?.red_5_finansijski_rashodi || 0, "sr")} KM
+                    {formatAmount(tab8?.red_5_finansijski_rashodi || 0, "sr")}
                   </td>
                 </tr>
                 <tr>
                   <td>Red 6: Ostali rashodi & tekuće održavanje</td>
                   <td style={{ textAlign: "right", fontWeight: 600 }}>
-                    {formatAmount(tab8?.red_6_ostali_rashodi || 0, "sr")} KM
+                    {formatAmount(tab8?.red_6_ostali_rashodi || 0, "sr")}
                   </td>
                 </tr>
                 <tr style={{ background: "rgba(16,185,129,0.08)" }}>
@@ -247,13 +247,13 @@ export default function GodisnjiIzvjestajClient() {
                     Red 8: Troškovi amortizacije osnovnih sredstava (20%)
                   </td>
                   <td style={{ textAlign: "right", fontWeight: 800, color: "#6ee7b7" }}>
-                    {formatAmount(tab8?.red_8_amortizacija || 0, "sr")} KM
+                    {formatAmount(tab8?.red_8_amortizacija || 0, "sr")}
                   </td>
                 </tr>
                 <tr style={{ background: "rgba(255,255,255,0.04)", fontWeight: 800 }}>
                   <td>RED 17: UKUPNI PRIZNATI RASHODI:</td>
                   <td style={{ textAlign: "right", color: "#fca5a5" }}>
-                    {formatAmount(tab8?.red_17_ukupan_iznos || 0, "sr")} KM
+                    {formatAmount(tab8?.red_17_ukupan_iznos || 0, "sr")}
                   </td>
                 </tr>
               </tbody>
@@ -286,10 +286,10 @@ export default function GodisnjiIzvjestajClient() {
                     <tr key={i}>
                       <td style={{ fontWeight: 600 }}>{os.naziv}</td>
                       <td><span className="badge" style={{ fontSize: 11 }}>{os.kategorija}</span></td>
-                      <td style={{ textAlign: "right" }}>{formatAmount(os.nabavna_vrijednost_km, "sr")} KM</td>
+                      <td style={{ textAlign: "right" }}>{formatAmount(os.nabavna_vrijednost_km, "sr")}</td>
                       <td style={{ textAlign: "center" }}>{os.stopa}%</td>
                       <td style={{ textAlign: "right", fontWeight: 700, color: "#6ee7b7" }}>
-                        {formatAmount(os.amortizacija_km, "sr")} KM
+                        {formatAmount(os.amortizacija_km, "sr")}
                       </td>
                     </tr>
                   ))
@@ -303,7 +303,7 @@ export default function GodisnjiIzvjestajClient() {
                 <tr style={{ background: "rgba(255,255,255,0.04)", fontWeight: 800 }}>
                   <td colSpan={4} style={{ textAlign: "right" }}>UKUPNA AMORTIZACIJA:</td>
                   <td style={{ textAlign: "right", color: "#6ee7b7" }}>
-                    {formatAmount(tab8?.red_8_amortizacija || 0, "sr")} KM
+                    {formatAmount(tab8?.red_8_amortizacija || 0, "sr")}
                   </td>
                 </tr>
               </tbody>
@@ -473,7 +473,7 @@ export default function GodisnjiIzvjestajClient() {
                   УКУПАН ИЗНОС ПРИЗНАТИХ РАСХОДА (Сабрати тачке од 1 до 16):
                 </td>
                 <td style={{ border: "1px solid #9ca3af", padding: "8px", textAlign: "right" }}>
-                  {formatAmount(tab8?.red_17_ukupan_iznos || 0, "sr")} KM
+                  {formatAmount(tab8?.red_17_ukupan_iznos || 0, "sr")}
                 </td>
               </tr>
             </tbody>

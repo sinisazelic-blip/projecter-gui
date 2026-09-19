@@ -15,7 +15,8 @@ import {
   CheckCircle, 
   AlertCircle,
   TrendingDown,
-  ShieldCheck
+  ShieldCheck,
+  X
 } from "lucide-react";
 
 interface OsnovnoSredstvo {
@@ -238,7 +239,7 @@ export default function OsnovnaSredstvaClient() {
         <div className="card" style={{ padding: 18, borderLeft: "4px solid #3b82f6" }}>
           <div className="subtle" style={{ fontSize: 13, marginBottom: 4 }}>Ukupna Nabavna Vrijednost</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#93c5fd" }}>
-            {formatAmount(summary?.ukupno_nabavna_km || 0, "sr")} KM
+            {formatAmount(summary?.ukupno_nabavna_km || 0, "sr")}
           </div>
           <div className="subtle" style={{ fontSize: 12, marginTop: 4 }}>
             {summary?.broj_sredstava || 0} popisanih stavki opreme
@@ -248,7 +249,7 @@ export default function OsnovnaSredstvaClient() {
         <div className="card" style={{ padding: 18, borderLeft: "4px solid #10b981" }}>
           <div className="subtle" style={{ fontSize: 13, marginBottom: 4 }}>Godišnja Amortizacija ({selectedYear})</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#6ee7b7" }}>
-            {formatAmount(summary?.ukupno_godisnja_amortizacija_km || 0, "sr")} KM
+            {formatAmount(summary?.ukupno_godisnja_amortizacija_km || 0, "sr")}
           </div>
           <div className="subtle" style={{ fontSize: 12, marginTop: 4 }}>
             Priznati poreski rashod u Obrascu 1006 (Tab. 8)
@@ -258,7 +259,7 @@ export default function OsnovnaSredstvaClient() {
         <div className="card" style={{ padding: 18, borderLeft: "4px solid #8b5cf6" }}>
           <div className="subtle" style={{ fontSize: 13, marginBottom: 4 }}>Knjigovodstvena Vrijednost (Kraj {selectedYear})</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#c4b5fd" }}>
-            {formatAmount(summary?.ukupno_sadasnja_vrijednost_km || 0, "sr")} KM
+            {formatAmount(summary?.ukupno_sadasnja_vrijednost_km || 0, "sr")}
           </div>
           <div className="subtle" style={{ fontSize: 12, marginTop: 4 }}>
             Preostala neotpisana vrijednost
@@ -268,7 +269,7 @@ export default function OsnovnaSredstvaClient() {
         <div className="card" style={{ padding: 18, borderLeft: "4px solid #f59e0b" }}>
           <div className="subtle" style={{ fontSize: 13, marginBottom: 4 }}>Poreska Ušteda (10% na amortizaciju)</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#fcd34d" }}>
-            {formatAmount((summary?.ukupno_godisnja_amortizacija_km || 0) * 0.10, "sr")} KM
+            {formatAmount((summary?.ukupno_godisnja_amortizacija_km || 0) * 0.10, "sr")}
           </div>
           <div className="subtle" style={{ fontSize: 12, marginTop: 4 }}>
             Direktno manji porez na dohodak
@@ -359,16 +360,16 @@ export default function OsnovnaSredstvaClient() {
                       {String(item.datum_nabavke).slice(0, 10).split("-").reverse().join(".")}
                     </td>
                     <td style={{ textAlign: "right", fontWeight: 700 }}>
-                      {formatAmount(item.nabavna_vrijednost_km, "sr")} KM
+                      {formatAmount(item.nabavna_vrijednost_km, "sr")}
                     </td>
                     <td style={{ textAlign: "center", fontSize: 12 }}>
                       {item.stopa_amortizacije}%
                     </td>
                     <td style={{ textAlign: "right", fontWeight: 700, color: "#6ee7b7" }}>
-                      {formatAmount(item.amortizacija_za_godinu_km, "sr")} KM
+                      {formatAmount(item.amortizacija_za_godinu_km, "sr")}
                     </td>
                     <td style={{ textAlign: "right", fontWeight: 600 }}>
-                      {formatAmount(item.sadasnja_vrijednost_km, "sr")} KM
+                      {formatAmount(item.sadasnja_vrijednost_km, "sr")}
                     </td>
                     <td style={{ textAlign: "center" }}>
                       <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
@@ -398,29 +399,49 @@ export default function OsnovnaSredstvaClient() {
         </div>
       </div>
 
-      {/* Modal: Unos / Izmjena */}
+      {/* Modal: Unos / Izmjena (Potpuno neproziran, čist i čitljiv) */}
       {modalOpen && (
         <div style={{
           position: "fixed",
           inset: 0,
-          background: "rgba(0,0,0,0.75)",
+          background: "rgba(0, 0, 0, 0.85)",
+          backdropFilter: "blur(6px)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           zIndex: 9999,
           padding: 16
         }}>
-          <div className="card" style={{ maxWidth: 600, width: "100%", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>
-                {editingItem ? "Izmjena osnovnog sredstva" : "Unos novog osnovnog sredstva"}
+          <div style={{
+            maxWidth: 620,
+            width: "100%",
+            maxHeight: "90vh",
+            overflowY: "auto",
+            background: "#161b22",
+            border: "1px solid #30363d",
+            borderRadius: 12,
+            boxShadow: "0 20px 50px rgba(0,0,0,0.9)",
+            padding: 24,
+            color: "#e6edf3"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, borderBottom: "1px solid #30363d", paddingBottom: 12 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: "#58a6ff" }}>
+                {editingItem ? "✏️ Izmjena osnovnog sredstva" : "➕ Unos novog osnovnog sredstva"}
               </h2>
-              <button onClick={() => setModalOpen(false)} className="btn" style={{ padding: "4px 8px" }}>✕</button>
+              <button 
+                onClick={() => setModalOpen(false)} 
+                className="btn" 
+                style={{ padding: "4px 8px", background: "#21262d", border: "1px solid #30363d" }}
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
-                <label className="subtle" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>Naziv opreme / sredstva *</label>
+                <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6, color: "#c9d1d9" }}>
+                  Naziv opreme / sredstva *
+                </label>
                 <input
                   type="text"
                   required
@@ -428,18 +449,20 @@ export default function OsnovnaSredstvaClient() {
                   value={form.naziv}
                   onChange={(e) => setForm({ ...form, naziv: e.target.value })}
                   placeholder="npr. Laptop HP Omen 16, DAW Radna Stanica..."
-                  style={{ width: "100%" }}
+                  style={{ width: "100%", background: "#0d1117", border: "1px solid #30363d", color: "#fff", padding: "10px 12px" }}
                 />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <div>
-                  <label className="subtle" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>Kategorija</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6, color: "#c9d1d9" }}>
+                    Kategorija
+                  </label>
                   <select
                     className="input"
                     value={form.kategorija}
                     onChange={(e) => setForm({ ...form, kategorija: e.target.value as any })}
-                    style={{ width: "100%" }}
+                    style={{ width: "100%", background: "#0d1117", border: "1px solid #30363d", color: "#fff", padding: "10px 12px" }}
                   >
                     <option value="IT_RACUNARI">IT & Računari</option>
                     <option value="TERENSKA_MJERENJE">Terenska & Mjerenje</option>
@@ -450,38 +473,44 @@ export default function OsnovnaSredstvaClient() {
                 </div>
 
                 <div>
-                  <label className="subtle" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>Serijski broj (S/N)</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6, color: "#c9d1d9" }}>
+                    Serijski broj (S/N)
+                  </label>
                   <input
                     type="text"
                     className="input"
                     value={form.serijski_broj}
                     onChange={(e) => setForm({ ...form, serijski_broj: e.target.value })}
                     placeholder="npr. 5CD2341XYZ"
-                    style={{ width: "100%" }}
+                    style={{ width: "100%", background: "#0d1117", border: "1px solid #30363d", color: "#fff", padding: "10px 12px" }}
                   />
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <div>
-                  <label className="subtle" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>Datum nabavke *</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6, color: "#c9d1d9" }}>
+                    Datum nabavke *
+                  </label>
                   <input
                     type="date"
                     required
                     className="input"
                     value={form.datum_nabavke}
                     onChange={(e) => setForm({ ...form, datum_nabavke: e.target.value })}
-                    style={{ width: "100%" }}
+                    style={{ width: "100%", background: "#0d1117", border: "1px solid #30363d", color: "#fff", padding: "10px 12px" }}
                   />
                 </div>
 
                 <div>
-                  <label className="subtle" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>Porijeklo / Pravni osnov</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6, color: "#c9d1d9" }}>
+                    Porijeklo / Pravni osnov
+                  </label>
                   <select
                     className="input"
                     value={form.porijeklo}
                     onChange={(e) => setForm({ ...form, porijeklo: e.target.value as any })}
-                    style={{ width: "100%" }}
+                    style={{ width: "100%", background: "#0d1117", border: "1px solid #30363d", color: "#fff", padding: "10px 12px" }}
                   >
                     <option value="LICNA_IMOVINA_UNOS">Unos lične imovine vlasnika u s.p.</option>
                     <option value="FAKTURA_DOBAVLJAC">Faktura dobavljača na firmu</option>
@@ -490,9 +519,11 @@ export default function OsnovnaSredstvaClient() {
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <div>
-                  <label className="subtle" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>Nabavna vrijednost (KM) *</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6, color: "#c9d1d9" }}>
+                    Nabavna vrijednost (KM) *
+                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -501,40 +532,54 @@ export default function OsnovnaSredstvaClient() {
                     value={form.nabavna_vrijednost_km}
                     onChange={(e) => setForm({ ...form, nabavna_vrijednost_km: e.target.value })}
                     placeholder="0.00"
-                    style={{ width: "100%" }}
+                    style={{ width: "100%", background: "#0d1117", border: "1px solid #30363d", color: "#fff", padding: "10px 12px", fontWeight: 700 }}
                   />
                 </div>
 
                 <div>
-                  <label className="subtle" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>Stopa amortizacije (%)</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6, color: "#c9d1d9" }}>
+                    Stopa amortizacije (%)
+                  </label>
                   <input
                     type="number"
                     step="0.1"
                     className="input"
                     value={form.stopa_amortizacije}
                     onChange={(e) => setForm({ ...form, stopa_amortizacije: e.target.value })}
-                    style={{ width: "100%" }}
+                    style={{ width: "100%", background: "#0d1117", border: "1px solid #30363d", color: "#fff", padding: "10px 12px" }}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="subtle" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>Opis namjene u poslovanju</label>
+                <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6, color: "#c9d1d9" }}>
+                  Opis namjene u poslovanju
+                </label>
                 <textarea
                   className="input"
                   rows={2}
                   value={form.opis_namjene}
                   onChange={(e) => setForm({ ...form, opis_namjene: e.target.value })}
                   placeholder="npr. Glavni računar za višekanalno zvučno snimanje i terensko mjerenje..."
-                  style={{ width: "100%" }}
+                  style={{ width: "100%", background: "#0d1117", border: "1px solid #30363d", color: "#fff", padding: "10px 12px" }}
                 />
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
-                <button type="button" onClick={() => setModalOpen(false)} className="btn">
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 16, borderTop: "1px solid #30363d", paddingTop: 16 }}>
+                <button 
+                  type="button" 
+                  onClick={() => setModalOpen(false)} 
+                  className="btn"
+                  style={{ background: "#21262d", border: "1px solid #30363d", color: "#c9d1d9" }}
+                >
                   Odustani
                 </button>
-                <button type="submit" disabled={saving} className="btn btn--active">
+                <button 
+                  type="submit" 
+                  disabled={saving} 
+                  className="btn btn--active"
+                  style={{ padding: "10px 20px", fontWeight: 700 }}
+                >
                   {saving ? "Čuvanje..." : "Sačuvaj sredstvo"}
                 </button>
               </div>
@@ -548,14 +593,15 @@ export default function OsnovnaSredstvaClient() {
         <div style={{
           position: "fixed",
           inset: 0,
-          background: "rgba(0,0,0,0.8)",
+          background: "rgba(0, 0, 0, 0.85)",
+          backdropFilter: "blur(6px)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           zIndex: 9999,
           padding: 20
         }}>
-          <div className="card" style={{ maxWidth: 850, width: "100%", maxHeight: "95vh", overflowY: "auto", background: "#fff", color: "#111" }}>
+          <div style={{ maxWidth: 850, width: "100%", maxHeight: "95vh", overflowY: "auto", background: "#fff", color: "#111", borderRadius: 12, padding: 24, boxShadow: "0 25px 50px rgba(0,0,0,0.9)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e5e7eb", paddingBottom: 12, marginBottom: 16 }}>
               <div style={{ fontWeight: 800, fontSize: 16, color: "#1f2937" }}>
                 📄 Zvanični pravni dokument: Odluka o unošenju lične opreme u s.p.
@@ -634,7 +680,7 @@ export default function OsnovnaSredstvaClient() {
                       UKUPNA VRIJEDNOST UNESENE OPREME:
                     </td>
                     <td style={{ border: "1px solid #9ca3af", padding: "8px", textAlign: "right" }}>
-                      {formatAmount(summary?.ukupno_nabavna_km || 0, "sr")} KM
+                      {formatAmount(summary?.ukupno_nabavna_km || 0, "sr")}
                     </td>
                     <td style={{ border: "1px solid #9ca3af" }} />
                   </tr>
