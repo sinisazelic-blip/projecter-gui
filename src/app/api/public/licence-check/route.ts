@@ -3,6 +3,10 @@ import { query } from "@/lib/db";
 import { buildLicenceWarnings } from "@/lib/licence-alerts/thresholds";
 import { isLiveTenantStatus } from "@/lib/tenant-licence-status";
 import { defaultModulesForFluxaPosPackage, type FluxaPosBasePackageId } from "@/lib/fluxapos-activation";
+import {
+  defaultModulesForJavneNabavkePackage,
+  type JavneNabavkeBasePackageId,
+} from "@/lib/javnenabavke-activation";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +42,7 @@ function resolveNotAllowedReason(
 }
 
 /**
- * Javna provjera licence za klijentske instance Fluxe, EnterSYS i FluxaPOS (Bearer = `tenants.licence_token`).
+ * Javna provjera licence za klijentske instance Fluxe, EnterSYS, FluxaPOS i JavneNabavke (Bearer = `tenants.licence_token`).
  */
 export async function GET(req: Request) {
   const token = bearerToken(req);
@@ -133,6 +137,24 @@ export async function GET(req: Request) {
           enterTicketing: activeScopeModules.includes("enterTicketing"),
           shiftEmail: activeScopeModules.includes("shiftEmail"),
           rfidDeposit: activeScopeModules.includes("rfidDeposit"),
+        };
+      } else {
+        modules = defaultMod;
+      }
+    } else if (profile === "JAVNENABAVKE") {
+      const jnPkg =
+        (row.soccs_tier as JavneNabavkeBasePackageId) || "JN_START";
+      const defaultMod = defaultModulesForJavneNabavkePackage(jnPkg);
+      if (hasScopeFilter) {
+        modules = {
+          planNabavki: activeScopeModules.includes("planNabavki"),
+          rokovi: activeScopeModules.includes("rokovi"),
+          ugovori: activeScopeModules.includes("ugovori"),
+          partneri: activeScopeModules.includes("partneri"),
+          plafoni: activeScopeModules.includes("plafoni"),
+          izvjestaji: activeScopeModules.includes("izvjestaji"),
+          pantheonSync: activeScopeModules.includes("pantheonSync"),
+          multiUser: activeScopeModules.includes("multiUser"),
         };
       } else {
         modules = defaultMod;

@@ -6,6 +6,8 @@ export const STUDIO_LICENCE_PROFILES = [
   "SOCCS_SWIMVOICE",
   "FLUXA_AND_SOCCS",
   "DOCENTRE",
+  /** JavneNabavke — prikazuje se u tabu Dokumentar (token + licence-check kao FluxaPOS). */
+  "JAVNENABAVKE",
   "ENTERSYS",
   "FLUXAPOS",
   /** Legacy — više se ne nudi u UI; ostaje radi starih redova u bazi. */
@@ -36,6 +38,9 @@ export function profileToTabs(profile: StudioLicenceProfile): TenantProductTab[]
       return ["FLUXA", "SOCCS_SV"];
     case "DOCENTRE":
       return ["DOCENTRE"];
+    case "JAVNENABAVKE":
+      // Isti tenant sloj kao Dokumentar — nema posebnog taba.
+      return ["DOCENTRE"];
     case "ENTERSYS":
       return ["ENTERSYS"];
     case "FLUXAPOS":
@@ -50,7 +55,12 @@ export function profileToTabs(profile: StudioLicenceProfile): TenantProductTab[]
 export function profileUsesActivationCodes(
   profile: StudioLicenceProfile,
 ): boolean {
-  return profile !== "FLUXA_ONLY" && profile !== "ENTERSYS" && profile !== "FLUXAPOS";
+  return (
+    profile !== "FLUXA_ONLY" &&
+    profile !== "ENTERSYS" &&
+    profile !== "FLUXAPOS" &&
+    profile !== "JAVNENABAVKE"
+  );
 }
 
 /** App vrijednost za aktivacione kodove i verify (kolona soccs_activation_codes.app). */

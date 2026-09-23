@@ -4,6 +4,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
 import { query } from "@/lib/db";
 import { isEnterSysBasePackageId } from "@/lib/entersys-activation";
+import { isFluxaPosBasePackageId } from "@/lib/fluxapos-activation";
+import { isJavneNabavkeBasePackageId } from "@/lib/javnenabavke-activation";
 import { normalizeStudioLicenceProfile } from "@/lib/studio-licence-profile";
 
 export const dynamic = "force-dynamic";
@@ -171,7 +173,12 @@ export async function PATCH(
     ];
     if (!raw) {
       updates.push("soccs_tier = NULL");
-    } else if (soccsAllowed.includes(raw) || isEnterSysBasePackageId(raw)) {
+    } else if (
+      soccsAllowed.includes(raw) ||
+      isEnterSysBasePackageId(raw) ||
+      isFluxaPosBasePackageId(raw) ||
+      isJavneNabavkeBasePackageId(raw)
+    ) {
       updates.push("soccs_tier = ?");
       paramsList.push(raw);
     }

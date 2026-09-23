@@ -37,6 +37,14 @@ import {
   calculateFluxaPosPrice,
   type FluxaPosBasePackageId,
 } from "@/lib/fluxapos-activation";
+import {
+  JAVNENABAVKE_BASE_PACKAGES,
+  JAVNENABAVKE_MODULE_KEYS,
+  getJavneNabavkeBasePackage,
+  defaultModulesForJavneNabavkePackage,
+  calculateJavneNabavkePrice,
+  type JavneNabavkeBasePackageId,
+} from "@/lib/javnenabavke-activation";
 
 import { useAuthUser } from "@/components/AuthUserProvider";
 
@@ -197,6 +205,15 @@ export default function LicenceClient() {
   const [enterSysSaving, setEnterSysSaving] = useState(false);
   const [newTenantFluxaPosPackage, setNewTenantFluxaPosPackage] =
     useState<FluxaPosBasePackageId>("FLUXAPOS_START");
+  const [newTenantJnPackage, setNewTenantJnPackage] =
+    useState<JavneNabavkeBasePackageId>("JN_START");
+  const [jnModalRow, setJnModalRow] = useState<TenantRow | null>(null);
+  const [jnModulesDraft, setJnModulesDraft] = useState<Record<string, boolean>>(
+    {},
+  );
+  const [jnPackageDraft, setJnPackageDraft] =
+    useState<JavneNabavkeBasePackageId>("JN_START");
+  const [jnSaving, setJnSaving] = useState(false);
   const [fluxaPosModalRow, setFluxaPosModalRow] = useState<TenantRow | null>(null);
   const [fluxaPosModulesDraft, setFluxaPosModulesDraft] = useState<Record<string, boolean>>({});
   const [fluxaPosPackageDraft, setFluxaPosPackageDraft] =
@@ -274,6 +291,68 @@ export default function LicenceClient() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setFluxaPosSaving(false);
+    }
+  };
+
+  const openJnModulesModal = (row: TenantRow) => {
+    setJnModalRow(row);
+    const scopeStr = String(row.soccs_platform_scope ?? "").trim();
+    const active = scopeStr ? scopeStr.split(",").map((s) => s.trim()) : [];
+    const hasFilter = active.length > 0;
+    const pkgId =
+      (row.soccs_tier as JavneNabavkeBasePackageId) || "JN_START";
+    setJnPackageDraft(
+      getJavneNabavkeBasePackage(pkgId)?.id ?? "JN_START",
+    );
+
+    const draft: Record<string, boolean> = {};
+    const defaultMods = defaultModulesForJavneNabavkePackage(
+      getJavneNabavkeBasePackage(pkgId)?.id ?? "JN_START",
+    );
+    for (const item of JAVNENABAVKE_MODULE_KEYS) {
+      if (!hasFilter) {
+        draft[item.key] = defaultMods[item.key] ?? false;
+      } else {
+        draft[item.key] = active.includes(item.key);
+      }
+    }
+    setJnModulesDraft(draft);
+  };
+
+  const handleJnSave = async () => {
+    if (!jnModalRow) return;
+    setJnSaving(true);
+    try {
+      const selected = JAVNENABAVKE_MODULE_KEYS.filter(
+        (item) => jnModulesDraft[item.key],
+      ).map((item) => item.key);
+      const isPilot = String(jnModalRow.status).toUpperCase() === "PILOT";
+      const calc = calculateJavneNabavkePrice(jnPackageDraft, jnModulesDraft);
+
+      const res = await fetch(
+        `/api/tenant-admin/tenants/${jnModalRow.tenant_id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            soccs_tier: jnPackageDraft,
+            soccs_platform_scope: selected.join(","),
+            monthly_price: isPilot ? 0 : calc.totalMonthly,
+            currency: "KM",
+          }),
+        },
+      );
+      const data = await res.json();
+      if (data.ok) {
+        setJnModalRow(null);
+        await load();
+      } else {
+        setError(data.error ?? t("common.error"));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setJnSaving(false);
     }
   };
 
@@ -447,10 +526,17 @@ export default function LicenceClient() {
 
   const openNewTenantWizard = () => {
     resetTenantWizard();
-    // Dokumentar / EnterSYS tab: profil je jednoznačan, preskačemo izbor.
-    if (activeTab === "DOCENTRE") setWizardProfile("DOCENTRE");
+    // Dokumentar tab: Dokumentar ili JavneNabavke — korak 1 bira profil.
+    if (activeTab === "DOCENTRE") {
+      setWizardProfile(null);
+      setNewTenantCurrency("KM");
+    }
     if (activeTab === "ENTERSYS") {
       setWizardProfile("ENTERSYS");
+      setNewTenantCurrency("KM");
+    }
+    if (activeTab === "FLUXAPOS") {
+      setWizardProfile("FLUXAPOS");
       setNewTenantCurrency("KM");
     }
     setNewTenantOpen(true);
@@ -662,16 +748,24 @@ export default function LicenceClient() {
               : null,
           currency:
             wizardProfile === "ENTERSYS" ||
+            wizardProfile === "FLUXAPOS" ||
+            wizardProfile === "JAVNENABAVKE" ||
             newTenantPilot ||
             newTenantPrice.trim()
               ? newTenantCurrency
               : null,
           soccs_tier:
-            wizardProfile === "FLUXA_ONLY"
+            wizardProfile === "FLUXA_ONLY" || wizardProfile === "DOCENTRE"
               ? null
               : wizardProfile === "ENTERSYS"
                 ? newTenantEnterSysPackage
-                : newTenantSoccsTier.trim() || null,
+                : wizardProfile === "FLUXAPOS"
+                  ? newTenantFluxaPosPackage
+                  : wizardProfile === "JAVNENABAVKE"
+                    ? newTenantJnPackage
+                    : newTenantSoccsTier.trim() || null,
+          broj_blagajni:
+            wizardProfile === "FLUXAPOS" ? newTenantBrojBlagajni : 1,
           studio_licence_profile: wizardProfile,
         }),
       });
@@ -698,6 +792,9 @@ export default function LicenceClient() {
       .trim()
       .toUpperCase();
     if (!raw) return "—";
+    if (resolveDisplayStudioProfile(row) === "JAVNENABAVKE") {
+      return getJavneNabavkeBasePackage(raw)?.label ?? raw;
+    }
     return SOCCS_TIER_OPTIONS.includes(
       raw as (typeof SOCCS_TIER_OPTIONS)[number],
     )
@@ -898,6 +995,21 @@ export default function LicenceClient() {
     return `${catalogPrice} ${curr}`;
   };
 
+  const formatJnPrice = (row: TenantRow) => {
+    const isPilot = String(row.status).toUpperCase() === "PILOT";
+    const pkgId = (row.soccs_tier as JavneNabavkeBasePackageId) || "JN_START";
+    const pkg = getJavneNabavkeBasePackage(pkgId);
+    const catalogPrice = pkg?.priceKm ?? 80;
+    const curr = "KM";
+    if (isPilot) {
+      return `0 ${curr} (${t("studioLicence.enterSysPilotPriceHint") || "katalog"} ${catalogPrice} ${curr})`;
+    }
+    if (row.monthly_price != null && row.monthly_price !== "") {
+      return `${Number(row.monthly_price)} ${row.currency || curr}`;
+    }
+    return `${catalogPrice} ${curr}`;
+  };
+
   /** Tab u kojem se red prikazuje — svaki proizvod ima svoj sloj. */
   const rowVisibleInTab = (row: TenantRow, tab: TenantProductTab) =>
     profileToTabs(resolveDisplayStudioProfile(row)).includes(tab);
@@ -936,6 +1048,8 @@ export default function LicenceClient() {
       .toUpperCase();
     const needsSoccsNode =
       (profile !== "FLUXA_ONLY" &&
+        profile !== "JAVNENABAVKE" &&
+        profile !== "FLUXAPOS" &&
         soccs !== "" &&
         soccs !== "SWIMVOICE" &&
         SOCCS_TIER_OPTIONS.includes(
@@ -1167,6 +1281,22 @@ export default function LicenceClient() {
                 <th style={thFluxCont}>Licencni Token</th>
                 {!isKasicaRole && <th style={{ ...thTd, textAlign: "center" }}>Akcije</th>}
               </tr>
+            ) : activeTab === "DOCENTRE" ? (
+              <tr>
+                <th style={thTd}>Naziv Tenanta</th>
+                <th style={thTd}>Proizvod</th>
+                <th style={thTd}>Paket</th>
+                <th style={thTd}>Režim</th>
+                {!isKasicaRole && <th style={thTd}>Cijena / Način Naplate</th>}
+                <th style={thTd}>Ističe Datum</th>
+                <th style={thTd}>Dana do Isteka</th>
+                <th style={thTd}>Stanje</th>
+                <th style={thFlux}>Moduli / Aktivacija</th>
+                <th style={thFluxCont}>Licencni Token</th>
+                {!isKasicaRole && (
+                  <th style={{ ...thTd, textAlign: "center" }}>Akcije</th>
+                )}
+              </tr>
             ) : activeTab === "ENTERSYS" ? (
               <tr>
                 <th style={thTd}>Naziv Tenanta</th>
@@ -1219,9 +1349,7 @@ export default function LicenceClient() {
                       color: "rgba(248, 113, 113, 0.95)",
                     }}
                   >
-                    {activeTab === "DOCENTRE"
-                      ? t("studioLicence.groupActivation")
-                      : t("studioLicence.groupSoccsSv")}
+                    {t("studioLicence.groupSoccsSv")}
                   </th>
                   <th
                     rowSpan={2}
@@ -1400,6 +1528,301 @@ export default function LicenceClient() {
                           >
                             Moduli & Paket
                           </button>
+                        </td>
+                        <td style={tdFluxCont}>
+                          <code style={{ fontSize: 10, opacity: 0.85 }}>
+                            {row.licence_token
+                              ? `${String(row.licence_token).substring(0, 12)}...`
+                              : "—"}
+                          </code>
+                        </td>
+                        {!isKasicaRole && (
+                          <td style={{ ...thTd, textAlign: "center" }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                flexWrap: "nowrap",
+                                gap: 6,
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              <button
+                                type="button"
+                                className="btn"
+                                style={{ fontSize: 11, padding: "4px 8px" }}
+                                onClick={() => setTokenModalRow(row)}
+                                title={t("studioLicence.tokenTooltip")}
+                              >
+                                {row.licence_token
+                                  ? "🔑 Token"
+                                  : t("studioLicence.noToken")}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn"
+                                style={{
+                                  fontSize: 11,
+                                  padding: "4px 8px",
+                                  color: "#60a5fa",
+                                  borderColor: "rgba(96, 165, 250, 0.45)",
+                                  background: "rgba(59, 130, 246, 0.12)",
+                                  whiteSpace: "nowrap",
+                                }}
+                                onClick={() => openExtendModal(row)}
+                                title={t("studioLicence.extend")}
+                              >
+                                {t("studioLicence.enterSysValidTo")}
+                              </button>
+                              {String(row.status).toUpperCase() ===
+                              "SUSPENDOVAN" ? (
+                                <button
+                                  type="button"
+                                  className="btn"
+                                  style={{
+                                    fontSize: 11,
+                                    padding: "4px 8px",
+                                    color: "#f8fafc",
+                                    borderColor: "rgba(248, 250, 252, 0.35)",
+                                    background: "rgba(148, 163, 184, 0.2)",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                  disabled={statusSavingId === row.tenant_id}
+                                  onClick={() =>
+                                    handleSetStatus(
+                                      row.tenant_id,
+                                      restoreStatusAfterSuspend(
+                                        row.monthly_price,
+                                      ),
+                                      row,
+                                    )
+                                  }
+                                  title={t("studioLicence.restoreAccess")}
+                                >
+                                  {statusSavingId === row.tenant_id
+                                    ? t("common.loading")
+                                    : t("studioLicence.enterSysLive")}
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn"
+                                  style={{
+                                    fontSize: 11,
+                                    padding: "4px 8px",
+                                    color: "#f87171",
+                                    borderColor: "rgba(248, 113, 113, 0.45)",
+                                    background: "rgba(239, 68, 68, 0.12)",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                  disabled={statusSavingId === row.tenant_id}
+                                  onClick={() =>
+                                    handleSetStatus(
+                                      row.tenant_id,
+                                      "SUSPENDOVAN",
+                                      row,
+                                    )
+                                  }
+                                  title={`${t("studioLicence.suspendAccess")} (${t("studioLicence.suspendAppliesToAll")})`}
+                                >
+                                  {statusSavingId === row.tenant_id
+                                    ? t("common.loading")
+                                    : t("studioLicence.enterSysKill")}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="btn btn-sm"
+                                style={{ fontSize: 11, padding: "2px 8px" }}
+                                onClick={() => openContactModal(row)}
+                              >
+                                Upravljaj
+                              </button>
+                            </div>
+                          </td>
+                        )}
+                      </>
+                    ) : activeTab === "DOCENTRE" ? (
+                      <>
+                        <td style={thTd}>
+                          <div style={{ fontWeight: 700 }}>{row.naziv}</div>
+                          {row.tenant_public_id && (
+                            <code
+                              style={{
+                                fontSize: 10,
+                                opacity: 0.6,
+                                display: "block",
+                              }}
+                            >
+                              {row.tenant_public_id}
+                            </code>
+                          )}
+                        </td>
+                        <td style={thTd}>
+                          <span
+                            title={t(`studioLicence.profileHint.${dp}`)}
+                            style={{
+                              display: "inline-block",
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: "3px 9px",
+                              borderRadius: 999,
+                              letterSpacing: "0.03em",
+                              textTransform: "uppercase",
+                              border:
+                                dp === "JAVNENABAVKE"
+                                  ? "1px solid rgba(14, 165, 233, 0.4)"
+                                  : "1px solid rgba(245, 158, 11, 0.4)",
+                              background:
+                                dp === "JAVNENABAVKE"
+                                  ? "rgba(14, 165, 233, 0.18)"
+                                  : "rgba(245, 158, 11, 0.18)",
+                              color:
+                                dp === "JAVNENABAVKE" ? "#38bdf8" : "#fbbf24",
+                            }}
+                          >
+                            {t(`studioLicence.profileShort.${dp}`)}
+                          </span>
+                        </td>
+                        <td style={thTd}>
+                          {dp === "JAVNENABAVKE" ? (
+                            <span
+                              style={{
+                                display: "inline-block",
+                                fontSize: 10,
+                                fontWeight: 700,
+                                padding: "3px 9px",
+                                borderRadius: 999,
+                                background: "rgba(59, 130, 246, 0.2)",
+                                color: "#60a5fa",
+                                border: "1px solid rgba(59, 130, 246, 0.35)",
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              {getJavneNabavkeBasePackage(
+                                (row.soccs_tier as JavneNabavkeBasePackageId) ||
+                                  "JN_START",
+                              )?.label ?? "JN START"}
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                display: "inline-block",
+                                fontSize: 10,
+                                fontWeight: 700,
+                                padding: "3px 9px",
+                                borderRadius: 999,
+                                background: "rgba(245, 158, 11, 0.15)",
+                                color: "#fbbf24",
+                                border: "1px solid rgba(245, 158, 11, 0.35)",
+                              }}
+                            >
+                              {Number(row.soccs_first_install_consumed ?? 0) ===
+                              1
+                                ? "Aktiviran"
+                                : "Čeka FIRST_INSTALL"}
+                            </span>
+                          )}
+                        </td>
+                        <td style={thTd}>
+                          {isKasicaRole ? (
+                            String(row.status).toUpperCase() === "PILOT"
+                              ? t("studioLicence.rezimPilot")
+                              : t("studioLicence.rezimNormal")
+                          ) : (
+                            <select
+                              value={
+                                String(row.status).toUpperCase() === "PILOT"
+                                  ? "PILOT"
+                                  : "NORMAL"
+                              }
+                              disabled={
+                                statusSavingId === row.tenant_id ||
+                                String(row.status).toUpperCase() ===
+                                  "SUSPENDOVAN"
+                              }
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                const next =
+                                  e.target.value === "PILOT"
+                                    ? "PILOT"
+                                    : "AKTIVAN";
+                                handleSetStatus(row.tenant_id, next, row);
+                              }}
+                              title={t("studioLicence.rezimHint")}
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: 8,
+                                background: "rgba(15, 23, 42, 0.7)",
+                                border: "1px solid var(--border)",
+                                color: "inherit",
+                                fontSize: 12,
+                                fontWeight: 700,
+                              }}
+                            >
+                              <option value="NORMAL">
+                                {t("studioLicence.rezimNormal")}
+                              </option>
+                              <option value="PILOT">
+                                {t("studioLicence.rezimPilot")}
+                              </option>
+                            </select>
+                          )}
+                        </td>
+                        {!isKasicaRole && (
+                          <td style={thTd}>
+                            {dp === "JAVNENABAVKE"
+                              ? formatJnPrice(row)
+                              : formatPrice(row)}
+                          </td>
+                        )}
+                        <td style={thTd}>
+                          {formatDateBiH(row.subscription_ends_at)}
+                        </td>
+                        <td style={thTd}>
+                          {row.days_until_end > 0
+                            ? row.days_until_end
+                            : row.days_until_end === 0
+                              ? "0"
+                              : t("studioLicence.expired")}
+                        </td>
+                        <td style={thTd}>{renderStatusCell(row, lamp, 12)}</td>
+                        <td style={tdFlux}>
+                          {dp === "JAVNENABAVKE" ? (
+                            <button
+                              type="button"
+                              className="btn"
+                              style={{
+                                fontSize: 11,
+                                padding: "4px 8px",
+                                color: "#38bdf8",
+                                borderColor: "rgba(56, 189, 248, 0.45)",
+                                background: "rgba(14, 165, 233, 0.12)",
+                                whiteSpace: "nowrap",
+                              }}
+                              onClick={() => openJnModulesModal(row)}
+                              title={t("studioLicence.jnModulesModalTitle")}
+                            >
+                              {t("studioLicence.jnModulesCol")}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn"
+                              style={{
+                                fontSize: 11,
+                                padding: "4px 8px",
+                                color: "#f87171",
+                                borderColor: "rgba(248, 113, 113, 0.45)",
+                                background: "rgba(239, 68, 68, 0.12)",
+                                whiteSpace: "nowrap",
+                              }}
+                              onClick={() => openSoccsModal(row)}
+                              title={t("studioLicence.activationButton")}
+                            >
+                              {t("studioLicence.activationButton")}
+                            </button>
+                          )}
                         </td>
                         <td style={tdFluxCont}>
                           <code style={{ fontSize: 10, opacity: 0.85 }}>
@@ -1782,16 +2205,22 @@ export default function LicenceClient() {
                                     ? "rgba(239,68,68,0.18)"
                                     : dp === "DOCENTRE"
                                       ? "rgba(245,158,11,0.2)"
-                                      : dp === "ENTERSYS"
-                                        ? "rgba(20,184,166,0.2)"
-                                        : "rgba(168,85,247,0.2)",
+                                      : dp === "JAVNENABAVKE"
+                                        ? "rgba(14,165,233,0.22)"
+                                        : dp === "ENTERSYS"
+                                          ? "rgba(20,184,166,0.2)"
+                                          : "rgba(168,85,247,0.2)",
                               color: "var(--foreground)",
                             }}
                           >
                             {t(`studioLicence.profileShort.${dp}`)}
                           </span>
                         </td>
-                        <td style={thTd}>{formatPrice(row)}</td>
+                        <td style={thTd}>
+                          {dp === "JAVNENABAVKE"
+                            ? formatJnPrice(row)
+                            : formatPrice(row)}
+                        </td>
                         <td style={thTd}>
                           {formatDateBiH(row.subscription_ends_at)}
                         </td>
@@ -1805,6 +2234,7 @@ export default function LicenceClient() {
                         <td style={thTd}>
                           {dp === "FLUXA_ONLY" ||
                           dp === "DOCENTRE" ||
+                          dp === "JAVNENABAVKE" ||
                           dp === "ENTERSYS"
                             ? "—"
                             : Number.isFinite(Number(row.meet_remaining ?? NaN))
@@ -1814,6 +2244,7 @@ export default function LicenceClient() {
                         <td style={thTd}>
                           {dp === "FLUXA_ONLY" ||
                           dp === "DOCENTRE" ||
+                          dp === "JAVNENABAVKE" ||
                           dp === "ENTERSYS"
                             ? "—"
                             : row.max_meets_per_year == null
@@ -1827,6 +2258,7 @@ export default function LicenceClient() {
                         <td style={tdFlux}>
                           {dp === "SOCCS_SWIMVOICE" ||
                           dp === "DOCENTRE" ||
+                          dp === "JAVNENABAVKE" ||
                           dp === "ENTERSYS" ? (
                             <span style={{ opacity: 0.5 }}>
                               {t("studioLicence.fluxaSkippedForProfile")}
@@ -1838,6 +2270,7 @@ export default function LicenceClient() {
                         <td style={tdFluxCont}>
                           {dp === "SOCCS_SWIMVOICE" ||
                           dp === "DOCENTRE" ||
+                          dp === "JAVNENABAVKE" ||
                           dp === "ENTERSYS" ? (
                             <span style={{ opacity: 0.5 }}>—</span>
                           ) : (
@@ -1846,7 +2279,9 @@ export default function LicenceClient() {
                         </td>
                       </>
                     )}
-                    {activeTab !== "ENTERSYS" && activeTab !== "FLUXAPOS" && (
+                    {activeTab !== "ENTERSYS" &&
+                      activeTab !== "FLUXAPOS" &&
+                      activeTab !== "DOCENTRE" && (
                     <>
                     <td style={tdFluxCont}>
                       <button
@@ -1900,6 +2335,22 @@ export default function LicenceClient() {
                             title="Upravljaj zakupljenim EnterSYS modulima"
                           >
                             {t("studioLicence.enterSysModulesCol")}
+                          </button>
+                        ) : dp === "JAVNENABAVKE" ? (
+                          <button
+                            type="button"
+                            className="btn"
+                            style={{
+                              fontSize: 11,
+                              padding: "4px 8px",
+                              color: "#38bdf8",
+                              borderColor: "rgba(56, 189, 248, 0.45)",
+                              background: "rgba(14, 165, 233, 0.12)",
+                            }}
+                            onClick={() => openJnModulesModal(row)}
+                            title={t("studioLicence.jnModulesModalTitle")}
+                          >
+                            {t("studioLicence.jnModulesCol")}
                           </button>
                         ) : (
                           <button
@@ -2351,8 +2802,9 @@ export default function LicenceClient() {
                       ? t("studioLicence.wizardTitleStep3SoccsOnly")
                       : wizardProfile === "FLUXA_AND_SOCCS"
                         ? t("studioLicence.wizardTitleStep3FluxaAndSoccs")
-                        : wizardProfile === "DOCENTRE" ||
-                            wizardProfile === "ENTERSYS"
+                    : wizardProfile === "DOCENTRE" ||
+                        wizardProfile === "JAVNENABAVKE" ||
+                        wizardProfile === "ENTERSYS"
                           ? t("studioLicence.wizardTitleStep3Activation")
                           : t("studioLicence.wizardTitleStep3FluxaOnly")}
               </h3>
@@ -2375,14 +2827,25 @@ export default function LicenceClient() {
                     }}
                   >
                     {(
-                      [
-                        "FLUXA_ONLY",
-                        "SOCCS_SWIMVOICE",
-                        "FLUXA_AND_SOCCS",
-                        "DOCENTRE",
-                        "ENTERSYS",
-                        "FLUXAPOS",
-                      ] as const
+                      (
+                        activeTab === "DOCENTRE"
+                          ? (["DOCENTRE", "JAVNENABAVKE"] as const)
+                          : activeTab === "ENTERSYS"
+                            ? (["ENTERSYS"] as const)
+                            : activeTab === "FLUXAPOS"
+                              ? (["FLUXAPOS"] as const)
+                              : activeTab === "SOCCS_SV"
+                                ? (["SOCCS_SWIMVOICE", "FLUXA_AND_SOCCS"] as const)
+                                : ([
+                                    "FLUXA_ONLY",
+                                    "SOCCS_SWIMVOICE",
+                                    "FLUXA_AND_SOCCS",
+                                    "DOCENTRE",
+                                    "JAVNENABAVKE",
+                                    "ENTERSYS",
+                                    "FLUXAPOS",
+                                  ] as const)
+                      )
                     ).map((p) => (
                       <button
                         key={p}
@@ -2390,7 +2853,12 @@ export default function LicenceClient() {
                         className="btn"
                         onClick={() => {
                           setWizardProfile(p);
-                          if (p === "ENTERSYS" || p === "FLUXAPOS") setNewTenantCurrency("KM");
+                          if (
+                            p === "ENTERSYS" ||
+                            p === "FLUXAPOS" ||
+                            p === "JAVNENABAVKE"
+                          )
+                            setNewTenantCurrency("KM");
                         }}
                         style={{
                           textAlign: "left",
@@ -2714,6 +3182,43 @@ export default function LicenceClient() {
                     >
                       {t("studioLicence.wizardActivationHint")}
                     </p>
+                  )}
+                  {wizardProfile === "JAVNENABAVKE" && (
+                    <>
+                      <p
+                        style={{
+                          fontSize: 13,
+                          opacity: 0.9,
+                          lineHeight: 1.5,
+                          margin: "4px 0 12px",
+                        }}
+                      >
+                        {t("studioLicence.wizardJnPackageHint")}
+                      </p>
+                      <label style={{ display: "block", marginBottom: 4 }}>
+                        {t("studioLicence.jnPackage")}
+                      </label>
+                      <select
+                        value={newTenantJnPackage}
+                        onChange={(e) =>
+                          setNewTenantJnPackage(
+                            e.target.value as JavneNabavkeBasePackageId,
+                          )
+                        }
+                        style={{
+                          padding: 8,
+                          marginBottom: 12,
+                          width: "100%",
+                          maxWidth: 340,
+                        }}
+                      >
+                        {JAVNENABAVKE_BASE_PACKAGES.map((pkg) => (
+                          <option key={pkg.id} value={pkg.id}>
+                            {pkg.label} ({pkg.priceKm} KM / mj)
+                          </option>
+                        ))}
+                      </select>
+                    </>
                   )}
                   {wizardProfile === "FLUXAPOS" && (
                     <>
@@ -4040,6 +4545,232 @@ export default function LicenceClient() {
           </div>
         );
       })()}
+
+      {jnModalRow &&
+        (() => {
+          const pkg =
+            getJavneNabavkeBasePackage(jnPackageDraft) ||
+            JAVNENABAVKE_BASE_PACKAGES[0];
+          const calc = calculateJavneNabavkePrice(
+            jnPackageDraft,
+            jnModulesDraft,
+          );
+          const categories = [
+            { key: "CORE", label: "Osnovne funkcije" },
+            { key: "INTEGRACIJE", label: "Integracije" },
+            { key: "UPRAVA", label: "Uprava & analitika" },
+          ] as const;
+          return (
+            <div
+              className="studio-modal"
+              style={overlayStyle()}
+              onClick={() => !jnSaving && setJnModalRow(null)}
+            >
+              <div
+                style={modalStyle(720)}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={{ padding: 24, maxHeight: "90vh", overflow: "auto" }}>
+                  <h3 style={{ marginTop: 0 }}>
+                    {t("studioLicence.jnModulesModalTitle")}
+                  </h3>
+                  <p style={{ fontSize: 13, opacity: 0.85, marginTop: 0 }}>
+                    {jnModalRow.naziv}
+                  </p>
+
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      marginBottom: 6,
+                      color: "#38bdf8",
+                    }}
+                  >
+                    {t("studioLicence.jnPackage")}
+                  </label>
+                  <select
+                    value={jnPackageDraft}
+                    onChange={(e) => {
+                      const id = e.target.value as JavneNabavkeBasePackageId;
+                      setJnPackageDraft(id);
+                      const defs = defaultModulesForJavneNabavkePackage(id);
+                      const draft: Record<string, boolean> = {};
+                      for (const item of JAVNENABAVKE_MODULE_KEYS) {
+                        draft[item.key] = defs[item.key] ?? false;
+                      }
+                      setJnModulesDraft(draft);
+                    }}
+                    style={{
+                      padding: "8px 12px",
+                      width: "100%",
+                      maxWidth: 420,
+                      marginBottom: 14,
+                      borderRadius: 6,
+                      background: "rgba(15, 23, 42, 0.95)",
+                      border: "1px solid rgba(56, 189, 248, 0.5)",
+                      color: "#fff",
+                      fontSize: 13,
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {JAVNENABAVKE_BASE_PACKAGES.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label} — {p.priceKm} KM / mj
+                      </option>
+                    ))}
+                  </select>
+                  <p
+                    style={{
+                      margin: "0 0 14px",
+                      fontSize: 12,
+                      opacity: 0.85,
+                      color: "#94a3b8",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    {pkg.description}
+                  </p>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 12,
+                      marginBottom: 16,
+                    }}
+                  >
+                    {categories.map((cat) => {
+                      const modulesInCat = JAVNENABAVKE_MODULE_KEYS.filter(
+                        (m) => m.category === cat.key,
+                      );
+                      return (
+                        <div
+                          key={cat.key}
+                          style={{
+                            background: "rgba(15, 23, 42, 0.5)",
+                            border: "1px solid rgba(255, 255, 255, 0.08)",
+                            borderRadius: 8,
+                            padding: "12px 14px",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              marginBottom: 8,
+                              color: "#7dd3fc",
+                              letterSpacing: "0.04em",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {cat.label}
+                          </div>
+                          {modulesInCat.map((m) => {
+                            const included = Boolean(
+                              defaultModulesForJavneNabavkePackage(
+                                jnPackageDraft,
+                              )[m.key],
+                            );
+                            return (
+                              <label
+                                key={m.key}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  gap: 8,
+                                  fontSize: 12,
+                                  cursor: m.isCore ? "default" : "pointer",
+                                  padding: "6px 0",
+                                  opacity: m.isCore ? 0.85 : 1,
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(jnModulesDraft[m.key])}
+                                  disabled={m.isCore || included}
+                                  onChange={(e) =>
+                                    setJnModulesDraft((prev) => ({
+                                      ...prev,
+                                      [m.key]: e.target.checked,
+                                    }))
+                                  }
+                                />
+                                <span>
+                                  <strong>{m.label}</strong>
+                                  <br />
+                                  <span style={{ opacity: 0.75 }}>
+                                    {m.shortDesc}
+                                    {included || m.isCore
+                                      ? " · u paketu"
+                                      : m.priceKm > 0
+                                        ? ` · +${m.priceKm} KM`
+                                        : ""}
+                                  </span>
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div
+                    style={{
+                      marginBottom: 16,
+                      padding: "10px 14px",
+                      borderRadius: 6,
+                      background: "rgba(14, 165, 233, 0.1)",
+                      border: "1px solid rgba(56, 189, 248, 0.25)",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "#7dd3fc",
+                    }}
+                  >
+                    Mjesečno: {calc.totalMonthly} KM
+                    {calc.addonsPrice > 0
+                      ? ` (baza ${calc.basePrice} + dodaci ${calc.addonsPrice})`
+                      : ""}
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 12,
+                      justifyContent: "flex-end",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={jnSaving}
+                      onClick={() => void handleJnSave()}
+                      style={{
+                        background: "#0284c7",
+                        borderColor: "#38bdf8",
+                        color: "#fff",
+                        fontWeight: "bold",
+                        padding: "8px 20px",
+                      }}
+                    >
+                      {jnSaving ? t("common.loading") : t("common.save")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={jnSaving}
+                      onClick={() => setJnModalRow(null)}
+                      style={{ padding: "8px 16px" }}
+                    >
+                      {t("common.cancel")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
 {cjenovnikOpen && (
         <div

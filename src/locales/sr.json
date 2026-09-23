@@ -2460,6 +2460,7 @@
       "SOCCS_SWIMVOICE": "Samo SOCCS / SwimVoice",
       "FLUXA_AND_SOCCS": "Fluxa + SOCCS/SwimVoice",
       "DOCENTRE": "Dokumentar",
+      "JAVNENABAVKE": "JavneNabavke (plan, ugovori, Pantheon)",
       "ENTERSYS": "EnterSYS",
       "FLUXAPOS": "FluxaPOS (Kasa & Ugostiteljstvo)"
     },
@@ -2472,6 +2473,7 @@
       "SOCCS_SWIMVOICE": "SOCCS",
       "FLUXA_AND_SOCCS": "Fluxa+SOCCS",
       "DOCENTRE": "Dokumentar",
+      "JAVNENABAVKE": "JavneNabavke",
       "ENTERSYS": "EnterSYS",
       "FLUXAPOS": "FluxaPOS",
       "POOL_MANAGER": "Pool Mgr"
@@ -2481,6 +2483,7 @@
       "SOCCS_SWIMVOICE": "Tenant je definisan kao samo SOCCS/SwimVoice.",
       "FLUXA_AND_SOCCS": "Tenant uključuje i Fluxa i SOCCS/SwimVoice.",
       "DOCENTRE": "Tenant je Dokumentar (aktivacija kao SOCCS — first install kod).",
+      "JAVNENABAVKE": "Tenant je JavneNabavke (token + licence-check, kao FluxaPOS).",
       "ENTERSYS": "Tenant je EnterSYS (platforma za prodaju karata).",
       "FLUXAPOS": "Tenant je FluxaPOS (kasa, ugostiteljstvo i maloprodaja)."
     },
@@ -2491,7 +2494,11 @@
       "ENTERSYS": "EnterSYS",
       "FLUXAPOS": "FluxaPOS"
     },
-    "groupActivation": "Aktivacija",
+    "jnPackage": "JavneNabavke paket",
+    "jnModulesCol": "Paket & moduli",
+    "jnModulesModalTitle": "JavneNabavke — paket i moduli",
+    "wizardJnPackageHint": "Odaberi paket. Klijent (Aquana JN) aktivira se licence tokenom preko Fluxa licence-check.",
+    "groupActivation": "Licenca / aktivacija",
     "activationButton": "Aktivacija",
     "activationModalTitle": "Aktivacija (master)",
     "wizardTitleStep3Activation": "Novi tenant — aktivacija",

@@ -14,6 +14,12 @@ import {
   isFluxaPosBasePackageId,
 } from "@/lib/fluxapos-activation";
 import {
+  defaultModulesForJavneNabavkePackage,
+  getJavneNabavkeBasePackage,
+  isJavneNabavkeBasePackageId,
+  type JavneNabavkeBasePackageId,
+} from "@/lib/javnenabavke-activation";
+import {
   normalizeStudioLicenceProfile,
   STUDIO_STUB_NO_FLUXA_PLAN_NAZIV,
 } from "@/lib/studio-licence-profile";
@@ -415,6 +421,7 @@ export async function POST(req: NextRequest) {
   const usesStubPlan =
     profile === "SOCCS_SWIMVOICE" ||
     profile === "DOCENTRE" ||
+    profile === "JAVNENABAVKE" ||
     profile === "ENTERSYS";
 
   let planId = Number(body?.plan_id);
@@ -506,6 +513,14 @@ export async function POST(req: NextRequest) {
     soccsTier = null;
   } else if (profile === "ENTERSYS") {
     soccsTier = isEnterSysBasePackageId(soccsTierRaw) ? soccsTierRaw : null;
+  } else if (profile === "FLUXAPOS") {
+    soccsTier = isFluxaPosBasePackageId(soccsTierRaw)
+      ? soccsTierRaw
+      : "FLUXAPOS_START";
+  } else if (profile === "JAVNENABAVKE") {
+    soccsTier = isJavneNabavkeBasePackageId(soccsTierRaw)
+      ? soccsTierRaw
+      : "JN_START";
   } else if (profile === "SOCCS_SWIMVOICE") {
     if (!soccsTierRaw || !allowedTier.includes(soccsTierRaw)) {
       return NextResponse.json(
@@ -552,6 +567,22 @@ export async function POST(req: NextRequest) {
     if (!wantsPilot) {
       const pkg = getFluxaPosBasePackage(soccsTier);
       monthlyPrice = pkg?.priceKm ?? 60;
+    }
+  }
+  if (profile === "JAVNENABAVKE") {
+    soccsPlatformRole = null;
+    if (!soccsPlatformScope && soccsTier) {
+      const defs = defaultModulesForJavneNabavkePackage(
+        soccsTier as JavneNabavkeBasePackageId,
+      );
+      const mods = Object.entries(defs)
+        .filter(([, v]) => v)
+        .map(([k]) => k);
+      soccsPlatformScope = mods.join(",");
+    }
+    if (!wantsPilot) {
+      const pkg = getJavneNabavkeBasePackage(soccsTier);
+      monthlyPrice = pkg?.priceKm ?? 80;
     }
   }
   if (profile === "ENTERSYS") {
