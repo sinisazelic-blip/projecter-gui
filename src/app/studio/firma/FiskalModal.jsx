@@ -30,6 +30,7 @@ export default function FiskalModal() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState(defaultSettings);
+  const [showPin, setShowPin] = useState(false);
 
   const loadSettings = useCallback(async () => {
     setLoading(true);
@@ -223,9 +224,18 @@ export default function FiskalModal() {
                 </div>
 
                 <div style={{ marginBottom: 14 }}>
-                  <label style={labelStyle}>{t("firma.fiskalLabelPin")}</label>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <label style={{ ...labelStyle, marginBottom: 0 }}>{t("firma.fiskalLabelPin")}</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowPin(!showPin)}
+                      style={{ background: "none", border: "none", color: "#60a5fa", cursor: "pointer", fontSize: "0.85rem", fontWeight: "bold" }}
+                    >
+                      {showPin ? "👁️ Sakrij PIN" : "👁️ Prikaži PIN"}
+                    </button>
+                  </div>
                   <input
-                    type="password"
+                    type={showPin ? "text" : "password"}
                     value={form.pin}
                     onChange={(e) => handleChange("pin", e.target.value)}
                     style={inputStyle}
