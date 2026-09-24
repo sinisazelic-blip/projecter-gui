@@ -72,10 +72,10 @@ export async function GET(req: NextRequest) {
         osnovica_km, pdv_iznos_km, iznos_ukupno_km, datum_izdavanja,
         fiskalni_status, bill_to_klijent_id
       FROM fakture
-      WHERE firma_id = ? AND (DATE(datum_izdavanja) = CURDATE() OR datum_izdavanja >= CURDATE())
+      WHERE (DATE(datum_izdavanja) = CURDATE() OR datum_izdavanja >= CURDATE())
       ORDER BY faktura_id ASC
       `,
-      [firmaId],
+      [],
     )) as any[];
 
     let ukupnoBezPdv = 0;
@@ -200,9 +200,9 @@ export async function POST(req: NextRequest) {
         faktura_id, broj_fakture_puni AS broj_fakture, broj_fiskalni,
         osnovica_km, pdv_iznos_km, iznos_ukupno_km, datum_izdavanja
       FROM fakture
-      WHERE firma_id = ? AND (DATE(datum_izdavanja) = CURDATE() OR datum_izdavanja >= CURDATE())
+      WHERE (DATE(datum_izdavanja) = CURDATE() OR datum_izdavanja >= CURDATE())
       `,
-      [firmaId],
+      [],
     )) as any[];
 
     let ukupnoBezPdv = 0;
