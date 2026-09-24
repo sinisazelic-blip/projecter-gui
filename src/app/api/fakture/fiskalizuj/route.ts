@@ -419,7 +419,7 @@ export async function POST(req: NextRequest) {
     }
 
     const rows = await query(
-      `SELECT base_url, api_path, api_key, yid FROM firma_fiskal_settings WHERE firma_id = ?`,
+      `SELECT base_url, api_path, api_key, yid, pin FROM firma_fiskal_settings WHERE firma_id = ?`,
       [firmaId],
     );
     const settings = (rows as any[])?.[0];
@@ -429,6 +429,7 @@ export async function POST(req: NextRequest) {
     else if (!apiPath.startsWith("/")) apiPath = "/" + apiPath;
     const apiKey = settings?.api_key?.trim?.();
     const yid = settings?.yid?.trim?.();
+    const pin = settings?.pin?.trim?.();
 
     if (!baseUrl) {
       return NextResponse.json(
@@ -488,7 +489,7 @@ export async function POST(req: NextRequest) {
         ? buildInvoicePrintBody(body, invoicePrintBodyOptions)
         : buildInvoiceRequestV3(body);
 
-    // Headers prema službenom spec-u: Accept, Content-Type, Authorization, Accept-Language, X-Requested-By.
+    // Headers prema službenom spec-u: Accept, Content-Type, Authorization, Pac, Pin, Accept-Language, X-Requested-By.
     const acceptLanguage = (body.acceptLanguage || "sr;en").slice(0, 64);
     const headers: Record<string, string> = {
       Accept: "application/json",
@@ -496,7 +497,15 @@ export async function POST(req: NextRequest) {
       "Accept-Language": acceptLanguage,
       "X-Requested-By": yid || "req",
     };
-    if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+    if (apiKey) {
+      headers["Authorization"] = `Bearer ${apiKey}`;
+      headers["Pac"] = apiKey;
+      headers["PAC"] = apiKey;
+    }
+    if (pin) {
+      headers["Pin"] = pin;
+      headers["PIN"] = pin;
+    }
 
     const isPrivateIp = /^(https?:\/\/)?(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|127\.0\.0\.1|localhost)/i.test(baseUrl);
     const hostHeader = req.headers.get("host") || "";
@@ -631,7 +640,8 @@ export async function POST(req: NextRequest) {
           headers: {
             Accept: "text/plain, application/json, */*",
             RequestId: headers.RequestId,
-            ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+            ...(apiKey ? { Authorization: `Bearer ${apiKey}`, Pac: apiKey, PAC: apiKey } : {}),
+            ...(pin ? { Pin: pin, PIN: pin } : {}),
             "X-Requested-By": headers["X-Requested-By"],
           },
           signal: AbortSignal.timeout(3000),

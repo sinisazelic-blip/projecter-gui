@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { downloadExcel } from "@/lib/exportExcel";
 import { useTranslation } from "@/components/LocaleProvider";
 import FluxaLogo from "@/components/FluxaLogo";
+import FiskalZReportModal from "@/components/FiskalZReportModal";
 
 function fmtDDMMYYYY(iso: string | null): string {
   if (!iso) return "—";
@@ -79,6 +80,7 @@ export default function FakturePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [showZReportModal, setShowZReportModal] = useState(false);
 
   // Owner-only brisanje posljednje fakture
   const [isOwner, setIsOwner] = useState(false);
@@ -232,14 +234,35 @@ export default function FakturePage() {
                 </div>
               </div>
 
-              <Link
-                href="/dashboard"
-                className="btn"
-                style={{ minWidth: 130 }}
-                title={t("fakture.backToDashboard")}
-              >
-                <img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> {t("common.dashboard")}
-              </Link>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => setShowZReportModal(true)}
+                  style={{
+                    backgroundColor: "rgba(16, 185, 129, 0.12)",
+                    borderColor: "rgba(16, 185, 129, 0.5)",
+                    color: "#10b981",
+                    fontWeight: "bold",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    cursor: "pointer",
+                  }}
+                  title="Pregled prometa, fiskalni Z-izvještaj i zatvaranje smjene na LPFR uređaju"
+                >
+                  <span>📊 Dnevni (Z) Izvještaj</span>
+                </button>
+
+                <Link
+                  href="/dashboard"
+                  className="btn"
+                  style={{ minWidth: 130 }}
+                  title={t("fakture.backToDashboard")}
+                >
+                  <img src="/fluxa/Icon.ico" alt="" style={{ width: 18, height: 18, verticalAlign: "middle", marginRight: 6 }} /> {t("common.dashboard")}
+                </Link>
+              </div>
             </div>
 
             <div style={{ marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "nowrap", overflowX: "auto" }}>
@@ -549,6 +572,14 @@ const headers = [
           </div>
         </div>
       )}
+      {/* Fiskal Z-Report Modal */}
+      <FiskalZReportModal
+        open={showZReportModal}
+        onClose={() => {
+          setShowZReportModal(false);
+          setReloadKey((k) => k + 1);
+        }}
+      />
     </div>
   );
 }
