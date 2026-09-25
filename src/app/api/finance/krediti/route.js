@@ -12,11 +12,14 @@ export async function GET(req) {
     const set = new Set((cols ?? []).map((c) => String(c.column_name)));
     const hasIznosKredita = set.has("iznos_kredita");
     const hasKamataTroskovi = set.has("iznos_kamata_troskovi");
+    const hasBrojUgovora = set.has("broj_ugovora");
 
+    // Učitaj sve aktivne kredite
     const rows = await query(
       `
       SELECT
         k.*,
+        ${hasBrojUgovora ? "k.broj_ugovora" : "NULL AS broj_ugovora"},
         ${hasIznosKredita ? "k.iznos_kredita" : "NULL AS iznos_kredita"},
         ${hasKamataTroskovi ? "k.iznos_kamata_troskovi" : "NULL AS iznos_kamata_troskovi"}
       FROM krediti k
@@ -25,7 +28,76 @@ export async function GET(req) {
       `,
       [],
     ).catch(() => []);
-    return NextResponse.json({ ok: true, rows: rows ?? [] });
+
+    // Auto-sync i povezivanje sa transakcijama iz bankarskih izvoda
+    const enrichedRows = [];
+    for (const k of (rows || [])) {
+      const ugovor = (k.broj_ugovora || "").trim();
+      const banka = (k.banka_naziv || k.naziv || "").trim();
+
+      // Tražimo transakcije iz izvoda (bank_tx_staging)
+      let uplateIzvodi = [];
+      try {
+        if (ugovor) {
+          uplateIzvodi = await query(
+            `
+            SELECT 
+              tx_id, batch_id, DATE_FORMAT(value_date, '%Y-%m-%d') AS value_date,
+              ABS(amount) AS iznos, currency, counterparty, description, full_description
+            FROM bank_tx_staging
+            WHERE (
+              (full_description LIKE ? OR description LIKE ?)
+              AND amount < 0
+              AND (status IS NULL OR status <> 'DELETED')
+            )
+            ORDER BY value_date ASC
+            `,
+            [`%${ugovor}%`, `%${ugovor}%`]
+          );
+        } else if (banka.toUpperCase().includes("EKI")) {
+          uplateIzvodi = await query(
+            `
+            SELECT 
+              tx_id, batch_id, DATE_FORMAT(value_date, '%Y-%m-%d') AS value_date,
+              ABS(amount) AS iznos, currency, counterparty, description, full_description
+            FROM bank_tx_staging
+            WHERE (
+              (counterparty LIKE '%EKI%' OR full_description LIKE '%EKI%')
+              AND amount < 0
+              AND ABS(amount) BETWEEN 600 AND 750
+              AND (status IS NULL OR status <> 'DELETED')
+            )
+            ORDER BY value_date ASC
+            `
+          );
+        }
+      } catch (stgErr) {
+        console.warn("Greška pri traženju uplata u bank_tx_staging:", stgErr);
+      }
+
+      if (Array.isArray(uplateIzvodi) && uplateIzvodi.length > 0) {
+        const statementCount = uplateIzvodi.length;
+        const lastPaidTx = uplateIzvodi[uplateIzvodi.length - 1];
+        const lastDate = lastPaidTx?.value_date || k.datum_posljednja_rata;
+
+        // Ako je na izvodima evidentirano više rata nego što je upisano, automatski ažuriraj
+        if (statementCount > (k.uplaceno_rata || 0)) {
+          await query(
+            `UPDATE krediti SET uplaceno_rata = ?, datum_posljednja_rata = ? WHERE kredit_id = ?`,
+            [statementCount, lastDate, k.kredit_id]
+          ).catch(() => {});
+          k.uplaceno_rata = statementCount;
+          k.datum_posljednja_rata = lastDate;
+        }
+      }
+
+      enrichedRows.push({
+        ...k,
+        uplate_izvodi: uplateIzvodi || [],
+      });
+    }
+
+    return NextResponse.json({ ok: true, rows: enrichedRows });
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: e?.message || String(e) },
@@ -40,6 +112,7 @@ export async function POST(req) {
 
     const {
       naziv,
+      broj_ugovora,
       iznos_kredita,
       iznos_kamata_troskovi,
       ukupan_iznos,
@@ -85,15 +158,17 @@ export async function POST(req) {
     const set = new Set((cols ?? []).map((c) => String(c.column_name)));
     const hasIznosKredita = set.has("iznos_kredita");
     const hasKamataTroskovi = set.has("iznos_kamata_troskovi");
+    const hasBrojUgovora = set.has("broj_ugovora");
 
     let res;
-    if (hasIznosKredita && hasKamataTroskovi) {
+    if (hasBrojUgovora && hasIznosKredita && hasKamataTroskovi) {
       res = await query(
         `INSERT INTO krediti
-          (naziv, iznos_kredita, iznos_kamata_troskovi, ukupan_iznos, valuta, broj_rata, uplaceno_rata, iznos_rate, datum_posljednja_rata, banka_naziv, napomena)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          (naziv, broj_ugovora, iznos_kredita, iznos_kamata_troskovi, ukupan_iznos, valuta, broj_rata, uplaceno_rata, iznos_rate, datum_posljednja_rata, banka_naziv, napomena)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           String(naziv).trim(),
+          broj_ugovora ? String(broj_ugovora).trim() : null,
           glavnica,
           kamataTroskovi,
           ukupno,
@@ -141,6 +216,7 @@ export async function PUT(req) {
     const {
       kredit_id,
       naziv,
+      broj_ugovora,
       iznos_kredita,
       iznos_kamata_troskovi,
       ukupan_iznos,
@@ -194,11 +270,13 @@ export async function PUT(req) {
     const set = new Set((cols ?? []).map((c) => String(c.column_name)));
     const hasIznosKredita = set.has("iznos_kredita");
     const hasKamataTroskovi = set.has("iznos_kamata_troskovi");
+    const hasBrojUgovora = set.has("broj_ugovora");
 
-    if (hasIznosKredita && hasKamataTroskovi) {
+    if (hasBrojUgovora && hasIznosKredita && hasKamataTroskovi) {
       await query(
         `UPDATE krediti
          SET naziv = ?,
+             broj_ugovora = ?,
              iznos_kredita = ?,
              iznos_kamata_troskovi = ?,
              ukupan_iznos = ?,
@@ -213,6 +291,7 @@ export async function PUT(req) {
          WHERE kredit_id = ?`,
         [
           String(naziv).trim(),
+          broj_ugovora ? String(broj_ugovora).trim() : null,
           glavnica,
           kamataTroskovi,
           ukupno,

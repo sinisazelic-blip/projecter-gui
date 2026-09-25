@@ -5,12 +5,15 @@ import { downloadExcel } from "@/lib/exportExcel";
 /**
  * Dugme za preuzimanje trenutne tabele u Excel (.xlsx).
  * Korisno za knjigovođe i arhivu.
- * @param {string} filename - Ime fajla (bez .xlsx)
- * @param {string} sheetName - Ime lista u Excelu
- * @param {string[]} headers - Nazivi kolona
- * @param {any[][]} rows - Redovi podataka (niz nizova)
- * @param {any[][]} [footerRows] - Opcioni redovi ispod (npr. ukupno)
- * @param {boolean} [disabled] - Sakrij ili onemogući ako nema podataka
+ * @param {Object} props
+ * @param {string} [props.filename] - Ime fajla (bez .xlsx)
+ * @param {string} [props.sheetName] - Ime lista u Excelu
+ * @param {string[]} [props.headers] - Nazivi kolona
+ * @param {any[][]} [props.rows] - Redovi podataka (niz nizova)
+ * @param {any[][]} [props.footerRows] - Opcioni redovi ispod (npr. ukupno)
+ * @param {boolean} [props.disabled] - Sakrij ili onemogući ako nema podataka
+ * @param {string} [props.className]
+ * @param {React.CSSProperties} [props.style]
  */
 export function ExportExcelButton({
   filename,

@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "@/components/LocaleProvider";
 
 const POPUP_ITEMS = [
+  { key: "maliRacuni", href: "/finance/mali-racuni" },
   { key: "narudzbenice", href: "/narudzbenice" },
   { key: "ponude", href: "/ponude" },
 ];

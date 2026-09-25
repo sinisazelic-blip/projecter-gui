@@ -15,6 +15,7 @@ const FINANCE_MODULES = [
   { type: "tools", titleKey: "dashboard.financeTools", descKey: "finance.financeToolsDesc" },
   { type: "card", titleKey: "finance.fiksniTroskovi", descKey: "finance.fiksniTroskoviDesc", href: "/finance/fiksni-troskovi", href2: "/finance/fiksni-troskovi/raspored", href2LabelKey: "finance.raspored" },
   { type: "card", titleKey: "finance.krediti", descKey: "finance.kreditiDesc", href: "/finance/krediti" },
+  { type: "card", titleKey: "finance.maliRacuni", descKey: "finance.maliRacuniDesc", href: "/finance/mali-racuni" },
   { type: "card", titleKey: "finance.kuf", descKey: "finance.kufDesc", href: "/finance/kuf" },
   { type: "card", titleKey: "finance.osnovnaSredstva", descKey: "finance.osnovnaSredstvaDesc", href: "/finance/osnovna-sredstva" },
   { type: "card", titleKey: "finance.pursPrijava", descKey: "finance.pursPrijavaDesc", href: "/finance/godisnji-izvjestaj" },

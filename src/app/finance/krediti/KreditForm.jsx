@@ -16,6 +16,7 @@ export default function KreditForm({ initialCredit = null }) {
   const [form, setForm] = useState({
     kredit_id: null,
     naziv: "",
+    broj_ugovora: "",
     iznos_kredita: "",
     iznos_kamata_troskovi: "",
     ukupan_iznos: "",
@@ -44,6 +45,7 @@ export default function KreditForm({ initialCredit = null }) {
     setForm({
       kredit_id: initialCredit.kredit_id ?? null,
       naziv: initialCredit.naziv ?? "",
+      broj_ugovora: initialCredit.broj_ugovora ?? "",
       iznos_kredita:
         initialCredit.iznos_kredita != null
           ? String(initialCredit.iznos_kredita)
@@ -122,6 +124,7 @@ export default function KreditForm({ initialCredit = null }) {
         setForm({
           kredit_id: null,
           naziv: "",
+          broj_ugovora: "",
           iznos_kredita: "",
           iznos_kamata_troskovi: "",
           ukupan_iznos: "",
@@ -158,6 +161,18 @@ export default function KreditForm({ initialCredit = null }) {
             onChange={handleChange}
             placeholder={t("krediti.placeholderNaziv")}
             required
+          />
+        </div>
+
+        <div className="field" style={{ minWidth: 180 }}>
+          <span className="label">Broj partije / ugovora</span>
+          <input
+            className="input"
+            name="broj_ugovora"
+            value={form.broj_ugovora}
+            onChange={handleChange}
+            placeholder="npr. LD2609610022"
+            title="Služi za automatsko knjiženje rata iz bankarskih izvoda"
           />
         </div>
 

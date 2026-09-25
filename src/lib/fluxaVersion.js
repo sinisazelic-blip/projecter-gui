@@ -1,5 +1,5 @@
 /** Fluxa build — promijeni ovdje pri svakom release-u. */
-export const FLUXA_VERSION = "2.6.0";
+export const FLUXA_VERSION = "2.6.1";
 
 export const FLUXA_VERSION_LABEL = `V${FLUXA_VERSION}`;
 

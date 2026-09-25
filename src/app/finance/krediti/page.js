@@ -47,9 +47,9 @@ export default async function KreditiPage({ searchParams }) {
      FROM information_schema.columns
      WHERE table_schema = DATABASE() AND table_name = 'krediti'`,
   ).catch(() => []);
-  const colSet = new Set((cols ?? []).map((c) => String(c.column_name)));
   const hasIznosKredita = colSet.has("iznos_kredita");
   const hasKamataTroskovi = colSet.has("iznos_kamata_troskovi");
+  const hasBrojUgovora = colSet.has("broj_ugovora");
 
   const cookieStore = await cookies();
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value) || "sr";
@@ -80,6 +80,7 @@ export default async function KreditiPage({ searchParams }) {
       SELECT
         kredit_id,
         naziv,
+        ${hasBrojUgovora ? "broj_ugovora," : "NULL AS broj_ugovora,"}
         ${hasIznosKredita ? "iznos_kredita," : "NULL AS iznos_kredita,"}
         ${hasKamataTroskovi ? "iznos_kamata_troskovi," : "NULL AS iznos_kamata_troskovi,"}
         ukupan_iznos,
@@ -303,15 +304,27 @@ export default async function KreditiPage({ searchParams }) {
                         ? enriched.map((r) => (
                             <tr key={r.kredit_id}>
                               <td>{r.kredit_id}</td>
-                              <td style={{ fontWeight: 700 }}>
-                                {r.naziv ?? "—"}
+                              <td>
+                                <div style={{ fontWeight: 700 }}>{r.naziv ?? "—"}</div>
+                                {r.broj_ugovora && (
+                                  <div style={{ fontSize: 11, color: "var(--muted)", fontFamily: "monospace" }}>
+                                    Partija: {r.broj_ugovora}
+                                  </div>
+                                )}
                               </td>
                               <td>{r.banka_naziv ?? "—"}</td>
                               <td className="num">{r.iznos_kredita != null ? formatAmount(r.iznos_kredita, locale) : "—"}</td>
                               <td className="num">{r.iznos_kamata_troskovi != null ? formatAmount(r.iznos_kamata_troskovi, locale) : "—"}</td>
                               <td className="num">{formatAmount(r.ukupan_iznos, locale)}</td>
                               <td className="num">{r.broj_rata ?? "—"}</td>
-                              <td className="num">{r.uplaceno_rata ?? "—"}</td>
+                              <td className="num">
+                                <div style={{ fontWeight: 700 }}>{r.uplaceno_rata ?? "—"}</div>
+                                {Number(r.uplaceno_rata) > 0 && (
+                                  <span style={{ fontSize: 10, background: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.3)", padding: "1px 5px", borderRadius: 3, display: "inline-block", marginTop: 2 }}>
+                                    ⚡ Iz izvoda
+                                  </span>
+                                )}
+                              </td>
                               <td className="num">{formatAmount(r.ostatak_duga, locale)}</td>
                               <td className="num">{r.ostalo_rata}</td>
                               <td className="nowrap">
