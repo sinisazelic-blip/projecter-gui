@@ -4,12 +4,12 @@ import { query } from "@/lib/db";
 export async function GET(req) {
   try {
     const cols = await query(
-      `SELECT column_name
+      `SELECT column_name, COLUMN_NAME
        FROM information_schema.columns
        WHERE table_schema = DATABASE() AND table_name = 'krediti'`,
       [],
     ).catch(() => []);
-    const set = new Set((cols ?? []).map((c) => String(c.column_name)));
+    const set = new Set((cols ?? []).map((c) => String(c.column_name || c.COLUMN_NAME || "").toLowerCase()));
     const hasIznosKredita = set.has("iznos_kredita");
     const hasKamataTroskovi = set.has("iznos_kamata_troskovi");
     const hasBrojUgovora = set.has("broj_ugovora");
@@ -18,12 +18,23 @@ export async function GET(req) {
     const rows = await query(
       `
       SELECT
-        k.*,
-        ${hasBrojUgovora ? "k.broj_ugovora" : "NULL AS broj_ugovora"},
-        ${hasIznosKredita ? "k.iznos_kredita" : "NULL AS iznos_kredita"},
-        ${hasKamataTroskovi ? "k.iznos_kamata_troskovi" : "NULL AS iznos_kamata_troskovi"}
+        k.kredit_id,
+        k.naziv,
+        ${hasBrojUgovora ? "k.broj_ugovora," : "NULL AS broj_ugovora,"}
+        ${hasIznosKredita ? "k.iznos_kredita," : "NULL AS iznos_kredita,"}
+        ${hasKamataTroskovi ? "k.iznos_kamata_troskovi," : "NULL AS iznos_kamata_troskovi,"}
+        k.ukupan_iznos,
+        k.valuta,
+        k.broj_rata,
+        k.uplaceno_rata,
+        k.iznos_rate,
+        k.datum_posljednja_rata,
+        k.banka_naziv,
+        k.aktivan,
+        k.napomena,
+        k.created_at
       FROM krediti k
-      ORDER BY aktivan DESC, datum_posljednja_rata DESC, kredit_id DESC
+      ORDER BY k.aktivan DESC, k.datum_posljednja_rata DESC, k.kredit_id DESC
       LIMIT 100
       `,
       [],
@@ -150,12 +161,12 @@ export async function POST(req) {
       : null;
 
     const cols = await query(
-      `SELECT column_name
+      `SELECT column_name, COLUMN_NAME
        FROM information_schema.columns
        WHERE table_schema = DATABASE() AND table_name = 'krediti'`,
       [],
     ).catch(() => []);
-    const set = new Set((cols ?? []).map((c) => String(c.column_name)));
+    const set = new Set((cols ?? []).map((c) => String(c.column_name || c.COLUMN_NAME || "").toLowerCase()));
     const hasIznosKredita = set.has("iznos_kredita");
     const hasKamataTroskovi = set.has("iznos_kamata_troskovi");
     const hasBrojUgovora = set.has("broj_ugovora");
@@ -262,12 +273,12 @@ export async function PUT(req) {
     const isActive = aktivan == null ? 1 : Number(aktivan) ? 1 : 0;
 
     const cols = await query(
-      `SELECT column_name
+      `SELECT column_name, COLUMN_NAME
        FROM information_schema.columns
        WHERE table_schema = DATABASE() AND table_name = 'krediti'`,
       [],
     ).catch(() => []);
-    const set = new Set((cols ?? []).map((c) => String(c.column_name)));
+    const set = new Set((cols ?? []).map((c) => String(c.column_name || c.COLUMN_NAME || "").toLowerCase()));
     const hasIznosKredita = set.has("iznos_kredita");
     const hasKamataTroskovi = set.has("iznos_kamata_troskovi");
     const hasBrojUgovora = set.has("broj_ugovora");

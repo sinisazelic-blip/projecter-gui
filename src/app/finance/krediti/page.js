@@ -43,10 +43,11 @@ function fmtMjesecGodina(d) {
 
 export default async function KreditiPage({ searchParams }) {
   const cols = await query(
-    `SELECT column_name
+    `SELECT column_name, COLUMN_NAME
      FROM information_schema.columns
      WHERE table_schema = DATABASE() AND table_name = 'krediti'`,
   ).catch(() => []);
+  const colSet = new Set((Array.isArray(cols) ? cols : []).map((c) => String(c.COLUMN_NAME || c.column_name || "").toLowerCase()));
   const hasIznosKredita = colSet.has("iznos_kredita");
   const hasKamataTroskovi = colSet.has("iznos_kamata_troskovi");
   const hasBrojUgovora = colSet.has("broj_ugovora");
