@@ -241,7 +241,11 @@ export default async function DealsPage({ searchParams }: any) {
       COALESCE(
         DATE_FORMAT(p.rok_glavni, '%Y-%m-%d'),
         DATE_FORMAT(tl.accepted_deadline, '%Y-%m-%d')
-      ) AS rok_glavni
+      ) AS rok_glavni,
+
+      -- Plivačko takmičenje (Kalendar takmičenja)
+      CASE WHEN pk.kalendar_id IS NOT NULL THEN 1 ELSE 0 END AS is_swim_meet,
+      pk.naziv_takmicenja AS swim_naziv
 
     FROM inicijacije i
     LEFT JOIN statusi s
@@ -250,6 +254,13 @@ export default async function DealsPage({ searchParams }: any) {
       ON p.projekat_id = i.projekat_id
     LEFT JOIN statusi_projekta sp
       ON sp.status_id = p.status_id
+    LEFT JOIN (
+      SELECT inicijacija_id, MIN(kalendar_id) AS kalendar_id, MIN(naziv_takmicenja) AS naziv_takmicenja
+      FROM plivacki_kalendar
+      WHERE inicijacija_id IS NOT NULL
+      GROUP BY inicijacija_id
+    ) pk
+      ON pk.inicijacija_id = i.inicijacija_id
     LEFT JOIN (
       SELECT t1.inicijacija_id, t1.accepted_deadline
       FROM deal_timeline_events t1

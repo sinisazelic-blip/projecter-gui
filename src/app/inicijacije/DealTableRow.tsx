@@ -85,6 +85,28 @@ export default function DealTableRow({
             </Link>
           </div>
 
+          {/* ✅ Oznaka za plivačko takmičenje iz Kalendara */}
+          {deal.is_swim_meet ? (
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                background: "rgba(6, 182, 212, 0.15)",
+                color: "#22d3ee",
+                border: "1px solid rgba(34, 211, 238, 0.35)",
+                padding: "2px 8px",
+                borderRadius: 999,
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: "0.02em",
+              }}
+              title={deal.swim_naziv ? `Kalendar takmičenja: ${deal.swim_naziv}` : "Plivačko takmičenje"}
+            >
+              🏊 Plivačko takmičenje
+            </span>
+          ) : null}
+
           {/* ✅ Signal samo kad je PAŽNJA/STOP */}
           {sig ? (
             <span

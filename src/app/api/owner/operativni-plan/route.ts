@@ -3,8 +3,101 @@ import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+function getFxRateToBAM(currency: string): number {
+  const c = String(currency || "BAM").toUpperCase();
+  if (c === "EUR") return 1.95583;
+  if (c === "USD") return 1.80;
+  return 1.0;
+}
+
+// Auto-sync recurring pretplate & krediti due within 7 days
+async function syncDueObligations() {
+  try {
+    const now = new Date();
+    const todayDay = now.getDate();
+    const curYear = now.getFullYear();
+    const curMonth = String(now.getMonth() + 1).padStart(2, "0");
+    const yearMonth = `${curYear}-${curMonth}`;
+
+    const [pretplate, krediti] = (await Promise.all([
+      query(`SELECT * FROM owner_privatne_pretplate WHERE status = 'AKTIVAN'`),
+      query(`SELECT * FROM owner_privatni_krediti WHERE status = 'AKTIVAN'`),
+    ])) as [any[], any[]];
+
+    if (Array.isArray(pretplate)) {
+      for (const p of pretplate) {
+        const dueDay = Number(p.dan_u_mjesecu) || 1;
+        const diffDays = dueDay - todayDay;
+        // Ako je dospijeće za 7 dana ili ranije u ovom mjesecu
+        if (diffDays <= 7) {
+          const isPaidThisMonth = p.zadnje_placeno && String(p.zadnje_placeno).startsWith(yearMonth);
+          if (!isPaidThisMonth) {
+            const tag = `[PRETP:${p.id}:${yearMonth}]`;
+            const existing = (await query(
+              `SELECT id FROM owner_plan_stavke WHERE napomena LIKE ? AND status <> 'OTKAZANO' LIMIT 1`,
+              [`%${tag}%`]
+            )) as any[];
+
+            if (!existing || existing.length === 0) {
+              const fx = getFxRateToBAM(p.valuta);
+              const iznosBAM = Math.round(Number(p.iznos || 0) * fx * 100) / 100;
+              const safeDay = Math.min(Math.max(1, dueDay), 28);
+              const rokDatum = `${yearMonth}-${String(safeDay).padStart(2, "0")}`;
+              await query(
+                `INSERT INTO owner_plan_stavke (vrsta, kategorija, naziv, iznos, valuta, rok_datum, status, napomena)
+                 VALUES ('RASHOD', 'PRETPLATA', ?, ?, 'BAM', ?, 'PLANIRANO', ?)`,
+                [
+                  `${p.naziv} (${p.iznos} ${p.valuta})`,
+                  iznosBAM,
+                  rokDatum,
+                  `${tag} Mjesečna pretplata ${p.naziv}`,
+                ]
+              );
+            }
+          }
+        }
+      }
+    }
+
+    if (Array.isArray(krediti)) {
+      for (const k of krediti) {
+        const dueDay = Number(k.dan_u_mjesecu) || 20;
+        const diffDays = dueDay - todayDay;
+        if (diffDays <= 7) {
+          const tag = `[KRED:${k.id}:${yearMonth}]`;
+          const existing = (await query(
+            `SELECT id FROM owner_plan_stavke WHERE napomena LIKE ? AND status <> 'OTKAZANO' LIMIT 1`,
+            [`%${tag}%`]
+          )) as any[];
+
+          if (!existing || existing.length === 0) {
+            const fx = getFxRateToBAM(k.valuta);
+            const iznosBAM = Math.round(Number(k.iznos_rate || 0) * fx * 100) / 100;
+            const safeDay = Math.min(Math.max(1, dueDay), 28);
+            const rokDatum = `${yearMonth}-${String(safeDay).padStart(2, "0")}`;
+            await query(
+              `INSERT INTO owner_plan_stavke (vrsta, kategorija, naziv, iznos, valuta, rok_datum, status, napomena)
+               VALUES ('RASHOD', 'KREDIT', ?, ?, 'BAM', ?, 'PLANIRANO', ?)`,
+              [
+                `Rata: ${k.naziv} ${k.banka ? `(${k.banka})` : ""}`.trim(),
+                iznosBAM,
+                rokDatum,
+                `${tag} Rata kredita ${k.naziv}`,
+              ]
+            );
+          }
+        }
+      }
+    }
+  } catch (syncErr) {
+    console.error("Greška pri sinhronizaciji dospijeća:", syncErr);
+  }
+}
+
 export async function GET() {
   try {
+    await syncDueObligations();
+
     const [racuni, planStavke, potrazivanjaRows] = await Promise.all([
       query(`
         SELECT id, naziv, opis, tip, saldo, valuta, sort_order, updated_at
@@ -185,22 +278,46 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    if (action === "toggle_status") {
-      // Toggle između PLANIRANO -> REALIZOVANO -> HOLD -> PLANIRANO
-      const rows = (await query(`SELECT status FROM owner_plan_stavke WHERE id = ?`, [id])) as any[];
-      const cur = rows?.[0]?.status || "PLANIRANO";
+    if (action === "toggle_status" || action === "mark_paid" || action === "set_status") {
       let nextStatus = "PLANIRANO";
-      if (cur === "PLANIRANO") nextStatus = "REALIZOVANO";
-      else if (cur === "REALIZOVANO") nextStatus = "HOLD";
-      else if (cur === "HOLD") nextStatus = "PLANIRANO";
+      if (action === "set_status") {
+        nextStatus = value;
+      } else if (action === "mark_paid") {
+        nextStatus = "REALIZOVANO";
+      } else {
+        // toggle_status
+        const rows = (await query(`SELECT status FROM owner_plan_stavke WHERE id = ?`, [id])) as any[];
+        const cur = rows?.[0]?.status || "PLANIRANO";
+        if (cur === "PLANIRANO") nextStatus = "REALIZOVANO";
+        else if (cur === "REALIZOVANO") nextStatus = "HOLD";
+        else if (cur === "HOLD") nextStatus = "PLANIRANO";
+      }
 
       await query(`UPDATE owner_plan_stavke SET status = ? WHERE id = ?`, [nextStatus, id]);
-      return NextResponse.json({ ok: true, status: nextStatus });
-    }
 
-    if (action === "set_status") {
-      await query(`UPDATE owner_plan_stavke SET status = ? WHERE id = ?`, [value, id]);
-      return NextResponse.json({ ok: true, status: value });
+      if (nextStatus === "REALIZOVANO") {
+        try {
+          const itemRows = (await query(`SELECT * FROM owner_plan_stavke WHERE id = ?`, [id])) as any[];
+          const it = itemRows?.[0];
+          if (it?.napomena) {
+            const pretpMatch = it.napomena.match(/\[PRETP:(\d+):/);
+            if (pretpMatch) {
+              const pretpId = Number(pretpMatch[1]);
+              const today = new Date().toISOString().slice(0, 10);
+              await query(`UPDATE owner_privatne_pretplate SET zadnje_placeno = ? WHERE id = ?`, [today, pretpId]);
+            }
+            const kredMatch = it.napomena.match(/\[KRED:(\d+):/);
+            if (kredMatch) {
+              const kredId = Number(kredMatch[1]);
+              await query(`UPDATE owner_privatni_krediti SET uplaceno_rata = uplaceno_rata + 1 WHERE id = ?`, [kredId]);
+            }
+          }
+        } catch (linkErr) {
+          console.error("Greška pri ažuriranju pretplate/kredita:", linkErr);
+        }
+      }
+
+      return NextResponse.json({ ok: true, status: nextStatus });
     }
 
     return NextResponse.json({ ok: false, error: "Nepoznata akcija." }, { status: 400 });

@@ -221,17 +221,41 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 1. Attempt sending Z-report command to LPFR (vendor endpoints for Z-report / close-shift)
+    // 1. Attempt sending Z-report command to LPFR (vendor endpoints for OFS P5 EFU / Teron / Mikroelektronika)
+    const debugLogs: any[] = [];
     try {
       const zEndpoints = [
-        { url: `${baseWithScheme}/api/v3/reports/z`, method: "POST", body: { cashier: "Administrator", closeShift: true } },
-        { url: `${baseWithScheme}/api/reports/z`, method: "POST", body: { cashier: "Administrator", closeShift: true } },
-        { url: `${baseWithScheme}/api/v3/reports/daily`, method: "POST", body: { cashier: "Administrator", closeShift: true } },
-        { url: `${baseWithScheme}/api/reports/daily`, method: "POST", body: { cashier: "Administrator", closeShift: true } },
-        { url: `${baseWithScheme}/api/v3/shift/close`, method: "POST", body: { closeShift: true } },
-        { url: `${baseWithScheme}/api/shift/close`, method: "POST", body: { closeShift: true } },
-        { url: `${baseWithScheme}/api/v3/reports`, method: "POST", body: { reportType: "Z", closeShift: true } },
-        { url: `${baseWithScheme}/api/reports`, method: "POST", body: { reportType: "Z", closeShift: true } },
+        // 1. OFS / Teron / Mikroelektronika Z-report endpoints
+        { url: `${baseWithScheme}/api/v3/reports/z`, method: "POST", body: { cashier: "Prodavac 1", closeShift: true } },
+        { url: `${baseWithScheme}/api/reports/z`, method: "POST", body: { cashier: "Prodavac 1", closeShift: true } },
+        { url: `${baseWithScheme}/api/v3/reports/z`, method: "POST", body: { cashier: "Prodavac 1" } },
+        { url: `${baseWithScheme}/api/reports/z`, method: "POST", body: { cashier: "Prodavac 1" } },
+        { url: `${baseWithScheme}/api/v3/reports/z`, method: "GET", body: undefined },
+        { url: `${baseWithScheme}/api/reports/z`, method: "GET", body: undefined },
+        
+        // 2. Daily / Shift close endpoints
+        { url: `${baseWithScheme}/api/v3/reports/daily`, method: "POST", body: { cashier: "Prodavac 1", closeShift: true } },
+        { url: `${baseWithScheme}/api/reports/daily`, method: "POST", body: { cashier: "Prodavac 1", closeShift: true } },
+        { url: `${baseWithScheme}/api/v3/shift/close`, method: "POST", body: { cashier: "Prodavac 1" } },
+        { url: `${baseWithScheme}/api/shift/close`, method: "POST", body: { cashier: "Prodavac 1" } },
+        { url: `${baseWithScheme}/api/v3/shift/end`, method: "POST", body: { cashier: "Prodavac 1" } },
+        { url: `${baseWithScheme}/api/shift/end`, method: "POST", body: { cashier: "Prodavac 1" } },
+
+        // 3. Generic reports endpoints
+        { url: `${baseWithScheme}/api/v3/reports`, method: "POST", body: { reportType: "Z", cashier: "Prodavac 1", closeShift: true } },
+        { url: `${baseWithScheme}/api/reports`, method: "POST", body: { reportType: "Z", cashier: "Prodavac 1", closeShift: true } },
+        { url: `${baseWithScheme}/api/v3/reports`, method: "POST", body: { type: "Z", cashier: "Prodavac 1" } },
+        { url: `${baseWithScheme}/api/reports`, method: "POST", body: { type: "Z", cashier: "Prodavac 1" } },
+        { url: `${baseWithScheme}/api/v3/reports`, method: "POST", body: { reportType: "Daily", cashier: "Prodavac 1" } },
+        { url: `${baseWithScheme}/api/reports`, method: "POST", body: { reportType: "Daily", cashier: "Prodavac 1" } },
+
+        // 4. Command endpoints
+        { url: `${baseWithScheme}/api/v3/commands`, method: "POST", body: { command: "ZReport", cashier: "Prodavac 1" } },
+        { url: `${baseWithScheme}/api/commands`, method: "POST", body: { command: "ZReport", cashier: "Prodavac 1" } },
+        { url: `${baseWithScheme}/api/v3/commands`, method: "POST", body: { command: "CloseShift", cashier: "Prodavac 1" } },
+        { url: `${baseWithScheme}/api/commands`, method: "POST", body: { command: "CloseShift", cashier: "Prodavac 1" } },
+        { url: `${baseWithScheme}/api/v3/commands/z-report`, method: "POST", body: { cashier: "Prodavac 1" } },
+        { url: `${baseWithScheme}/api/commands/z-report`, method: "POST", body: { cashier: "Prodavac 1" } },
       ];
 
       for (const item of zEndpoints) {
@@ -239,16 +263,22 @@ export async function POST(req: NextRequest) {
           const res = await fetch(item.url, {
             method: item.method,
             headers,
-            body: JSON.stringify(item.body),
-            signal: AbortSignal.timeout(4000),
+            body: item.body ? JSON.stringify(item.body) : undefined,
+            signal: AbortSignal.timeout(3000),
           });
+          const txt = await res.text();
+          debugLogs.push({ url: item.url, status: res.status, body: txt.slice(0, 150) });
           if (res.ok) {
             lpfrSuccess = true;
-            lpfrZReportData = await res.json().catch(() => null);
+            try {
+              lpfrZReportData = JSON.parse(txt);
+            } catch {
+              lpfrZReportData = { raw: txt };
+            }
             break;
           }
-        } catch {
-          // try next endpoint
+        } catch (fetchErr: any) {
+          debugLogs.push({ url: item.url, error: fetchErr.message });
         }
       }
     } catch (err: any) {
@@ -256,7 +286,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!lpfrSuccess && !lpfrWarning) {
-      lpfrWarning = "LPFR uređaj ne podržava daljinsko resetovanje smjene preko mrežne komande (zaključenje na samom uređaju se vrši kroz meni/tastaturu uređaja).";
+      lpfrWarning = "OFS P5 EFU uređaj ne podržava daljinsko resetovanje smjene preko mrežne komande (zaključenje na samom uređaju se vrši dodirom na meni 'Извјештаји').";
     }
 
     // 2. Query today's invoices for summary

@@ -90,6 +90,8 @@ export default function OwnerOperativniPlan() {
     loadData();
   }, []);
 
+  const [showPaidRashodi, setShowPaidRashodi] = useState(false);
+
   // Izračuni
   const totalRacuniPersonal = racuni
     .filter((r) => r.tip !== "FIRMA_RACUN")
@@ -102,13 +104,18 @@ export default function OwnerOperativniPlan() {
   const totalSviRacuni = totalRacuniPersonal + totalRacuniFirma;
 
   const priliviAktivni = planStavke.filter((p) => p.vrsta === "PRILIV" && p.status !== "OTKAZANO");
-  const totalPrilivi = priliviAktivni.reduce((sum, p) => sum + Number(p.iznos || 0), 0);
+  const totalPrilivi = priliviAktivni
+    .filter((p) => p.status !== "REALIZOVANO")
+    .reduce((sum, p) => sum + Number(p.iznos || 0), 0);
 
   const rashodiAktivni = planStavke.filter((p) => p.vrsta === "RASHOD" && p.status !== "OTKAZANO");
-  const totalRashodi = rashodiAktivni
+  const rashodiPending = rashodiAktivni.filter((p) => p.status !== "REALIZOVANO");
+  const rashodiRealizovani = rashodiAktivni.filter((p) => p.status === "REALIZOVANO");
+
+  const totalRashodi = rashodiPending
     .filter((p) => p.status !== "HOLD")
     .reduce((sum, p) => sum + Number(p.iznos || 0), 0);
-  const totalRashodiHold = rashodiAktivni
+  const totalRashodiHold = rashodiPending
     .filter((p) => p.status === "HOLD")
     .reduce((sum, p) => sum + Number(p.iznos || 0), 0);
 
@@ -145,6 +152,19 @@ export default function OwnerOperativniPlan() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: item.id, action: "toggle_status" }),
+      });
+      loadData();
+    } catch (e: any) {
+      alert(e.message);
+    }
+  }
+
+  async function handleMarkPaid(item: PlanStavka) {
+    try {
+      await fetch("/api/owner/operativni-plan", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.id, action: "mark_paid" }),
       });
       loadData();
     } catch (e: any) {
@@ -603,63 +623,163 @@ export default function OwnerOperativniPlan() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {rashodiAktivni.map((r) => {
-                const isHold = r.status === "HOLD";
-                const isRealizovano = r.status === "REALIZOVANO";
+              {rashodiPending.length === 0 ? (
+                <div style={{ fontSize: 12, color: "#94a3b8", textAlign: "center", padding: "16px 0", background: "rgba(0,0,0,0.2)", borderRadius: 6 }}>
+                  ✅ Nema neplaćenih tekućih obaveza. Sve je podmireno!
+                </div>
+              ) : (
+                rashodiPending.map((r) => {
+                  const isHold = r.status === "HOLD";
+                  const isAuto = r.napomena?.includes("[PRETP:") || r.napomena?.includes("[KRED:");
 
-                return (
-                  <div
-                    key={r.id}
-                    style={{
-                      background: isHold ? "rgba(245, 158, 11, 0.1)" : isRealizovano ? "rgba(34, 197, 94, 0.1)" : "rgba(30, 41, 59, 0.4)",
-                      border: isHold ? "1px solid rgba(245, 158, 11, 0.4)" : isRealizovano ? "1px solid rgba(34, 197, 94, 0.4)" : "1px solid rgba(255,255,255,0.06)",
-                      borderRadius: 6,
-                      padding: "8px 12px",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 700, color: isHold ? "#fbbf24" : isRealizovano ? "#86efac" : "#f8fafc", fontSize: 13, textDecoration: isRealizovano ? "line-through" : "none" }}>
-                        {r.naziv}
+                  return (
+                    <div
+                      key={r.id}
+                      style={{
+                        background: isHold ? "rgba(245, 158, 11, 0.1)" : "rgba(30, 41, 59, 0.4)",
+                        border: isHold ? "1px solid rgba(245, 158, 11, 0.4)" : "1px solid rgba(255,255,255,0.06)",
+                        borderRadius: 6,
+                        padding: "8px 12px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, color: isHold ? "#fbbf24" : "#f8fafc", fontSize: 13, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                          <span>{r.naziv}</span>
+                          {isAuto && (
+                            <span style={{ fontSize: 10, background: "rgba(56, 189, 248, 0.2)", color: "#38bdf8", border: "1px solid rgba(56, 189, 248, 0.3)", padding: "1px 6px", borderRadius: 4, fontWeight: 700 }}>
+                              📅 Dospijeće
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>
+                          {r.kategorija} {r.rok_datum ? `• Rok: ${r.rok_datum}` : ""} {r.napomena && !isAuto ? `• ${r.napomena}` : ""}
+                        </div>
                       </div>
-                      <div style={{ fontSize: 10, color: "#94a3b8" }}>{r.kategorija} {r.napomena ? `• ${r.napomena}` : ""}</div>
-                    </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontWeight: 800, color: isHold ? "#fbbf24" : "#f87171", fontSize: 14 }}>
-                        {Number(r.iznos).toFixed(2)} KM
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStatus(r)}
-                        style={{
-                          background: isHold ? "rgba(245, 158, 11, 0.3)" : isRealizovano ? "rgba(34, 197, 94, 0.3)" : "rgba(255,255,255,0.05)",
-                          color: isHold ? "#fbbf24" : isRealizovano ? "#4ade80" : "#cbd5e1",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          padding: "3px 8px",
-                          borderRadius: 4,
-                          cursor: "pointer",
-                          fontSize: 11,
-                          fontWeight: 700,
-                        }}
-                        title="Kliknite za promjenu statusa (Za plaćanje -> Plaćeno -> HOLD)"
-                      >
-                        {isRealizovano ? "✓ Plaćeno" : isHold ? "⏸ HOLD" : "⚪ Za plaćanje"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteItem(r.id)}
-                        style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 13 }}
-                      >
-                        ✕
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                        <span style={{ fontWeight: 800, color: isHold ? "#fbbf24" : "#f87171", fontSize: 14 }}>
+                          {Number(r.iznos).toFixed(2)} KM
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleMarkPaid(r)}
+                          style={{
+                            background: "rgba(34, 197, 94, 0.2)",
+                            color: "#4ade80",
+                            border: "1px solid #22c55e",
+                            padding: "4px 10px",
+                            borderRadius: 4,
+                            cursor: "pointer",
+                            fontSize: 11,
+                            fontWeight: 800,
+                          }}
+                          title="Označi kao plaćeno (nestaje iz liste i evidentira se)"
+                        >
+                          ✓ Plaćeno
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStatus(r)}
+                          style={{
+                            background: isHold ? "rgba(245, 158, 11, 0.3)" : "rgba(255,255,255,0.05)",
+                            color: isHold ? "#fbbf24" : "#cbd5e1",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            padding: "4px 8px",
+                            borderRadius: 4,
+                            cursor: "pointer",
+                            fontSize: 11,
+                            fontWeight: 700,
+                          }}
+                          title="Prebaci na HOLD ili u aktivno"
+                        >
+                          {isHold ? "⏸ HOLD" : "HOLD"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteItem(r.id)}
+                          style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 13, padding: "2px 4px" }}
+                          title="Obriši stavku"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
+
+            {/* PLAĆENE OBAVEZE ARHIVA PREGLED */}
+            {rashodiRealizovani.length > 0 && (
+              <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowPaidRashodi((prev) => !prev)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#94a3b8",
+                    fontSize: 11,
+                    cursor: "pointer",
+                    padding: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <span>{showPaidRashodi ? "▼" : "▶"}</span>
+                  <span>📁 Plaćene obaveze ({rashodiRealizovani.length})</span>
+                </button>
+
+                {showPaidRashodi && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+                    {rashodiRealizovani.map((r) => (
+                      <div
+                        key={r.id}
+                        style={{
+                          background: "rgba(34, 197, 94, 0.08)",
+                          border: "1px solid rgba(34, 197, 94, 0.2)",
+                          borderRadius: 4,
+                          padding: "6px 10px",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          fontSize: 11,
+                        }}
+                      >
+                        <div>
+                          <span style={{ textDecoration: "line-through", color: "#86efac", fontWeight: 600 }}>{r.naziv}</span>
+                          <span style={{ color: "#64748b", marginLeft: 6 }}>({r.kategorija})</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ color: "#86efac", fontWeight: 700 }}>{Number(r.iznos).toFixed(2)} KM</span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStatus(r)}
+                            style={{
+                              background: "transparent",
+                              border: "1px solid rgba(255,255,255,0.15)",
+                              color: "#94a3b8",
+                              padding: "1px 6px",
+                              borderRadius: 3,
+                              cursor: "pointer",
+                              fontSize: 10,
+                            }}
+                            title="Vrati u neplaćene obaveze"
+                          >
+                            Vrati
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* DUGOROČNI DUGOVI & REPROGRAMI SEKCIJA */}

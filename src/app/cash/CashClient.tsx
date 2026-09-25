@@ -19,8 +19,11 @@ type CashEntry = {
   direction: CashDirection;
   note: string;
   projectId: string | null;
+  projectName?: string | null;
+  projectIdPo?: string | null;
   entityType: string | null;
   entityId: number | null;
+  entityName?: string | null;
   status: "AKTIVAN" | "STORNIRAN";
   createdAt: string;
   transactionDetails?: string | null;
@@ -92,15 +95,21 @@ function fmtMoney(amount: number, currency: string) {
   return `${Number(amount).toFixed(2)} ${currency}`;
 }
 
+function getInitial30DaysAgo(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  return d.toISOString().slice(0, 10);
+}
+
 export default function CashClient() {
   const { t, locale } = useTranslation();
-  const [activeHubTab, setActiveHubTab] = useState<"plan" | "privatno" | "blagajna">("plan");
+  const [activeHubTab, setActiveHubTab] = useState<"plan" | "privatno" | "blagajna">("blagajna");
   const [data, setData] = useState<CashResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Filteri pretrage istorije
-  const [filterDateFrom, setFilterDateFrom] = useState<string>("");
+  // Filteri pretrage istorije (default: zadnjih 30 dana)
+  const [filterDateFrom, setFilterDateFrom] = useState<string>(() => getInitial30DaysAgo());
   const [filterDateTo, setFilterDateTo] = useState<string>("");
   const [filterEntityType, setFilterEntityType] = useState<string>(""); // "" | "talent" | "vendor"
   const [filterEntityId, setFilterEntityId] = useState<string>("");
@@ -315,7 +324,7 @@ export default function CashClient() {
     setEntitiesLoading(true);
     try {
       const [talentsRes, suppliersRes, klijentiRes] = await Promise.all([
-        fetch("/api/talents?include_inactive=1", { cache: "no-store" }),
+        fetch("/api/talents", { cache: "no-store" }),
         fetch("/api/izvjestaji/dobavljaci?limit=1000", { cache: "no-store" }),
         fetch("/api/klijenti", { cache: "no-store" }),
       ]);
@@ -326,28 +335,23 @@ export default function CashClient() {
 
       if (talentsJson.ok && talentsJson.items) {
         const allTalents = talentsJson.items
-          .filter((t: any) => t.id != null)
+          .filter((t: any) => t.id != null && (t.aktivan === undefined || t.aktivan === null || Number(t.aktivan) === 1 || t.aktivan === true))
           .map((t: any) => ({
             talent_id: Number(t.id),
             ime_prezime: String(t.name || "").trim(),
             vrsta: t.vrsta || "",
-            aktivan: Number(t.aktivan) === 1,
+            aktivan: true,
           }));
 
-        // Prikaži samo jedan red po imenu (preferiraj aktivan zapis, zatim veći ID).
+        // Prikaži samo jedan red po imenu
         const byName = new Map<string, (typeof allTalents)[number]>();
         for (const talent of allTalents) {
           const key = talent.ime_prezime.toLocaleLowerCase("sr").replace(/\s+/g, " ").trim();
           if (!key) continue;
           const existing = byName.get(key);
-          if (!existing) {
+          if (!existing || talent.talent_id > existing.talent_id) {
             byName.set(key, talent);
-            continue;
           }
-          const shouldReplace =
-            (talent.aktivan && !existing.aktivan) ||
-            (talent.aktivan === existing.aktivan && talent.talent_id > existing.talent_id);
-          if (shouldReplace) byName.set(key, talent);
         }
 
         const dedupedTalents = Array.from(byName.values())
@@ -506,6 +510,25 @@ export default function CashClient() {
         <div style={{ display: "flex", gap: 10, marginBottom: 20, borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 12, flexWrap: "wrap" }}>
           <button
             type="button"
+            onClick={() => setActiveHubTab("blagajna")}
+            style={{
+              background: activeHubTab === "blagajna" ? "rgba(56, 189, 248, 0.25)" : "rgba(30, 41, 59, 0.5)",
+              color: activeHubTab === "blagajna" ? "#38bdf8" : "#94a3b8",
+              border: activeHubTab === "blagajna" ? "1px solid #38bdf8" : "1px solid rgba(255,255,255,0.1)",
+              padding: "10px 18px",
+              borderRadius: 8,
+              fontWeight: 800,
+              fontSize: 14,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span>💵</span> Gotovinski Trezor / Isplate
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveHubTab("plan")}
             style={{
               background: activeHubTab === "plan" ? "rgba(34, 197, 94, 0.25)" : "rgba(30, 41, 59, 0.5)",
@@ -541,25 +564,6 @@ export default function CashClient() {
             }}
           >
             <span>🔒</span> Privatni Finansijski Registar (Pretplate & Krediti)
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveHubTab("blagajna")}
-            style={{
-              background: activeHubTab === "blagajna" ? "rgba(56, 189, 248, 0.25)" : "rgba(30, 41, 59, 0.5)",
-              color: activeHubTab === "blagajna" ? "#38bdf8" : "#94a3b8",
-              border: activeHubTab === "blagajna" ? "1px solid #38bdf8" : "1px solid rgba(255,255,255,0.1)",
-              padding: "10px 18px",
-              borderRadius: 8,
-              fontWeight: 800,
-              fontSize: 14,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <span>💵</span> Gotovinski Trezor / Isplate
           </button>
         </div>
 
@@ -914,13 +918,13 @@ export default function CashClient() {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>{t("cash.colDate")}</th>
-                    <th>{t("cash.colDirection")}</th>
-                    <th>{t("cash.colAmount")}</th>
-                    <th>{t("cash.colNote")}</th>
-                    <th>{t("cash.colProjectEntity")}</th>
-                    <th>{t("cash.colAction")}</th>
-                    <th>{t("cash.colStatus")}</th>
+                    <th style={{ width: 135 }}>{t("cash.colDate")}</th>
+                    <th style={{ width: 75 }}>{t("cash.colDirection")}</th>
+                    <th style={{ width: 125 }}>{t("cash.colAmount")}</th>
+                    <th style={{ width: 170, maxWidth: 220 }}>{t("cash.colNote")}</th>
+                    <th style={{ minWidth: 200 }}>{t("cash.colProjectEntity")}</th>
+                    <th style={{ width: 160 }}>{t("cash.colAction")}</th>
+                    <th style={{ width: 95 }}>{t("cash.colStatus")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -972,7 +976,7 @@ export default function CashClient() {
                           fmtMoney(it.amount, it.currency)
                         )}
                       </td>
-                      <td>
+                      <td style={{ maxWidth: 220, wordBreak: "break-word", fontSize: 12 }}>
                         {editing?.id === it.id ? (
                           <input
                             className={styles.input}
@@ -1013,15 +1017,30 @@ export default function CashClient() {
                             </div>
                           </div>
                         ) : (
-                          <>
-                            {it.projectId ? `${t("cash.projectLabel")} #${it.projectId}` : null}
-                            {it.entityType && it.entityId
-                              ? `${it.projectId ? " · " : ""}${
-                                  it.entityType === "talent" ? t("cash.talent") : it.entityType === "vendor" ? t("cash.supplier") : it.entityType === "klijent" ? t("cash.client") : it.entityType
-                                } #${it.entityId}`
-                              : null}
-                            {!it.projectId && !(it.entityType && it.entityId) ? "—" : null}
-                          </>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                            {it.projectName ? (
+                              <span style={{ fontWeight: 700, color: "#93c5fd" }}>
+                                {it.projectName} {it.projectIdPo ? `(#${it.projectIdPo})` : (it.projectId ? `(#${it.projectId})` : "")}
+                              </span>
+                            ) : it.projectId ? (
+                              <span style={{ fontWeight: 600, color: "#93c5fd" }}>{t("cash.projectLabel")} #{it.projectId}</span>
+                            ) : null}
+
+                            {it.entityName ? (
+                              <span style={{ fontSize: 12, opacity: 0.9, color: "#cbd5e1" }}>
+                                <span style={{ opacity: 0.6, marginRight: 4 }}>
+                                  {it.entityType === "talent" ? "Saradnik:" : it.entityType === "vendor" ? "Dobavljač:" : it.entityType === "klijent" ? "Klijent:" : ""}
+                                </span>
+                                <b>{it.entityName}</b>
+                              </span>
+                            ) : it.entityType && it.entityId ? (
+                              <span style={{ fontSize: 12, opacity: 0.75 }}>
+                                {it.entityType === "talent" ? t("cash.talent") : it.entityType === "vendor" ? t("cash.supplier") : it.entityType === "klijent" ? t("cash.client") : it.entityType} #{it.entityId}
+                              </span>
+                            ) : null}
+
+                            {!it.projectName && !it.projectId && !it.entityName && !it.entityId ? "—" : null}
+                          </div>
                         )}
                       </td>
                       <td style={{ fontSize: 12, opacity: 0.85 }}>

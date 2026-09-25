@@ -15,8 +15,11 @@ export type CashEntry = {
   direction: CashDirection;
   note: string;
   projectId: string | null;
+  projectName?: string | null;
+  projectIdPo?: string | null;
   entityType: string | null;
   entityId: number | null;
+  entityName?: string | null;
   status: CashStatus;
   createdAt: string;
   transactionDetails?: string | null;
@@ -47,6 +50,16 @@ function rowToEntry(r: any): CashEntry {
   const createdAt = r.created_at
     ? new Date(r.created_at).toISOString()
     : new Date().toISOString();
+
+  let entityName: string | null = null;
+  if (r.entity_type === "talent") {
+    entityName = r.talent_naziv ?? null;
+  } else if (r.entity_type === "vendor" || r.entity_type === "dobavljac") {
+    entityName = r.vendor_naziv ?? null;
+  } else if (r.entity_type === "klijent" || r.entity_type === "client") {
+    entityName = r.klijent_naziv ?? null;
+  }
+
   return {
     id: String(r.id),
     date: dateIso,
@@ -55,8 +68,11 @@ function rowToEntry(r: any): CashEntry {
     direction: r.smjer === "OUT" ? "OUT" : "IN",
     note: String(r.napomena ?? ""),
     projectId: r.project_id != null ? String(r.project_id) : null,
+    projectName: r.project_naziv ?? null,
+    projectIdPo: r.project_id_po ?? null,
     entityType: r.entity_type != null && r.entity_type !== "" ? String(r.entity_type) : null,
     entityId: r.entity_id != null && Number.isFinite(Number(r.entity_id)) ? Number(r.entity_id) : null,
+    entityName: entityName,
     status: r.status === "STORNIRAN" ? "STORNIRAN" : "AKTIVAN",
     createdAt,
     transactionDetails: r.transaction_details ?? null,
@@ -89,23 +105,23 @@ export async function listCashFromDb(filters: ListCashFilters = {}): Promise<Cas
   const params: (string | number)[] = [];
 
   if (dateFrom) {
-    where.push("datum >= ?");
+    where.push("b.datum >= ?");
     params.push(dateFrom);
   }
   if (dateTo) {
-    where.push("datum <= ?");
+    where.push("b.datum <= ?");
     params.push(dateTo);
   }
   if (entityType) {
-    where.push("entity_type = ?");
+    where.push("b.entity_type = ?");
     params.push(entityType);
   }
   if (entityId != null && Number.isFinite(entityId)) {
-    where.push("entity_id = ?");
+    where.push("b.entity_id = ?");
     params.push(entityId);
   }
   if (!includeAllStatuses) {
-    where.push("status = ?");
+    where.push("b.status = ?");
     params.push(status ?? "AKTIVAN");
   }
 
@@ -113,11 +129,19 @@ export async function listCashFromDb(filters: ListCashFilters = {}): Promise<Cas
   const safeLimit = Math.min(Math.max(1, limit), 2000);
 
   const rows = (await query(
-    `SELECT id, datum, iznos, valuta, smjer, napomena, project_id, entity_type, entity_id,
-            transaction_details, status, created_at
-     FROM blagajna_stavke
+    `SELECT b.id, b.datum, b.iznos, b.valuta, b.smjer, b.napomena, b.project_id, b.entity_type, b.entity_id,
+            b.transaction_details, b.status, b.created_at,
+            p.radni_naziv AS project_naziv, p.id_po AS project_id_po,
+            t.ime_prezime AS talent_naziv,
+            d.naziv AS vendor_naziv,
+            k.naziv_klijenta AS klijent_naziv
+     FROM blagajna_stavke b
+     LEFT JOIN projekti p ON p.projekat_id = b.project_id
+     LEFT JOIN talenti t ON (b.entity_type = 'talent' AND t.talent_id = b.entity_id)
+     LEFT JOIN dobavljaci d ON (b.entity_type IN ('vendor', 'dobavljac') AND d.dobavljac_id = b.entity_id)
+     LEFT JOIN klijenti k ON (b.entity_type IN ('klijent', 'client') AND k.klijent_id = b.entity_id)
      ${whereSql}
-     ORDER BY datum DESC, created_at DESC, id DESC
+     ORDER BY b.datum DESC, b.created_at DESC, b.id DESC
      LIMIT ?`,
     [...params, safeLimit]
   )) as any[];
