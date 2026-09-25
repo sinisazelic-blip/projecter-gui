@@ -221,21 +221,26 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 1. Attempt sending Z-report command to LPFR (supports /api/v3/reports/z or /api/reports/z or /api/status)
+    // 1. Attempt sending Z-report command to LPFR (vendor endpoints for Z-report / close-shift)
     try {
       const zEndpoints = [
-        `${baseWithScheme}/api/v3/reports/z`,
-        `${baseWithScheme}/api/reports/z`,
-        `${baseWithScheme}/api/status`,
+        { url: `${baseWithScheme}/api/v3/reports/z`, method: "POST", body: { cashier: "Administrator", closeShift: true } },
+        { url: `${baseWithScheme}/api/reports/z`, method: "POST", body: { cashier: "Administrator", closeShift: true } },
+        { url: `${baseWithScheme}/api/v3/reports/daily`, method: "POST", body: { cashier: "Administrator", closeShift: true } },
+        { url: `${baseWithScheme}/api/reports/daily`, method: "POST", body: { cashier: "Administrator", closeShift: true } },
+        { url: `${baseWithScheme}/api/v3/shift/close`, method: "POST", body: { closeShift: true } },
+        { url: `${baseWithScheme}/api/shift/close`, method: "POST", body: { closeShift: true } },
+        { url: `${baseWithScheme}/api/v3/reports`, method: "POST", body: { reportType: "Z", closeShift: true } },
+        { url: `${baseWithScheme}/api/reports`, method: "POST", body: { reportType: "Z", closeShift: true } },
       ];
 
-      for (const ep of zEndpoints) {
+      for (const item of zEndpoints) {
         try {
-          const res = await fetch(ep, {
-            method: ep.includes("/status") ? "GET" : "POST",
+          const res = await fetch(item.url, {
+            method: item.method,
             headers,
-            body: ep.includes("/status") ? undefined : JSON.stringify({ cashier: "Administrator", closeShift: true }),
-            signal: AbortSignal.timeout(5000),
+            body: JSON.stringify(item.body),
+            signal: AbortSignal.timeout(4000),
           });
           if (res.ok) {
             lpfrSuccess = true;
@@ -250,14 +255,21 @@ export async function POST(req: NextRequest) {
       lpfrWarning = "LPFR uređaj nije odgovorio na nalog za zatvaranje smjene: " + err.message;
     }
 
+    if (!lpfrSuccess && !lpfrWarning) {
+      lpfrWarning = "LPFR uređaj ne podržava daljinsko resetovanje smjene preko mrežne komande (zaključenje na samom uređaju se vrši kroz meni/tastaturu uređaja).";
+    }
+
     // 2. Query today's invoices for summary
     const todayInvoices = (await query(
       `
       SELECT 
-        faktura_id, broj_fakture_puni AS broj_fakture, broj_fiskalni,
-        osnovica_km, pdv_iznos_km, iznos_ukupno_km, datum_izdavanja, valuta
-      FROM fakture
-      WHERE (DATE(datum_izdavanja) = CURDATE() OR datum_izdavanja >= CURDATE())
+        f.faktura_id, f.broj_fakture_puni AS broj_fakture, f.broj_fiskalni,
+        f.osnovica_km, f.pdv_iznos_km, f.iznos_ukupno_km, f.datum_izdavanja, f.valuta,
+        k.naziv_klijenta
+      FROM fakture f
+      LEFT JOIN klijenti k ON k.klijent_id = f.bill_to_klijent_id
+      WHERE (DATE(f.datum_izdavanja) = CURDATE() OR f.datum_izdavanja >= CURDATE())
+      ORDER BY f.faktura_id ASC
       `,
       [],
     )) as any[];
@@ -268,20 +280,37 @@ export async function POST(req: NextRequest) {
     let ukupnoSaPdv = 0;
     let fiskalizovanoKomada = 0;
 
-    for (const f of todayInvoices) {
+    const formattedInvoices = todayInvoices.map((f: any) => {
       const valuta = String(f.valuta || "BAM").toUpperCase();
       const isEur = valuta === "EUR";
       const rate = isEur ? EUR_TO_BAM : 1;
 
-      const osnovicaBam = Math.round((Number(f.osnovica_km) || 0) * rate * 100) / 100;
-      const pdvBam = Math.round((Number(f.pdv_iznos_km) || 0) * rate * 100) / 100;
-      const ukupnoBam = Math.round((Number(f.iznos_ukupno_km) || 0) * rate * 100) / 100;
+      const osnovicaNominal = Number(f.osnovica_km) || 0;
+      const pdvNominal = Number(f.pdv_iznos_km) || 0;
+      const ukupnoNominal = Number(f.iznos_ukupno_km) || 0;
 
-      ukupnoBezPdv += osnovicaBam;
-      ukupnoPdv += pdvBam;
-      ukupnoSaPdv += ukupnoBam;
-      if (f.broj_fiskalni) fiskalizovanoKomada++;
-    }
+      const osnovicaBam = Math.round(osnovicaNominal * rate * 100) / 100;
+      const pdvBam = Math.round(pdvNominal * rate * 100) / 100;
+      const ukupnoBam = Math.round(ukupnoNominal * rate * 100) / 100;
+
+      if (f.fiskalni_status !== "STORNIRAN") {
+        ukupnoBezPdv += osnovicaBam;
+        ukupnoPdv += pdvBam;
+        ukupnoSaPdv += ukupnoBam;
+        if (f.broj_fiskalni) fiskalizovanoKomada++;
+      }
+
+      return {
+        ...f,
+        valuta: isEur ? "EUR" : "KM",
+        naziv_klijenta: f.naziv_klijenta || "—",
+        iznos_nominal: ukupnoNominal,
+        iznos_bam: ukupnoBam,
+        display_iznos: isEur
+          ? `${ukupnoNominal.toFixed(2)} EUR (${ukupnoBam.toFixed(2)} KM)`
+          : `${ukupnoBam.toFixed(2)} KM`,
+      };
+    });
 
     const report = {
       zBroj: Math.floor(Date.now() / 1000) % 100000,
@@ -294,6 +323,7 @@ export async function POST(req: NextRequest) {
       ukupnoBezPdv: Math.round(ukupnoBezPdv * 100) / 100,
       ukupnoPdv: Math.round(ukupnoPdv * 100) / 100,
       ukupnoSaPdv: Math.round(ukupnoSaPdv * 100) / 100,
+      fakture: formattedInvoices,
       lpfrSuccess,
       lpfrWarning,
       lpfrDetails: lpfrZReportData,
@@ -301,7 +331,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      message: "Dnevni (Z) izvještaj je uspješno kreiran i smjena je zaključena.",
+      message: lpfrSuccess
+        ? "Dnevni (Z) izvještaj je uspješno kreiran i smjena je zaključena na LPFR uređaju."
+        : "Smjena je uspješno obračunata i zaključena u Fluxa sistemu.",
       report,
     });
   } catch (e: any) {
