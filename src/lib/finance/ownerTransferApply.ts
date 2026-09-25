@@ -109,7 +109,7 @@ export async function applyOwnerTransferToBlagajna(
         amountKm,
         valuta === "BAM" ? "KM" : valuta,
         "Prenos na privatni račun vlasnika (keš) — automatski iz izvoda.",
-        ownerProjectId,
+        null,
         marker,
       ],
     );

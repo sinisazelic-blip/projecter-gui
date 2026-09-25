@@ -16,7 +16,7 @@ export async function GET() {
     const rows = await query(`
       SELECT 
         id, naziv, kategorija, iznos, valuta, frekvencija,
-        dan_u_mjesecu, nacin_placanja, status, napomena, zadnje_placeno, created_at
+        dan_u_mjesecu, nacin_placanja, status, napomena, DATE_FORMAT(zadnje_placeno, '%Y-%m-%d') AS zadnje_placeno, created_at
       FROM owner_privatne_pretplate
       ORDER BY (status = 'AKTIVAN') DESC, dan_u_mjesecu ASC, naziv ASC
     `);
@@ -119,6 +119,19 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
+function toMysqlDateOnly(val: any): string | null {
+  if (!val) return null;
+  const s = String(val).trim();
+  if (!s) return null;
+  const match = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) return match[0];
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) {
+    return d.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
@@ -139,6 +152,8 @@ export async function PUT(req: NextRequest) {
     if (!id) {
       return NextResponse.json({ ok: false, error: "ID je obavezan." }, { status: 400 });
     }
+
+    const safeZadnjePlaceno = zadnje_placeno !== undefined ? toMysqlDateOnly(zadnje_placeno) : undefined;
 
     await query(
       `
@@ -165,7 +180,7 @@ export async function PUT(req: NextRequest) {
         nacin_placanja,
         status,
         napomena,
-        zadnje_placeno,
+        safeZadnjePlaceno,
         id,
       ]
     );

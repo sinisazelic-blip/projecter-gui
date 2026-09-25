@@ -5,6 +5,7 @@ import {
   insertCashDraftDb,
   updateCashEntryDb,
   computeBalanceFromItems,
+  getCashTotalBalanceDb,
   type ListCashFilters,
 } from "@/lib/cash/db";
 import { query } from "@/lib/db";
@@ -40,10 +41,12 @@ export async function GET(req: NextRequest) {
       limit,
     };
 
-    const items = await listCashFromDb(filters);
-    const balance = computeBalanceFromItems(items);
+    const [items, allTimeBalance] = await Promise.all([
+      listCashFromDb(filters),
+      getCashTotalBalanceDb(),
+    ]);
 
-    return NextResponse.json({ ok: true, balance, items });
+    return NextResponse.json({ ok: true, balance: allTimeBalance, items });
   } catch (e: any) {
     return jsonError(e.message || "SERVER_ERROR", e?.status || 500);
   }

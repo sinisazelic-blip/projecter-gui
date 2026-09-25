@@ -1018,7 +1018,11 @@ export default function CashClient() {
                           </div>
                         ) : (
                           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                            {it.projectName ? (
+                            {it.projectName === "Isplata dobiti - Studio TAF" ? (
+                              <span style={{ fontWeight: 700, color: "#38bdf8", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                🏦 Isplata dobiti - Studio TAF
+                              </span>
+                            ) : it.projectName ? (
                               <span style={{ fontWeight: 700, color: "#93c5fd" }}>
                                 {it.projectName} {it.projectIdPo ? `(#${it.projectIdPo})` : (it.projectId ? `(#${it.projectId})` : "")}
                               </span>

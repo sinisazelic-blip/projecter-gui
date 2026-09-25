@@ -34,6 +34,23 @@ type TafFaktura = {
   valuta: string;
 };
 
+function formatShortDate(v: string | null | undefined): string {
+  if (!v) return "";
+  const s = String(v).trim();
+  const match = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    return `${match[3]}.${match[2]}.${match[1]}.`;
+  }
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) {
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}.${month}.${year}.`;
+  }
+  return s;
+}
+
 export default function OwnerOperativniPlan() {
   const [racuni, setRacuni] = useState<RacunStanje[]>([]);
   const [planStavke, setPlanStavke] = useState<PlanStavka[]>([]);
@@ -656,7 +673,7 @@ export default function OwnerOperativniPlan() {
                           )}
                         </div>
                         <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>
-                          {r.kategorija} {r.rok_datum ? `• Rok: ${r.rok_datum}` : ""} {r.napomena && !isAuto ? `• ${r.napomena}` : ""}
+                          {r.kategorija} {r.rok_datum ? `• Rok: ${formatShortDate(r.rok_datum)}` : ""} {r.napomena && !isAuto ? `• ${r.napomena}` : ""}
                         </div>
                       </div>
 

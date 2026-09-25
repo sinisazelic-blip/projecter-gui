@@ -32,6 +32,23 @@ type KreditItem = {
   napomena: string | null;
 };
 
+function formatDisplayDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const s = String(iso).trim();
+  const match = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    return `${match[3]}.${match[2]}.${match[1]}.`;
+  }
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) {
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}.${mm}.${yyyy}.`;
+  }
+  return s;
+}
+
 export default function OwnerPrivateFinance() {
   const [subTab, setSubTab] = useState<"pretplate" | "krediti" | "kalendar">("pretplate");
   const [pretplate, setPretplate] = useState<PretplateItem[]>([]);
@@ -208,10 +225,14 @@ export default function OwnerPrivateFinance() {
 
     try {
       const isEdit = !!editPretplata.id;
+      const payload = {
+        ...editPretplata,
+        zadnje_placeno: editPretplata.zadnje_placeno ? editPretplata.zadnje_placeno.slice(0, 10) : null,
+      };
       const res = await fetch("/api/owner/pretplate", {
         method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editPretplata),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.ok) {
@@ -244,10 +265,15 @@ export default function OwnerPrivateFinance() {
 
     try {
       const isEdit = !!editKredit.id;
+      const payload = {
+        ...editKredit,
+        datum_pocetka: editKredit.datum_pocetka ? editKredit.datum_pocetka.slice(0, 10) : null,
+        datum_kraja: editKredit.datum_kraja ? editKredit.datum_kraja.slice(0, 10) : null,
+      };
       const res = await fetch("/api/owner/krediti", {
         method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editKredit),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.ok) {
@@ -468,7 +494,7 @@ export default function OwnerPrivateFinance() {
                         {p.dan_u_mjesecu}. u mjesecu
                       </td>
                       <td style={{ padding: "10px 12px", color: p.zadnje_placeno ? "#34d399" : "#64748b", fontSize: 12 }}>
-                        {p.zadnje_placeno ? `🟢 ${p.zadnje_placeno.slice(0, 10)}` : "⚪ Nije evidentirano"}
+                        {p.zadnje_placeno ? `🟢 ${formatDisplayDate(p.zadnje_placeno)}` : "⚪ Nije evidentirano"}
                       </td>
                       <td style={{ padding: "10px 12px" }}>
                         <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: p.status === "AKTIVAN" ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)", color: p.status === "AKTIVAN" ? "#10b981" : "#ef4444", fontWeight: 700 }}>

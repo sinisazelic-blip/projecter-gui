@@ -16,8 +16,10 @@ export async function GET() {
     const rows = await query(`
       SELECT 
         id, naziv, banka, ukupan_iznos, iznos_rate, valuta,
-        broj_rata, uplaceno_rata, dan_u_mjesecu, datum_pocetka,
-        datum_kraja, status, napomena, created_at
+        broj_rata, uplaceno_rata, dan_u_mjesecu,
+        DATE_FORMAT(datum_pocetka, '%Y-%m-%d') AS datum_pocetka,
+        DATE_FORMAT(datum_kraja, '%Y-%m-%d') AS datum_kraja,
+        status, napomena, created_at
       FROM owner_privatni_krediti
       ORDER BY (status = 'AKTIVAN') DESC, dan_u_mjesecu ASC, naziv ASC
     `);
@@ -141,6 +143,19 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
+function toMysqlDateOnly(val: any): string | null {
+  if (!val) return null;
+  const s = String(val).trim();
+  if (!s) return null;
+  const match = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) return match[0];
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) {
+    return d.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
@@ -163,6 +178,9 @@ export async function PUT(req: NextRequest) {
     if (!id) {
       return NextResponse.json({ ok: false, error: "ID je obavezan." }, { status: 400 });
     }
+
+    const safeDatumPocetka = datum_pocetka !== undefined ? toMysqlDateOnly(datum_pocetka) : undefined;
+    const safeDatumKraja = datum_kraja !== undefined ? toMysqlDateOnly(datum_kraja) : undefined;
 
     await query(
       `
@@ -190,8 +208,8 @@ export async function PUT(req: NextRequest) {
         broj_rata !== undefined ? Number(broj_rata) : null,
         uplaceno_rata !== undefined ? Number(uplaceno_rata) : null,
         dan_u_mjesecu !== undefined ? Number(dan_u_mjesecu) : null,
-        datum_pocetka,
-        datum_kraja,
+        safeDatumPocetka,
+        safeDatumKraja,
         status,
         napomena,
         id,

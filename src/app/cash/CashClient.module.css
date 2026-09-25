@@ -123,7 +123,7 @@
 .formGrid {
   display: grid;
   gap: 8px;
-  grid-template-columns: 150px 180px 120px 80px 1fr;
+  grid-template-columns: 140px 160px 150px 80px 1fr;
 }
 
 .full {

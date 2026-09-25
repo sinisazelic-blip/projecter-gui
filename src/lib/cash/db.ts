@@ -60,6 +60,17 @@ function rowToEntry(r: any): CashEntry {
     entityName = r.klijent_naziv ?? null;
   }
 
+  const isOwnerTransfer =
+    Boolean(r.transaction_details?.startsWith("owner_transfer")) ||
+    Boolean(r.napomena?.toLowerCase().includes("prenos na privatni"));
+
+  const projectName = isOwnerTransfer
+    ? "Isplata dobiti - Studio TAF"
+    : (r.project_naziv ?? null);
+
+  const projectId = isOwnerTransfer ? null : (r.project_id != null ? String(r.project_id) : null);
+  const projectIdPo = isOwnerTransfer ? null : (r.project_id_po ?? null);
+
   return {
     id: String(r.id),
     date: dateIso,
@@ -67,12 +78,12 @@ function rowToEntry(r: any): CashEntry {
     currency: String(r.valuta ?? "KM"),
     direction: r.smjer === "OUT" ? "OUT" : "IN",
     note: String(r.napomena ?? ""),
-    projectId: r.project_id != null ? String(r.project_id) : null,
-    projectName: r.project_naziv ?? null,
-    projectIdPo: r.project_id_po ?? null,
-    entityType: r.entity_type != null && r.entity_type !== "" ? String(r.entity_type) : null,
-    entityId: r.entity_id != null && Number.isFinite(Number(r.entity_id)) ? Number(r.entity_id) : null,
-    entityName: entityName,
+    projectId,
+    projectName,
+    projectIdPo,
+    entityType: isOwnerTransfer ? null : (r.entity_type != null && r.entity_type !== "" ? String(r.entity_type) : null),
+    entityId: isOwnerTransfer ? null : (r.entity_id != null && Number.isFinite(Number(r.entity_id)) ? Number(r.entity_id) : null),
+    entityName: isOwnerTransfer ? null : entityName,
     status: r.status === "STORNIRAN" ? "STORNIRAN" : "AKTIVAN",
     createdAt,
     transactionDetails: r.transaction_details ?? null,
@@ -85,6 +96,18 @@ export function computeBalanceFromItems(items: CashEntry[]): number {
     const sign = it.direction === "IN" ? 1 : -1;
     return acc + sign * it.amount;
   }, 0);
+}
+
+/**
+ * Ukupan saldo svih aktivnih stavki u blagajni (nezavisno od filtera).
+ */
+export async function getCashTotalBalanceDb(): Promise<number> {
+  const rows = (await query(
+    `SELECT SUM(CASE WHEN smjer = 'IN' THEN iznos ELSE -iznos END) AS total_balance
+     FROM blagajna_stavke
+     WHERE status = 'AKTIVAN'`
+  )) as any[];
+  return Number(rows?.[0]?.total_balance ?? 0);
 }
 
 /**

@@ -105,7 +105,7 @@ export async function GET() {
         ORDER BY sort_order ASC, id ASC
       `),
       query(`
-        SELECT id, vrsta, kategorija, naziv, iznos, valuta, rok_datum, status, napomena, sort_order, created_at
+        SELECT id, vrsta, kategorija, naziv, iznos, valuta, DATE_FORMAT(rok_datum, '%Y-%m-%d') AS rok_datum, status, napomena, sort_order, created_at
         FROM owner_plan_stavke
         ORDER BY sort_order ASC, id ASC
       `),
