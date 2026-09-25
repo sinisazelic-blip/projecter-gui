@@ -16,7 +16,8 @@ async function syncDueObligations() {
     const now = new Date();
     const todayDay = now.getDate();
     const curYear = now.getFullYear();
-    const curMonth = String(now.getMonth() + 1).padStart(2, "0");
+    const curMonthNum = now.getMonth() + 1;
+    const curMonth = String(curMonthNum).padStart(2, "0");
     const yearMonth = `${curYear}-${curMonth}`;
 
     const [pretplate, krediti] = (await Promise.all([
@@ -26,13 +27,24 @@ async function syncDueObligations() {
 
     if (Array.isArray(pretplate)) {
       for (const p of pretplate) {
+        const isAnnual = String(p.frekvencija || "").toUpperCase() === "GODISNJE";
         const dueDay = Number(p.dan_u_mjesecu) || 1;
+        const dueMonth = isAnnual ? (Number(p.mjesec_u_godini) || 1) : curMonthNum;
+
+        // Za godišnje pretplate gledamo da li je trenutni mjesec jednak mjesecu dospijeća
+        if (isAnnual && dueMonth !== curMonthNum) {
+          continue;
+        }
+
         const diffDays = dueDay - todayDay;
         // Ako je dospijeće za 7 dana ili ranije u ovom mjesecu
         if (diffDays <= 7) {
-          const isPaidThisMonth = p.zadnje_placeno && String(p.zadnje_placeno).startsWith(yearMonth);
-          if (!isPaidThisMonth) {
-            const tag = `[PRETP:${p.id}:${yearMonth}]`;
+          const isPaidThisPeriod = isAnnual
+            ? p.zadnje_placeno && String(p.zadnje_placeno).startsWith(String(curYear))
+            : p.zadnje_placeno && String(p.zadnje_placeno).startsWith(yearMonth);
+
+          if (!isPaidThisPeriod) {
+            const tag = isAnnual ? `[PRETP:${p.id}:${curYear}]` : `[PRETP:${p.id}:${yearMonth}]`;
             const existing = (await query(
               `SELECT id FROM owner_plan_stavke WHERE napomena LIKE ? AND status <> 'OTKAZANO' LIMIT 1`,
               [`%${tag}%`]
@@ -43,6 +55,7 @@ async function syncDueObligations() {
               const iznosBAM = Math.round(Number(p.iznos || 0) * fx * 100) / 100;
               const safeDay = Math.min(Math.max(1, dueDay), 28);
               const rokDatum = `${yearMonth}-${String(safeDay).padStart(2, "0")}`;
+              const descPrefix = isAnnual ? "Godišnja pretplata" : "Mjesečna pretplata";
               await query(
                 `INSERT INTO owner_plan_stavke (vrsta, kategorija, naziv, iznos, valuta, rok_datum, status, napomena)
                  VALUES ('RASHOD', 'PRETPLATA', ?, ?, 'BAM', ?, 'PLANIRANO', ?)`,
@@ -50,7 +63,7 @@ async function syncDueObligations() {
                   `${p.naziv} (${p.iznos} ${p.valuta})`,
                   iznosBAM,
                   rokDatum,
-                  `${tag} Mjesečna pretplata ${p.naziv}`,
+                  `${tag} ${descPrefix} ${p.naziv}`,
                 ]
               );
             }

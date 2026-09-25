@@ -10,6 +10,7 @@ type PretplateItem = {
   valuta: string;
   frekvencija: string;
   dan_u_mjesecu: number;
+  mjesec_u_godini: number | null;
   nacin_placanja: string;
   status: string;
   napomena: string | null;
@@ -31,6 +32,21 @@ type KreditItem = {
   status: string;
   napomena: string | null;
 };
+
+const MONTH_NAMES = [
+  "Januar",
+  "Februar",
+  "Mart",
+  "April",
+  "Maj",
+  "Juni",
+  "Juli",
+  "August",
+  "Septembar",
+  "Oktobar",
+  "Novembar",
+  "Decembar",
+];
 
 function formatDisplayDate(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -225,8 +241,11 @@ export default function OwnerPrivateFinance() {
 
     try {
       const isEdit = !!editPretplata.id;
+      const isAnnual = editPretplata.frekvencija === "GODISNJE";
       const payload = {
         ...editPretplata,
+        frekvencija: editPretplata.frekvencija || "MJESECNO",
+        mjesec_u_godini: isAnnual ? (Number(editPretplata.mjesec_u_godini) || 1) : null,
         zadnje_placeno: editPretplata.zadnje_placeno ? editPretplata.zadnje_placeno.slice(0, 10) : null,
       };
       const res = await fetch("/api/owner/pretplate", {
@@ -463,8 +482,8 @@ export default function OwnerPrivateFinance() {
                 <tr style={{ background: "rgba(30, 41, 59, 0.7)", color: "#94a3b8", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
                   <th style={{ padding: "10px 12px" }}>Naziv Servisa</th>
                   <th style={{ padding: "10px 12px" }}>Kategorija</th>
-                  <th style={{ padding: "10px 12px" }}>Iznos & Valuta</th>
-                  <th style={{ padding: "10px 12px" }}>Dan Naplate</th>
+                  <th style={{ padding: "10px 12px" }}>Iznos & Frekvencija</th>
+                  <th style={{ padding: "10px 12px" }}>Dospijeće / Obnova</th>
                   <th style={{ padding: "10px 12px" }}>Zadnje Plaćeno</th>
                   <th style={{ padding: "10px 12px" }}>Status</th>
                   <th style={{ padding: "10px 12px", textAlign: "right" }}>Brze Akcije</th>
@@ -475,6 +494,8 @@ export default function OwnerPrivateFinance() {
                   const katBadgeColor =
                     p.kategorija === "AI" ? "#c084fc" : p.kategorija === "STREAMING" ? "#f43f5e" : p.kategorija === "INFRASTRUCTURE" ? "#38bdf8" : "#94a3b8";
                   const isPendingThis = actionLoading === `pretplata-${p.id}`;
+                  const isAnnual = p.frekvencija === "GODISNJE";
+                  const monthName = isAnnual && p.mjesec_u_godini ? MONTH_NAMES[p.mjesec_u_godini - 1] : "";
 
                   return (
                     <tr key={p.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: p.status !== "AKTIVAN" ? "rgba(0,0,0,0.2)" : "transparent" }}>
@@ -487,11 +508,25 @@ export default function OwnerPrivateFinance() {
                           {p.kategorija}
                         </span>
                       </td>
-                      <td style={{ padding: "10px 12px", fontWeight: 800, color: "#38bdf8" }}>
-                        {Number(p.iznos).toFixed(2)} {p.valuta}
+                      <td style={{ padding: "10px 12px", fontWeight: 800, color: isAnnual ? "#fbbf24" : "#38bdf8" }}>
+                        <div>
+                          {Number(p.iznos).toFixed(2)} {p.valuta}{" "}
+                          <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600 }}>{isAnnual ? "/ god" : "/ mj"}</span>
+                        </div>
+                        {isAnnual && (
+                          <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 400 }}>
+                            (~{(Number(p.iznos) / 12).toFixed(2)} {p.valuta}/mj)
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: "10px 12px", color: "#e2e8f0" }}>
-                        {p.dan_u_mjesecu}. u mjesecu
+                        {isAnnual ? (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(251, 191, 36, 0.15)", color: "#fbbf24", padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 700 }}>
+                            🗓️ Godišnje: {p.dan_u_mjesecu}. {monthName || "Januar"}
+                          </span>
+                        ) : (
+                          <span>📅 {p.dan_u_mjesecu}. u mjesecu</span>
+                        )}
                       </td>
                       <td style={{ padding: "10px 12px", color: p.zadnje_placeno ? "#34d399" : "#64748b", fontSize: 12 }}>
                         {p.zadnje_placeno ? `🟢 ${formatDisplayDate(p.zadnje_placeno)}` : "⚪ Nije evidentirano"}
@@ -721,16 +756,49 @@ export default function OwnerPrivateFinance() {
       {/* TAB 3: KALENDAR DOSPIJEĆA */}
       {subTab === "kalendar" && (
         <div>
+          {/* GODIŠNJE PRETPALTE PREGLED */}
+          {pretplate.some((p) => p.status === "AKTIVAN" && p.frekvencija === "GODISNJE") && (
+            <div style={{ marginBottom: 20, background: "rgba(251, 191, 36, 0.08)", border: "1px solid rgba(251, 191, 36, 0.3)", borderRadius: 10, padding: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 16 }}>🗓️</span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: "#fbbf24" }}>Godišnje Pretplate & Raspored Obnova po Mjesecima</span>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                {pretplate
+                  .filter((p) => p.status === "AKTIVAN" && p.frekvencija === "GODISNJE")
+                  .sort((a, b) => (Number(a.mjesec_u_godini) || 1) - (Number(b.mjesec_u_godini) || 1) || Number(a.dan_u_mjesecu) - Number(b.dan_u_mjesecu))
+                  .map((p) => {
+                    const mName = p.mjesec_u_godini ? MONTH_NAMES[p.mjesec_u_godini - 1] : "Januar";
+                    return (
+                      <div key={p.id} style={{ background: "rgba(15, 23, 42, 0.85)", border: "1px solid rgba(251, 191, 36, 0.4)", borderRadius: 6, padding: "8px 12px", display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: "#fbbf24", background: "rgba(251, 191, 36, 0.2)", padding: "2px 6px", borderRadius: 4 }}>
+                          {p.dan_u_mjesecu}. {mName}
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc" }}>{p.naziv}</span>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: "#38bdf8" }}>{Number(p.iznos).toFixed(2)} {p.valuta}</span>
+                        {p.zadnje_placeno && (
+                          <span style={{ fontSize: 11, color: "#64748b" }} title="Zadnje plaćeno">
+                            (plaćeno: {formatDisplayDate(p.zadnje_placeno)})
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
           <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 14 }}>
-            Hronološki raspored kada koje lične obaveze dospijevaju na naplatu tokom mjeseca:
+            Hronološki mjesečni raspored redovnih obaveza (pretplate i krediti):
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {Array.from({ length: 31 }, (_, i) => i + 1).map((dan) => {
-              const matchesPretplate = pretplate.filter((p) => p.status === "AKTIVAN" && Number(p.dan_u_mjesecu) === dan);
+              const matchesPretplateMonthly = pretplate.filter((p) => p.status === "AKTIVAN" && p.frekvencija !== "GODISNJE" && Number(p.dan_u_mjesecu) === dan);
+              const matchesPretplateAnnual = pretplate.filter((p) => p.status === "AKTIVAN" && p.frekvencija === "GODISNJE" && Number(p.dan_u_mjesecu) === dan);
               const matchesKrediti = krediti.filter((k) => k.status === "AKTIVAN" && Number(k.dan_u_mjesecu) === dan);
 
-              if (matchesPretplate.length === 0 && matchesKrediti.length === 0) return null;
+              if (matchesPretplateMonthly.length === 0 && matchesPretplateAnnual.length === 0 && matchesKrediti.length === 0) return null;
 
               return (
                 <div key={dan} style={{ display: "flex", alignItems: "center", gap: 14, background: "rgba(30, 41, 59, 0.4)", padding: "10px 16px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
@@ -740,12 +808,22 @@ export default function OwnerPrivateFinance() {
                   </div>
 
                   <div style={{ flex: 1, display: "flex", flexWrap: "wrap", gap: 10 }}>
-                    {matchesPretplate.map((p) => (
+                    {matchesPretplateMonthly.map((p) => (
                       <div key={p.id} style={{ background: "rgba(2, 6, 23, 0.6)", padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.3)", display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: "#f8fafc" }}>{p.naziv}</span>
                         <span style={{ fontSize: 12, fontWeight: 800, color: "#38bdf8" }}>{Number(p.iznos).toFixed(2)} {p.valuta}</span>
                       </div>
                     ))}
+                    {matchesPretplateAnnual.map((p) => {
+                      const mName = p.mjesec_u_godini ? MONTH_NAMES[p.mjesec_u_godini - 1] : "Januar";
+                      return (
+                        <div key={p.id} style={{ background: "rgba(2, 6, 23, 0.8)", padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(251, 191, 36, 0.5)", display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 10, fontWeight: 800, color: "#fbbf24", background: "rgba(251, 191, 36, 0.15)", padding: "1px 5px", borderRadius: 3 }}>🗓️ {mName}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "#f8fafc" }}>{p.naziv}</span>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: "#fbbf24" }}>{Number(p.iznos).toFixed(2)} {p.valuta} <span style={{ fontSize: 10, color: "#94a3b8" }}>/god</span></span>
+                        </div>
+                      );
+                    })}
                     {matchesKrediti.map((k) => (
                       <div key={k.id} style={{ background: "rgba(2, 6, 23, 0.6)", padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(168, 85, 247, 0.3)", display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: "#c084fc" }}>💳 {k.naziv}</span>
@@ -763,7 +841,7 @@ export default function OwnerPrivateFinance() {
       {/* MODAL ZA PRETPALTE */}
       {showPretplataModal && editPretplata && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "#0f172a", border: "1px solid #38bdf8", borderRadius: 12, padding: 24, width: 450, maxWidth: "90%" }}>
+          <div style={{ background: "#0f172a", border: "1px solid #38bdf8", borderRadius: 12, padding: 24, width: 480, maxWidth: "90%" }}>
             <h3 style={{ margin: "0 0 16px", color: "#f8fafc" }}>{editPretplata.id ? "Izmijeni Ličnu Pretplatu" : "Nova Lična Pretplata"}</h3>
             <form onSubmit={handleSavePretplata} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
@@ -771,6 +849,7 @@ export default function OwnerPrivateFinance() {
                 <input
                   type="text"
                   required
+                  placeholder="npr. Elgato, Hosting, Viber Plus, Netflix..."
                   value={editPretplata.naziv || ""}
                   onChange={(e) => setEditPretplata({ ...editPretplata, naziv: e.target.value })}
                   style={{ width: "100%", background: "#1e293b", border: "1px solid rgba(255,255,255,0.2)", padding: "8px 10px", borderRadius: 6, color: "#fff", marginTop: 4 }}
@@ -803,6 +882,69 @@ export default function OwnerPrivateFinance() {
                 </div>
               </div>
 
+              <div>
+                <label style={{ fontSize: 12, color: "#94a3b8" }}>Frekvencija naplate</label>
+                <select
+                  value={editPretplata.frekvencija || "MJESECNO"}
+                  onChange={(e) => {
+                    const frekv = e.target.value;
+                    setEditPretplata({
+                      ...editPretplata,
+                      frekvencija: frekv,
+                      mjesec_u_godini: frekv === "GODISNJE" ? (editPretplata.mjesec_u_godini || 1) : null,
+                    });
+                  }}
+                  style={{ width: "100%", background: "#1e293b", border: "1px solid rgba(255,255,255,0.2)", padding: "8px 10px", borderRadius: 6, color: "#fff", marginTop: 4 }}
+                >
+                  <option value="MJESECNO">📅 Mjesečna pretplata (naplata svakog mjeseca)</option>
+                  <option value="GODISNJE">🗓️ Godišnja pretplata (jednom godišnje: Hosting, Domen, Elgato, Viber...)</option>
+                </select>
+              </div>
+
+              {editPretplata.frekvencija === "GODISNJE" ? (
+                <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 10, background: "rgba(251, 191, 36, 0.08)", border: "1px solid rgba(251, 191, 36, 0.25)", padding: 10, borderRadius: 8 }}>
+                  <div>
+                    <label style={{ fontSize: 12, color: "#fbbf24", fontWeight: 700 }}>Mjesec obnove / dospijeća</label>
+                    <select
+                      value={editPretplata.mjesec_u_godini || 1}
+                      onChange={(e) => setEditPretplata({ ...editPretplata, mjesec_u_godini: Number(e.target.value) })}
+                      style={{ width: "100%", background: "#1e293b", border: "1px solid rgba(255,255,255,0.2)", padding: "8px 10px", borderRadius: 6, color: "#fff", marginTop: 4 }}
+                    >
+                      {MONTH_NAMES.map((name, idx) => (
+                        <option key={idx + 1} value={idx + 1}>
+                          {idx + 1}. {name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, color: "#fbbf24", fontWeight: 700 }}>Dan u mjesecu</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={editPretplata.dan_u_mjesecu || 1}
+                      onChange={(e) => setEditPretplata({ ...editPretplata, dan_u_mjesecu: Number(e.target.value) })}
+                      style={{ width: "100%", background: "#1e293b", border: "1px solid rgba(255,255,255,0.2)", padding: "8px 10px", borderRadius: 6, color: "#fff", marginTop: 4 }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 12, color: "#94a3b8" }}>Dan naplate u mjesecu</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={editPretplata.dan_u_mjesecu || 1}
+                      onChange={(e) => setEditPretplata({ ...editPretplata, dan_u_mjesecu: Number(e.target.value) })}
+                      style={{ width: "100%", background: "#1e293b", border: "1px solid rgba(255,255,255,0.2)", padding: "8px 10px", borderRadius: 6, color: "#fff", marginTop: 4 }}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
                   <label style={{ fontSize: 12, color: "#94a3b8" }}>Kategorija</label>
@@ -814,31 +956,19 @@ export default function OwnerPrivateFinance() {
                     <option value="AI">AI Alati</option>
                     <option value="SOFTWARE">Softver / Alati</option>
                     <option value="STREAMING">Streaming / Muzika</option>
-                    <option value="INFRASTRUCTURE">Infrastruktura / Cloud</option>
+                    <option value="INFRASTRUCTURE">Infrastruktura / Cloud / Hosting</option>
                     <option value="OTHER">Ostalo</option>
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, color: "#94a3b8" }}>Dan naplate</label>
+                  <label style={{ fontSize: 12, color: "#94a3b8" }}>Način plaćanja</label>
                   <input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={editPretplata.dan_u_mjesecu || 1}
-                    onChange={(e) => setEditPretplata({ ...editPretplata, dan_u_mjesecu: Number(e.target.value) })}
+                    type="text"
+                    value={editPretplata.nacin_placanja || "Privatna kartica"}
+                    onChange={(e) => setEditPretplata({ ...editPretplata, nacin_placanja: e.target.value })}
                     style={{ width: "100%", background: "#1e293b", border: "1px solid rgba(255,255,255,0.2)", padding: "8px 10px", borderRadius: 6, color: "#fff", marginTop: 4 }}
                   />
                 </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: 12, color: "#94a3b8" }}>Način plaćanja</label>
-                <input
-                  type="text"
-                  value={editPretplata.nacin_placanja || "Privatna kartica"}
-                  onChange={(e) => setEditPretplata({ ...editPretplata, nacin_placanja: e.target.value })}
-                  style={{ width: "100%", background: "#1e293b", border: "1px solid rgba(255,255,255,0.2)", padding: "8px 10px", borderRadius: 6, color: "#fff", marginTop: 4 }}
-                />
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>

@@ -16,9 +16,9 @@ export async function GET() {
     const rows = await query(`
       SELECT 
         id, naziv, kategorija, iznos, valuta, frekvencija,
-        dan_u_mjesecu, nacin_placanja, status, napomena, DATE_FORMAT(zadnje_placeno, '%Y-%m-%d') AS zadnje_placeno, created_at
+        dan_u_mjesecu, mjesec_u_godini, nacin_placanja, status, napomena, DATE_FORMAT(zadnje_placeno, '%Y-%m-%d') AS zadnje_placeno, created_at
       FROM owner_privatne_pretplate
-      ORDER BY (status = 'AKTIVAN') DESC, dan_u_mjesecu ASC, naziv ASC
+      ORDER BY (status = 'AKTIVAN') DESC, frekvencija ASC, dan_u_mjesecu ASC, naziv ASC
     `);
     return NextResponse.json({ ok: true, items: rows || [] });
   } catch (err: any) {
@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
       valuta = "USD",
       frekvencija = "MJESECNO",
       dan_u_mjesecu = 1,
+      mjesec_u_godini = null,
       nacin_placanja = "Privatna kartica",
       status = "AKTIVAN",
       napomena = "",
@@ -48,8 +49,8 @@ export async function POST(req: NextRequest) {
     const res: any = await query(
       `
       INSERT INTO owner_privatne_pretplate 
-        (naziv, kategorija, iznos, valuta, frekvencija, dan_u_mjesecu, nacin_placanja, status, napomena)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (naziv, kategorija, iznos, valuta, frekvencija, dan_u_mjesecu, mjesec_u_godini, nacin_placanja, status, napomena)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
       [
         naziv.trim(),
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest) {
         valuta,
         frekvencija,
         Number(dan_u_mjesecu) || 1,
+        mjesec_u_godini ? Number(mjesec_u_godini) : null,
         nacin_placanja,
         status,
         napomena || null,
@@ -143,6 +145,7 @@ export async function PUT(req: NextRequest) {
       valuta,
       frekvencija,
       dan_u_mjesecu,
+      mjesec_u_godini,
       nacin_placanja,
       status,
       napomena,
@@ -164,6 +167,7 @@ export async function PUT(req: NextRequest) {
         valuta = COALESCE(?, valuta),
         frekvencija = COALESCE(?, frekvencija),
         dan_u_mjesecu = COALESCE(?, dan_u_mjesecu),
+        mjesec_u_godini = COALESCE(?, mjesec_u_godini),
         nacin_placanja = COALESCE(?, nacin_placanja),
         status = COALESCE(?, status),
         napomena = COALESCE(?, napomena),
@@ -177,6 +181,7 @@ export async function PUT(req: NextRequest) {
         valuta,
         frekvencija,
         dan_u_mjesecu !== undefined ? Number(dan_u_mjesecu) : null,
+        mjesec_u_godini !== undefined ? (mjesec_u_godini ? Number(mjesec_u_godini) : null) : null,
         nacin_placanja,
         status,
         napomena,
