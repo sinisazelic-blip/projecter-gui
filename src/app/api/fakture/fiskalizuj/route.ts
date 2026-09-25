@@ -521,6 +521,48 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    async function ensurePinUnlocked() {
+      if (!pin || !String(pin).trim()) return;
+      const cleanPin = String(pin).trim();
+      const pinEndpoints = [
+        `${baseWithScheme}/api/pin`,
+        `${baseWithScheme}/api/v3/pin`,
+        `${baseWithScheme}/pin`,
+      ];
+      const pinHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/plain, */*",
+        "X-Requested-By": yid || "req",
+        Pin: cleanPin,
+        PIN: cleanPin,
+      };
+      if (apiKey) {
+        pinHeaders["Pac"] = apiKey;
+        pinHeaders["PAC"] = apiKey;
+        pinHeaders["Authorization"] = `Bearer ${apiKey}`;
+      }
+
+      for (const pUrl of pinEndpoints) {
+        try {
+          await fetch(pUrl, {
+            method: "POST",
+            headers: pinHeaders,
+            body: JSON.stringify({ pin: cleanPin }),
+            signal: AbortSignal.timeout(2000),
+          }).catch(() => null);
+
+          await fetch(pUrl, {
+            method: "POST",
+            headers: pinHeaders,
+            body: JSON.stringify({ Pin: cleanPin }),
+            signal: AbortSignal.timeout(2000),
+          }).catch(() => null);
+        } catch {
+          // ignore
+        }
+      }
+    }
+
     async function postOnce(targetUrl: string, bodyObj: any) {
       try {
         const controller = new AbortController();
@@ -549,8 +591,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Automatsko otključavanje PIN-a na LPFR uređaju prije slanja prve fakture u sesiji
+    if (pin) {
+      await ensurePinUnlocked();
+    }
+
     // Pokušaj #1: službeni format (direktan InvoiceRequest za v3) ili stari format
     let { r: res, t: text, j: data } = await postOnce(url, requestBodyPrimary);
+
+    // Ako uređaj traži PIN ili vrati grešku autentifikacije (401, 403, 400), ponovo pošalji PIN i ponovi
+    if (!res.ok && pin && (res.status === 401 || res.status === 403 || text?.toLowerCase().includes("pin") || JSON.stringify(data || {}).toLowerCase().includes("pin"))) {
+      await ensurePinUnlocked();
+      const retryPin = await postOnce(url, requestBodyPrimary);
+      if (retryPin.r.ok) {
+        res = retryPin.r;
+        text = retryPin.t;
+        data = retryPin.j;
+      }
+    }
 
     // Za /api/invoices: ako 400, redom probaj: (1) direktan V3 na portu 3565 (/api/v3/invoices), (2) bez invoiceNumber na 3566, (3) gtin8, (4) bez buyerId.
     if (isApiInvoices && res.status === 400 && !res.ok) {

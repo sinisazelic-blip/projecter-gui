@@ -190,11 +190,11 @@ export default function FiskalZReportModal({ open, onClose }: FiskalZReportModal
             {/* Financial totals banner */}
             <div style={{ backgroundColor: "#f1f5f9", border: "2px solid #cbd5e1", borderRadius: 12, padding: 16, marginBottom: 16 }}>
               <div style={{ fontSize: 12, color: "#475569", fontWeight: "bold", textTransform: "uppercase", marginBottom: 8 }}>
-                Finansijski Presjek Prometa za Današnji Dan:
+                Finansijski Presjek Prometa za Današnji Dan (Fiskalni LPFR iznosi):
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                 <div>
-                  <span style={{ fontSize: 12, color: "#64748b" }}>Osnovica:</span>
+                  <span style={{ fontSize: 12, color: "#64748b" }}>Osnovica (KM):</span>
                   <div style={{ fontSize: 18, fontWeight: "bold", color: "#0f172a" }}>{Number(data?.ukupnoBezPdv || 0).toFixed(2)} KM</div>
                 </div>
                 <div>
@@ -202,7 +202,7 @@ export default function FiskalZReportModal({ open, onClose }: FiskalZReportModal
                   <div style={{ fontSize: 18, fontWeight: "bold", color: "#0f172a" }}>{Number(data?.ukupnoPdv || 0).toFixed(2)} KM</div>
                 </div>
                 <div>
-                  <span style={{ fontSize: 12, color: "#64748b" }}>Ukupno sa PDV:</span>
+                  <span style={{ fontSize: 12, color: "#64748b" }}>Ukupno sa PDV (PFR):</span>
                   <div style={{ fontSize: 20, fontWeight: "900", color: "#16a34a" }}>{Number(data?.ukupnoSaPdv || 0).toFixed(2)} KM</div>
                 </div>
               </div>
@@ -216,7 +216,7 @@ export default function FiskalZReportModal({ open, onClose }: FiskalZReportModal
                     <tr>
                       <th style={{ padding: "6px 10px", textAlign: "left" }}>Broj Fakture</th>
                       <th style={{ padding: "6px 10px", textAlign: "center" }}>PFR Broj</th>
-                      <th style={{ padding: "6px 10px", textAlign: "right" }}>Iznos (KM)</th>
+                      <th style={{ padding: "6px 10px", textAlign: "right" }}>Iznos Fakture (Fiskalni BAM ekvivalent)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -224,7 +224,9 @@ export default function FiskalZReportModal({ open, onClose }: FiskalZReportModal
                       <tr key={f.faktura_id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                         <td style={{ padding: "6px 10px", fontWeight: "bold" }}>{f.broj_fakture}</td>
                         <td style={{ padding: "6px 10px", textAlign: "center" }}>{f.broj_fiskalni || "—"}</td>
-                        <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: "bold" }}>{Number(f.iznos_ukupno_km).toFixed(2)} KM</td>
+                        <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: "bold" }}>
+                          {f.display_iznos || (f.valuta === "EUR" ? `${Number(f.iznos_ukupno_km).toFixed(2)} EUR (${(Number(f.iznos_ukupno_km) * 1.95583).toFixed(2)} KM)` : `${Number(f.iznos_ukupno_km).toFixed(2)} KM`)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

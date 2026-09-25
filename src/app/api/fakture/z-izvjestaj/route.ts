@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
       SELECT 
         faktura_id, broj_fakture_puni AS broj_fakture, broj_fiskalni,
         osnovica_km, pdv_iznos_km, iznos_ukupno_km, datum_izdavanja,
-        fiskalni_status, bill_to_klijent_id
+        fiskalni_status, bill_to_klijent_id, valuta
       FROM fakture
       WHERE (DATE(datum_izdavanja) = CURDATE() OR datum_izdavanja >= CURDATE())
       ORDER BY faktura_id ASC
@@ -78,21 +78,44 @@ export async function GET(req: NextRequest) {
       [],
     )) as any[];
 
+    const EUR_TO_BAM = 1.95583;
     let ukupnoBezPdv = 0;
     let ukupnoPdv = 0;
     let ukupnoSaPdv = 0;
     let fiskalizovanoKomada = 0;
 
-    for (const f of todayInvoices) {
+    const formattedInvoices = todayInvoices.map((f: any) => {
+      const valuta = String(f.valuta || "BAM").toUpperCase();
+      const isEur = valuta === "EUR";
+      const rate = isEur ? EUR_TO_BAM : 1;
+
+      const osnovicaNominal = Number(f.osnovica_km) || 0;
+      const pdvNominal = Number(f.pdv_iznos_km) || 0;
+      const ukupnoNominal = Number(f.iznos_ukupno_km) || 0;
+
+      const osnovicaBam = Math.round(osnovicaNominal * rate * 100) / 100;
+      const pdvBam = Math.round(pdvNominal * rate * 100) / 100;
+      const ukupnoBam = Math.round(ukupnoNominal * rate * 100) / 100;
+
       if (f.fiskalni_status !== "STORNIRAN") {
-        ukupnoBezPdv += Number(f.osnovica_km) || 0;
-        ukupnoPdv += Number(f.pdv_iznos_km) || 0;
-        ukupnoSaPdv += Number(f.iznos_ukupno_km) || 0;
+        ukupnoBezPdv += osnovicaBam;
+        ukupnoPdv += pdvBam;
+        ukupnoSaPdv += ukupnoBam;
         if (f.broj_fiskalni) {
           fiskalizovanoKomada++;
         }
       }
-    }
+
+      return {
+        ...f,
+        valuta: isEur ? "EUR" : "KM",
+        iznos_nominal: ukupnoNominal,
+        iznos_bam: ukupnoBam,
+        display_iznos: isEur
+          ? `${ukupnoNominal.toFixed(2)} EUR (${ukupnoBam.toFixed(2)} KM)`
+          : `${ukupnoBam.toFixed(2)} KM`,
+      };
+    });
 
     return NextResponse.json({
       ok: true,
@@ -107,7 +130,7 @@ export async function GET(req: NextRequest) {
       ukupnoBezPdv: Math.round(ukupnoBezPdv * 100) / 100,
       ukupnoPdv: Math.round(ukupnoPdv * 100) / 100,
       ukupnoSaPdv: Math.round(ukupnoSaPdv * 100) / 100,
-      fakture: todayInvoices,
+      fakture: formattedInvoices,
       lpfrDetails: lpfrStatusData,
     });
   } catch (e: any) {
@@ -135,6 +158,7 @@ export async function POST(req: NextRequest) {
     const baseUrl = settings?.base_url?.trim?.();
     const apiKey = settings?.api_key?.trim?.();
     const pin = settings?.pin?.trim?.();
+    const yid = settings?.yid?.trim?.();
 
     if (!baseUrl) {
       return NextResponse.json(
@@ -163,6 +187,39 @@ export async function POST(req: NextRequest) {
     let lpfrZReportData: any = null;
     let lpfrSuccess = false;
     let lpfrWarning: string | null = null;
+
+    // Otključaj PIN na LPFR uređaju prije slanja Z-izvještaja ako je pin podešen
+    if (pin) {
+      const pinEndpoints = [
+        `${baseWithScheme}/api/pin`,
+        `${baseWithScheme}/api/v3/pin`,
+        `${baseWithScheme}/pin`,
+      ];
+      const pinHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/plain, */*",
+        "X-Requested-By": yid || "req",
+        Pin: String(pin).trim(),
+        PIN: String(pin).trim(),
+      };
+      if (apiKey) {
+        pinHeaders["Pac"] = apiKey;
+        pinHeaders["PAC"] = apiKey;
+        pinHeaders["Authorization"] = `Bearer ${apiKey}`;
+      }
+      for (const ep of pinEndpoints) {
+        try {
+          await fetch(ep, {
+            method: "POST",
+            headers: pinHeaders,
+            body: JSON.stringify({ pin: String(pin).trim() }),
+            signal: AbortSignal.timeout(2000),
+          }).catch(() => null);
+        } catch {
+          // ignore
+        }
+      }
+    }
 
     // 1. Attempt sending Z-report command to LPFR (supports /api/v3/reports/z or /api/reports/z or /api/status)
     try {
@@ -198,22 +255,31 @@ export async function POST(req: NextRequest) {
       `
       SELECT 
         faktura_id, broj_fakture_puni AS broj_fakture, broj_fiskalni,
-        osnovica_km, pdv_iznos_km, iznos_ukupno_km, datum_izdavanja
+        osnovica_km, pdv_iznos_km, iznos_ukupno_km, datum_izdavanja, valuta
       FROM fakture
       WHERE (DATE(datum_izdavanja) = CURDATE() OR datum_izdavanja >= CURDATE())
       `,
       [],
     )) as any[];
 
+    const EUR_TO_BAM = 1.95583;
     let ukupnoBezPdv = 0;
     let ukupnoPdv = 0;
     let ukupnoSaPdv = 0;
     let fiskalizovanoKomada = 0;
 
     for (const f of todayInvoices) {
-      ukupnoBezPdv += Number(f.osnovica_km) || 0;
-      ukupnoPdv += Number(f.pdv_iznos_km) || 0;
-      ukupnoSaPdv += Number(f.iznos_ukupno_km) || 0;
+      const valuta = String(f.valuta || "BAM").toUpperCase();
+      const isEur = valuta === "EUR";
+      const rate = isEur ? EUR_TO_BAM : 1;
+
+      const osnovicaBam = Math.round((Number(f.osnovica_km) || 0) * rate * 100) / 100;
+      const pdvBam = Math.round((Number(f.pdv_iznos_km) || 0) * rate * 100) / 100;
+      const ukupnoBam = Math.round((Number(f.iznos_ukupno_km) || 0) * rate * 100) / 100;
+
+      ukupnoBezPdv += osnovicaBam;
+      ukupnoPdv += pdvBam;
+      ukupnoSaPdv += ukupnoBam;
       if (f.broj_fiskalni) fiskalizovanoKomada++;
     }
 

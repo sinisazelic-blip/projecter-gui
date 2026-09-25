@@ -35,6 +35,30 @@ function fmtMoney(n: number, ccy: string) {
 
 const EUR_TO_BAM = 1.95583;
 
+function formatPfrDateTime(val: string | null | undefined): string {
+  if (!val) return "";
+  const s = String(val).trim();
+  if (/^\d{2}\.\d{2}\.\d{4}/.test(s)) return s;
+  const match = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})/);
+  if (match) {
+    const [, y, m, d, hh, mm, ss] = match;
+    return `${d}.${m}.${y}. ${hh}:${mm}:${ss}`;
+  }
+  try {
+    const dt = new Date(s);
+    if (!isNaN(dt.getTime())) {
+      const d = String(dt.getDate()).padStart(2, "0");
+      const m = String(dt.getMonth() + 1).padStart(2, "0");
+      const y = dt.getFullYear();
+      const hh = String(dt.getHours()).padStart(2, "0");
+      const mm = String(dt.getMinutes()).padStart(2, "0");
+      const ss = String(dt.getSeconds()).padStart(2, "0");
+      return `${d}.${m}.${y}. ${hh}:${mm}:${ss}`;
+    }
+  } catch {}
+  return s;
+}
+
 function parseIds(idsRaw: string): number[] {
   return String(idsRaw || "")
     .split(",")
@@ -1300,12 +1324,12 @@ export default function FakturaPreviewClient() {
                         </div>
                       ) : null}
                       {(faktura as any)?.fiskal_sdc_date_time ? (
-                        <div className="fiscalLine" style={{ fontSize: 11, color: "#000", marginTop: 4 }}>
-                          PFR vrijeme: {(faktura as any).fiskal_sdc_date_time}
+                        <div className="fiscalLine" style={{ fontSize: 11, color: "#000", marginTop: 4, lineHeight: 1.4 }}>
+                          PFR vrijeme: {formatPfrDateTime((faktura as any).fiskal_sdc_date_time)}
                         </div>
                       ) : null}
-                      <div className="fiscalLine" style={{ fontSize: 11, color: "#000" }}>
-                        PFR br.rač: {fisk}
+                      <div className="fiscalLine" style={{ fontSize: 11, color: "#000", lineHeight: 1.4 }}>
+                        PFR broj: {fisk}
                       </div>
                     </div>
                   ) : null}
