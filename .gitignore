@@ -18,6 +18,10 @@ pnpm-debug.log*
 .env.local
 .env.*.local
 
+# Google servisni ključ za FluxaUpdate
+google-service-account.json
+total-biplane-*.json
+
 # OS / editor
 .DS_Store
 Thumbs.db
