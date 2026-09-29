@@ -7,6 +7,7 @@ import { useTranslation } from "@/components/LocaleProvider";
 import { FluxaFeature } from "@/components/FluxaFeature";
 import { PermissionGate } from "@/components/PermissionGate";
 import { useAuthUser } from "@/components/AuthUserProvider";
+import { useFluxaEdition } from "@/components/FluxaEditionProvider";
 import FinanceMorePopup from "./FinanceMorePopup";
 
 const STORAGE_KEY = "fluxa_dashboard_sections";
@@ -147,7 +148,19 @@ import { getStoredWorkspace } from "@/components/WorkspaceSwitcher";
 export default function DashboardBody({ instance = "STUDIO" }) {
   const { t } = useTranslation();
   const { user, canSee, loading } = useAuthUser();
+  const { isFeatureVisible } = useFluxaEdition();
   const isOwner = user?.user_id === 0 || user?.username === "Owner" || Number(user?.nivo ?? 0) >= 10;
+  const showLicenceLink = isOwner || isFeatureVisible(3);
+  const canSeeFinance =
+    isOwner ||
+    canSee("Fakture") ||
+    canSee("Finansije - KIF") ||
+    canSee("Finansije - Izvodi") ||
+    canSee("Finansije - KUF") ||
+    canSee("Finansije - PDV") ||
+    canSee("Naplate");
+  const canSeeProfitAnalysis = isOwner || canSee("Izvještaji");
+  const showFinanceContainer = canSeeFinance || canSeeProfitAnalysis;
   const [open, setOpen] = useState(INITIAL_OPEN);
   const [workspaceMode, setWorkspaceMode] = useState("STUDIO");
 
@@ -463,172 +476,193 @@ export default function DashboardBody({ instance = "STUDIO" }) {
               </Link>
             </>
           )}
+          {showLicenceLink && (
+            <Link
+              href="/studio/licence"
+              className="deskMainBtn deskMainBtn--compact deskMainBtn--compact-licence"
+              title={t("dashboard.licenceTitle") || "Master Licencni Hub — Izdavanje, moduli i nadzor licenci"}
+            >
+              <span style={{ fontSize: 32 }}>🔐</span>
+            </Link>
+          )}
         </div>
       </div>
 
-      <FluxaFeature id={10}>
-        <div className="finansijeContainer">
-          <CollapsibleSection
-            id="finance"
-            title={t("dashboard.finansije")}
-            pill={t("dashboard.finansijeOperativa")}
-            open={open.finance}
-            onToggle={toggle}
-            className="finansijeGroup"
+      {showFinanceContainer && (
+        <FluxaFeature id={10}>
+          <div
+            className="finansijeContainer"
+            style={{
+              gridTemplateColumns:
+                canSeeFinance && canSeeProfitAnalysis ? "1fr 1fr" : "1fr",
+            }}
           >
-            <div className="groupSubtitle">
-              {t("dashboard.finansijeSubtitle")}
-            </div>
-            <div className="finansijeOperativaRows">
-            <div className="finansijeRow finansijeRow--2 finansijeRow--spaced">
-              <PermissionGate module="Fakture" inPage="">
-                <FluxaFeature id={11}>
-                  <ActionBtn
-                    label={t("dashboard.fakturisanje")}
-                    href="/fakture/za-fakturisanje"
-                    title={t("dashboard.fakturisanjeTitle")}
-                  />
-                </FluxaFeature>
-              </PermissionGate>
-              {(canSee("Fakture") || canSee("Finansije - KIF")) && (
-                <FluxaFeature id={12}>
-                  <ActionBtn
-                    label={t("dashboard.fakture")}
-                    href="/fakture"
-                    title={t("dashboard.faktureTitle")}
-                  />
-                </FluxaFeature>
-              )}
-            </div>
-            <div className="finansijeRow finansijeRow--3">
-              <PermissionGate module="Finansije - Izvodi" inPage="">
-                <FluxaFeature id={13}>
-                  <ActionBtn
-                    label={t("dashboard.izvodi")}
-                    href="/izvodi"
-                    title={t("dashboard.izvodiTitle")}
-                    className="btn--orange-accent"
-                  />
-                </FluxaFeature>
-              </PermissionGate>
-              <PermissionGate module="Finansije - KUF" inPage="">
-                <FluxaFeature id={14}>
-                  <ActionBtn
-                    label={t("dashboard.kuf")}
-                    href="/finance/kuf"
-                    title={t("dashboard.kufTitle")}
-                  />
-                </FluxaFeature>
-              </PermissionGate>
-              <FluxaFeature id={15}>
-                <FinanceMorePopup />
-              </FluxaFeature>
-            </div>
-            <div className="finansijeRow finansijeRow--3">
-              <PermissionGate module="Finansije - PDV" inPage="">
-                <ActionBtn
-                  label={t("dashboard.pdv")}
-                  href="/finance/pdv"
-                  title={t("dashboard.pdvTitle")}
-                />
-              </PermissionGate>
-              <FluxaFeature id={75}>
-                <ActionBtn
-                  label={t("dashboard.tools")}
-                  href="/studio/finance-tools"
-                  title={t("dashboard.financeTools")}
-                />
-              </FluxaFeature>
-              <PermissionGate module="Naplate" inPage="">
-                <ActionBtn
-                  label={t("dashboard.naplata")}
-                  href="/naplate"
-                  title={t("dashboard.naplataTitle")}
-                />
-              </PermissionGate>
-            </div>
-            </div>
-          </CollapsibleSection>
+            {canSeeFinance && (
+              <CollapsibleSection
+                id="finance"
+                title={t("dashboard.finansije")}
+                pill={t("dashboard.finansijeOperativa")}
+                open={open.finance}
+                onToggle={toggle}
+                className="finansijeGroup"
+              >
+                <div className="groupSubtitle">
+                  {t("dashboard.finansijeSubtitle")}
+                </div>
+                <div className="finansijeOperativaRows">
+                <div className="finansijeRow finansijeRow--2 finansijeRow--spaced">
+                  <PermissionGate module="Fakture" inPage="">
+                    <FluxaFeature id={11}>
+                      <ActionBtn
+                        label={t("dashboard.fakturisanje")}
+                        href="/fakture/za-fakturisanje"
+                        title={t("dashboard.fakturisanjeTitle")}
+                      />
+                    </FluxaFeature>
+                  </PermissionGate>
+                  {(canSee("Fakture") || canSee("Finansije - KIF")) && (
+                    <FluxaFeature id={12}>
+                      <ActionBtn
+                        label={t("dashboard.fakture")}
+                        href="/fakture"
+                        title={t("dashboard.faktureTitle")}
+                      />
+                    </FluxaFeature>
+                  )}
+                </div>
+                <div className="finansijeRow finansijeRow--3">
+                  <PermissionGate module="Finansije - Izvodi" inPage="">
+                    <FluxaFeature id={13}>
+                      <ActionBtn
+                        label={t("dashboard.izvodi")}
+                        href="/izvodi"
+                        title={t("dashboard.izvodiTitle")}
+                        className="btn--orange-accent"
+                      />
+                    </FluxaFeature>
+                  </PermissionGate>
+                  <PermissionGate module="Finansije - KUF" inPage="">
+                    <FluxaFeature id={14}>
+                      <ActionBtn
+                        label={t("dashboard.kuf")}
+                        href="/finance/kuf"
+                        title={t("dashboard.kufTitle")}
+                      />
+                    </FluxaFeature>
+                  </PermissionGate>
+                  <FluxaFeature id={15}>
+                    <FinanceMorePopup />
+                  </FluxaFeature>
+                </div>
+                <div className="finansijeRow finansijeRow--3">
+                  <PermissionGate module="Finansije - PDV" inPage="">
+                    <ActionBtn
+                      label={t("dashboard.pdv")}
+                      href="/finance/pdv"
+                      title={t("dashboard.pdvTitle")}
+                    />
+                  </PermissionGate>
+                  <FluxaFeature id={75}>
+                    <ActionBtn
+                      label={t("dashboard.tools")}
+                      href="/studio/finance-tools"
+                      title={t("dashboard.financeTools")}
+                    />
+                  </FluxaFeature>
+                  <PermissionGate module="Naplate" inPage="">
+                    <ActionBtn
+                      label={t("dashboard.naplata")}
+                      href="/naplate"
+                      title={t("dashboard.naplataTitle")}
+                    />
+                  </PermissionGate>
+                </div>
+                </div>
+              </CollapsibleSection>
+            )}
 
-          <CollapsibleSection
-            id="profitAnalysis"
-            title={`${t("dashboard.profit")} / ${t("dashboard.finansijeAnaliza")}`}
-            pill=""
-            open={open.profitAnalysis}
-            onToggle={toggle}
-            className="finansijeAnalysisGroup"
-            data-onboarding="profit"
-          >
-            <div className="finansijeSidebar" style={{ marginTop: 0 }}>
-              <PermissionGate module="Izvještaji" inPage="">
-                <FluxaFeature id={16}>
-                  <div className="dashboardGroup">
-                    <div className="groupHeader">
-                      <div className="groupTitle">{t("dashboard.profit")}</div>
-                      <span className="groupPill groupPill--profitMargin">
-                        {t("dashboard.profitMargin")}
-                      </span>
-                    </div>
-                    <div className="finansijeRow finansijeRow--2">
-                      <FluxaFeature id={17}>
-                        <ActionBtn
-                          label={t("dashboard.profit")}
-                          href="/finance/profit"
-                          title={t("dashboard.profitTitle")}
-                        />
-                      </FluxaFeature>
-                      <FluxaFeature id={19}>
-                        <ActionBtn
-                          label={t("dashboard.marginPoKlijentu")}
-                          href="/finance/profit/klijent"
-                          title={t("dashboard.marginPoKlijentuTitle")}
-                        />
-                      </FluxaFeature>
-                    </div>
-                  </div>
-                </FluxaFeature>
-              </PermissionGate>
-
-              <PermissionGate module="Izvještaji" inPage="">
-                <FluxaFeature id={20}>
-                  <div className="dashboardGroup">
-                    <div className="groupHeader">
-                      <div className="groupTitle">
-                        {t("dashboard.finansijeAnaliza")}
+            {canSeeProfitAnalysis && (
+              <CollapsibleSection
+                id="profitAnalysis"
+                title={`${t("dashboard.profit")} / ${t("dashboard.finansijeAnaliza")}`}
+                pill=""
+                open={open.profitAnalysis}
+                onToggle={toggle}
+                className="finansijeAnalysisGroup"
+                data-onboarding="profit"
+              >
+                <div className="finansijeSidebar" style={{ marginTop: 0 }}>
+                  <PermissionGate module="Izvještaji" inPage="">
+                    <FluxaFeature id={16}>
+                      <div className="dashboardGroup">
+                        <div className="groupHeader">
+                          <div className="groupTitle">{t("dashboard.profit")}</div>
+                          <span className="groupPill groupPill--profitMargin">
+                            {t("dashboard.profitMargin")}
+                          </span>
+                        </div>
+                        <div className="finansijeRow finansijeRow--2">
+                          <FluxaFeature id={17}>
+                            <ActionBtn
+                              label={t("dashboard.profit")}
+                              href="/finance/profit"
+                              title={t("dashboard.profitTitle")}
+                            />
+                          </FluxaFeature>
+                          <FluxaFeature id={19}>
+                            <ActionBtn
+                              label={t("dashboard.marginPoKlijentu")}
+                              href="/finance/profit/klijent"
+                              title={t("dashboard.marginPoKlijentuTitle")}
+                            />
+                          </FluxaFeature>
+                        </div>
                       </div>
-                      <span className="groupPill groupPill--legacy">
-                        legacy
-                      </span>
-                    </div>
-                    <div className="finansijeRow finansijeRow--3">
-                      <FluxaFeature id={21}>
-                        <ActionBtn
-                          label={t("dashboard.financeTools")}
-                          href="/finance"
-                        />
-                      </FluxaFeature>
-                      <FluxaFeature id={22}>
-                        <ActionBtn
-                          label={t("dashboard.reports")}
-                          href="/izvjestaji/svi"
-                          title={t("dashboard.izvjestajiSviTitle")}
-                        />
-                      </FluxaFeature>
-                      <FluxaFeature id={23}>
-                        <ActionBtn
-                          label={t("dashboard.charts")}
-                          href="/izvjestaji/graficki"
-                          title={t("dashboard.izvjestajiGrafickiTitle")}
-                        />
-                      </FluxaFeature>
-                    </div>
-                  </div>
-                </FluxaFeature>
-              </PermissionGate>
-            </div>
-          </CollapsibleSection>
-        </div>
-      </FluxaFeature>
+                    </FluxaFeature>
+                  </PermissionGate>
+
+                  <PermissionGate module="Izvještaji" inPage="">
+                    <FluxaFeature id={20}>
+                      <div className="dashboardGroup">
+                        <div className="groupHeader">
+                          <div className="groupTitle">
+                            {t("dashboard.finansijeAnaliza")}
+                          </div>
+                          <span className="groupPill groupPill--legacy">
+                            legacy
+                          </span>
+                        </div>
+                        <div className="finansijeRow finansijeRow--3">
+                          <FluxaFeature id={21}>
+                            <ActionBtn
+                              label={t("dashboard.financeTools")}
+                              href="/finance"
+                            />
+                          </FluxaFeature>
+                          <FluxaFeature id={22}>
+                            <ActionBtn
+                              label={t("dashboard.reports")}
+                              href="/izvjestaji/svi"
+                              title={t("dashboard.izvjestajiSviTitle")}
+                            />
+                          </FluxaFeature>
+                          <FluxaFeature id={23}>
+                            <ActionBtn
+                              label={t("dashboard.charts")}
+                              href="/izvjestaji/graficki"
+                              title={t("dashboard.izvjestajiGrafickiTitle")}
+                            />
+                          </FluxaFeature>
+                        </div>
+                      </div>
+                    </FluxaFeature>
+                  </PermissionGate>
+                </div>
+              </CollapsibleSection>
+            )}
+          </div>
+        </FluxaFeature>
+      )}
 
       <FluxaFeature id={24}>
         <CollapsibleSection

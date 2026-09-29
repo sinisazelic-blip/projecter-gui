@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { getT } from "@/lib/translations";
 import { getValidLocale } from "@/lib/i18n";
 import DashboardTopActions from "./DashboardTopActions";
+import DashboardMobileButton from "./DashboardMobileButton";
 import DashboardBody from "./DashboardBody";
 import FluxaLogo from "@/components/FluxaLogo";
 import { getFluxaInstance } from "@/lib/fluxa-instance";
@@ -360,6 +361,19 @@ export default async function Page() {
           box-shadow: 0 8px 24px rgba(6, 182, 212, 0.3);
         }
 
+        .deskMainBtn--compact-licence {
+          border-color: rgba(244, 63, 94, 0.6);
+          background: linear-gradient(135deg, rgba(244, 63, 94, 0.25), rgba(190, 18, 60, 0.15));
+          color: #ffffff;
+          box-shadow: 0 4px 16px rgba(244, 63, 94, 0.2);
+        }
+
+        .deskMainBtn--compact-licence:hover {
+          border-color: rgba(251, 113, 133, 0.85);
+          background: linear-gradient(135deg, rgba(244, 63, 94, 0.38), rgba(190, 18, 60, 0.24));
+          box-shadow: 0 8px 24px rgba(244, 63, 94, 0.35);
+        }
+
         /* Finansije grupa */
         .finansijeGroup {
           background: rgba(255, 165, 0, 0.05);
@@ -639,6 +653,7 @@ export default async function Page() {
                     {enter ? t("dashboard.enterSubtitle") : t("dashboard.subtitle")}
                   </div>
                 </div>
+                <DashboardMobileButton instance={instance} />
               </div>
 
               <DashboardTopActions instance={instance} />

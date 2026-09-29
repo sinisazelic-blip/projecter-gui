@@ -16,6 +16,7 @@ import {
 import {
   applyEnterSysPackageToModules,
   ENTERSYS_BASE_PACKAGES,
+  ENTERSYS_MODULE_KEYS,
   getEnterSysBasePackage,
   resolveEnterSysBasePackageId,
   type EnterSysBasePackageId,
@@ -182,21 +183,7 @@ export default function LicenceClient() {
   const [soccsMeetCountDraft, setSoccsMeetCountDraft] = useState<string>("1");
   const [soccsMeetTargetDraft, setSoccsMeetTargetDraft] = useState<string>("");
 
-  const ALL_ENTERSYS_MODULE_KEYS = [
-    { key: "enterCore", label: "ENTER (Osnovni Prolazi & Kasa)" },
-    { key: "poolManager", label: "POOL MANAGER (Bazeni & Staze)" },
-    { key: "hallManager", label: "HALL MANAGER (Sportske Dvorane)" },
-    { key: "fieldManager", label: "FIELD MANAGER (Otvoreni Tereni)" },
-    { key: "gymManager", label: "GYM MANAGER (Teretane & Fitness)" },
-    { key: "doorMan", label: "DOORMAN (Kontrola Vrata)" },
-    { key: "lockers", label: "LOCKER (RS-485 Ormarići)" },
-    { key: "rentals", label: "RENTALS (Iznajmljivanje ležaljki)" },
-    { key: "mojRadio", label: "MOJRADIO (TTS Glasovno Usmjeravanje)" },
-    { key: "mojTv", label: "MOJTV (Digital Signage & Playout)" },
-    { key: "cctvGate", label: "CCTV GATE (Video Nadzor Prolaza)" },
-    { key: "eventManager", label: "EVENT MANAGER (Koncerti & Utakmice)" },
-    { key: "webShop", label: "WEBSHOP (Online Prodaja & Dopuna)" },
-  ];
+  const ALL_ENTERSYS_MODULE_KEYS = ENTERSYS_MODULE_KEYS;
 
   const [enterSysModalRow, setEnterSysModalRow] = useState<TenantRow | null>(null);
   const [enterSysModulesDraft, setEnterSysModulesDraft] = useState<Record<string, boolean>>({});
@@ -526,18 +513,21 @@ export default function LicenceClient() {
 
   const openNewTenantWizard = () => {
     resetTenantWizard();
-    // Dokumentar tab: Dokumentar ili JavneNabavke — korak 1 bira profil.
     if (activeTab === "DOCENTRE") {
-      setWizardProfile(null);
+      setWizardProfile("JAVNENABAVKE");
       setNewTenantCurrency("KM");
-    }
-    if (activeTab === "ENTERSYS") {
+    } else if (activeTab === "ENTERSYS") {
       setWizardProfile("ENTERSYS");
       setNewTenantCurrency("KM");
-    }
-    if (activeTab === "FLUXAPOS") {
+    } else if (activeTab === "FLUXAPOS") {
       setWizardProfile("FLUXAPOS");
       setNewTenantCurrency("KM");
+    } else if (activeTab === "SOCCS_SV") {
+      setWizardProfile("SOCCS_SWIMVOICE");
+      setNewTenantCurrency("EUR");
+    } else if (activeTab === "FLUXA") {
+      setWizardProfile("FLUXA_ONLY");
+      setNewTenantCurrency("EUR");
     }
     setNewTenantOpen(true);
   };
@@ -2827,25 +2817,23 @@ export default function LicenceClient() {
                     }}
                   >
                     {(
-                      (
-                        activeTab === "DOCENTRE"
-                          ? (["DOCENTRE", "JAVNENABAVKE"] as const)
-                          : activeTab === "ENTERSYS"
-                            ? (["ENTERSYS"] as const)
-                            : activeTab === "FLUXAPOS"
-                              ? (["FLUXAPOS"] as const)
-                              : activeTab === "SOCCS_SV"
-                                ? (["SOCCS_SWIMVOICE", "FLUXA_AND_SOCCS"] as const)
+                      activeTab === "DOCENTRE"
+                        ? (["JAVNENABAVKE"] as const)
+                        : activeTab === "ENTERSYS"
+                          ? (["ENTERSYS"] as const)
+                          : activeTab === "FLUXAPOS"
+                            ? (["FLUXAPOS"] as const)
+                            : activeTab === "SOCCS_SV"
+                              ? (["SOCCS_SWIMVOICE"] as const)
+                              : activeTab === "FLUXA"
+                                ? (["FLUXA_ONLY"] as const)
                                 : ([
                                     "FLUXA_ONLY",
                                     "SOCCS_SWIMVOICE",
-                                    "FLUXA_AND_SOCCS",
-                                    "DOCENTRE",
                                     "JAVNENABAVKE",
                                     "ENTERSYS",
                                     "FLUXAPOS",
                                   ] as const)
-                      )
                     ).map((p) => (
                       <button
                         key={p}
@@ -3979,174 +3967,273 @@ export default function LicenceClient() {
           style={overlayStyle()}
           onClick={() => !enterSysSaving && setEnterSysModalRow(null)}
         >
-          <div style={modalStyle(560)} onClick={(e) => e.stopPropagation()}>
-            <div style={{ padding: 24 }}>
-              <h3 style={{ marginTop: 0, color: "#38bdf8" }}>
-                {t("studioLicence.enterSysModalTitle")} — {enterSysModalRow.naziv}
-              </h3>
-              <div style={{ marginBottom: 16, padding: "10px 12px", background: "rgba(15, 23, 42, 0.6)", borderRadius: 8, border: "1px solid rgba(56, 189, 248, 0.25)" }}>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
-                  {t("studioLicence.enterSysPackage")}
-                </label>
-                <select
-                  value={enterSysPackageDraft}
-                  onChange={(e) => {
-                    const id = e.target.value as EnterSysBasePackageId;
-                    setEnterSysPackageDraft(id);
-                    setEnterSysModulesDraft((prev) =>
-                      applyEnterSysPackageToModules(id, prev),
-                    );
-                  }}
-                  style={{
-                    padding: "6px 10px",
-                    width: "100%",
-                    maxWidth: 360,
-                    marginBottom: 12,
-                    borderRadius: 6,
-                    background: "rgba(15, 23, 42, 0.9)",
-                    border: "1px solid rgba(56, 189, 248, 0.4)",
-                    color: "#fff",
-                    fontSize: 14,
-                  }}
-                >
-                  {ENTERSYS_BASE_PACKAGES.map((p) => {
-                    const amt = catalogAmountForPackage(
-                      p.id,
-                      enterSysCurrencyDraft,
-                    );
-                    return (
-                      <option key={p.id} value={p.id}>
-                        {p.label} — {amt != null ? amt : p.priceKm}{" "}
-                        {liveCalc.displayCurrency} / mj
-                      </option>
-                    );
-                  })}
-                </select>
-                <p style={{ margin: "0 0 12px", fontSize: 12, opacity: 0.8, color: "#94a3b8" }}>
-                  {t("studioLicence.enterSysPackageHint")}
-                </p>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
-                  {t("studioLicence.valuta")}
-                </label>
-                <select
-                  value={enterSysCurrencyDraft}
-                  onChange={(e) => setEnterSysCurrencyDraft(e.target.value)}
-                  style={{
-                    padding: "6px 10px",
-                    width: "100%",
-                    maxWidth: 280,
-                    marginBottom: 12,
-                    borderRadius: 6,
-                    background: "rgba(15, 23, 42, 0.9)",
-                    border: "1px solid rgba(56, 189, 248, 0.4)",
-                    color: "#fff",
-                    fontSize: 14,
-                  }}
-                >
-                  {CURRENCY_OPTIONS.map((c) => (
-                    <option key={c} value={c}>
-                      {c === "KM"
-                        ? t("studioLicence.currencyLocalKm")
-                        : c === "EUR"
-                          ? t("studioLicence.currencyInoEur")
-                          : t("studioLicence.currencyInoUsd")}
-                    </option>
-                  ))}
-                </select>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
-                  Broj prodajnih instanci / blagajni (Kasica licence):
-                </label>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <input
-                    type="number"
-                    min={1}
-                    value={enterSysBlagajniDraft}
-                    onChange={(e) => setEnterSysBlagajniDraft(Math.max(1, Number(e.target.value)))}
+          <div style={modalStyle(880)} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: 24, maxHeight: "90vh", overflowY: "auto" }}>
+              <div
+                style={{
+                  marginBottom: 18,
+                  padding: "16px 20px",
+                  background: "linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95))",
+                  borderRadius: 10,
+                  border: "1px solid rgba(56, 189, 248, 0.35)",
+                  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.35)",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#38bdf8", textTransform: "uppercase", letterSpacing: "1px" }}>
+                      🎟️ ENTERSYS LICENCA & POSTAVKE MODULA
+                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", marginTop: 2, display: "flex", alignItems: "center", gap: 10 }}>
+                      <span>{enterSysModalRow.naziv}</span>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: "2px 8px",
+                          borderRadius: 4,
+                          background: isPilotModal ? "rgba(234, 179, 8, 0.2)" : "rgba(34, 197, 94, 0.2)",
+                          color: isPilotModal ? "#fde047" : "#86efac",
+                          border: isPilotModal ? "1px solid rgba(234, 179, 8, 0.4)" : "1px solid rgba(34, 197, 94, 0.4)",
+                        }}
+                      >
+                        {String(enterSysModalRow.status || "AKTIVAN").toUpperCase()}
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 400, color: "#94a3b8" }}>
+                        (ID #{enterSysModalRow.tenant_id})
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => !enterSysSaving && setEnterSysModalRow(null)}
                     style={{
-                      padding: "6px 10px",
-                      width: 100,
-                      borderRadius: 6,
-                      background: "rgba(15, 23, 42, 0.9)",
-                      border: "1px solid rgba(56, 189, 248, 0.4)",
-                      color: "#fff",
-                      fontSize: 14,
-                      fontWeight: "bold"
+                      background: "transparent",
+                      border: "none",
+                      color: "#94a3b8",
+                      fontSize: 20,
+                      cursor: "pointer",
+                      padding: "4px 8px",
                     }}
-                  />
-                  <span style={{ fontSize: 12, opacity: 0.8, color: "#94a3b8" }}>
-                    {enterSysBlagajniDraft === 1 ? "1 prodajna instanca / blagajna" : `${enterSysBlagajniDraft} prodajne instance / blagajne`}
-                  </span>
+                    title="Zatvori"
+                  >
+                    ✕
+                  </button>
                 </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: 14, alignItems: "center", background: "rgba(15, 23, 42, 0.6)", padding: "12px 14px", borderRadius: 8, border: "1px solid rgba(255, 255, 255, 0.06)" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
+                      {t("studioLicence.enterSysPackage")}
+                    </label>
+                    <select
+                      value={enterSysPackageDraft}
+                      onChange={(e) => {
+                        const id = e.target.value as EnterSysBasePackageId;
+                        setEnterSysPackageDraft(id);
+                        setEnterSysModulesDraft((prev) =>
+                          applyEnterSysPackageToModules(id, prev),
+                        );
+                      }}
+                      style={{
+                        padding: "8px 12px",
+                        width: "100%",
+                        borderRadius: 6,
+                        background: "rgba(15, 23, 42, 0.95)",
+                        border: "1px solid rgba(56, 189, 248, 0.5)",
+                        color: "#fff",
+                        fontSize: 13,
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {ENTERSYS_BASE_PACKAGES.map((p) => {
+                        const amt = catalogAmountForPackage(
+                          p.id,
+                          enterSysCurrencyDraft,
+                        );
+                        return (
+                          <option key={p.id} value={p.id}>
+                            {p.label} — {amt != null ? amt : p.priceKm}{" "}
+                            {liveCalc.displayCurrency} / mj
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
+                      {t("studioLicence.valuta")}
+                    </label>
+                    <select
+                      value={enterSysCurrencyDraft}
+                      onChange={(e) => setEnterSysCurrencyDraft(e.target.value)}
+                      style={{
+                        padding: "8px 12px",
+                        width: "100%",
+                        borderRadius: 6,
+                        background: "rgba(15, 23, 42, 0.95)",
+                        border: "1px solid rgba(56, 189, 248, 0.5)",
+                        color: "#fff",
+                        fontSize: 13,
+                      }}
+                    >
+                      {CURRENCY_OPTIONS.map((c) => (
+                        <option key={c} value={c}>
+                          {c === "KM"
+                            ? t("studioLicence.currencyLocalKm")
+                            : c === "EUR"
+                              ? t("studioLicence.currencyInoEur")
+                              : t("studioLicence.currencyInoUsd")}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#38bdf8" }}>
+                      Broj Kasa (Blagajni):
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={enterSysBlagajniDraft}
+                      onChange={(e) => setEnterSysBlagajniDraft(Math.max(1, Number(e.target.value)))}
+                      style={{
+                        padding: "8px 12px",
+                        width: "100%",
+                        borderRadius: 6,
+                        background: "rgba(15, 23, 42, 0.95)",
+                        border: "1px solid rgba(56, 189, 248, 0.5)",
+                        color: "#fff",
+                        fontSize: 14,
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <p style={{ margin: "10px 0 0", fontSize: 12, opacity: 0.85, color: "#94a3b8", fontStyle: "italic" }}>
+                  ℹ️ {t("studioLicence.enterSysPackageHint")}
+                </p>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px", marginBottom: 16, maxHeight: "280px", overflowY: "auto", paddingRight: 4 }}>
-                {ALL_ENTERSYS_MODULE_KEYS.map((item) => {
-                  const included =
-                    item.key === "enterCore" ||
-                    item.key === pkg?.managerModule;
-                  const cat = catalogRowForModule(item.key);
-                  const amt = cat
-                    ? amountForCurrency(cat, enterSysCurrencyDraft)
-                    : null;
-                  const isEvent = cat?.vrsta === "EVENT";
-                  let priceHint = "";
-                  if (included) {
-                    priceHint = t("studioLicence.enterSysIncludedInPackage");
-                  } else if (isEvent && amt != null) {
-                    priceHint = `${amt} ${liveCalc.displayCurrency} / ${t("studioLicence.enterSysEventDay")}`;
-                  } else if (amt != null) {
-                    priceHint = `+${amt} ${liveCalc.displayCurrency}`;
-                  }
-                  return (
-                  <label
-                    key={item.key}
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 8,
-                      fontSize: 12,
-                      cursor: included ? "default" : "pointer",
-                      padding: "6px 10px",
-                      background: "rgba(15, 23, 42, 0.6)",
-                      borderRadius: 6,
-                      border: enterSysModulesDraft[item.key] ? "1px solid rgba(56, 189, 248, 0.4)" : "1px solid rgba(255, 255, 255, 0.08)",
-                      color: enterSysModulesDraft[item.key] ? "#38bdf8" : "#94a3b8",
-                      fontWeight: enterSysModulesDraft[item.key] ? "bold" : "normal"
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!!enterSysModulesDraft[item.key]}
-                      disabled={included}
-                      onChange={(e) => setEnterSysModulesDraft(prev => ({ ...prev, [item.key]: e.target.checked }))}
-                    />
-                    <span>
-                      {item.label}
-                      {priceHint ? (
-                        <span
+              {/* EnterSYS Categorized Modules Grid */}
+              {(() => {
+                const categories: Array<{
+                  key: "HARDWARE" | "MANAGERS" | "MEDIA";
+                  title: string;
+                  color: string;
+                }> = [
+                  { key: "HARDWARE", title: "🚪 Hardver & Kontrola Prolaza", color: "#38bdf8" },
+                  { key: "MANAGERS", title: "🏢 Menadžeri Objekata & Servisi", color: "#fbbf24" },
+                  { key: "MEDIA", title: "📻 Mediji & Info Displeji", color: "#c084fc" },
+                ];
+
+                return (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
+                    {categories.map((cat) => {
+                      const modulesInCat = ENTERSYS_MODULE_KEYS.filter((m) => m.category === cat.key);
+                      return (
+                        <div
+                          key={cat.key}
                           style={{
-                            display: "block",
-                            fontSize: 10,
-                            fontWeight: 600,
-                            opacity: 0.8,
-                            marginTop: 2,
+                            background: "rgba(15, 23, 42, 0.5)",
+                            border: "1px solid rgba(255, 255, 255, 0.08)",
+                            borderRadius: 8,
+                            padding: "12px 12px",
+                            display: "flex",
+                            flexDirection: "column",
                           }}
                         >
-                          {priceHint}
-                        </span>
-                      ) : null}
-                    </span>
-                  </label>
-                  );
-                })}
-              </div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: cat.color, marginBottom: 8, letterSpacing: "0.3px", textTransform: "uppercase" }}>
+                            {cat.title}
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+                            {modulesInCat.map((item) => {
+                              const included =
+                                item.key === "enterCore" ||
+                                item.key === pkg?.managerModule;
+                              const catRow = catalogRowForModule(item.key);
+                              const amt = catRow
+                                ? amountForCurrency(catRow, enterSysCurrencyDraft)
+                                : null;
+                              const isEvent = catRow?.vrsta === "EVENT";
+                              let priceHint = "";
+                              if (included) {
+                                priceHint = "U paketu (0 KM)";
+                              } else if (isEvent && amt != null) {
+                                priceHint = `${amt} ${liveCalc.displayCurrency} / dan`;
+                              } else if (amt != null) {
+                                priceHint = `+${amt} ${liveCalc.displayCurrency}`;
+                              }
+
+                              const isChecked = Boolean(enterSysModulesDraft[item.key]);
+
+                              return (
+                                <label
+                                  key={item.key}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "flex-start",
+                                    gap: 8,
+                                    fontSize: 12,
+                                    cursor: included ? "default" : "pointer",
+                                    padding: "6px 8px",
+                                    background: isChecked ? "rgba(56, 189, 248, 0.08)" : "rgba(15, 23, 42, 0.4)",
+                                    borderRadius: 6,
+                                    border: isChecked ? "1px solid rgba(56, 189, 248, 0.35)" : "1px solid rgba(255, 255, 255, 0.05)",
+                                    color: isChecked ? "#fff" : "#94a3b8",
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    disabled={included}
+                                    onChange={(e) =>
+                                      setEnterSysModulesDraft((prev) => ({
+                                        ...prev,
+                                        [item.key]: e.target.checked,
+                                      }))
+                                    }
+                                    style={{ marginTop: 2 }}
+                                  />
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: isChecked ? 700 : 500, fontSize: 12 }}>
+                                      {item.icon} {item.label}
+                                    </div>
+                                    {priceHint ? (
+                                      <div
+                                        style={{
+                                          fontSize: 10,
+                                          fontWeight: 600,
+                                          color: included ? "#86efac" : "#fbbf24",
+                                          marginTop: 2,
+                                        }}
+                                      >
+                                        {priceHint}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
               <div
                 style={{
                   marginBottom: 16,
-                  padding: "10px 12px",
+                  padding: "12px 16px",
                   borderRadius: 8,
-                  background: "rgba(34, 197, 94, 0.1)",
+                  background: "rgba(34, 197, 94, 0.08)",
                   border: "1px solid rgba(34, 197, 94, 0.35)",
                 }}
               >
@@ -4166,7 +4253,7 @@ export default function LicenceClient() {
                     ))}
                   </ul>
                 )}
-                <div style={{ fontSize: 15, fontWeight: 800 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#4ade80" }}>
                   {isPilotModal
                     ? `0 ${liveCalc.displayCurrency} (${t("studioLicence.enterSysPilotPriceHint")} ${liveCalc.total} ${liveCalc.displayCurrency})`
                     : `${liveCalc.total} ${liveCalc.displayCurrency} / ${t("studioLicence.enterSysPerMonth")}`}
@@ -4179,7 +4266,7 @@ export default function LicenceClient() {
                   className="btn"
                   disabled={enterSysSaving}
                   onClick={handleEnterSysSave}
-                  style={{ background: "#0284c7", borderColor: "#38bdf8", color: "#fff", fontWeight: "bold" }}
+                  style={{ background: "#0284c7", borderColor: "#38bdf8", color: "#fff", fontWeight: "bold", padding: "8px 20px" }}
                 >
                   {enterSysSaving ? "Snimanje..." : t("studioLicence.enterSysSave")}
                 </button>
@@ -4188,6 +4275,7 @@ export default function LicenceClient() {
                   className="btn"
                   disabled={enterSysSaving}
                   onClick={() => setEnterSysModalRow(null)}
+                  style={{ padding: "8px 16px" }}
                 >
                   Odustani
                 </button>

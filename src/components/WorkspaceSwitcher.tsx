@@ -93,13 +93,11 @@ export default function WorkspaceSwitcher() {
           borderColor: currentBadge.border,
           color: currentBadge.color,
           fontWeight: 700,
-          fontSize: 13,
-          padding: "6px 12px",
         }}
         title="Promjena radnog prostora (Studio TAF / EnterSYS HaaS / Licence)"
       >
         <span>{currentBadge.label}</span>
-        <span style={{ fontSize: 10, opacity: 0.7 }}>▾</span>
+        <span style={{ fontSize: 11, opacity: 0.8 }}>▾</span>
       </button>
 
       {open && (

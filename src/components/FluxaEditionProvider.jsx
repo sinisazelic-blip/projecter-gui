@@ -17,10 +17,8 @@ export function FluxaEditionProvider({ children }) {
     if (typeof window === "undefined") return;
     const owner = !!window.localStorage.getItem(STORAGE_KEY_OWNER);
     setIsOwner(owner);
-    if (owner) {
-      const saved = window.localStorage.getItem(STORAGE_KEY_EDITION);
-      if (saved && FLUXA_EDITIONS.includes(saved)) setEditionState(saved);
-    }
+    const saved = window.localStorage.getItem(STORAGE_KEY_EDITION);
+    if (saved && FLUXA_EDITIONS.includes(saved)) setEditionState(saved);
     setMounted(true);
   }, []);
 
@@ -32,7 +30,7 @@ export function FluxaEditionProvider({ children }) {
     }
   }, []);
 
-  const effectiveEdition = isOwner ? edition : "Full";
+  const effectiveEdition = edition;
 
   const isFeatureVisible = useCallback(
     (featureId) => {

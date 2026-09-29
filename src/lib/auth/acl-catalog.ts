@@ -37,6 +37,8 @@ export const ACL_MODULES: AclModuleDef[] = [
   { key: "otpis", labelSr: "Otpis", labelEn: "Write-off", matrixModule: "Finansije - Otpis", matrixInPage: "", group: "finance" },
   { key: "pocetna_stanja", labelSr: "Početna stanja", labelEn: "Opening balances", matrixModule: "Finansije - Početno stanje", matrixInPage: "", group: "finance" },
   { key: "rasknjizavanje", labelSr: "Rasknjižavanje", labelEn: "Bank allocation", matrixModule: "Finansije - Banka", matrixInPage: "", group: "finance" },
+  { key: "mali_racuni", labelSr: "Mali računi & Poresko pravdanje", labelEn: "Petty cash receipts", matrixModule: "Mali računi", matrixInPage: "", group: "finance" },
+  { key: "osnovna_sredstva", labelSr: "Osnovna sredstva & Oprema", labelEn: "Fixed assets", matrixModule: "Osnovna sredstva", matrixInPage: "", group: "finance" },
 
   { key: "izvjestaji", labelSr: "Izvještaji / Profit", labelEn: "Reports / Profit", matrixModule: "Izvještaji", matrixInPage: "", group: "reports" },
 
@@ -65,6 +67,23 @@ export const ACL_TEMPLATE_RACUNOVODSTVO: Record<string, AclAccess> = {
   potrazivanja: "view",
   izvjestaji: "view",
   naplate: "view",
+};
+
+/** Šablon: OS+troskovi — samo Mali računi i Osnovna sredstva iz finansija, Desk (Deals, PP) i Šifarnici. */
+export const ACL_TEMPLATE_OS_TROSKOVI: Record<string, AclAccess> = {
+  dashboard: "view",
+  deals: "edit",
+  pp: "edit",
+  projekat: "edit",
+  mali_racuni: "edit",
+  osnovna_sredstva: "edit",
+  klijenti: "edit",
+  saradnici: "edit",
+  dobavljaci: "edit",
+  cjenovnik: "edit",
+  radnici: "edit",
+  faze: "edit",
+  firma: "edit",
 };
 
 export function normalizeAclModuleName(name: string): string {

@@ -27,7 +27,7 @@ export const TENANT_PRODUCT_TABS = [
 
 export type TenantProductTab = (typeof TENANT_PRODUCT_TABS)[number];
 
-/** U kojim tabovima se tenant prikazuje (kombinovani Fluxa+SOCCS u oba). */
+/** U kojim tabovima se tenant prikazuje (svaki proizvod u svom tabu). */
 export function profileToTabs(profile: StudioLicenceProfile): TenantProductTab[] {
   switch (profile) {
     case "FLUXA_ONLY":
@@ -35,18 +35,16 @@ export function profileToTabs(profile: StudioLicenceProfile): TenantProductTab[]
     case "SOCCS_SWIMVOICE":
       return ["SOCCS_SV"];
     case "FLUXA_AND_SOCCS":
-      return ["FLUXA", "SOCCS_SV"];
+      // Legacy zapis: prikazuje se samo u Fluxa tabu (ne miješamo sa SOCCS)
+      return ["FLUXA"];
     case "DOCENTRE":
-      return ["DOCENTRE"];
     case "JAVNENABAVKE":
-      // Isti tenant sloj kao Dokumentar — nema posebnog taba.
       return ["DOCENTRE"];
     case "ENTERSYS":
       return ["ENTERSYS"];
     case "FLUXAPOS":
       return ["FLUXAPOS"];
     case "POOL_MANAGER":
-      // Legacy: nema više taba — ne prikazuj u listama proizvoda.
       return [];
   }
 }
@@ -82,7 +80,7 @@ export function profileToActivationApp(
 export function studioWizardStep3ShowsFluxaBlock(
   profile: StudioLicenceProfile,
 ): boolean {
-  return profile === "FLUXA_ONLY" || profile === "FLUXA_AND_SOCCS";
+  return profile === "FLUXA_ONLY";
 }
 
 export function normalizeStudioLicenceProfile(
@@ -104,10 +102,13 @@ export function resolveDisplayStudioProfile(row: {
   soccs_tier?: string | null;
 }): StudioLicenceProfile {
   const fromCol = normalizeStudioLicenceProfile(row.studio_licence_profile);
-  if (fromCol) return fromCol;
+  if (fromCol) {
+    // Ako je stari hibridni profil u bazi, u tablici ga tretiramo kao čistu Fluxu
+    if (fromCol === "FLUXA_AND_SOCCS") return "FLUXA_ONLY";
+    return fromCol;
+  }
   const hasSoccs = Boolean(String(row.soccs_tier ?? "").trim());
   const stub = row.plan_naziv === STUDIO_STUB_NO_FLUXA_PLAN_NAZIV;
   if (stub && hasSoccs) return "SOCCS_SWIMVOICE";
-  if (!hasSoccs) return "FLUXA_ONLY";
-  return "FLUXA_AND_SOCCS";
+  return "FLUXA_ONLY";
 }

@@ -131,29 +131,42 @@ export async function GET(req: Request) {
       if (hasScopeFilter) {
         modules = {
           posCore: activeScopeModules.includes("posCore"),
-          kdsKitchen: activeScopeModules.includes("kdsKitchen"),
-          pocketWaiter: activeScopeModules.includes("pocketWaiter"),
-          pantheonSync: activeScopeModules.includes("pantheonSync"),
-          enterTicketing: activeScopeModules.includes("enterTicketing"),
           shiftEmail: activeScopeModules.includes("shiftEmail"),
+          inventoryKuf: activeScopeModules.includes("inventoryKuf") || activeScopeModules.includes("kufAnalytics"),
+          pocketWaiter: activeScopeModules.includes("pocketWaiter"),
+          kdsKitchen: activeScopeModules.includes("kdsKitchen"),
+          redomat: activeScopeModules.includes("redomat"),
+          floorBuilder: activeScopeModules.includes("floorBuilder"),
+          officeDelivery: activeScopeModules.includes("officeDelivery"),
+          enterTicketing: activeScopeModules.includes("enterTicketing"),
+          ticketMan: activeScopeModules.includes("ticketMan"),
           rfidDeposit: activeScopeModules.includes("rfidDeposit"),
+          radioPlayer: activeScopeModules.includes("radioPlayer"),
+          upravaCloud: activeScopeModules.includes("upravaCloud"),
+          pantheonSync: activeScopeModules.includes("pantheonSync"),
         };
       } else {
         modules = defaultMod;
       }
-    } else if (profile === "JAVNENABAVKE") {
+    } else if (profile === "JAVNENABAVKE" || profile === "DOCENTRE") {
       const jnPkg =
         (row.soccs_tier as JavneNabavkeBasePackageId) || "JN_START";
       const defaultMod = defaultModulesForJavneNabavkePackage(jnPkg);
       if (hasScopeFilter) {
         modules = {
+          protokolCore: activeScopeModules.includes("protokolCore"),
+          vazniDokumenti: activeScopeModules.includes("vazniDokumenti"),
           planNabavki: activeScopeModules.includes("planNabavki"),
           rokovi: activeScopeModules.includes("rokovi"),
           ugovori: activeScopeModules.includes("ugovori"),
           partneri: activeScopeModules.includes("partneri"),
           plafoni: activeScopeModules.includes("plafoni"),
-          izvjestaji: activeScopeModules.includes("izvjestaji"),
           pantheonSync: activeScopeModules.includes("pantheonSync"),
+          izvjestaji: activeScopeModules.includes("izvjestaji"),
+          digitalniPotpis: activeScopeModules.includes("digitalniPotpis"),
+          potpisniUredjaji: activeScopeModules.includes("potpisniUredjaji"),
+          zvanicnoDijeljenje: activeScopeModules.includes("zvanicnoDijeljenje"),
+          cloudTunel: activeScopeModules.includes("cloudTunel"),
           multiUser: activeScopeModules.includes("multiUser"),
         };
       } else {
@@ -162,6 +175,7 @@ export async function GET(req: Request) {
     } else {
       modules = {
         enterCore: !hasScopeFilter || activeScopeModules.includes("enterCore"),
+        fluxaPos: !hasScopeFilter || activeScopeModules.includes("fluxaPos"),
         poolManager: !hasScopeFilter || activeScopeModules.includes("poolManager"),
         hallManager: !hasScopeFilter || activeScopeModules.includes("hallManager"),
         fieldManager: !hasScopeFilter || activeScopeModules.includes("fieldManager"),

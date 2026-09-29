@@ -19,58 +19,77 @@ export type EnterSysBillingMode = "MONTHLY_SAAS" | "SEASONAL" | "EVENT_PRESALE_F
 export const ENTERSYS_BASE_PACKAGES = [
   {
     id: "ENTER_ARGUS",
-    label: "Enter + Argus",
+    label: "Enter + Argus (Osnovni prolazi i tripodi)",
     priceKm: 100,
     managerModule: "enterCore" as const,
     context: null as EnterSysContext | null,
   },
   {
     id: "POOL_MANAGER",
-    label: "PoolManager",
+    label: "PoolManager (Bazen / Vodeni park)",
     priceKm: 200,
     managerModule: "poolManager" as const,
     context: "bazen" as EnterSysContext,
   },
   {
     id: "HALL_MANAGER",
-    label: "HallManager",
+    label: "HallManager (Sportska dvorana / Balon)",
     priceKm: 200,
     managerModule: "hallManager" as const,
     context: "dvorana" as EnterSysContext,
   },
   {
     id: "FIELD_MANAGER",
-    label: "FieldManager",
+    label: "FieldManager (Otvoreni tereni / Plaže)",
     priceKm: 200,
     managerModule: "fieldManager" as const,
     context: "plaza" as EnterSysContext,
   },
   {
     id: "GYM_MANAGER",
-    label: "GymManager",
+    label: "GymManager (Fitness centar / Teretana)",
     priceKm: 200,
     managerModule: "gymManager" as const,
     context: "teretana" as EnterSysContext,
+  },
+  {
+    id: "EVENT_MANAGER",
+    label: "EventManager (Događaji, Utakmice & Koncerti)",
+    priceKm: 300,
+    managerModule: "eventManager" as const,
+    context: "event" as EnterSysContext,
+  },
+  {
+    id: "ENTERSYS_FULL",
+    label: "EnterSYS Full Resort & Arena (Sveobuhvatni paket)",
+    priceKm: 450,
+    managerModule: "enterCore" as const,
+    context: "bazen" as EnterSysContext,
   },
 ] as const;
 
 export type EnterSysBasePackageId = (typeof ENTERSYS_BASE_PACKAGES)[number]["id"];
 
 export const ENTERSYS_MODULE_KEYS = [
-  { key: "enterCore", label: "ENTER (osnovni prolazi i tripodi)" },
-  { key: "fluxaPos", label: "FluxaPOS (fiskalna touch blagajna i biletarnica)" },
-  { key: "poolManager", label: "PoolManager" },
-  { key: "hallManager", label: "HallManager" },
-  { key: "fieldManager", label: "FieldManager" },
-  { key: "gymManager", label: "GymManager" },
-  { key: "doorMan", label: "DoorMan" },
-  { key: "lockers", label: "Locker" },
-  { key: "rentals", label: "Rentals" },
-  { key: "mojRadio", label: "MojRadio" },
-  { key: "mojTv", label: "MojTV" },
-  { key: "cctvGate", label: "CCTV Gate" },
-  { key: "eventManager", label: "EventManager" },
-  { key: "webShop", label: "WebShop" },
+  // 1. Hardver & Prolazi
+  { key: "enterCore", label: "ENTER Master Kontroler (ARGUS tripodi, kapije, rampe)", category: "HARDWARE", icon: "🚪" },
+  { key: "fluxaPos", label: "FluxaPOS Blagajna (Fiskalna touch kasa i biletarnica)", category: "HARDWARE", icon: "💳" },
+  { key: "doorMan", label: "DoorMan (Čitači na vratima, RFID kontrola prolaza)", category: "HARDWARE", icon: "🔑" },
+  { key: "lockers", label: "Locker (Pametni RS-485 ormarići & narukvice)", category: "HARDWARE", icon: "🔒" },
+  { key: "cctvGate", label: "CCTV Gate (Video nadzor, LPR tablice i evidencija prolaza)", category: "HARDWARE", icon: "📹" },
+
+  // 2. Menadžeri Objekata
+  { key: "poolManager", label: "PoolManager (Bazeni, staze, ležaljke, dnevni/sezonski posjetioci)", category: "MANAGERS", icon: "🏊" },
+  { key: "hallManager", label: "HallManager (Sportske dvorane, raspored i rezervacije termina)", category: "MANAGERS", icon: "🏟️" },
+  { key: "fieldManager", label: "FieldManager (Sportski tereni, fudbal/tenis, plaže)", category: "MANAGERS", icon: "⚽" },
+  { key: "gymManager", label: "GymManager (Teretane, evidencija članova, treninzi i članarine)", category: "MANAGERS", icon: "🏋️" },
+  { key: "rentals", label: "Rentals (Iznajmljivanje opreme, ležaljki, rekvizita, plovila)", category: "MANAGERS", icon: "🏖️" },
+  { key: "eventManager", label: "EventManager (Ulaznice za koncerte, utakmice, bar-kodovi)", category: "MANAGERS", icon: "🎫" },
+  { key: "webShop", label: "WebShop (Online prodaja i dopuna karata/članarina)", category: "MANAGERS", icon: "🛒" },
+
+  // 3. Mediji & Info Displeji
+  { key: "mojRadio", label: "MojRadio (Interni radio streaming po zvučnim zonama)", category: "MEDIA", icon: "📻" },
+  { key: "mojTv", label: "MojTV (Smart TV info displeji, rasporedi, digital signage)", category: "MEDIA", icon: "📺" },
 ] as const;
 
 const MANAGER_MODULE_KEYS = [
@@ -78,6 +97,7 @@ const MANAGER_MODULE_KEYS = [
   "hallManager",
   "fieldManager",
   "gymManager",
+  "eventManager",
 ] as const;
 
 export function isEnterSysBasePackageId(
@@ -106,6 +126,7 @@ export function resolveEnterSysBasePackageId(input: {
   if (active.includes("hallManager")) return "HALL_MANAGER";
   if (active.includes("fieldManager")) return "FIELD_MANAGER";
   if (active.includes("gymManager")) return "GYM_MANAGER";
+  if (active.includes("eventManager")) return "EVENT_MANAGER";
   if (active.includes("enterCore") || active.length === 0) return "ENTER_ARGUS";
   return null;
 }
