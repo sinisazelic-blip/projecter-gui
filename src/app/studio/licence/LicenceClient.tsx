@@ -4644,9 +4644,10 @@ export default function LicenceClient() {
             jnModulesDraft,
           );
           const categories = [
-            { key: "CORE", label: "Osnovne funkcije" },
-            { key: "INTEGRACIJE", label: "Integracije" },
-            { key: "UPRAVA", label: "Uprava & analitika" },
+            { key: "PROTOKOL", label: "📋 Protokol & Sekretarijat" },
+            { key: "JN", label: "📊 Javne nabavke" },
+            { key: "UGOVORI", label: "📑 Ugovori & Finansije" },
+            { key: "SECURITY", label: "🔐 Sigurnost, Potpis & Tunel" },
           ] as const;
           return (
             <div
