@@ -548,14 +548,14 @@ export async function POST(req: NextRequest) {
             method: "POST",
             headers: pinHeaders,
             body: JSON.stringify({ pin: cleanPin }),
-            signal: AbortSignal.timeout(2000),
+            signal: AbortSignal.timeout(5000),
           }).catch(() => null);
 
           await fetch(pUrl, {
             method: "POST",
             headers: pinHeaders,
             body: JSON.stringify({ Pin: cleanPin }),
-            signal: AbortSignal.timeout(2000),
+            signal: AbortSignal.timeout(5000),
           }).catch(() => null);
         } catch {
           // ignore
@@ -566,7 +566,7 @@ export async function POST(req: NextRequest) {
     async function postOnce(targetUrl: string, bodyObj: any) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
         const r = await fetch(targetUrl, {
           method: "POST",
           headers,
