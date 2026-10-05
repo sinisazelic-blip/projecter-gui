@@ -274,10 +274,14 @@ export async function openProductFile(
   if (!file) return null;
 
   const access = await accessToken(cfg.account);
-  const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?alt=media&supportsAllDrives=true`;
+  const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?alt=media&supportsAllDrives=true&acknowledgeAbuse=true`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${access}` },
   });
-  if (!res.ok || !res.body) throw new Error("UPDATE_DRIVE_DOWNLOAD_FAILED");
+  if (!res.ok || !res.body) {
+    const errText = await res.text().catch(() => '');
+    console.error('[Drive Download Error]', res.status, errText);
+    throw new Error("UPDATE_DRIVE_DOWNLOAD_FAILED");
+  }
   return { file, body: res.body };
 }
