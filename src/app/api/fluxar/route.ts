@@ -236,7 +236,7 @@ async function handleRequest(request: NextRequest) {
              k.tip_rasknjizavanja,
              k.status,
              COALESCE(d.naziv, k.partner_naziv, 'Dobavljač') AS dobavljac_naziv,
-             COALESCE(d.jib, d.pib, '-') AS dobavljac_jib
+             COALESCE(d.jib, '-') AS dobavljac_jib
            FROM kuf_ulazne_fakture k
            LEFT JOIN dobavljaci d ON d.dobavljac_id = k.dobavljac_id
            WHERE k.datum_fakture >= ? AND k.datum_fakture <= ?
