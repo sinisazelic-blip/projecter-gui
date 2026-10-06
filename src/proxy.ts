@@ -20,8 +20,9 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/_next") || pathname.startsWith("/fluxa/"))
     return true;
   if (pathname.startsWith("/api/auth/")) return true;
-  // Javne API rute (Bearer u headeru za licence-check i soccs); ne smiju ići na login redirect bez kolačića.
+  // Javne API rute (Bearer u headeru za licence-check, soccs i fluxar); ne smiju ići na login redirect bez kolačića.
   if (pathname.startsWith("/api/public/")) return true;
+  if (pathname.startsWith("/api/fluxar")) return true;
   return false;
 }
 

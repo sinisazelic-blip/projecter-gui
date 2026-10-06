@@ -6,7 +6,7 @@ export default function FluxarBridgeCard({ firma }) {
   const [copied, setCopied] = useState(false);
 
   const token = "FLXR-061000-7C91E8B2";
-  const tunnelUrl = "https://lpfr.studiotaf.xyz/api/fluxar";
+  const tunnelUrl = "https://app.studiotaf.xyz/api/fluxar";
 
   const copyToken = () => {
     navigator.clipboard.writeText(token);
