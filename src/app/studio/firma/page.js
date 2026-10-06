@@ -7,6 +7,7 @@ import { getValidLocale } from "@/lib/i18n";
 import LogoUpload from "./LogoUpload";
 import FiskalModal from "./FiskalModal";
 import BrojacFakturaCard from "./BrojacFakturaCard";
+import FluxarBridgeCard from "./FluxarBridgeCard";
 import FirmaHeader from "./FirmaHeader";
 import FirmaSaveForm from "./FirmaSaveForm";
 import { isEnterInstance } from "@/lib/fluxa-instance";
@@ -539,6 +540,7 @@ export default async function Page() {
               )}
               {locale === "sr" && <div className="settingsModuleDivider" />}
               <BrojacFakturaCard />
+              {locale === "sr" && <FluxarBridgeCard firma={f} />}
             </div>
           </div>
         </div>
