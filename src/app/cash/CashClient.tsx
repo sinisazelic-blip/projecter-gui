@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslation } from "@/components/LocaleProvider";
 import FluxaLogo from "@/components/FluxaLogo";
 import { getCurrencyForLocale, getLocaleFromDocument } from "@/lib/i18n";
+import { parseMoneyInput, fmtMoneyBA } from "@/lib/format";
 import styles from "./CashClient.module.css";
 import OwnerPrivateFinance from "./OwnerPrivateFinance";
 import OwnerOperativniPlan from "./OwnerOperativniPlan";
@@ -92,7 +93,7 @@ function fmtDate(iso: string) {
 }
 
 function fmtMoney(amount: number, currency: string) {
-  return `${Number(amount).toFixed(2)} ${currency}`;
+  return fmtMoneyBA(amount, currency);
 }
 
 function getInitial30DaysAgo(): string {
@@ -186,8 +187,8 @@ export default function CashClient() {
   async function createDraft() {
     console.log("createDraft called", { amount, note, entityType, selectedEntityId, projectId, homeMember });
     
-    const n = Number(amount);
-    if (!Number.isFinite(n) || n <= 0) {
+    const n = parseMoneyInput(amount);
+    if (n <= 0) {
       console.log("Validation failed: amount");
       setErr(t("cash.errAmountPositive"));
       return;
@@ -416,8 +417,8 @@ export default function CashClient() {
 
   async function saveEdit() {
     if (!editing) return;
-    const amountNum = Number(editing.amount);
-    if (!Number.isFinite(amountNum) || amountNum <= 0) {
+    const amountNum = parseMoneyInput(editing.amount);
+    if (amountNum <= 0) {
       setErr(t("cash.errAmountPositive"));
       return;
     }

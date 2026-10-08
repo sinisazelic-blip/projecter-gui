@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { parseMoneyInput, fmtMoneyBA } from "@/lib/format";
 
 type RacunStanje = {
   id: number;
@@ -168,7 +169,7 @@ export default function OwnerOperativniPlan() {
   const slobodnoNakonWishlista = operativniNetoHodogram - totalWishlist;
 
   async function handleUpdateSaldo(id: number) {
-    const val = Number(editSaldoVal);
+    const val = parseMoneyInput(editSaldoVal);
     if (Number.isNaN(val)) return;
 
     try {

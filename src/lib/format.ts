@@ -110,3 +110,52 @@ export function localStatus(s: string | null | undefined) {
   if (v === "legacy") return "dogovoreno";
   return s ?? "";
 }
+
+/**
+ * Pametni Numpad i string parser za novčane iznose:
+ * Podržava unos sa numeričke tastature (zarez kao decimala),
+ * domaći format (1.234,56), US format (1,234.56), i čiste brojeve.
+ */
+export function parseMoneyInput(input: string | number | null | undefined): number {
+  if (input == null || input === "") return 0;
+  if (typeof input === "number") return Number.isFinite(input) ? input : 0;
+
+  let s = String(input).trim();
+  // Ukloni valute, razmake, slova
+  s = s.replace(/[^\d.,\-+]/g, "");
+  if (!s) return 0;
+
+  // Ako sadrži i tačku i zarez (npr. 1.234,56 ili 1,234.56)
+  if (s.includes(".") && s.includes(",")) {
+    const lastDot = s.lastIndexOf(".");
+    const lastComma = s.lastIndexOf(",");
+    if (lastComma > lastDot) {
+      // 1.234,56 (BA standard) -> ukloni tačke hiljada, zarez pretvori u tačku
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else {
+      // 1,234.56 (US standard) -> ukloni zareze hiljada
+      s = s.replace(/,/g, "");
+    }
+  } else if (s.includes(",")) {
+    // Sadrži samo zarez (npr. "1250,50" sa numeričke tastature) -> pretvori u tačku
+    s = s.replace(",", ".");
+  }
+
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Standardni format prikaza novca prema domaćem BA/sr standardu:
+ * 1.234,56 KM (hiljadski separator tačka, decimalni zarez).
+ */
+export function fmtMoneyBA(amount: number | string | null | undefined, currency = "KM"): string {
+  const n = typeof amount === "string" ? parseMoneyInput(amount) : Number(amount ?? 0);
+  const safe = Number.isFinite(n) ? n : 0;
+  const formatted = new Intl.NumberFormat("bs-BA", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(safe);
+  return currency ? `${formatted} ${currency}` : formatted;
+}
+
