@@ -118,7 +118,7 @@ export async function GET() {
         ORDER BY sort_order ASC, id ASC
       `),
       query(`
-        SELECT id, vrsta, kategorija, naziv, iznos, valuta, DATE_FORMAT(rok_datum, '%Y-%m-%d') AS rok_datum, status, napomena, sort_order, created_at
+        SELECT id, vrsta, kategorija, naziv, iznos, valuta, DATE_FORMAT(rok_datum, '%Y-%m-%d') AS rok_datum, status, DATE_FORMAT(paid_at, '%Y-%m-%d %H:%i:%s') AS paid_at, napomena, sort_order, created_at
         FROM owner_plan_stavke
         ORDER BY sort_order ASC, id ASC
       `),
@@ -278,7 +278,7 @@ export async function PUT(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { target, id, action, value } = body;
+    const { target, id, action, value, createExpense = false } = body;
 
     if (!id) {
       return NextResponse.json({ ok: false, error: "ID je obavezan." }, { status: 400 });
@@ -291,11 +291,11 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    if (action === "toggle_status" || action === "mark_paid" || action === "set_status") {
+    if (action === "toggle_status" || action === "mark_paid" || action === "set_status" || action === "realize_wishlist") {
       let nextStatus = "PLANIRANO";
       if (action === "set_status") {
         nextStatus = value;
-      } else if (action === "mark_paid") {
+      } else if (action === "mark_paid" || action === "realize_wishlist") {
         nextStatus = "REALIZOVANO";
       } else {
         // toggle_status
@@ -306,7 +306,11 @@ export async function PATCH(req: NextRequest) {
         else if (cur === "HOLD") nextStatus = "PLANIRANO";
       }
 
-      await query(`UPDATE owner_plan_stavke SET status = ? WHERE id = ?`, [nextStatus, id]);
+      if (nextStatus === "REALIZOVANO") {
+        await query(`UPDATE owner_plan_stavke SET status = ?, paid_at = NOW() WHERE id = ?`, [nextStatus, id]);
+      } else {
+        await query(`UPDATE owner_plan_stavke SET status = ?, paid_at = NULL WHERE id = ?`, [nextStatus, id]);
+      }
 
       if (nextStatus === "REALIZOVANO") {
         try {
@@ -325,8 +329,23 @@ export async function PATCH(req: NextRequest) {
               await query(`UPDATE owner_privatni_krediti SET uplaceno_rata = uplaceno_rata + 1 WHERE id = ?`, [kredId]);
             }
           }
+
+          // Ako je kupljena wishlist želja i korisnik želi upisati rashod
+          if (it?.vrsta === "WISHLIST" && createExpense) {
+            const todayDate = new Date().toISOString().slice(0, 10);
+            await query(
+              `INSERT INTO owner_plan_stavke (vrsta, kategorija, naziv, iznos, valuta, rok_datum, status, paid_at, napomena)
+               VALUES ('RASHOD', 'OPREMA', ?, ?, 'BAM', ?, 'REALIZOVANO', NOW(), ?)`,
+              [
+                `Kupljeno: ${it.naziv}`,
+                Number(it.iznos) || 0,
+                todayDate,
+                `Realizovano iz Wishliste (ID #${it.id})`,
+              ]
+            );
+          }
         } catch (linkErr) {
-          console.error("Greška pri ažuriranju pretplate/kredita:", linkErr);
+          console.error("Greška pri ažuriranju pretplate/kredita/wishliste:", linkErr);
         }
       }
 

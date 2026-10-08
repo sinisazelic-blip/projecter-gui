@@ -21,6 +21,7 @@ type PlanStavka = {
   valuta: string;
   rok_datum: string | null;
   status: "PLANIRANO" | "REALIZOVANO" | "HOLD" | "OTKAZANO";
+  paid_at?: string | null;
   napomena: string | null;
   sort_order: number;
 };
@@ -51,6 +52,16 @@ function formatShortDate(v: string | null | undefined): string {
   return s;
 }
 
+function formatDateTime(v: string | null | undefined): string {
+  if (!v) return "";
+  const s = String(v).trim();
+  const match = s.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
+  if (match) {
+    return `${match[3]}.${match[2]}.${match[1]}. u ${match[4]}:${match[5]}`;
+  }
+  return formatShortDate(v);
+}
+
 export default function OwnerOperativniPlan() {
   const [racuni, setRacuni] = useState<RacunStanje[]>([]);
   const [planStavke, setPlanStavke] = useState<PlanStavka[]>([]);
@@ -58,6 +69,11 @@ export default function OwnerOperativniPlan() {
   const [loading, setLoading] = useState(false);
   const [editingRacunId, setEditingRacunId] = useState<number | null>(null);
   const [editSaldoVal, setEditSaldoVal] = useState<string>("");
+
+  // Wishlist realization modal
+  const [realizeModalItem, setRealizeModalItem] = useState<PlanStavka | null>(null);
+  const [realizeAddExpense, setRealizeAddExpense] = useState(true);
+  const [showRealizedWishlist, setShowRealizedWishlist] = useState(false);
 
   // Modal za novu stavku plana
   const [showItemModal, setShowItemModal] = useState(false);
@@ -136,11 +152,16 @@ export default function OwnerOperativniPlan() {
     .filter((p) => p.status === "HOLD")
     .reduce((sum, p) => sum + Number(p.iznos || 0), 0);
 
+  const totalRashodiPlaceni = rashodiRealizovani.reduce((sum, p) => sum + Number(p.iznos || 0), 0);
+
   const dugorocnoStavke = planStavke.filter((p) => p.vrsta === "DUGOROCNO" && p.status !== "OTKAZANO");
   const totalDugorocno = dugorocnoStavke.reduce((sum, p) => sum + Number(p.iznos || 0), 0);
 
   const wishlistStavke = planStavke.filter((p) => p.vrsta === "WISHLIST" && p.status !== "OTKAZANO");
-  const totalWishlist = wishlistStavke.reduce((sum, p) => sum + Number(p.iznos || 0), 0);
+  const wishlistPending = wishlistStavke.filter((p) => p.status !== "REALIZOVANO");
+  const wishlistRealized = wishlistStavke.filter((p) => p.status === "REALIZOVANO");
+  const totalWishlist = wishlistPending.reduce((sum, p) => sum + Number(p.iznos || 0), 0);
+  const totalWishlistRealized = wishlistRealized.reduce((sum, p) => sum + Number(p.iznos || 0), 0);
 
   // Hodogram neto kalkulacija: (Keš na računima + Planirani Prilivi) - Planirani Rashodi
   const operativniNetoHodogram = totalSviRacuni + totalPrilivi - totalRashodi;
@@ -183,6 +204,25 @@ export default function OwnerOperativniPlan() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: item.id, action: "mark_paid" }),
       });
+      loadData();
+    } catch (e: any) {
+      alert(e.message);
+    }
+  }
+
+  async function confirmRealizeWishlist() {
+    if (!realizeModalItem) return;
+    try {
+      await fetch("/api/owner/operativni-plan", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: realizeModalItem.id,
+          action: "realize_wishlist",
+          createExpense: realizeAddExpense,
+        }),
+      });
+      setRealizeModalItem(null);
       loadData();
     } catch (e: any) {
       alert(e.message);
@@ -415,33 +455,239 @@ export default function OwnerOperativniPlan() {
           </div>
         </div>
 
-        {/* WISHLIST SIMULATOR BANNER (e.g. Logitech MX Keys S) */}
-        {wishlistStavke.length > 0 && (
-          <div style={{ marginTop: 14, background: "rgba(168, 85, 247, 0.15)", border: "1px solid rgba(168, 85, 247, 0.4)", borderRadius: 8, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+        {/* WISHLIST & INVESTICIJE PANEL (MULTI-ITEM S KALKULATOROM OSTVARIVOSTI) */}
+        <div style={{ marginTop: 16, background: "linear-gradient(135deg, rgba(88, 28, 135, 0.25), rgba(30, 27, 75, 0.4))", border: "1px solid rgba(168, 85, 247, 0.35)", borderRadius: 10, padding: "14px 16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 20 }}>⌨️</span>
+              <span style={{ fontSize: 20 }}>🎁</span>
               <div>
-                <span style={{ fontWeight: 800, color: "#f8fafc", fontSize: 13 }}>
-                  Planirana Nagrada / Želja: {wishlistStavke[0].naziv} ({Number(wishlistStavke[0].iznos).toFixed(2)} KM)
-                </span>
-                <span style={{ fontSize: 12, color: "#c084fc", marginLeft: 8 }}>
-                  {wishlistStavke[0].napomena ? `— ${wishlistStavke[0].napomena}` : ""}
-                </span>
+                <h3 style={{ margin: 0, fontSize: 15, color: "#f3e8ff", fontWeight: 800 }}>
+                  Planirane Investicije & Wishlist Želje ({wishlistPending.length})
+                </h3>
+                <div style={{ fontSize: 11, color: "#c084fc", marginTop: 2 }}>
+                  Ukupna vrijednost želja na čekanju: <b>{totalWishlist.toFixed(2)} KM</b> • Dostupno čistog salda: <b style={{ color: operativniNetoHodogram >= 0 ? "#4ade80" : "#f87171" }}>{operativniNetoHodogram.toFixed(2)} KM</b>
+                </div>
               </div>
             </div>
-            <div>
-              {slobodnoNakonWishlista >= 0 ? (
-                <span style={{ background: "rgba(34, 197, 94, 0.25)", color: "#4ade80", border: "1px solid #22c55e", padding: "4px 10px", borderRadius: 6, fontWeight: 800, fontSize: 12 }}>
-                  🎉 KUPUJ! Nakon kupovine ostaje Vam još +{slobodnoNakonWishlista.toFixed(2)} KM čisto!
-                </span>
-              ) : (
-                <span style={{ background: "rgba(239, 68, 68, 0.25)", color: "#f87171", border: "1px solid #ef4444", padding: "4px 10px", borderRadius: 6, fontWeight: 800, fontSize: 12 }}>
-                  ⏳ Pričekaj još {Math.abs(slobodnoNakonWishlista).toFixed(2)} KM priliva prije kupovine.
-                </span>
+
+            <button
+              type="button"
+              onClick={() => {
+                setItemForm({
+                  vrsta: "WISHLIST",
+                  kategorija: "OPREMA",
+                  naziv: "",
+                  iznos: 250,
+                  status: "PLANIRANO",
+                  napomena: "🔥 Visok prioritet",
+                });
+                setShowItemModal(true);
+              }}
+              style={{
+                background: "rgba(168, 85, 247, 0.3)",
+                color: "#e9d5ff",
+                border: "1px solid #a855f7",
+                padding: "6px 14px",
+                borderRadius: 6,
+                fontWeight: 700,
+                fontSize: 12,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              + Nova Želja / Investicija
+            </button>
+          </div>
+
+          {wishlistPending.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "18px 10px", background: "rgba(0,0,0,0.2)", borderRadius: 8, fontSize: 12, color: "#cbd5e1" }}>
+              Trenutno nemate aktivnih želja ili investicija na čekanju. Kliknite <b>+ Nova Želja</b> da unesete opremu ili cilj.
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 10 }}>
+              {wishlistPending.map((w) => {
+                const canAfford = operativniNetoHodogram >= Number(w.iznos);
+                const remainingAfter = operativniNetoHodogram - Number(w.iznos);
+                const isHighPriority = w.napomena?.includes("🔥") || w.kategorija === "HITNO";
+
+                return (
+                  <div
+                    key={w.id}
+                    style={{
+                      background: canAfford ? "rgba(34, 197, 94, 0.08)" : "rgba(15, 23, 42, 0.7)",
+                      border: canAfford ? "1px solid rgba(34, 197, 94, 0.35)" : "1px solid rgba(168, 85, 247, 0.25)",
+                      borderRadius: 8,
+                      padding: "10px 14px",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      gap: 8,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                      <div>
+                        <div style={{ fontWeight: 800, color: "#f8fafc", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                          <span>{w.naziv}</span>
+                          {isHighPriority && (
+                            <span style={{ fontSize: 10, background: "rgba(239, 68, 68, 0.2)", color: "#f87171", border: "1px solid rgba(239, 68, 68, 0.3)", padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>
+                              🔥 Visok
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 10, color: "#c084fc", marginTop: 2 }}>
+                          {w.kategorija} {w.napomena ? `• ${w.napomena.replace(/🔥\s*Visok\s*prioritet/i, "").trim()}` : ""}
+                        </div>
+                      </div>
+
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontWeight: 900, color: "#f8fafc", fontSize: 15 }}>
+                          {Number(w.iznos).toFixed(2)} KM
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* STATUS KALKULATOR & AKCIJE */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4, paddingTop: 6, borderTop: "1px solid rgba(255,255,255,0.06)", flexWrap: "wrap", gap: 6 }}>
+                      {canAfford ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 10, background: "rgba(34, 197, 94, 0.2)", color: "#4ade80", border: "1px solid #22c55e", padding: "2px 6px", borderRadius: 4, fontWeight: 800 }}>
+                            ✓ Ostaje +{remainingAfter.toFixed(2)} KM
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRealizeModalItem(w);
+                              setRealizeAddExpense(true);
+                            }}
+                            style={{
+                              background: "rgba(34, 197, 94, 0.3)",
+                              color: "#86efac",
+                              border: "1px solid #22c55e",
+                              padding: "3px 10px",
+                              borderRadius: 4,
+                              fontWeight: 800,
+                              fontSize: 11,
+                              cursor: "pointer",
+                            }}
+                          >
+                            🛒 Kupi / Realizuj
+                          </button>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 10, background: "rgba(239, 68, 68, 0.2)", color: "#fca5a5", border: "1px solid rgba(239, 68, 68, 0.3)", padding: "2px 6px", borderRadius: 4, fontWeight: 700 }}>
+                          ⏳ Fali još {Math.abs(remainingAfter).toFixed(2)} KM priliva
+                        </span>
+                      )}
+
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setItemForm({
+                              id: w.id,
+                              vrsta: "WISHLIST",
+                              kategorija: w.kategorija,
+                              naziv: w.naziv,
+                              iznos: w.iznos,
+                              status: w.status === "OTKAZANO" ? "PLANIRANO" : w.status,
+                              napomena: w.napomena || "",
+                            });
+                            setShowItemModal(true);
+                          }}
+                          style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.15)", color: "#94a3b8", padding: "2px 6px", borderRadius: 3, cursor: "pointer", fontSize: 10 }}
+                          title="Uredi stavku"
+                        >
+                          ✏️ Uredi
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteItem(w.id)}
+                          style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 12, padding: "2px" }}
+                          title="Obriši stavku"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ARHIVA OSTVARENIH ŽELJA / KUPLJENE INVESTICIJE */}
+          {wishlistRealized.length > 0 && (
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(168, 85, 247, 0.2)" }}>
+              <button
+                type="button"
+                onClick={() => setShowRealizedWishlist((prev) => !prev)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#d8b4fe",
+                  fontSize: 11,
+                  cursor: "pointer",
+                  padding: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontWeight: 700,
+                }}
+              >
+                <span>{showRealizedWishlist ? "▼" : "▶"}</span>
+                <span>🏆 Ostvarene Želje & Kupljene Investicije ({wishlistRealized.length}) — Ukupno investirano: {totalWishlistRealized.toFixed(2)} KM</span>
+              </button>
+
+              {showRealizedWishlist && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 6, marginTop: 8 }}>
+                  {wishlistRealized.map((w) => (
+                    <div
+                      key={w.id}
+                      style={{
+                        background: "rgba(34, 197, 94, 0.08)",
+                        border: "1px solid rgba(34, 197, 94, 0.25)",
+                        borderRadius: 6,
+                        padding: "6px 10px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        fontSize: 11,
+                      }}
+                    >
+                      <div>
+                        <span style={{ color: "#86efac", fontWeight: 700 }}>✓ {w.naziv}</span>
+                        <div style={{ fontSize: 9, color: "#94a3b8" }}>
+                          {w.kategorija} {w.paid_at ? `• Kupljeno: ${formatDateTime(w.paid_at)}` : ""}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ color: "#86efac", fontWeight: 800 }}>{Number(w.iznos).toFixed(2)} KM</span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStatus(w)}
+                          style={{
+                            background: "transparent",
+                            border: "1px solid rgba(255,255,255,0.15)",
+                            color: "#94a3b8",
+                            padding: "1px 6px",
+                            borderRadius: 3,
+                            cursor: "pointer",
+                            fontSize: 9,
+                          }}
+                          title="Vrati u aktivnu listu želja"
+                        >
+                          Vrati
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* 2. DVIJE GLAVNE KOLONE: LIJEVO (PRILIVI & KARTICE), DESNO (OBAVEZE & HODOGRAM) */}
@@ -746,10 +992,11 @@ export default function OwnerOperativniPlan() {
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
+                    fontWeight: 700,
                   }}
                 >
                   <span>{showPaidRashodi ? "▼" : "▶"}</span>
-                  <span>📁 Plaćene obaveze ({rashodiRealizovani.length})</span>
+                  <span>📁 Plaćene obaveze ({rashodiRealizovani.length}) — Ukupno isplaćeno: <b style={{ color: "#86efac" }}>{totalRashodiPlaceni.toFixed(2)} KM</b></span>
                 </button>
 
                 {showPaidRashodi && (
@@ -760,8 +1007,8 @@ export default function OwnerOperativniPlan() {
                         style={{
                           background: "rgba(34, 197, 94, 0.08)",
                           border: "1px solid rgba(34, 197, 94, 0.2)",
-                          borderRadius: 4,
-                          padding: "6px 10px",
+                          borderRadius: 6,
+                          padding: "6px 12px",
                           display: "flex",
                           justifyContent: "space-between",
                           alignItems: "center",
@@ -769,11 +1016,17 @@ export default function OwnerOperativniPlan() {
                         }}
                       >
                         <div>
-                          <span style={{ textDecoration: "line-through", color: "#86efac", fontWeight: 600 }}>{r.naziv}</span>
-                          <span style={{ color: "#64748b", marginLeft: 6 }}>({r.kategorija})</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ textDecoration: "line-through", color: "#86efac", fontWeight: 700 }}>✓ {r.naziv}</span>
+                            <span style={{ color: "#64748b", fontSize: 10 }}>({r.kategorija})</span>
+                          </div>
+                          <div style={{ fontSize: 9, color: "#94a3b8", marginTop: 2 }}>
+                            📅 Plaćeno: <b style={{ color: "#cbd5e1" }}>{formatDateTime(r.paid_at || r.rok_datum)}</b> {r.napomena ? `• ${r.napomena}` : ""}
+                          </div>
                         </div>
+
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ color: "#86efac", fontWeight: 700 }}>{Number(r.iznos).toFixed(2)} KM</span>
+                          <span style={{ color: "#86efac", fontWeight: 800, fontSize: 13 }}>{Number(r.iznos).toFixed(2)} KM</span>
                           <button
                             type="button"
                             onClick={() => handleToggleStatus(r)}
@@ -781,14 +1034,14 @@ export default function OwnerOperativniPlan() {
                               background: "transparent",
                               border: "1px solid rgba(255,255,255,0.15)",
                               color: "#94a3b8",
-                              padding: "1px 6px",
+                              padding: "2px 6px",
                               borderRadius: 3,
                               cursor: "pointer",
                               fontSize: 10,
                             }}
-                            title="Vrati u neplaćene obaveze"
+                            title="Vrati u aktivne neplaćene obaveze"
                           >
-                            Vrati
+                            ↩ Vrati
                           </button>
                         </div>
                       </div>
@@ -980,6 +1233,56 @@ export default function OwnerOperativniPlan() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ZA POTVRDU KUPOVINE / REALIZACIJE WISHLIST ŽELJE */}
+      {realizeModalItem && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
+          <div style={{ background: "#0f172a", border: "2px solid #a855f7", borderRadius: 12, padding: 24, width: 440, maxWidth: "90%", boxShadow: "0 10px 30px rgba(168, 85, 247, 0.3)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <span style={{ fontSize: 26 }}>🛒</span>
+              <div>
+                <h3 style={{ margin: 0, color: "#f8fafc", fontSize: 17, fontWeight: 900 }}>Potvrda Realizacije Želje / Opreme</h3>
+                <div style={{ fontSize: 11, color: "#c084fc", marginTop: 2 }}>Arhiviranje iz aktivnog reminder-a</div>
+              </div>
+            </div>
+
+            <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: 14, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", marginBottom: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "#f8fafc" }}>{realizeModalItem.naziv}</div>
+              <div style={{ fontSize: 12, color: "#c084fc", marginTop: 2 }}>{realizeModalItem.kategorija} {realizeModalItem.napomena ? `• ${realizeModalItem.napomena}` : ""}</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: "#4ade80", marginTop: 8 }}>{Number(realizeModalItem.iznos).toFixed(2)} KM</div>
+            </div>
+
+            <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", background: "rgba(34, 197, 94, 0.1)", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(34, 197, 94, 0.3)", marginBottom: 18 }}>
+              <input
+                type="checkbox"
+                checked={realizeAddExpense}
+                onChange={(e) => setRealizeAddExpense(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: "#22c55e" }}
+              />
+              <span style={{ fontSize: 12, color: "#f8fafc", fontWeight: 600 }}>
+                Automatski evidentiraj ovu kupovinu u plaćene rashode opreme sa današnjim datumom
+              </span>
+            </label>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setRealizeModalItem(null)}
+                style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.2)", color: "#cbd5e1", padding: "8px 16px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}
+              >
+                Odustani
+              </button>
+              <button
+                type="button"
+                onClick={confirmRealizeWishlist}
+                style={{ background: "#a855f7", color: "#fff", border: "none", padding: "8px 20px", borderRadius: 6, fontWeight: 800, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+              >
+                ✓ Potvrdi Kupovinu
+              </button>
+            </div>
           </div>
         </div>
       )}

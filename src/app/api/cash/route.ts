@@ -226,15 +226,19 @@ export async function POST(req: NextRequest) {
           // Formiraj detalje transakcije
           const entityName = entityType === "talent" 
             ? (await query(`SELECT ime_prezime FROM talenti WHERE talent_id = ?`, [entityId]) as any[])?.[0]?.ime_prezime || `Talent #${entityId}`
-            : (await query(`SELECT naziv FROM dobavljaci WHERE dobavljac_id = ?`, [entityId]) as any[])?.[0]?.naziv || `Dobavljač #${entityId}`;
-          
+            : (await query(`SELECT naziv FROM dobavljaci WHERE dobavljac_id = ?`, [entityId]) as any[])?.[0]?.naziv || `Dobavljac #${entityId}`;
           const ccyLabel = currency === "BAM" || currency === "KM" ? "KM" : currency;
-          transactionDetails = `${entityType === "talent" ? "Talent" : "Dobavljač"}: ${entityName} - Plaćeno ${iznosKm.toFixed(2)} ${ccyLabel}`;
+          transactionDetails = `${entityType === "talent" ? "Talent" : "Dobavljac"}: ${entityName} - Placeno ${iznosKm.toFixed(2)} ${ccyLabel}`;
         }
       } catch (e: any) {
-        console.error("Greška pri kreiranju plaćanja za talent/dobavljač:", e);
+        console.error("Greska pri kreiranju placanja za talent/dobavljac:", e);
         // Ne prekidamo - cash entry se i dalje kreira
       }
+    }
+
+    if (entityType === "home") {
+      const homeMember = body?.homeMember ? String(body.homeMember).trim() : "Porodica";
+      transactionDetails = `Home: ${homeMember}`;
     }
 
     const created = await insertCashDraftDb({

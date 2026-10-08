@@ -125,8 +125,9 @@ export default function CashClient() {
   const [suppliers, setSuppliers] = useState<Dobavljac[]>([]);
   const [clients, setClients] = useState<Klijent[]>([]);
   const [entitiesLoading, setEntitiesLoading] = useState(false);
-  const [entityType, setEntityType] = useState<"talent" | "dobavljac" | "project" | "">("project");
+  const [entityType, setEntityType] = useState<"talent" | "dobavljac" | "project" | "home" | "">("project");
   const [selectedEntityId, setSelectedEntityId] = useState<string>("");
+  const [homeMember, setHomeMember] = useState<string>("Supruga");
 
   // form
   const [amount, setAmount] = useState<string>("");
@@ -183,7 +184,7 @@ export default function CashClient() {
   }
 
   async function createDraft() {
-    console.log("createDraft called", { amount, note, entityType, selectedEntityId, projectId });
+    console.log("createDraft called", { amount, note, entityType, selectedEntityId, projectId, homeMember });
     
     const n = Number(amount);
     if (!Number.isFinite(n) || n <= 0) {
@@ -191,7 +192,9 @@ export default function CashClient() {
       setErr(t("cash.errAmountPositive"));
       return;
     }
-    if (!note.trim()) {
+
+    const effectiveNote = note.trim() || (entityType === "home" ? `Isplata za porodicu (${homeMember})` : "");
+    if (!effectiveNote) {
       console.log("Validation failed: note");
       setErr(t("cash.errNoteRequired"));
       return;
@@ -218,10 +221,11 @@ export default function CashClient() {
         amount: n,
         direction,
         currency: currency.trim() || localeCurrency,
-        note: note.trim(),
+        note: effectiveNote,
         projectId: entityType === "project" ? (projectId.trim() ? projectId.trim() : null) : null,
-        entityType: entityType === "talent" ? "talent" : entityType === "dobavljac" ? "vendor" : null,
+        entityType: entityType === "talent" ? "talent" : entityType === "dobavljac" ? "vendor" : entityType === "home" ? "home" : null,
         entityId: entityType === "talent" || entityType === "dobavljac" ? Number(selectedEntityId) : null,
+        homeMember: entityType === "home" ? homeMember : undefined,
       };
 
       console.log("Sending payload:", payload);
@@ -575,266 +579,343 @@ export default function CashClient() {
           <>
             {err ? <div className={styles.error}>{err}</div> : null}
 
+            {(() => {
+              const activeItems = data?.items?.filter((it) => it.status === "AKTIVAN") || [];
+              const homeItems = activeItems.filter(
+                (it) => it.direction === "OUT" && (it.entityType === "home" || it.transactionDetails?.toLowerCase().includes("home:") || it.note?.toLowerCase().includes("home:") || it.note?.toLowerCase().includes("za porodicu"))
+              );
+              const totalHomeAmount = homeItems.reduce((sum, it) => sum + Number(it.amount || 0), 0);
+              const homeSupruga = homeItems.filter(it => (it.transactionDetails && it.transactionDetails.toLowerCase().includes("supruga")) || (it.note && it.note.toLowerCase().includes("suprug"))).reduce((sum, it) => sum + Number(it.amount || 0), 0);
+              const homeSin = homeItems.filter(it => (it.transactionDetails && it.transactionDetails.toLowerCase().includes("sin")) || (it.note && it.note.toLowerCase().includes("sin"))).reduce((sum, it) => sum + Number(it.amount || 0), 0);
+              const homeKuca = Math.max(0, totalHomeAmount - (homeSupruga + homeSin));
+
+              const talentItems = activeItems.filter(it => it.direction === "OUT" && it.entityType === "talent");
+              const totalTalentAmount = talentItems.reduce((sum, it) => sum + Number(it.amount || 0), 0);
+
+              return (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14, marginBottom: 20 }}>
+                  <div className={styles.card}>
+                    <div className={styles.label}>{t("cash.balanceDraft")}</div>
+                    <div className={styles.big} style={{ color: "#38bdf8" }}>
+                      {data ? fmtMoney(data.balance ?? 0, localeCurrency) : "—"}
+                    </div>
+                    <div className={styles.muted}>
+                      {t("cash.entriesCount")} <b>{data?.items?.length ?? 0}</b> aktivnih/arhiviranih stavki
+                    </div>
+                  </div>
+
+                  <div className={styles.card} style={{ border: "1px solid rgba(244, 63, 94, 0.35)", background: "linear-gradient(135deg, rgba(244, 63, 94, 0.1), rgba(15, 23, 42, 0.6))" }}>
+                    <div className={styles.label} style={{ color: "#fda4af", display: "flex", justifyContent: "space-between" }}>
+                      <span>🏠 HOME FOND (PORODICA)</span>
+                      <span style={{ fontSize: 10, background: "rgba(244, 63, 94, 0.2)", padding: "1px 6px", borderRadius: 4 }}>Odvojeno od posla</span>
+                    </div>
+                    <div className={styles.big} style={{ color: "#fb7185" }}>
+                      {fmtMoney(totalHomeAmount, localeCurrency)}
+                    </div>
+                    <div className={styles.muted} style={{ fontSize: 11, color: "#cbd5e1" }}>
+                      👩 Supruga: <b>{homeSupruga.toFixed(2)}</b> | 👦 Sin: <b>{homeSin.toFixed(2)}</b> | 🏡 Kuća: <b>{homeKuca.toFixed(2)}</b>
+                    </div>
+                  </div>
+
+                  <div className={styles.card} style={{ border: "1px solid rgba(56, 189, 248, 0.2)" }}>
+                    <div className={styles.label} style={{ color: "#7dd3fc" }}>👥 SARADNICI / TALENTI (HONORARI)</div>
+                    <div className={styles.big} style={{ color: "#38bdf8" }}>
+                      {fmtMoney(totalTalentAmount, localeCurrency)}
+                    </div>
+                    <div className={styles.muted} style={{ fontSize: 11 }}>
+                      Ukupno <b>{talentItems.length}</b> isplata poslovnim saradnicima
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className={styles.grid}>
               <div className={styles.card}>
-          <div className={styles.label}>{t("cash.balanceDraft")}</div>
-          <div className={styles.big}>
-            {data ? fmtMoney(data.balance ?? 0, localeCurrency) : "—"}
-          </div>
-          <div className={styles.muted}>
-            {t("cash.entriesCount")} <b>{data?.items?.length ?? 0}</b>
-          </div>
-        </div>
+                <div className={styles.sectionTitle}>{t("cash.quickAddTitle")}</div>
 
-        <div className={styles.card}>
-          <div className={styles.sectionTitle}>{t("cash.quickAddTitle")}</div>
+                <div className={styles.formGrid}>
+                  <div>
+                    <div className={styles.label}>{t("cash.type")}</div>
+                    <select
+                      className={styles.input}
+                      value={entityType}
+                      onChange={(e) => {
+                        const newType = e.target.value as "talent" | "dobavljac" | "project" | "home" | "";
+                        setEntityType(newType);
+                        setSelectedEntityId("");
+                        setSelectedProjectId(null);
+                        setProjectId("");
+                        setAmount("");
+                      }}
+                    >
+                      <option value="project">{t("cash.typeProject")}</option>
+                      <option value="home">🏠 Home (Porodica / Kuća / Lični trošak)</option>
+                      <option value="talent">👤 Saradnik / Talent (Poslovni honorar)</option>
+                      <option value="dobavljac">{t("cash.typeSupplier")}</option>
+                    </select>
+                  </div>
 
-          <div className={styles.formGrid}>
-            <div>
-              <div className={styles.label}>{t("cash.type")}</div>
-              <select
-                className={styles.input}
-                value={entityType}
-                onChange={(e) => {
-                  const newType = e.target.value as "talent" | "dobavljac" | "project" | "";
-                  setEntityType(newType);
-                  setSelectedEntityId("");
-                  setSelectedProjectId(null);
-                  setProjectId("");
-                  setAmount("");
-                }}
-              >
-                <option value="project">{t("cash.typeProject")}</option>
-                <option value="talent">{t("cash.typeTalent")}</option>
-                <option value="dobavljac">{t("cash.typeSupplier")}</option>
-              </select>
-            </div>
+                  <div>
+                    <div className={styles.label}>{t("cash.amount")}</div>
+                    <input
+                      className={styles.input}
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder={t("cash.amountPlaceholder")}
+                    />
+                  </div>
 
-            <div>
-              <div className={styles.label}>{t("cash.amount")}</div>
-              <input
-                className={styles.input}
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder={t("cash.amountPlaceholder")}
-              />
-            </div>
+                  <div>
+                    <div className={styles.label}>{t("cash.direction")}</div>
+                    <select
+                      className={styles.input}
+                      value={direction}
+                      onChange={(e) => setDirection(e.target.value as CashDirection)}
+                    >
+                      <option value="OUT">{t("cash.directionOut")}</option>
+                      <option value="IN">{t("cash.directionIn")}</option>
+                    </select>
+                  </div>
 
-            <div>
-              <div className={styles.label}>{t("cash.direction")}</div>
-              <select
-                className={styles.input}
-                value={direction}
-                onChange={(e) => setDirection(e.target.value as CashDirection)}
-              >
-                <option value="OUT">{t("cash.directionOut")}</option>
-                <option value="IN">{t("cash.directionIn")}</option>
-              </select>
-            </div>
+                  <div>
+                    <div className={styles.label}>{t("cash.currency")}</div>
+                    <input
+                      className={styles.input}
+                      value={currency}
+                      onChange={(e) => setCurrency(e.target.value)}
+                      placeholder={localeCurrency}
+                      style={{ maxWidth: 80 }}
+                    />
+                  </div>
 
-            <div>
-              <div className={styles.label}>{t("cash.currency")}</div>
-              <input
-                className={styles.input}
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                placeholder={localeCurrency}
-                style={{ maxWidth: 80 }}
-              />
-            </div>
-
-            <div>
-              <div className={styles.label}>{t("cash.noteRequired")}</div>
-              <input
-                className={styles.input}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder={t("cash.notePlaceholder")}
-              />
-            </div>
-          </div>
-
-          {entityType === "project" && (
-            <div style={{ marginTop: 20 }}>
-              <div className={styles.label} style={{ marginBottom: 10 }}>{t("cash.projectId")}</div>
-              {projectsLoading ? (
-                <div className={styles.muted}>{t("cash.loadingProjects")}</div>
-              ) : (
-                <div className={styles.tableWrap}>
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        <th style={{ width: "40px" }}></th>
-                        <th>{t("cash.colId")}</th>
-                        <th>{t("cash.client")}</th>
-                        <th>{t("cash.colProjectName")}</th>
-                        <th style={{ textAlign: "right" }}>{t("cash.colBudget")}</th>
-                        <th style={{ textAlign: "right" }}>{t("cash.colCosts")}</th>
-                        <th style={{ textAlign: "right" }}>{t("cash.colRevenue")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {projects.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} style={{ textAlign: "center", padding: 20, opacity: 0.7 }}>
-                            {t("cash.loadingProjects")}
-                          </td>
-                        </tr>
-                      ) : (
-                        projects.map((p) => (
-                          <tr
-                            key={p.projekat_id}
-                            style={{
-                              cursor: "pointer",
-                              backgroundColor: selectedProjectId === p.projekat_id ? "rgba(125, 211, 252, 0.1)" : undefined,
-                            }}
-                            onClick={() => handleProjectSelect(p)}
-                          >
-                            <td>
-                              <input
-                                type="checkbox"
-                                checked={selectedProjectId === p.projekat_id}
-                                onChange={() => handleProjectSelect(p)}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </td>
-                            <td>#{p.id_po || p.projekat_id}</td>
-                            <td>
-                              {(() => {
-                                const naru = clientNameById.get(Number(p.narucilac_id || 0));
-                                const kraj = clientNameById.get(Number(p.krajnji_klijent_id || 0));
-                                if (naru && kraj && naru !== kraj) return `${naru} → ${kraj}`;
-                                return naru || "—";
-                              })()}
-                            </td>
-                            <td>{p.radni_naziv || "—"}</td>
-                            <td style={{ textAlign: "right" }}>{fmtMoney(p.budzet_planirani || 0, localeCurrency)}</td>
-                            <td style={{ textAlign: "right" }}>{fmtMoney(p.troskovi_ukupno || 0, localeCurrency)}</td>
-                            <td style={{ textAlign: "right" }}>{fmtMoney(p.planirana_zarada || 0, localeCurrency)}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                  <div>
+                    <div className={styles.label}>{t("cash.noteRequired")}</div>
+                    <input
+                      className={styles.input}
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      placeholder={entityType === "home" ? `npr. Džeparac, kupovina za kuću (${homeMember})...` : t("cash.notePlaceholder")}
+                    />
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
 
-          {entityType === "talent" && (
-            <div style={{ marginTop: 20 }}>
-              <div className={styles.label} style={{ marginBottom: 10 }}>{t("cash.talent")}</div>
-              {entitiesLoading ? (
-                <div className={styles.muted}>{t("cash.loadingTalents")}</div>
-              ) : talents.length === 0 ? (
-                <div className={styles.muted} style={{ color: "rgba(239, 68, 68, 0.8)" }}>
-                  {t("cash.noTalents")}
+                {entityType === "home" && (
+                  <div style={{ marginTop: 16, background: "rgba(244, 63, 94, 0.08)", border: "1px solid rgba(244, 63, 94, 0.25)", padding: "12px 14px", borderRadius: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#fda4af", marginBottom: 8 }}>
+                      🏠 Izaberite Člana Porodice / Namjenu za Home Fond:
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {[
+                        { label: "👩 Supruga", val: "Supruga" },
+                        { label: "👦 Sin", val: "Sin" },
+                        { label: "🏡 Kuća / Porodica (opšte)", val: "Kuća / Porodica" },
+                        { label: "👤 Lični džeparac / trošak", val: "Lični trošak" },
+                      ].map((m) => (
+                        <button
+                          key={m.val}
+                          type="button"
+                          onClick={() => setHomeMember(m.val)}
+                          style={{
+                            background: homeMember === m.val ? "#f43f5e" : "rgba(255,255,255,0.06)",
+                            color: homeMember === m.val ? "#fff" : "#cbd5e1",
+                            border: homeMember === m.val ? "1px solid #f43f5e" : "1px solid rgba(255,255,255,0.15)",
+                            padding: "6px 12px",
+                            borderRadius: 6,
+                            fontWeight: 700,
+                            fontSize: 12,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {entityType === "project" && (
+                  <div style={{ marginTop: 20 }}>
+                    <div className={styles.label} style={{ marginBottom: 10 }}>{t("cash.projectId")}</div>
+                    {projectsLoading ? (
+                      <div className={styles.muted}>{t("cash.loadingProjects")}</div>
+                    ) : (
+                      <div className={styles.tableWrap}>
+                        <table className={styles.table}>
+                          <thead>
+                            <tr>
+                              <th style={{ width: "40px" }}></th>
+                              <th>{t("cash.colId")}</th>
+                              <th>{t("cash.client")}</th>
+                              <th>{t("cash.colProjectName")}</th>
+                              <th style={{ textAlign: "right" }}>{t("cash.colBudget")}</th>
+                              <th style={{ textAlign: "right" }}>{t("cash.colCosts")}</th>
+                              <th style={{ textAlign: "right" }}>{t("cash.colRevenue")}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {projects.length === 0 ? (
+                              <tr>
+                                <td colSpan={7} style={{ textAlign: "center", padding: 20, opacity: 0.7 }}>
+                                  {t("cash.loadingProjects")}
+                                </td>
+                              </tr>
+                            ) : (
+                              projects.map((p) => (
+                                <tr
+                                  key={p.projekat_id}
+                                  style={{
+                                    cursor: "pointer",
+                                    backgroundColor: selectedProjectId === p.projekat_id ? "rgba(125, 211, 252, 0.1)" : undefined,
+                                  }}
+                                  onClick={() => handleProjectSelect(p)}
+                                >
+                                  <td>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedProjectId === p.projekat_id}
+                                      onChange={() => handleProjectSelect(p)}
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                  </td>
+                                  <td>#{p.id_po || p.projekat_id}</td>
+                                  <td>
+                                    {(() => {
+                                      const naru = clientNameById.get(Number(p.narucilac_id || 0));
+                                      const kraj = clientNameById.get(Number(p.krajnji_klijent_id || 0));
+                                      if (naru && kraj && naru !== kraj) return `${naru} → ${kraj}`;
+                                      return naru || "—";
+                                    })()}
+                                  </td>
+                                  <td>{p.radni_naziv || "—"}</td>
+                                  <td style={{ textAlign: "right" }}>{fmtMoney(p.budzet_planirani || 0, localeCurrency)}</td>
+                                  <td style={{ textAlign: "right" }}>{fmtMoney(p.troskovi_ukupno || 0, localeCurrency)}</td>
+                                  <td style={{ textAlign: "right" }}>{fmtMoney(p.planirana_zarada || 0, localeCurrency)}</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {entityType === "talent" && (
+                  <div style={{ marginTop: 20 }}>
+                    <div className={styles.label} style={{ marginBottom: 10 }}>{t("cash.talent")}</div>
+                    {entitiesLoading ? (
+                      <div className={styles.muted}>{t("cash.loadingTalents")}</div>
+                    ) : talents.length === 0 ? (
+                      <div className={styles.muted} style={{ color: "rgba(239, 68, 68, 0.8)" }}>
+                        {t("cash.noTalents")}
+                      </div>
+                    ) : (
+                      <select
+                        className={styles.input}
+                        value={selectedEntityId}
+                        onChange={(e) => {
+                          setSelectedEntityId(e.target.value);
+                          const talentId = e.target.value;
+                          if (talentId) {
+                            setProjectId("");
+                            setSelectedProjectId(null);
+                          }
+                        }}
+                      >
+                        <option value="">{t("cash.selectTalent")}</option>
+                        {talents.map((t) => (
+                          <option key={t.talent_id} value={String(t.talent_id)}>
+                            {t.ime_prezime} {t.vrsta ? `(${t.vrsta})` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+
+                {entityType === "dobavljac" && (
+                  <div style={{ marginTop: 20 }}>
+                    <div className={styles.label} style={{ marginBottom: 10 }}>{t("cash.supplier")}</div>
+                    {entitiesLoading ? (
+                      <div className={styles.muted}>{t("cash.loadingSuppliers")}</div>
+                    ) : suppliers.length === 0 ? (
+                      <div className={styles.muted} style={{ color: "rgba(239, 68, 68, 0.8)" }}>
+                        {t("cash.noSuppliers")}
+                      </div>
+                    ) : (
+                      <select
+                        className={styles.input}
+                        value={selectedEntityId}
+                        onChange={(e) => {
+                          setSelectedEntityId(e.target.value);
+                          const dobavljacId = e.target.value;
+                          if (dobavljacId) {
+                            setProjectId("");
+                            setSelectedProjectId(null);
+                          }
+                        }}
+                      >
+                        <option value="">{t("cash.selectSupplier")}</option>
+                        {suppliers.map((d) => (
+                          <option key={d.dobavljac_id} value={String(d.dobavljac_id)}>
+                            {d.naziv} {d.vrsta ? `(${d.vrsta})` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+
+                <div className={styles.actions} style={{ marginTop: 20 }}>
+                  <button
+                    className={styles.btnPrimary}
+                    onClick={createDraft}
+                    disabled={loading}
+                  >
+                    {loading ? "..." : t("cash.addDraft")}
+                  </button>
                 </div>
-              ) : (
-                <select
-                  className={styles.input}
-                  value={selectedEntityId}
-                  onChange={(e) => {
-                    setSelectedEntityId(e.target.value);
-                    const talentId = e.target.value;
-                    if (talentId) {
-                      setProjectId("");
-                      setSelectedProjectId(null);
-                    }
-                  }}
-                >
-                  <option value="">{t("cash.selectTalent")}</option>
-                  {talents.map((t) => (
-                    <option key={t.talent_id} value={String(t.talent_id)}>
-                      {t.ime_prezime} {t.vrsta ? `(${t.vrsta})` : ""}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          )}
+              </div>
 
-          {entityType === "dobavljac" && (
-            <div style={{ marginTop: 20 }}>
-              <div className={styles.label} style={{ marginBottom: 10 }}>{t("cash.supplier")}</div>
-              {entitiesLoading ? (
-                <div className={styles.muted}>{t("cash.loadingSuppliers")}</div>
-              ) : suppliers.length === 0 ? (
-                <div className={styles.muted} style={{ color: "rgba(239, 68, 68, 0.8)" }}>
-                  {t("cash.noSuppliers")}
-                </div>
-              ) : (
-                <select
-                  className={styles.input}
-                  value={selectedEntityId}
-                  onChange={(e) => {
-                    setSelectedEntityId(e.target.value);
-                    const dobavljacId = e.target.value;
-                    if (dobavljacId) {
-                      setProjectId("");
-                      setSelectedProjectId(null);
-                    }
-                  }}
-                >
-                  <option value="">{t("cash.selectSupplier")}</option>
-                  {suppliers.map((d) => (
-                    <option key={d.dobavljac_id} value={String(d.dobavljac_id)}>
-                      {d.naziv} {d.vrsta ? `(${d.vrsta})` : ""}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          )}
-
-          <div className={styles.actions} style={{ marginTop: 20 }}>
-            <button
-              className={styles.btnPrimary}
-              onClick={createDraft}
-              disabled={loading}
-            >
-              {loading ? "..." : t("cash.addDraft")}
-            </button>
-          </div>
-        </div>
-
-        <div className={styles.card}>
-          <div className={styles.sectionTitle}>{t("cash.searchHistory")}</div>
-          <div className={styles.formGrid} style={{ marginBottom: 16 }}>
-            <div>
-              <div className={styles.label}>{t("cash.dateFrom")}</div>
-              <input
-                type="date"
-                className={styles.input}
-                value={filterDateFrom}
-                onChange={(e) => setFilterDateFrom(e.target.value)}
-              />
-            </div>
-            <div>
-              <div className={styles.label}>{t("cash.dateTo")}</div>
-              <input
-                type="date"
-                className={styles.input}
-                value={filterDateTo}
-                onChange={(e) => setFilterDateTo(e.target.value)}
-              />
-            </div>
-            <div>
-              <div className={styles.label}>{t("cash.entity")}</div>
-              <select
-                className={styles.input}
-                value={filterEntityType}
-                onChange={(e) => {
-                  setFilterEntityType(e.target.value);
-                  setFilterEntityId("");
-                }}
-              >
-                <option value="">{t("cash.all")}</option>
-                <option value="talent">{t("cash.typeTalent")}</option>
-                <option value="vendor">{t("cash.typeSupplier")}</option>
-                <option value="klijent">{t("cash.client")}</option>
-              </select>
-            </div>
+              <div className={styles.card}>
+                <div className={styles.sectionTitle}>{t("cash.searchHistory")}</div>
+                <div className={styles.formGrid} style={{ marginBottom: 16 }}>
+                  <div>
+                    <div className={styles.label}>{t("cash.dateFrom")}</div>
+                    <input
+                      type="date"
+                      className={styles.input}
+                      value={filterDateFrom}
+                      onChange={(e) => setFilterDateFrom(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <div className={styles.label}>{t("cash.dateTo")}</div>
+                    <input
+                      type="date"
+                      className={styles.input}
+                      value={filterDateTo}
+                      onChange={(e) => setFilterDateTo(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <div className={styles.label}>{t("cash.entity")}</div>
+                    <select
+                      className={styles.input}
+                      value={filterEntityType}
+                      onChange={(e) => {
+                        setFilterEntityType(e.target.value);
+                        setFilterEntityId("");
+                      }}
+                    >
+                      <option value="">{t("cash.all")}</option>
+                      <option value="home">🏠 Home (Porodica / Lični troškovi)</option>
+                      <option value="talent">{t("cash.typeTalent")}</option>
+                      <option value="vendor">{t("cash.typeSupplier")}</option>
+                      <option value="klijent">{t("cash.client")}</option>
+                    </select>
+                  </div>
             {filterEntityType === "talent" && (
               <div>
                 <div className={styles.label}>{t("cash.talent")}</div>

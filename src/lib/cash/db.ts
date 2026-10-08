@@ -58,6 +58,10 @@ function rowToEntry(r: any): CashEntry {
     entityName = r.vendor_naziv ?? null;
   } else if (r.entity_type === "klijent" || r.entity_type === "client") {
     entityName = r.klijent_naziv ?? null;
+  } else if (r.entity_type === "home") {
+    entityName = r.transaction_details
+      ? r.transaction_details.replace(/^Home:\s*/i, "🏠 ")
+      : "🏠 Porodica / Home";
   }
 
   const isOwnerTransfer =
