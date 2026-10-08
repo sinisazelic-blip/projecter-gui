@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "@/components/LocaleProvider";
-import { formatAmount } from "@/lib/format";
+import { formatReportNum } from "@/lib/format";
 
 type Props = {
   embedded?: boolean;
@@ -16,6 +16,12 @@ const fmtDate = (v: string) => {
   const [y, m, d] = v.slice(0, 10).split("-");
   if (!y || !m || !d) return v;
   return `${d}.${m}.${y}`;
+};
+
+const fmtMoneyWithCurr = (amount: number | string | null | undefined, currency?: string | null) => {
+  const c = String(currency || "KM").trim().toUpperCase();
+  const currNorm = c === "BAM" ? "KM" : c;
+  return `${formatReportNum(amount)} ${currNorm}`;
 };
 
 type QueueRow = {
@@ -623,7 +629,7 @@ export default function RasknjizavanjeClient({
                         color: r.amount > 0 ? "var(--good)" : "var(--bad)",
                       }}
                     >
-                      {formatAmount(r.amount)} {r.currency}
+                      {fmtMoneyWithCurr(r.amount, r.currency)}
                     </td>
                     <td style={queueCellWrap}>{r.counterparty || "—"}</td>
                     <td style={queueCellWrap}>{r.description || "—"}</td>
@@ -655,9 +661,9 @@ export default function RasknjizavanjeClient({
                 <strong>{selected.counterparty || "—"}</strong>
                 <br />
                 <span style={{ opacity: 0.85 }}>
-                  {formatAmount(selected.amount)} {selected.currency} ·{" "}
+                  {fmtMoneyWithCurr(selected.amount, selected.currency)} ·{" "}
                   {t("rasknjizavanje.remaining")}:{" "}
-                  <strong>{formatAmount(remaining)}</strong>
+                  <strong>{fmtMoneyWithCurr(remaining, selected.currency)}</strong>
                   {selected.alloc_status === "OVER_ALLOCATED" ? (
                     <span style={{ color: "var(--warn, #eab308)", marginLeft: 8 }}>
                       ({t("rasknjizavanje.postingFullyAllocated")})
@@ -891,9 +897,9 @@ export default function RasknjizavanjeClient({
                               {inv.faktura_broj}
                               <div style={{ fontSize: 10, opacity: 0.7 }}>{inv.status_derived}</div>
                             </td>
-                            <td className="num">{formatAmount(inv.iznos_km)}</td>
-                            <td className="num">{formatAmount(inv.placeno_km)}</td>
-                            <td className="num">{formatAmount(inv.preostalo_km)}</td>
+                            <td className="num">{fmtMoneyWithCurr(inv.iznos_km, inv.valuta)}</td>
+                            <td className="num">{fmtMoneyWithCurr(inv.placeno_km, inv.valuta)}</td>
+                            <td className="num">{fmtMoneyWithCurr(inv.preostalo_km, inv.valuta)}</td>
                             <td>
                               <button
                                 type="button"
@@ -933,13 +939,13 @@ export default function RasknjizavanjeClient({
                         {gapAfterAlloc > 0.01 ? (
                           <>
                             {t("rasknjizavanje.tolerancijaHint")}{" "}
-                            <strong>{formatAmount(gapAfterAlloc)}</strong>.{" "}
+                            <strong>{fmtMoneyWithCurr(gapAfterAlloc, selected.currency)}</strong>.{" "}
                           </>
                         ) : (
                           <span>{t("rasknjizavanje.tolerancijaPickInvoice")}. </span>
                         )}
                         {t("rasknjizavanje.tolerancijaMax")}{" "}
-                        <strong>{formatAmount(tolerancijaMax)}</strong>.
+                        <strong>{fmtMoneyWithCurr(tolerancijaMax, selected.currency)}</strong>.
                         {remaining <= 0.01 ? (
                           <span> {t("rasknjizavanje.tolerancijaNoPostingBudget")}</span>
                         ) : null}
@@ -958,7 +964,7 @@ export default function RasknjizavanjeClient({
                             .filter((i) => i.preostalo_km > 0.01)
                             .map((i) => (
                               <option key={i.faktura_id} value={i.faktura_id}>
-                                {i.faktura_broj} ({formatAmount(i.preostalo_km)})
+                                {i.faktura_broj} ({fmtMoneyWithCurr(i.preostalo_km, i.valuta)})
                               </option>
                             ))}
                         </select>
@@ -1153,7 +1159,7 @@ export default function RasknjizavanjeClient({
                           <tr key={ob.trosak_id}>
                             <td>{ob.opis || `#${ob.trosak_id}`}</td>
                             <td>{ob.projekat_naziv || "—"}</td>
-                            <td className="num">{formatAmount(ob.preostalo_km)}</td>
+                            <td className="num">{fmtMoneyWithCurr(ob.preostalo_km, "KM")}</td>
                             <td>
                               <button
                                 type="button"
