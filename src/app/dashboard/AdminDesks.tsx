@@ -394,23 +394,18 @@ export default function AdminDesks({ stats }: AdminDesksProps) {
               <span style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0" }}>📊 Grafikoni</span>
             </Link>
 
-            <button
-              type="button"
-              onClick={() => setToolsModalOpen(true)}
-              title="Svi finansijski alati i PURS izvještaji"
+            <Link
+              href="/finance"
+              title="Analitika — Puni pregled svih finansijskih i analitičkih alata"
               style={{
                 ...subLinkStyle,
-                background: "rgba(56, 189, 248, 0.08)",
-                borderColor: "rgba(56, 189, 248, 0.25)",
-                cursor: "pointer",
-                textAlign: "left",
+                background: "rgba(56, 189, 248, 0.12)",
+                borderColor: "rgba(56, 189, 248, 0.3)",
               }}
             >
-              <span style={{ fontSize: 12, fontWeight: 800, color: "#38bdf8" }}>🧰 Svi Alati</span>
-              <span style={{ fontSize: 10, background: "rgba(56, 189, 248, 0.2)", color: "#38bdf8", padding: "1px 6px", borderRadius: 4, fontWeight: 700 }}>
-                Otvori ▾
-              </span>
-            </button>
+              <span style={{ fontSize: 12, fontWeight: 800, color: "#38bdf8" }}>📊 Analitika</span>
+              <ArrowUpRight size={13} color="#38bdf8" />
+            </Link>
           </div>
         </div>
       </div>
