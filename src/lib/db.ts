@@ -29,6 +29,7 @@ function getPoolOptions(dbName: string) {
     enableKeepAlive: true,
     keepAliveInitialDelay: 0,
     connectTimeout: 15000,
+    dateStrings: true,
   };
   // DO Managed MySQL zahtijeva SSL; ostale instalacije mogu raditi bez
   if (port === 25060 || process.env.DB_SSL === "1" || process.env.DB_SSL === "true") {
