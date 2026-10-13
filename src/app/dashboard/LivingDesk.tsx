@@ -22,12 +22,23 @@ interface LivingDeskProps {
   stats: any;
 }
 
+const MONTH_NAMES = [
+  "Januar", "Februar", "Mart", "April", "Maj", "Juni",
+  "Juli", "Avgust", "Septembar", "Oktobar", "Novembar", "Decembar"
+];
+
 export default function LivingDesk({ stats }: LivingDeskProps) {
   const activeProjects = stats?.projekti?.stavke || [];
   const meets = stats?.meets || [];
   const invoices = stats?.fakture?.stavke || [];
 
-  // Oktobar 2026 dani: Danas je 13. oktobar 2026.
+  // Dinamičko stanje za kalendar (početno na Oktobar 2026, 13. oktobar je danas)
+  const [currentYear, setCurrentYear] = useState(2026);
+  const [currentMonth, setCurrentMonth] = useState(9); // 0-indexed: 9 = Oktobar
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
+  const todayYear = 2026;
+  const todayMonth = 9;
   const todayDay = 13;
   const todayStr = "2026-10-13";
 
@@ -53,21 +64,50 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
   // Ako nemamo obaveza danas -> automatski se otvara kalendar.
   const [viewMode, setViewMode] = useState<"focus" | "calendar">(hasTodayTasks ? "focus" : "calendar");
   const [newDealOpen, setNewDealOpen] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
+  // Navigacija kroz mjesece
+  const handlePrevMonth = () => {
+    setSelectedDay(null);
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear((y) => y - 1);
+    } else {
+      setCurrentMonth((m) => m - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    setSelectedDay(null);
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear((y) => y + 1);
+    } else {
+      setCurrentMonth((m) => m + 1);
+    }
+  };
+
+  const handleToday = () => {
+    setCurrentYear(todayYear);
+    setCurrentMonth(todayMonth);
+    setSelectedDay(todayDay);
+  };
 
   const daysOfWeek = ["PON", "UTO", "SRI", "ČET", "PET", "SUB", "NED"];
-  const totalDaysInMonth = 31;
-  const startDayOffset = 3; // 1. oktobar 2026. je Četvrtak (0: PON, 1: UTO, 2: SRI, 3: ČET)
+  const totalDaysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const firstDayRaw = new Date(currentYear, currentMonth, 1).getDay();
+  const startDayOffset = (firstDayRaw + 6) % 7; // PON: 0 .. NED: 6
 
-  // Izgradnja ćelija za kalendar
+  // Izgradnja ćelija za kalendar za izabrani mjesec i godinu
   const calendarCells: any[] = [];
   for (let i = 0; i < startDayOffset; i++) {
     calendarCells.push({ day: null, isCurrentMonth: false });
   }
 
   for (let d = 1; d <= totalDaysInMonth; d++) {
-    const isToday = d === todayDay;
-    const dayStr = `2026-10-${String(d).padStart(2, "0")}`;
+    const isToday = currentYear === todayYear && currentMonth === todayMonth && d === todayDay;
+    const monthPadded = String(currentMonth + 1).padStart(2, "0");
+    const dayPadded = String(d).padStart(2, "0");
+    const dayStr = `${currentYear}-${monthPadded}-${dayPadded}`;
 
     // Takmičenja za dan d
     const dayMeets = meets.filter((m: any) => {
@@ -87,10 +127,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
     // Poreski rok: 10. u mjesecu (PDV prijava)
     const isPdv = d === 10;
 
-    // Hardkodovana najava za demonstraciju (ako u bazi nema valute za 15.10): Fructa Trade
-    const hasDemoDue = d === 15 && dayInvoices.length === 0;
-
-    const totalEventsCount = dayMeets.length + dayInvoices.length + (isPdv ? 1 : 0) + (hasDemoDue ? 1 : 0);
+    const totalEventsCount = dayMeets.length + dayInvoices.length + (isPdv ? 1 : 0);
 
     calendarCells.push({
       day: d,
@@ -100,7 +137,6 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
       dayMeets,
       dayInvoices,
       isPdv,
-      hasDemoDue,
       totalEventsCount,
       colIndex: calendarCells.length % 7,
       isWeekend: (calendarCells.length % 7) >= 5,
@@ -235,7 +271,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
               }}
             >
               <CalendarIcon size={13} />
-              <span>Kalendar (Oktobar 2026)</span>
+              <span>Kalendar</span>
             </button>
           </div>
 
@@ -411,19 +447,131 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
         )}
 
         {/* =========================================================================
-            REŽIM B: GOOGLE CALENDAR STIL (Mjesečni kalendar + Klik na dan)
+            REŽIM B: GOOGLE CALENDAR STIL (Mjesečni kalendar sa izborom mjeseca + Klik na dan)
             ========================================================================= */}
         {viewMode === "calendar" && (
           <div>
-            {/* Kalendar Header */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 16, fontWeight: 900, color: "#ffffff" }}>
-                  Oktobar 2026
-                </span>
-                <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                  (Danas je Utorak, 13. oktobar • Klikni na dan za detalje)
-                </span>
+            {/* Kalendar Header: Navigacija kroz mjesece + Legenda */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+              {/* Strelice, Birač mjeseca i godine, Dugme Danas */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    background: "rgba(0, 0, 0, 0.4)",
+                    borderRadius: 10,
+                    padding: "4px 8px",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={handlePrevMonth}
+                    title="Prethodni mjesec"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#cbd5e1",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      padding: 4,
+                      borderRadius: 6,
+                    }}
+                  >
+                    <ChevronLeft size={17} />
+                  </button>
+
+                  {/* Dropdown za izbor mjeseca */}
+                  <select
+                    value={currentMonth}
+                    onChange={(e) => {
+                      setSelectedDay(null);
+                      setCurrentMonth(Number(e.target.value));
+                    }}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "#ffffff",
+                      fontWeight: 800,
+                      fontSize: 15,
+                      cursor: "pointer",
+                      outline: "none",
+                      padding: "2px 4px",
+                    }}
+                  >
+                    {MONTH_NAMES.map((name, idx) => (
+                      <option key={idx} value={idx} style={{ background: "#0f1722", color: "#ffffff" }}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Dropdown za izbor godine */}
+                  <select
+                    value={currentYear}
+                    onChange={(e) => {
+                      setSelectedDay(null);
+                      setCurrentYear(Number(e.target.value));
+                    }}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "#38bdf8",
+                      fontWeight: 800,
+                      fontSize: 15,
+                      cursor: "pointer",
+                      outline: "none",
+                      padding: "2px 4px",
+                    }}
+                  >
+                    {[2025, 2026, 2027, 2028].map((y) => (
+                      <option key={y} value={y} style={{ background: "#0f1722", color: "#ffffff" }}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={handleNextMonth}
+                    title="Sljedeći mjesec"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#cbd5e1",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      padding: 4,
+                      borderRadius: 6,
+                    }}
+                  >
+                    <ChevronRight size={17} />
+                  </button>
+                </div>
+
+                {/* Brzo dugme "Danas" */}
+                <button
+                  type="button"
+                  onClick={handleToday}
+                  className="btn"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 800,
+                    padding: "6px 12px",
+                    background: "rgba(56, 189, 248, 0.12)",
+                    border: "1px solid rgba(56, 189, 248, 0.3)",
+                    color: "#7dd3fc",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                  }}
+                  title="Vrati se na tekući mjesec i dan"
+                >
+                  Danas
+                </button>
               </div>
 
               {/* Legenda boja */}
@@ -584,27 +732,9 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                             </div>
                           ))}
 
-                          {/* Demo faktura (15.10.) */}
-                          {cell.hasDemoDue && (
-                            <div
-                              style={{
-                                fontSize: 10,
-                                fontWeight: 800,
-                                color: "#450a0a",
-                                background: "#f87171",
-                                borderRadius: 4,
-                                padding: "2px 4px",
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                              }}
-                              title="15.10. Dospijeva Fructa Trade 1.612,26 KM"
-                            >
-                              ⚠️ Fructa (1.612 KM)
-                            </div>
-                          )}
 
-                          {/* PDV prijava (10.10.) */}
+
+                          {/* PDV prijava (10. u mjesecu) */}
                           {cell.isPdv && (
                             <div
                               style={{
@@ -618,7 +748,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                               }}
-                              title="10. oktobar: Rok za podnošenje mjesečne PDV prijave"
+                              title={`10. ${MONTH_NAMES[currentMonth].toLowerCase()}: Rok za podnošenje mjesečne PDV prijave`}
                             >
                               🏛️ PDV Prijava
                             </div>
@@ -657,7 +787,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                     <span style={{ fontSize: 20 }}>📅</span>
                     <div>
                       <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#ffffff" }}>
-                        Dnevni pregled: {selectedCell.day}. oktobar 2026.
+                        Dnevni pregled: {selectedCell.day}. {MONTH_NAMES[currentMonth]} {currentYear}.
                       </h3>
                       <div style={{ fontSize: 12, color: "#93c5fd" }}>
                         {selectedCell.isToday ? "Današnji dan" : selectedCell.isWeekend ? "Vikend termin" : "Radni dan"} • {selectedCell.totalEventsCount} zakazanih stavki
@@ -745,7 +875,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                           ⚠️ Dospijeva faktura: {f.naziv_klijenta} ({f.broj_fakture})
                         </div>
                         <div style={{ fontSize: 11, color: "#fca5a5", marginTop: 2 }}>
-                          Iznos: <strong>{Number(f.iznos_km).toFixed(2)} KM</strong> • Valuta plaćanja dospijeva na današnji dan
+                          Iznos: <strong>{Number(f.iznos_km).toFixed(2)} KM</strong> • Valuta: <strong>{f.rok_placanja_dana || 15} dana</strong> (Izdato: {f.datum_izdavanja})
                         </div>
                       </div>
                       <Link
@@ -765,45 +895,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                     </div>
                   ))}
 
-                  {/* Demo Fructa (15.10.) */}
-                  {selectedCell.hasDemoDue && (
-                    <div
-                      style={{
-                        padding: "10px 14px",
-                        borderRadius: 10,
-                        background: "rgba(248, 113, 113, 0.12)",
-                        border: "1px solid rgba(248, 113, 113, 0.3)",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 800, color: "#ffffff" }}>
-                          ⚠️ Dospijeva faktura: Fructa Trade d.o.o. (Faktura 042/2026)
-                        </div>
-                        <div style={{ fontSize: 11, color: "#fca5a5", marginTop: 2 }}>
-                          Iznos: <strong>1.612,26 KM</strong> • Rok plaćanja 30 dana ističe 15. oktobra
-                        </div>
-                      </div>
-                      <Link
-                        href="/fakture"
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color: "#fca5a5",
-                          textDecoration: "none",
-                          padding: "6px 12px",
-                          borderRadius: 8,
-                          background: "rgba(248, 113, 113, 0.2)",
-                        }}
-                      >
-                        Pregled fakture ➔
-                      </Link>
-                    </div>
-                  )}
-
-                  {/* Poreski rok PDV (10.10.) */}
+                  {/* Poreski rok PDV (10. u mjesecu) */}
                   {selectedCell.isPdv && (
                     <div
                       style={{

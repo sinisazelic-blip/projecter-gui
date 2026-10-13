@@ -40,8 +40,9 @@ export async function GET() {
         SELECT 
           f.faktura_id,
           COALESCE(f.broj_fakture_puni, CONCAT(LPAD(f.broj_u_godini, 3, '0'), '/', f.godina)) AS broj_fakture,
-          f.datum_izdavanja,
-          DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(k.rok_placanja_dana, 30) DAY) AS datum_valute,
+          DATE_FORMAT(f.datum_izdavanja, '%Y-%m-%d') AS datum_izdavanja,
+          DATE_FORMAT(DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(k.rok_placanja_dana, 30) DAY), '%Y-%m-%d') AS datum_valute,
+          COALESCE(k.rok_placanja_dana, 30) AS rok_placanja_dana,
           DATEDIFF(CURDATE(), DATE_ADD(f.datum_izdavanja, INTERVAL COALESCE(k.rok_placanja_dana, 30) DAY)) AS dana_kasnjenja,
           f.iznos_ukupno_km,
           f.valuta,
@@ -103,8 +104,8 @@ export async function GET() {
           kalendar_id as meet_id,
           naziv_takmicenja as naziv,
           COALESCE(lokacija_grad, bazen_naziv) as lokacija,
-          datum_od,
-          datum_do,
+          DATE_FORMAT(datum_od, '%Y-%m-%d') AS datum_od,
+          DATE_FORMAT(datum_do, '%Y-%m-%d') AS datum_do,
           broj_takmicarskih_dana,
           status,
           ugovoreni_pausal_km

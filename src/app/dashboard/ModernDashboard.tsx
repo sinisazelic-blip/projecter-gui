@@ -21,6 +21,7 @@ export default function ModernDashboard({ onSwitchToClassic }: ModernDashboardPr
   const isOwner = user?.user_id === 0 || user?.username === "Owner" || user?.uloga_naziv === "Owner" || (nivo ?? 0) >= 9;
 
   useEffect(() => {
+    document.cookie = "fluxa_dash_view=modern; path=/; max-age=31536000";
     fetch("/api/dashboard/stats")
       .then((r) => r.json())
       .then((d) => {
@@ -30,7 +31,6 @@ export default function ModernDashboard({ onSwitchToClassic }: ModernDashboardPr
   }, []);
 
   const handleSwitchClassic = () => {
-    document.cookie = "fluxa_dash_view=classic; path=/; max-age=31536000";
     if (onSwitchToClassic) {
       onSwitchToClassic();
     } else {
