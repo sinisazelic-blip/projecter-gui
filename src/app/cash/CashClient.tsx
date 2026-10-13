@@ -586,9 +586,12 @@ export default function CashClient() {
                 (it) => it.direction === "OUT" && (it.entityType === "home" || it.transactionDetails?.toLowerCase().includes("home:") || it.note?.toLowerCase().includes("home:") || it.note?.toLowerCase().includes("za porodicu"))
               );
               const totalHomeAmount = homeItems.reduce((sum, it) => sum + Number(it.amount || 0), 0);
+              const homeBZ = homeItems.filter(it => (it.transactionDetails && it.transactionDetails.toLowerCase().includes("bz")) || (it.note && it.note.toLowerCase().includes("bz"))).reduce((sum, it) => sum + Number(it.amount || 0), 0);
               const homeSupruga = homeItems.filter(it => (it.transactionDetails && it.transactionDetails.toLowerCase().includes("supruga")) || (it.note && it.note.toLowerCase().includes("suprug"))).reduce((sum, it) => sum + Number(it.amount || 0), 0);
               const homeSin = homeItems.filter(it => (it.transactionDetails && it.transactionDetails.toLowerCase().includes("sin")) || (it.note && it.note.toLowerCase().includes("sin"))).reduce((sum, it) => sum + Number(it.amount || 0), 0);
-              const homeKuca = Math.max(0, totalHomeAmount - (homeSupruga + homeSin));
+              const homeDzeparac = homeItems.filter(it => (it.transactionDetails && it.transactionDetails.toLowerCase().includes("lični trošak")) || (it.note && (it.note.toLowerCase().includes("džeparac") || it.note.toLowerCase().includes("licni")))).reduce((sum, it) => sum + Number(it.amount || 0), 0);
+              const homeKuca = Math.max(0, totalHomeAmount - (homeSupruga + homeSin + homeBZ + homeDzeparac));
+              const totalKucaPorodica = homeSupruga + homeSin + homeKuca + homeDzeparac;
 
               const talentItems = activeItems.filter(it => it.direction === "OUT" && it.entityType === "talent");
               const totalTalentAmount = talentItems.reduce((sum, it) => sum + Number(it.amount || 0), 0);
@@ -607,14 +610,17 @@ export default function CashClient() {
 
                   <div className={styles.card} style={{ border: "1px solid rgba(244, 63, 94, 0.35)", background: "linear-gradient(135deg, rgba(244, 63, 94, 0.1), rgba(15, 23, 42, 0.6))" }}>
                     <div className={styles.label} style={{ color: "#fda4af", display: "flex", justifyContent: "space-between" }}>
-                      <span>🏠 HOME FOND (PORODICA)</span>
+                      <span>🏠 HOME FOND (DOM & BZ)</span>
                       <span style={{ fontSize: 10, background: "rgba(244, 63, 94, 0.2)", padding: "1px 6px", borderRadius: 4 }}>Odvojeno od posla</span>
                     </div>
-                    <div className={styles.big} style={{ color: "#fb7185" }}>
-                      {fmtMoney(totalHomeAmount, localeCurrency)}
+                    <div className={styles.big} style={{ color: "#fb7185", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                      <span>{fmtMoney(totalHomeAmount, localeCurrency)}</span>
+                      <span style={{ fontSize: 11, color: "#cbd5e1", fontWeight: 400 }}>
+                        (Dom: <b style={{ color: "#f8fafc" }}>{totalKucaPorodica.toFixed(2)}</b> | BZ: <b style={{ color: "#fde047" }}>{homeBZ.toFixed(2)}</b>)
+                      </span>
                     </div>
                     <div className={styles.muted} style={{ fontSize: 11, color: "#cbd5e1" }}>
-                      👩 Supruga: <b>{homeSupruga.toFixed(2)}</b> | 👦 Sin: <b>{homeSin.toFixed(2)}</b> | 🏡 Kuća: <b>{homeKuca.toFixed(2)}</b>
+                      🏡 Kuća: <b>{homeKuca.toFixed(2)}</b> | 👩 Supruga: <b>{homeSupruga.toFixed(2)}</b> | 👦 Sin: <b>{homeSin.toFixed(2)}</b> | 🏢 BZ: <b style={{ color: "#fde047" }}>{homeBZ.toFixed(2)}</b>
                     </div>
                   </div>
 
@@ -712,6 +718,7 @@ export default function CashClient() {
                         { label: "👦 Sin", val: "Sin" },
                         { label: "🏡 Kuća / Porodica (opšte)", val: "Kuća / Porodica" },
                         { label: "👤 Lični džeparac / trošak", val: "Lični trošak" },
+                        { label: "🏢 BZ (Ex-supruga / Stan)", val: "BZ" },
                       ].map((m) => (
                         <button
                           key={m.val}

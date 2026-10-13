@@ -76,14 +76,24 @@ export default function OwnerOperativniPlan() {
   const [realizeAddExpense, setRealizeAddExpense] = useState(true);
   const [showRealizedWishlist, setShowRealizedWishlist] = useState(false);
 
+  // Modal za povezivanje plaćanja/naplate sa računom
+  const [accountActionModal, setAccountActionModal] = useState<{
+    item: PlanStavka;
+    action: "mark_paid" | "mark_received";
+    selectedRacunId: number | null;
+  } | null>(null);
+
   // Modal za novu stavku plana
   const [showItemModal, setShowItemModal] = useState(false);
+  const [calcFormula, setCalcFormula] = useState("");
   const [itemForm, setItemForm] = useState<{
     id?: number;
     vrsta: "PRILIV" | "RASHOD" | "DUGOROCNO" | "WISHLIST";
     kategorija: string;
     naziv: string;
     iznos: number;
+    valuta?: "BAM" | "EUR";
+    rok_datum?: string | null;
     status: "PLANIRANO" | "REALIZOVANO" | "HOLD";
     napomena: string;
   }>({
@@ -91,6 +101,7 @@ export default function OwnerOperativniPlan() {
     kategorija: "OSTALO",
     naziv: "",
     iznos: 100,
+    valuta: "BAM",
     status: "PLANIRANO",
     napomena: "",
   });
@@ -140,7 +151,10 @@ export default function OwnerOperativniPlan() {
   const priliviAktivni = planStavke.filter((p) => p.vrsta === "PRILIV" && p.status !== "OTKAZANO");
   const totalPrilivi = priliviAktivni
     .filter((p) => p.status !== "REALIZOVANO")
-    .reduce((sum, p) => sum + Number(p.iznos || 0), 0);
+    .reduce((sum, p) => {
+      const fx = p.valuta === "EUR" ? 1.95583 : 1.0;
+      return sum + Number(p.iznos || 0) * fx;
+    }, 0);
 
   const rashodiAktivni = planStavke.filter((p) => p.vrsta === "RASHOD" && p.status !== "OTKAZANO");
   const rashodiPending = rashodiAktivni.filter((p) => p.status !== "REALIZOVANO");
@@ -148,25 +162,49 @@ export default function OwnerOperativniPlan() {
 
   const totalRashodi = rashodiPending
     .filter((p) => p.status !== "HOLD")
-    .reduce((sum, p) => sum + Number(p.iznos || 0), 0);
+    .reduce((sum, p) => {
+      const fx = p.valuta === "EUR" ? 1.95583 : 1.0;
+      return sum + Number(p.iznos || 0) * fx;
+    }, 0);
   const totalRashodiHold = rashodiPending
     .filter((p) => p.status === "HOLD")
-    .reduce((sum, p) => sum + Number(p.iznos || 0), 0);
+    .reduce((sum, p) => {
+      const fx = p.valuta === "EUR" ? 1.95583 : 1.0;
+      return sum + Number(p.iznos || 0) * fx;
+    }, 0);
 
-  const totalRashodiPlaceni = rashodiRealizovani.reduce((sum, p) => sum + Number(p.iznos || 0), 0);
+  const totalRashodiPlaceni = rashodiRealizovani.reduce((sum, p) => {
+    const fx = p.valuta === "EUR" ? 1.95583 : 1.0;
+    return sum + Number(p.iznos || 0) * fx;
+  }, 0);
 
   const dugorocnoStavke = planStavke.filter((p) => p.vrsta === "DUGOROCNO" && p.status !== "OTKAZANO");
-  const totalDugorocno = dugorocnoStavke.reduce((sum, p) => sum + Number(p.iznos || 0), 0);
+  const totalDugorocno = dugorocnoStavke.reduce((sum, p) => {
+    const fx = p.valuta === "EUR" ? 1.95583 : 1.0;
+    return sum + Number(p.iznos || 0) * fx;
+  }, 0);
 
   const wishlistStavke = planStavke.filter((p) => p.vrsta === "WISHLIST" && p.status !== "OTKAZANO");
   const wishlistPending = wishlistStavke.filter((p) => p.status !== "REALIZOVANO");
   const wishlistRealized = wishlistStavke.filter((p) => p.status === "REALIZOVANO");
-  const totalWishlist = wishlistPending.reduce((sum, p) => sum + Number(p.iznos || 0), 0);
-  const totalWishlistRealized = wishlistRealized.reduce((sum, p) => sum + Number(p.iznos || 0), 0);
+  const totalWishlist = wishlistPending.reduce((sum, p) => {
+    const fx = p.valuta === "EUR" ? 1.95583 : 1.0;
+    return sum + Number(p.iznos || 0) * fx;
+  }, 0);
+  const totalWishlistRealized = wishlistRealized.reduce((sum, p) => {
+    const fx = p.valuta === "EUR" ? 1.95583 : 1.0;
+    return sum + Number(p.iznos || 0) * fx;
+  }, 0);
 
   // Hodogram neto kalkulacija: (Keš na računima + Planirani Prilivi) - Planirani Rashodi
   const operativniNetoHodogram = totalSviRacuni + totalPrilivi - totalRashodi;
   const slobodnoNakonWishlista = operativniNetoHodogram - totalWishlist;
+
+  // REALITY CHECK: Stvarno raspoloživi novac danas (Privatni računi i keš - Neplaćeni rashodi)
+  const netoDanasDostupno = totalRacuniPersonal - totalRashodi;
+
+  // BAZNI MJESEČNI TROŠKOVI (Burn Rate): BZ (1250) + Krediti (109) + Pretplate (~180)
+  const fiksniMjesecniTrosak = 1250 + 109 + 180;
 
   async function handleUpdateSaldo(id: number) {
     const val = parseMoneyInput(editSaldoVal);
@@ -198,17 +236,47 @@ export default function OwnerOperativniPlan() {
     }
   }
 
-  async function handleMarkPaid(item: PlanStavka) {
+  function handleOpenPayModal(item: PlanStavka) {
+    const defRacun = racuni.find((r) => r.naziv.toLowerCase().includes("tr")) || racuni[0];
+    setAccountActionModal({
+      item,
+      action: "mark_paid",
+      selectedRacunId: defRacun ? defRacun.id : null,
+    });
+  }
+
+  function handleOpenReceiveModal(item: PlanStavka) {
+    const defRacun = racuni.find((r) => r.naziv.toLowerCase().includes("tr")) || racuni[0];
+    setAccountActionModal({
+      item,
+      action: "mark_received",
+      selectedRacunId: defRacun ? defRacun.id : null,
+    });
+  }
+
+  async function confirmAccountAction() {
+    if (!accountActionModal) return;
+    const { item, action, selectedRacunId } = accountActionModal;
     try {
       await fetch("/api/owner/operativni-plan", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: item.id, action: "mark_paid" }),
+        body: JSON.stringify({
+          id: item.id,
+          action: action === "mark_paid" ? "mark_paid" : "set_status",
+          value: "REALIZOVANO",
+          racun_id: selectedRacunId,
+        }),
       });
+      setAccountActionModal(null);
       loadData();
     } catch (e: any) {
       alert(e.message);
     }
+  }
+
+  async function handleMarkPaid(item: PlanStavka) {
+    handleOpenPayModal(item);
   }
 
   async function confirmRealizeWishlist() {
@@ -297,6 +365,7 @@ export default function OwnerOperativniPlan() {
           kategorija: "STUDIO_TAF",
           naziv: `${f.klijent_naziv || "Faktura"} (${f.broj_fakture})`,
           iznos: f.iznos_sa_pdv,
+          valuta: f.valuta === "EUR" ? "EUR" : "BAM",
           status: "PLANIRANO",
         }),
       });
@@ -343,6 +412,7 @@ export default function OwnerOperativniPlan() {
                   kategorija: "POSAO",
                   naziv: "",
                   iznos: 500,
+                  valuta: "BAM",
                   status: "PLANIRANO",
                   napomena: "",
                 });
@@ -369,6 +439,7 @@ export default function OwnerOperativniPlan() {
                   kategorija: "OBAVEZA",
                   naziv: "",
                   iznos: 200,
+                  valuta: "BAM",
                   status: "PLANIRANO",
                   napomena: "",
                 });
@@ -395,6 +466,7 @@ export default function OwnerOperativniPlan() {
                   kategorija: "OPREMA",
                   naziv: "Logitech MX Keys S tastatura",
                   iznos: 250,
+                  valuta: "BAM",
                   status: "PLANIRANO",
                   napomena: "Backlight & Silent kucanje",
                 });
@@ -456,6 +528,49 @@ export default function OwnerOperativniPlan() {
           </div>
         </div>
 
+        {/* PAMETNA ANALIZA & REALITY CHECK BAR */}
+        <div
+          style={{
+            marginTop: 14,
+            padding: "14px 18px",
+            borderRadius: 10,
+            background: netoDanasDostupno >= 0 ? "rgba(34, 197, 94, 0.08)" : "rgba(239, 68, 68, 0.08)",
+            border: `1px solid ${netoDanasDostupno >= 0 ? "rgba(34, 197, 94, 0.35)" : "rgba(239, 68, 68, 0.35)"}`,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 14,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 24 }}>{netoDanasDostupno >= 0 ? "🛡️" : "⚠️"}</span>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 900, color: netoDanasDostupno >= 0 ? "#86efac" : "#fca5a5", display: "flex", alignItems: "center", gap: 8 }}>
+                <span>REALNO STANJE U DŽEPU (Dostupno Danas):</span>
+                <span style={{ fontSize: 16, background: netoDanasDostupno >= 0 ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)", padding: "2px 8px", borderRadius: 6 }}>
+                  {netoDanasDostupno >= 0 ? `+${netoDanasDostupno.toFixed(2)} KM` : `${netoDanasDostupno.toFixed(2)} KM`}
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 4 }}>
+                {netoDanasDostupno >= 0
+                  ? "✅ Na računima imate dovoljno raspoloživog novca da odmah podmirite sve preostale planirane rashode bez čekanja novih uplata."
+                  : `⚠️ Na privatnim računima i u kešu imate ukupno ${totalRacuniPersonal.toFixed(2)} KM, a čeka vas još ${totalRashodi.toFixed(2)} KM neplaćenih obaveza. Nemojte trošiti dok ne legnu očekivane uplate!`}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 14, alignItems: "center", background: "rgba(15, 23, 42, 0.8)", padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div>
+              <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>📉 Fiksni Mjesečni Troškovi (Burn Rate)</div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: "#fbbf24", marginTop: 1 }}>~{fiksniMjesecniTrosak.toFixed(2)} KM / mj</div>
+            </div>
+            <div style={{ fontSize: 10, color: "#94a3b8", lineHeight: 1.3, borderLeft: "1px solid rgba(255,255,255,0.1)", paddingLeft: 10 }}>
+              BZ stan (1.250) + Kredit (109)<br />+ Pretplate (~180 KM)
+            </div>
+          </div>
+        </div>
+
         {/* WISHLIST & INVESTICIJE PANEL (MULTI-ITEM S KALKULATOROM OSTVARIVOSTI) */}
         <div style={{ marginTop: 16, background: "linear-gradient(135deg, rgba(88, 28, 135, 0.25), rgba(30, 27, 75, 0.4))", border: "1px solid rgba(168, 85, 247, 0.35)", borderRadius: 10, padding: "14px 16px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
@@ -479,6 +594,7 @@ export default function OwnerOperativniPlan() {
                   kategorija: "OPREMA",
                   naziv: "",
                   iznos: 250,
+                  valuta: "BAM",
                   status: "PLANIRANO",
                   napomena: "🔥 Visok prioritet",
                 });
@@ -817,10 +933,27 @@ export default function OwnerOperativniPlan() {
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontWeight: 800, color: "#4ade80", fontSize: 14 }}>+{Number(p.iznos).toFixed(2)} KM</span>
+                      <span style={{ fontWeight: 800, color: "#4ade80", fontSize: 14 }}>
+                        {p.valuta === "EUR" ? (
+                          <span>
+                            +{Number(p.iznos).toFixed(2)} €{" "}
+                            <span style={{ fontSize: 11, color: "#86efac", fontWeight: 600 }}>
+                              (~{(Number(p.iznos) * 1.95583).toFixed(2)} KM)
+                            </span>
+                          </span>
+                        ) : (
+                          `+${Number(p.iznos).toFixed(2)} KM`
+                        )}
+                      </span>
                       <button
                         type="button"
-                        onClick={() => handleToggleStatus(p)}
+                        onClick={() => {
+                          if (isRealizovano) {
+                            handleToggleStatus(p);
+                          } else {
+                            handleOpenReceiveModal(p);
+                          }
+                        }}
                         style={{
                           background: isRealizovano ? "rgba(34, 197, 94, 0.3)" : "rgba(255,255,255,0.05)",
                           color: isRealizovano ? "#4ade80" : "#94a3b8",
@@ -926,7 +1059,16 @@ export default function OwnerOperativniPlan() {
 
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                         <span style={{ fontWeight: 800, color: isHold ? "#fbbf24" : "#f87171", fontSize: 14 }}>
-                          {Number(r.iznos).toFixed(2)} KM
+                          {r.valuta === "EUR" ? (
+                            <span>
+                              -{Number(r.iznos).toFixed(2)} €{" "}
+                              <span style={{ fontSize: 11, color: isHold ? "#fcd34d" : "#fca5a5", fontWeight: 600 }}>
+                                (~{(Number(r.iznos) * 1.95583).toFixed(2)} KM)
+                              </span>
+                            </span>
+                          ) : (
+                            `-${Number(r.iznos).toFixed(2)} KM`
+                          )}
                         </span>
                         <button
                           type="button"
@@ -1027,7 +1169,11 @@ export default function OwnerOperativniPlan() {
                         </div>
 
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ color: "#86efac", fontWeight: 800, fontSize: 13 }}>{Number(r.iznos).toFixed(2)} KM</span>
+                          <span style={{ color: "#86efac", fontWeight: 800, fontSize: 13 }}>
+                            {r.valuta === "EUR"
+                              ? `${Number(r.iznos).toFixed(2)} € (~${(Number(r.iznos) * 1.95583).toFixed(2)} KM)`
+                              : `${Number(r.iznos).toFixed(2)} KM`}
+                          </span>
                           <button
                             type="button"
                             onClick={() => handleToggleStatus(r)}
@@ -1120,15 +1266,49 @@ export default function OwnerOperativniPlan() {
               </div>
 
               <div>
-                <label style={{ fontSize: 12, color: "#94a3b8" }}>Iznos (KM)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={itemForm.iznos}
-                  onChange={(e) => setItemForm({ ...itemForm, iznos: Number(e.target.value) })}
-                  style={{ width: "100%", background: "#1e293b", border: "1px solid rgba(255,255,255,0.2)", padding: "8px 10px", borderRadius: 6, color: "#fff", marginTop: 4 }}
-                />
+                <label style={{ fontSize: 12, color: "#94a3b8" }}>Valuta i Iznos</label>
+                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                  <select
+                    value={itemForm.valuta}
+                    onChange={(e) => setItemForm({ ...itemForm, valuta: e.target.value as "BAM" | "EUR" })}
+                    style={{ background: "#1e293b", border: "1px solid rgba(255,255,255,0.2)", padding: "8px 10px", borderRadius: 6, color: "#fff", width: 110, fontWeight: 700 }}
+                  >
+                    <option value="BAM">KM (BAM)</option>
+                    <option value="EUR">EUR (€)</option>
+                  </select>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    placeholder={itemForm.valuta === "EUR" ? "npr. 550" : "npr. 1250"}
+                    value={itemForm.iznos || ""}
+                    onChange={(e) => setItemForm({ ...itemForm, iznos: Number(e.target.value) })}
+                    style={{ flex: 1, background: "#1e293b", border: "1px solid rgba(255,255,255,0.2)", padding: "8px 10px", borderRadius: 6, color: "#fff", fontSize: 15, fontWeight: 700 }}
+                  />
+                </div>
+                {itemForm.valuta === "EUR" && (
+                  <div style={{ fontSize: 11, color: "#38bdf8", marginTop: 4 }}>
+                    ℹ️ Kurs 1 EUR = 1.95583 KM • <b>Preračunato: ≈ {(Number(itemForm.iznos || 0) * 1.95583).toFixed(2)} KM</b>
+                  </div>
+                )}
+                {/* Brzi kalkulator za sabiranje više iznosa npr. 550 + 650 + 120 */}
+                <div style={{ marginTop: 6 }}>
+                  <input
+                    type="text"
+                    placeholder="Sabiranje više stavki: npr. 550 + 650 + 120..."
+                    value={calcFormula}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCalcFormula(val);
+                      const parts = val.split("+").map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
+                      if (parts.length > 0) {
+                        const sum = parts.reduce((a, b) => a + b, 0);
+                        setItemForm(prev => ({ ...prev, iznos: Math.round(sum * 100) / 100 }));
+                      }
+                    }}
+                    style={{ width: "100%", background: "rgba(0,0,0,0.3)", border: "1px dashed rgba(255,255,255,0.2)", padding: "4px 8px", borderRadius: 4, color: "#cbd5e1", fontSize: 11 }}
+                  />
+                </div>
               </div>
 
               <div>
@@ -1282,6 +1462,117 @@ export default function OwnerOperativniPlan() {
                 style={{ background: "#a855f7", color: "#fff", border: "none", padding: "8px 20px", borderRadius: 6, fontWeight: 800, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
               >
                 ✓ Potvrdi Kupovinu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ZA EVIDENCIJU RAČUNA (PLAĆANJE ILI PRIJEM UPLATE) */}
+      {accountActionModal && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
+          <div style={{ background: "#0f172a", border: `2px solid ${accountActionModal.action === "mark_paid" ? "#22c55e" : "#38bdf8"}`, borderRadius: 12, padding: 24, width: 460, maxWidth: "90%", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <span style={{ fontSize: 26 }}>{accountActionModal.action === "mark_paid" ? "💳" : "📥"}</span>
+              <div>
+                <h3 style={{ margin: 0, color: "#f8fafc", fontSize: 17, fontWeight: 900 }}>
+                  {accountActionModal.action === "mark_paid" ? "Evidencija Plaćanja Obaveze" : "Evidencija Prijema Priliva"}
+                </h3>
+                <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
+                  {accountActionModal.action === "mark_paid" ? "Automatsko skidanje sa stanja računa" : "Automatsko dodavanje na stanje računa"}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: 14, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", marginBottom: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "#f8fafc" }}>{accountActionModal.item.naziv}</div>
+              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                {accountActionModal.item.kategorija} {accountActionModal.item.napomena ? `• ${accountActionModal.item.napomena}` : ""}
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: accountActionModal.action === "mark_paid" ? "#f87171" : "#4ade80", marginTop: 8 }}>
+                {accountActionModal.item.valuta === "EUR" ? (
+                  <span>
+                    {Number(accountActionModal.item.iznos).toFixed(2)} €{" "}
+                    <span style={{ fontSize: 14, color: "#cbd5e1", fontWeight: 600 }}>
+                      (~{(Number(accountActionModal.item.iznos) * 1.95583).toFixed(2)} KM)
+                    </span>
+                  </span>
+                ) : (
+                  `${Number(accountActionModal.item.iznos).toFixed(2)} KM`
+                )}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 12, color: "#94a3b8", display: "block", marginBottom: 6, fontWeight: 600 }}>
+                {accountActionModal.action === "mark_paid" ? "Sa kojeg računa ili kartice je plaćeno?" : "Na koji račun ili karticu je sjela uplata?"}
+              </label>
+              <select
+                value={accountActionModal.selectedRacunId || ""}
+                onChange={(e) =>
+                  setAccountActionModal({
+                    ...accountActionModal,
+                    selectedRacunId: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
+                style={{
+                  width: "100%",
+                  background: "#1e293b",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  padding: "10px 12px",
+                  borderRadius: 6,
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                <option value="">-- Bez promjene stanja računa (samo označi) --</option>
+                {racuni.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.naziv} ({r.tip.replace("_RACUN", "")}) — Stanje: {Number(r.saldo).toFixed(2)} {r.valuta}
+                  </option>
+                ))}
+              </select>
+              <div style={{ fontSize: 11, color: accountActionModal.selectedRacunId ? "#38bdf8" : "#94a3b8", marginTop: 6, lineHeight: 1.4 }}>
+                {accountActionModal.selectedRacunId ? (
+                  accountActionModal.action === "mark_paid" ? (
+                    <span>
+                      📉 Saldo izabranog računa će se automatski <b>umanjiti</b> za iznos uplate.
+                    </span>
+                  ) : (
+                    <span>
+                      📈 Saldo izabranog računa će se automatski <b>uvećati</b> za iznos uplate.
+                    </span>
+                  )
+                ) : (
+                  <span>ℹ️ Ako odaberete ovu opciju, stavka će biti označena kao realizovana, ali stanja računa se neće mijenjati.</span>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setAccountActionModal(null)}
+                style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.2)", color: "#cbd5e1", padding: "8px 16px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}
+              >
+                Odustani
+              </button>
+              <button
+                type="button"
+                onClick={confirmAccountAction}
+                style={{
+                  background: accountActionModal.action === "mark_paid" ? "#22c55e" : "#0284c7",
+                  color: "#fff",
+                  border: "none",
+                  padding: "8px 20px",
+                  borderRadius: 6,
+                  fontWeight: 800,
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                ✓ Potvrdi i Ažuriraj Saldo
               </button>
             </div>
           </div>

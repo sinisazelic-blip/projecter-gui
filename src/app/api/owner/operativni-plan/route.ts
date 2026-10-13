@@ -278,7 +278,7 @@ export async function PUT(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { target, id, action, value, createExpense = false } = body;
+    const { target, id, action, value, createExpense = false, racun_id } = body;
 
     if (!id) {
       return NextResponse.json({ ok: false, error: "ID je obavezan." }, { status: 400 });
@@ -316,6 +316,31 @@ export async function PATCH(req: NextRequest) {
         try {
           const itemRows = (await query(`SELECT * FROM owner_plan_stavke WHERE id = ?`, [id])) as any[];
           const it = itemRows?.[0];
+
+          // Ako je odabran racun_id za automatsko ažuriranje salda
+          if (racun_id && it) {
+            const racunRows = (await query(`SELECT * FROM owner_racuni_stanja WHERE id = ?`, [Number(racun_id)])) as any[];
+            const targetRacun = racunRows?.[0];
+            if (targetRacun) {
+              const itemFx = getFxRateToBAM(it.valuta || "BAM");
+              const racunFx = getFxRateToBAM(targetRacun.valuta || "BAM");
+              // Iznos preračunat u valutu računa
+              const iznosBAM = Number(it.iznos || 0) * itemFx;
+              const iznosTargetRacun = Math.round((iznosBAM / racunFx) * 100) / 100;
+
+              if (it.vrsta === "PRILIV") {
+                await query(`UPDATE owner_racuni_stanja SET saldo = saldo + ? WHERE id = ?`, [iznosTargetRacun, targetRacun.id]);
+                const noteAdd = `[Leglo na: ${targetRacun.naziv} +${iznosTargetRacun} ${targetRacun.valuta}]`;
+                await query(`UPDATE owner_plan_stavke SET napomena = CONCAT(COALESCE(napomena, ''), ' ', ?) WHERE id = ?`, [noteAdd, it.id]);
+              } else {
+                // RASHOD ili WISHLIST ili DUGOROCNO
+                await query(`UPDATE owner_racuni_stanja SET saldo = saldo - ? WHERE id = ?`, [iznosTargetRacun, targetRacun.id]);
+                const noteAdd = `[Plaćeno sa: ${targetRacun.naziv} -${iznosTargetRacun} ${targetRacun.valuta}]`;
+                await query(`UPDATE owner_plan_stavke SET napomena = CONCAT(COALESCE(napomena, ''), ' ', ?) WHERE id = ?`, [noteAdd, it.id]);
+              }
+            }
+          }
+
           if (it?.napomena) {
             const pretpMatch = it.napomena.match(/\[PRETP:(\d+):/);
             if (pretpMatch) {
@@ -345,7 +370,7 @@ export async function PATCH(req: NextRequest) {
             );
           }
         } catch (linkErr) {
-          console.error("Greška pri ažuriranju pretplate/kredita/wishliste:", linkErr);
+          console.error("Greška pri ažuriranju pretplate/kredita/wishliste/računa:", linkErr);
         }
       }
 
