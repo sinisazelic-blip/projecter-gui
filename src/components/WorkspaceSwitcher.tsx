@@ -88,7 +88,13 @@ export default function WorkspaceSwitcher() {
         style={{
           display: "inline-flex",
           alignItems: "center",
+          justifyContent: "center",
           gap: 6,
+          height: 38,
+          padding: "0 14px",
+          fontSize: 13,
+          borderRadius: 10,
+          boxSizing: "border-box",
           background: currentBadge.bg,
           borderColor: currentBadge.border,
           color: currentBadge.color,

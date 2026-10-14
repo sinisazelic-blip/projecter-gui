@@ -32,15 +32,16 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
   const meets = stats?.meets || [];
   const invoices = stats?.fakture?.stavke || [];
 
-  // Dinamičko stanje za kalendar (početno na Oktobar 2026, 13. oktobar je danas)
-  const [currentYear, setCurrentYear] = useState(2026);
-  const [currentMonth, setCurrentMonth] = useState(9); // 0-indexed: 9 = Oktobar
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  // Dinamičko stanje za kalendar (bazirano na trenutnom sistemskom datumu)
+  const now = new Date();
+  const todayYear = now.getFullYear();
+  const todayMonth = now.getMonth(); // 0-indexed: 0 = Jan, 9 = Okt, itd.
+  const todayDay = now.getDate();
+  const todayStr = `${todayYear}-${String(todayMonth + 1).padStart(2, "0")}-${String(todayDay).padStart(2, "0")}`;
 
-  const todayYear = 2026;
-  const todayMonth = 9;
-  const todayDay = 13;
-  const todayStr = "2026-10-13";
+  const [currentYear, setCurrentYear] = useState(todayYear);
+  const [currentMonth, setCurrentMonth] = useState(todayMonth);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   // Obaveze za danas
   const todayMeets = meets.filter((m: any) => {
@@ -176,48 +177,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
           gap: 12,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              background: "rgba(56, 189, 248, 0.12)",
-              border: "1px solid rgba(56, 189, 248, 0.25)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#38bdf8",
-            }}
-          >
-            <Layers size={18} />
-          </div>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <h2
-                style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#ffffff" }}
-                title="Dnevni fokus produkcije i interaktivni kalendar obaveza u Google Calendar stilu"
-              >
-                Živi Radni Sto
-              </h2>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 800,
-                  padding: "2px 8px",
-                  borderRadius: 999,
-                  background: hasTodayTasks ? "rgba(34, 197, 94, 0.15)" : "rgba(255, 255, 255, 0.06)",
-                  color: hasTodayTasks ? "#4ade80" : "var(--muted)",
-                  border: `1px solid ${hasTodayTasks ? "rgba(34, 197, 94, 0.3)" : "rgba(255, 255, 255, 0.1)"}`,
-                }}
-              >
-                {hasTodayTasks ? `${activeProjects.length} U RADU DANAS` : "MIRAN DAN"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Akcije i prebacivač prikaza */}
+        {/* Prebacivač Fokusa / Kalendara */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           {/* Prebacivač Fokusa / Kalendara */}
           <div

@@ -78,16 +78,8 @@ export default function ModernDashboard({ onSwitchToClassic }: ModernDashboardPr
           }}
         >
           {/* Brand info */}
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ display: "flex", alignItems: "center" }}>
             <FluxaLogo />
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 900, color: "#ffffff", letterSpacing: "-0.2px" }}>
-                Studio TAF <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent, #7dd3fc)", marginLeft: 6 }}>FLUXA CORE</span>
-              </div>
-              <div style={{ fontSize: 11, color: "var(--muted, #a9b4c2)" }}>
-                Project & Finance Engine • Operativni Radni Stolovi
-              </div>
-            </div>
           </div>
 
           {/* Header Kontrole & Alati */}
@@ -99,14 +91,18 @@ export default function ModernDashboard({ onSwitchToClassic }: ModernDashboardPr
               className="btn"
               title="Vrati se na originalni klasični operativni pult Fluxa"
               style={{
-                fontSize: 12,
-                padding: "6px 12px",
+                height: 38,
+                padding: "0 14px",
+                fontSize: 13,
                 fontWeight: 700,
+                borderRadius: 10,
+                boxSizing: "border-box",
                 background: "rgba(255, 255, 255, 0.05)",
                 border: "1px solid rgba(255, 255, 255, 0.15)",
                 color: "#cbd5e1",
                 display: "inline-flex",
                 alignItems: "center",
+                justifyContent: "center",
                 gap: 6,
                 cursor: "pointer",
               }}
@@ -125,26 +121,40 @@ export default function ModernDashboard({ onSwitchToClassic }: ModernDashboardPr
                 className="btn"
                 title="Personalna gotovinska blagajna"
                 style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
+                  height: 38,
+                  padding: "0 14px",
                   fontSize: 13,
                   fontWeight: 700,
-                  padding: "7px 12px",
+                  borderRadius: 10,
+                  boxSizing: "border-box",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
                 }}
               >
                 💰 <span>Blagajna</span>
               </Link>
             )}
 
-            {/* Diskretni pregled (Mobile podaci) */}
+            {/* Diskretni pregled (Mobile podaci) - samo ikonica */}
             <ExecutiveInsightModal />
 
             {/* Odjava */}
             <button
               type="button"
               className="btn"
-              style={{ fontSize: 13, padding: "7px 14px", fontWeight: 600 }}
+              style={{
+                height: 38,
+                padding: "0 14px",
+                fontSize: 13,
+                fontWeight: 700,
+                borderRadius: 10,
+                boxSizing: "border-box",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
               onClick={async () => {
                 await fetch("/api/auth/logout", { method: "POST" });
                 window.location.href = "/";

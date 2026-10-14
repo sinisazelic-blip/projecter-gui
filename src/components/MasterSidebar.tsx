@@ -137,10 +137,10 @@ export default function MasterSidebar() {
                   display: "flex",
                   alignItems: "center",
                   gap: 10,
-                  padding: collapsed ? "9px 0" : "7px 10px",
+                  padding: collapsed ? "9px 0" : "8px 12px",
                   justifyContent: collapsed ? "center" : "flex-start",
                   borderRadius: 9,
-                  fontSize: 13,
+                  fontSize: 14.5,
                   fontWeight: active ? 800 : it.isSpecial ? 700 : 500,
                   color: active ? "#ffffff" : it.isSpecial ? "#38bdf8" : "var(--muted, #a9b4c2)",
                   background: active
@@ -169,7 +169,7 @@ export default function MasterSidebar() {
                   }
                 }}
               >
-                <Icon size={16} strokeWidth={active || it.isSpecial ? 2.2 : 1.8} color={itemColor} />
+                <Icon size={17} strokeWidth={active || it.isSpecial ? 2.2 : 1.8} color={itemColor} />
                 {!collapsed && <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.label}</span>}
               </Link>
             );
@@ -251,8 +251,8 @@ export default function MasterSidebar() {
       >
         {!collapsed && (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: "0.4px", color: "#ffffff" }}>
-              FLUXA <span style={{ color: "#38bdf8" }}>LAUNCHER</span>
+            <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: "0.4px", color: "#ffffff" }}>
+              Studio TAF
             </span>
           </div>
         )}
@@ -338,13 +338,14 @@ export default function MasterSidebar() {
         style={{
           padding: "10px",
           borderTop: "1px solid rgba(255, 255, 255, 0.06)",
-          fontSize: 10,
+          fontSize: 11,
           color: "rgba(255, 255, 255, 0.35)",
           textAlign: "center",
           fontWeight: 700,
+          letterSpacing: "0.4px",
         }}
       >
-        {collapsed ? "v2.6" : "Fluxa Launcher v2.6.11"}
+        {collapsed ? "v2.6" : "v. 2.6.15"}
       </div>
     </aside>
   );

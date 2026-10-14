@@ -275,21 +275,18 @@ export default function AdminDesks({ stats }: AdminDesksProps) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <Link
               href="/naplate"
-              title="Naplata kupaca i IOS otvorene stavke"
+              title="Naplata kupaca"
               style={subLinkStyle}
             >
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0" }}>💵 Naplata & IOS</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0" }}>💵 Naplata</span>
             </Link>
 
             <Link
-              href="/izvodi"
-              title="Kartice i računi firme"
+              href="/studio/finance-tools"
+              title="IOS i alati za finansije"
               style={subLinkStyle}
             >
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0" }}>💳 Kartice</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#93c5fd" }}>
-                {(likvidnost.totalZiroFirma + likvidnost.totalKartice).toFixed(0)} KM
-              </span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0" }}>🧮 IOS</span>
             </Link>
           </div>
         </div>

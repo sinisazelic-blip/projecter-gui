@@ -76,20 +76,6 @@ export default async function RootLayout({ children }) {
                   <UputstvoShortcut />
                   <OnboardingTourWrapper />
                   <SubscriptionGuard>{children}</SubscriptionGuard>
-                  <div
-                    style={{
-                      position: "fixed",
-                      left: 12,
-                      bottom: 10,
-                      fontSize: 12,
-                      color: "var(--muted)",
-                      opacity: 0.7,
-                      zIndex: 999,
-                      pointerEvents: "none",
-                    }}
-                  >
-                    {FLUXA_BUILD_LABEL}
-                  </div>
                 </AuthUserProvider>
               </LicenceCheckWrapper>
             </FluxaEditionProvider>
