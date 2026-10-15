@@ -15,10 +15,11 @@ function fmtDDMMYYYY(iso: string | null): string {
   return `${d}.${m}.${y}`;
 }
 
+import { formatMoney } from "@/lib/format";
+
 function fmtMoney(n: number | null, ccy: string): string {
   if (n === null || n === undefined) return "—";
-  const v = Number.isFinite(n) ? n : 0;
-  return `${v.toFixed(2)} ${ccy}`;
+  return formatMoney(n, ccy);
 }
 
 type Izvod = {

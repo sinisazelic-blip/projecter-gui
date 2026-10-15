@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Modal from "./Modal";
+import { formatMoney } from "@/lib/format";
 
 interface FiskalZReportModalProps {
   open: boolean;
@@ -150,10 +151,10 @@ export default function FiskalZReportModal({ open, onClose }: FiskalZReportModal
                       <td style={{ padding: "6px 8px", textAlign: "center" }}>{f.broj_fiskalni || "—"}</td>
                       <td style={{ padding: "6px 8px" }}>{f.naziv_klijenta || "—"}</td>
                       <td style={{ padding: "6px 8px", textAlign: "right" }}>
-                        {f.valuta === "EUR" ? `${Number(f.iznos_nominal || f.iznos_ukupno_km).toFixed(2)} EUR` : `${Number(f.iznos_nominal || f.iznos_ukupno_km).toFixed(2)} KM`}
+                        {f.valuta === "EUR" ? formatMoney(Number(f.iznos_nominal || f.iznos_ukupno_km), "EUR") : formatMoney(Number(f.iznos_nominal || f.iznos_ukupno_km), "KM")}
                       </td>
                       <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: "bold" }}>
-                        {Number(f.iznos_bam || (Number(f.iznos_ukupno_km) * (f.valuta === "EUR" ? 1.95583 : 1))).toFixed(2)} KM
+                        {formatMoney(Number(f.iznos_bam || (Number(f.iznos_ukupno_km) * (f.valuta === "EUR" ? 1.95583 : 1))), "KM")}
                       </td>
                     </tr>
                   ))
@@ -171,15 +172,15 @@ export default function FiskalZReportModal({ open, onClose }: FiskalZReportModal
             <div style={{ width: "320px", border: "1.5px solid #000", padding: "12px", backgroundColor: "#fafafa" }}>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid #e5e7eb" }}>
                 <span>Ukupan promet bez PDV:</span>
-                <strong>{Number(zReportResult.ukupnoBezPdv).toFixed(2)} KM</strong>
+                <strong>{formatMoney(Number(zReportResult.ukupnoBezPdv), "KM")}</strong>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid #e5e7eb" }}>
                 <span>Iznos PDV (17%):</span>
-                <strong>{Number(zReportResult.ukupnoPdv).toFixed(2)} KM</strong>
+                <strong>{formatMoney(Number(zReportResult.ukupnoPdv), "KM")}</strong>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: "14px", fontWeight: "bold" }}>
                 <span>UKUPAN PROMET SA PDV:</span>
-                <span>{Number(zReportResult.ukupnoSaPdv).toFixed(2)} KM</span>
+                <span>{formatMoney(Number(zReportResult.ukupnoSaPdv), "KM")}</span>
               </div>
             </div>
           </div>
@@ -268,15 +269,15 @@ export default function FiskalZReportModal({ open, onClose }: FiskalZReportModal
               <div style={{ backgroundColor: "#0f172a", border: "1px solid #334155", borderRadius: 8, padding: 14, color: "#ffffff" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", color: "#cbd5e1" }}>
                   <span>Ukupan promet bez PDV:</span>
-                  <strong style={{ color: "#ffffff" }}>{Number(zReportResult.ukupnoBezPdv).toFixed(2)} KM</strong>
+                  <strong style={{ color: "#ffffff" }}>{formatMoney(Number(zReportResult.ukupnoBezPdv), "KM")}</strong>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", color: "#cbd5e1" }}>
                   <span>Iznos PDV (17%):</span>
-                  <strong style={{ color: "#ffffff" }}>{Number(zReportResult.ukupnoPdv).toFixed(2)} KM</strong>
+                  <strong style={{ color: "#ffffff" }}>{formatMoney(Number(zReportResult.ukupnoPdv), "KM")}</strong>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "2px solid #34d399", fontSize: 16, color: "#34d399" }}>
                   <strong style={{ color: "#34d399" }}>UKUPAN PROMET SA PDV:</strong>
-                  <strong style={{ color: "#34d399", fontSize: "18px" }}>{Number(zReportResult.ukupnoSaPdv).toFixed(2)} KM</strong>
+                  <strong style={{ color: "#34d399", fontSize: "18px" }}>{formatMoney(Number(zReportResult.ukupnoSaPdv), "KM")}</strong>
                 </div>
               </div>
 
@@ -321,15 +322,15 @@ export default function FiskalZReportModal({ open, onClose }: FiskalZReportModal
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                   <div>
                     <span style={{ fontSize: 12, color: "#94a3b8" }}>Osnovica (KM):</span>
-                    <div style={{ fontSize: 18, fontWeight: "bold", color: "#f8fafc" }}>{Number(data?.ukupnoBezPdv || 0).toFixed(2)} KM</div>
+                    <div style={{ fontSize: 18, fontWeight: "bold", color: "#f8fafc" }}>{formatMoney(Number(data?.ukupnoBezPdv || 0), "KM")}</div>
                   </div>
                   <div>
                     <span style={{ fontSize: 12, color: "#94a3b8" }}>PDV (17%):</span>
-                    <div style={{ fontSize: 18, fontWeight: "bold", color: "#f8fafc" }}>{Number(data?.ukupnoPdv || 0).toFixed(2)} KM</div>
+                    <div style={{ fontSize: 18, fontWeight: "bold", color: "#f8fafc" }}>{formatMoney(Number(data?.ukupnoPdv || 0), "KM")}</div>
                   </div>
                   <div>
                     <span style={{ fontSize: 12, color: "#94a3b8" }}>Ukupno sa PDV (PFR):</span>
-                    <div style={{ fontSize: 20, fontWeight: "900", color: "#34d399" }}>{Number(data?.ukupnoSaPdv || 0).toFixed(2)} KM</div>
+                    <div style={{ fontSize: 20, fontWeight: "900", color: "#34d399" }}>{formatMoney(Number(data?.ukupnoSaPdv || 0), "KM")}</div>
                   </div>
                 </div>
               </div>
@@ -351,7 +352,7 @@ export default function FiskalZReportModal({ open, onClose }: FiskalZReportModal
                           <td style={{ padding: "8px 10px", fontWeight: "bold", color: "#f8fafc" }}>{f.broj_fakture}</td>
                           <td style={{ padding: "8px 10px", textAlign: "center", color: "#cbd5e1" }}>{f.broj_fiskalni || "—"}</td>
                           <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: "bold", color: "#34d399" }}>
-                            {f.display_iznos || (f.valuta === "EUR" ? `${Number(f.iznos_ukupno_km).toFixed(2)} EUR (${(Number(f.iznos_ukupno_km) * 1.95583).toFixed(2)} KM)` : `${Number(f.iznos_ukupno_km).toFixed(2)} KM`)}
+                            {f.display_iznos || (f.valuta === "EUR" ? `${formatMoney(Number(f.iznos_ukupno_km), "EUR")} (${formatMoney(Number(f.iznos_ukupno_km) * 1.95583, "KM")})` : formatMoney(Number(f.iznos_ukupno_km), "KM"))}
                           </td>
                         </tr>
                       ))}

@@ -5,6 +5,7 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "@/components/LocaleProvider";
 import FluxaLogo from "@/components/FluxaLogo";
+import { formatMoney } from "@/lib/format";
 
 type Row = {
   projekat_id: number;
@@ -75,7 +76,7 @@ function fmtKM(v: any): string {
   if (v === null || v === undefined) return "—";
   const n = Number(v);
   if (!Number.isFinite(n)) return "—";
-  return `${n.toFixed(2)} KM`;
+  return formatMoney(n, "KM");
 }
 
 /** Usklađeno sa wizard preview-data: prazno / BiH = domaći; ostalo = INO (planirani iznos u EUR). */
@@ -94,7 +95,7 @@ function fmtEur(v: any): string {
   if (v === null || v === undefined) return "—";
   const n = Number(v);
   if (!Number.isFinite(n)) return "—";
-  return `${n.toFixed(2)} EUR`;
+  return formatMoney(n, "EUR");
 }
 
 function fmtBudzetZaFakturu(r: Row): string {

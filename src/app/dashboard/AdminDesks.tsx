@@ -9,6 +9,7 @@ import {
   ArrowUpRight,
   X
 } from "lucide-react";
+import { formatMoney, formatNum } from "@/lib/format";
 
 interface AdminDesksProps {
   stats: any;
@@ -119,7 +120,7 @@ export default function AdminDesks({ stats }: AdminDesksProps) {
                 {zaFakturisanje.broj} završenih poslova
               </div>
               <div style={{ fontSize: 12, color: "#86efac", marginTop: 3, fontWeight: 700 }}>
-                {zaFakturisanje.budzet} KM za fakturisanje
+                {formatMoney(zaFakturisanje.budzet, "KM")} za fakturisanje
               </div>
             </div>
 
@@ -248,7 +249,7 @@ export default function AdminDesks({ stats }: AdminDesksProps) {
                 Bankovni Izvodi
               </div>
               <div style={{ fontSize: 12, color: "#93c5fd", marginTop: 3, fontWeight: 700 }}>
-                Žiro račun: {likvidnost.totalZiroFirma.toFixed(2)} KM
+                Žiro račun: {formatMoney(likvidnost.totalZiroFirma, "KM")}
               </div>
             </div>
 

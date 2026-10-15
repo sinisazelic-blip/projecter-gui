@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import { FLUXA_VERSION } from "@/lib/fluxaVersion";
 import {
   ClipboardList,
   Layers,
@@ -345,7 +346,7 @@ export default function MasterSidebar() {
           letterSpacing: "0.4px",
         }}
       >
-        {collapsed ? "v2.6" : "v. 2.6.16"}
+        {collapsed ? "v2.6" : `v. ${FLUXA_VERSION}`}
       </div>
     </aside>
   );

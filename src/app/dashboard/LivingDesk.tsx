@@ -17,6 +17,7 @@ import {
   Clock,
   Landmark
 } from "lucide-react";
+import { formatMoney, formatNum } from "@/lib/format";
 
 interface LivingDeskProps {
   stats: any;
@@ -367,7 +368,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
 
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 10 }}>
                       <span style={{ fontSize: 13, fontWeight: 800, color: "var(--muted)" }}>
-                        Budžet: <strong style={{ color: "#ffffff" }}>{proj.budzet} KM</strong>
+                        Budžet: <strong style={{ color: "#ffffff" }}>{formatMoney(proj.budzet, "KM")}</strong>
                       </span>
                       <Link
                         href="/projects"
@@ -686,9 +687,9 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                               }}
-                              title={`Dospijeva: ${f.naziv_klijenta} (${f.iznos_km} KM)`}
+                              title={`Dospijeva: ${f.naziv_klijenta} (${formatMoney(f.iznos_km, "KM")})`}
                             >
-                              ⚠️ {f.naziv_klijenta?.split(" ")[0]} ({Number(f.iznos_km).toFixed(0)} KM)
+                              ⚠️ {f.naziv_klijenta?.split(" ")[0]} ({formatMoney(f.iznos_km, "KM")})
                             </div>
                           ))}
 
@@ -835,7 +836,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                           ⚠️ Dospijeva faktura: {f.naziv_klijenta} ({f.broj_fakture})
                         </div>
                         <div style={{ fontSize: 11, color: "#fca5a5", marginTop: 2 }}>
-                          Iznos: <strong>{Number(f.iznos_km).toFixed(2)} KM</strong> • Valuta: <strong>{f.rok_placanja_dana || 15} dana</strong> (Izdato: {f.datum_izdavanja})
+                          Iznos: <strong>{formatMoney(f.iznos_km, "KM")}</strong> • Valuta: <strong>{f.rok_placanja_dana || 15} dana</strong> (Izdato: {f.datum_izdavanja})
                         </div>
                       </div>
                       <Link

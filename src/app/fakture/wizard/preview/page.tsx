@@ -11,6 +11,7 @@ import {
   INVOICE_PDF_EXPORT_CSS,
 } from "@/lib/fakture/invoicePdfPagination";
 import { savePdfBlobPreferred } from "@/lib/pdf/savePdfPreferredFolder";
+import { formatMoney } from "@/lib/format";
 
 function fmtDDMMYYYYFromISO(isoLike: string | null): string {
   if (!isoLike) return "—";
@@ -23,11 +24,8 @@ function fmtDDMMYYYYFromISO(isoLike: string | null): string {
   return `${d}.${m}.${y}`;
 }
 
-function fmtMoney(n: number, ccy: string) {
-  const v = Number.isFinite(n) ? n : 0;
-  const s = v.toFixed(2);
-  const label = ccy === "BAM" || ccy === "KM" ? "KM" : ccy;
-  return `${s} ${label}`;
+function fmtMoney(n: number | null | undefined, ccy: string) {
+  return formatMoney(n, ccy === "BAM" || ccy === "KM" ? "KM" : ccy);
 }
 
 const EUR_TO_BAM = 1.95583;
@@ -1781,10 +1779,10 @@ export default function Page() {
                             }}
                           >
                             BAM equivalent:{" "}
-                            {(
-                              Math.round(totalAmount * EUR_TO_BAM * 100) / 100
-                            ).toFixed(2)}{" "}
-                            BAM
+                            {formatMoney(
+                              Math.round(totalAmount * EUR_TO_BAM * 100) / 100,
+                              "BAM"
+                            )}
                           </div>
                         ) : null}
                       </div>

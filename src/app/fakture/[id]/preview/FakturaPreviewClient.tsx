@@ -1386,10 +1386,10 @@ export default function FakturaPreviewClient() {
                             }}
                           >
                             BAM equivalent:{" "}
-                            {(
-                              Math.round(totalAmount * EUR_TO_BAM * 100) / 100
-                            ).toFixed(2)}{" "}
-                            BAM
+                            {formatMoney(
+                              Math.round(totalAmount * EUR_TO_BAM * 100) / 100,
+                              "BAM"
+                            )}
                           </div>
                         ) : null}
                       </div>
