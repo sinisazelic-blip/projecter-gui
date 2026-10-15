@@ -52,6 +52,30 @@ function formatDisplayDate(iso: string | null | undefined): string {
   return s;
 }
 
+function formatNumKM(val: number | string | null | undefined): string {
+  const n = typeof val === "string" ? Number(val) : Number(val ?? 0);
+  if (!Number.isFinite(n)) return "0,00";
+  return n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+type MaliRacunTemplate = {
+  id: string;
+  naziv: string;
+  dobavljac: string;
+  kategorija: string;
+  svrha: string;
+  icon?: string;
+};
+
+const DEFAULT_TEMPLATES: MaliRacunTemplate[] = [
+  { id: "posta", naziv: "Pošta", dobavljac: "Pošte Srpske a.d.", kategorija: "POSTARINA", svrha: "Poštarina za slanje ugovora i službenih pošiljki", icon: "📦" },
+  { id: "nestro", naziv: "Nestro Petrol", dobavljac: "Nestro Petrol", kategorija: "GORIVO", svrha: "Gorivo za službena vozila i produkcijski rad", icon: "⛽" },
+  { id: "petrol", naziv: "Petrol / Hifa", dobavljac: "Petrol BH Oil", kategorija: "GORIVO", svrha: "Gorivo za službeno putovanje", icon: "⛽" },
+  { id: "knjizara", naziv: "Knjižara Kultura", dobavljac: "Knjižara Kultura", kategorija: "KANCELARIJA", svrha: "Kancelarijski materijal, papir i sitan pribor", icon: "📎" },
+  { id: "sastanak", naziv: "Reprezentacija", dobavljac: "Ugostiteljstvo", kategorija: "REPREZENTACIJA", svrha: "Radni sastanak i reprezentacija sa klijentom", icon: "☕" },
+  { id: "oprema", naziv: "Sitan inventar / Oprema", dobavljac: "Elektronika / Oprema", kategorija: "OPREMA", svrha: "Kablovi, adapteri i prateća oprema za studio", icon: "🖥️" },
+];
+
 export default function MaliRacuniPage() {
   const [items, setItems] = useState<MaliRacun[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +99,53 @@ export default function MaliRacuniPage() {
   const [editItem, setEditItem] = useState<Partial<MaliRacun> | null>(null);
   const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState<{ text: string; type: "ok" | "err" } | null>(null);
+
+  // Šabloni za brzi unos
+  const [templates, setTemplates] = useState<MaliRacunTemplate[]>(DEFAULT_TEMPLATES);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("fluxa_mali_racuni_templates");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setTemplates(parsed);
+        }
+      }
+    } catch {}
+  }, []);
+
+  const handleApplyTemplate = (tpl: MaliRacunTemplate) => {
+    setEditItem((prev) => ({
+      ...prev,
+      dobavljac: tpl.dobavljac,
+      kategorija: tpl.kategorija,
+      svrha: tpl.svrha,
+    }));
+  };
+
+  const handleSaveCurrentAsTemplate = () => {
+    if (!editItem?.dobavljac) {
+      alert("Prvo unesite naziv dobavljača.");
+      return;
+    }
+    const naziv = prompt("Naziv šablona (npr. 'Moja Pumpa', 'Knjižara'):", editItem.dobavljac);
+    if (!naziv) return;
+    const newTpl: MaliRacunTemplate = {
+      id: "tpl_" + Date.now(),
+      naziv,
+      dobavljac: editItem.dobavljac || "",
+      kategorija: editItem.kategorija || "OSTALO",
+      svrha: editItem.svrha || "",
+      icon: "⭐",
+    };
+    const updated = [...templates, newTpl];
+    setTemplates(updated);
+    try {
+      localStorage.setItem("fluxa_mali_racuni_templates", JSON.stringify(updated));
+    } catch {}
+    showNotice(`Šablon "${naziv}" uspješno sačuvan!`);
+  };
 
   async function loadData() {
     setLoading(true);
@@ -217,7 +288,7 @@ export default function MaliRacuniPage() {
               🧾 Ukupno Prijavljenih Troškova ({selectedGodina})
             </div>
             <div style={{ fontSize: 26, fontWeight: 900, color: "#38bdf8", marginTop: 4 }}>
-              {stats.ukupnoIznos.toFixed(2)} KM
+              {formatNumKM(stats.ukupnoIznos)} KM
             </div>
             <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
               Osnov za pravdanje isplate dobiti sa računa
@@ -229,7 +300,7 @@ export default function MaliRacuniPage() {
               📉 Poreska Ušteda (10% Porez na dobit)
             </div>
             <div style={{ fontSize: 26, fontWeight: 900, color: "#34d399", marginTop: 4 }}>
-              ~{stats.poreskaUsteda10.toFixed(2)} KM
+              ~{formatNumKM(stats.poreskaUsteda10)} KM
             </div>
             <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
               Direktno umanjenje poreske obaveze Studio TAF
@@ -357,7 +428,7 @@ export default function MaliRacuniPage() {
               📋 Specifikacija gotovinskih računa za predaju knjigovođi ({items.length})
             </span>
             <span style={{ fontSize: 12, color: "#94a3b8" }}>
-              Ukupno: <b style={{ color: "#38bdf8" }}>{stats.ukupnoIznos.toFixed(2)} KM</b>
+              Ukupno: <b style={{ color: "#38bdf8" }}>{formatNumKM(stats.ukupnoIznos)} KM</b>
             </span>
           </div>
 
@@ -409,7 +480,7 @@ export default function MaliRacuniPage() {
                         </td>
                         <td style={{ color: "#cbd5e1" }}>{r.svrha || "—"}</td>
                         <td className="num" style={{ fontWeight: 900, color: "#38bdf8" }}>
-                          {Number(r.iznos_ukupno).toFixed(2)} KM
+                          {formatNumKM(r.iznos_ukupno)} KM
                         </td>
                         <td>
                           <span
@@ -462,10 +533,67 @@ export default function MaliRacuniPage() {
       {/* MODAL ZA UNOS / IZMJENU RAČUNA */}
       {showModal && editItem && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "#0f172a", border: "1px solid #38bdf8", borderRadius: 12, padding: 24, width: 500, maxWidth: "90%" }}>
-            <h3 style={{ margin: "0 0 16px", color: "#f8fafc" }}>
+          <div style={{ background: "#0f172a", border: "1px solid #38bdf8", borderRadius: 12, padding: 24, width: 540, maxWidth: "92%" }}>
+            <h3 style={{ margin: "0 0 14px", color: "#f8fafc" }}>
               {editItem.id ? "Izmijeni Mali Račun" : "Novi Gotovinski Račun (za Knjigovodstvo)"}
             </h3>
+
+            {/* BRZI ŠABLONI ZA 1-KLIK POPUNJAVANJE */}
+            <div style={{ background: "rgba(56, 189, 248, 0.08)", border: "1px solid rgba(56, 189, 248, 0.25)", borderRadius: 8, padding: "10px 12px", marginBottom: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: "#38bdf8", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  ⚡ Česti subjekti / Brzi šabloni (1-klik popunjavanje):
+                </span>
+                <button
+                  type="button"
+                  onClick={handleSaveCurrentAsTemplate}
+                  title="Sačuvaj trenutno upisanog dobavljača, kategoriju i svrhu kao trajni šablon"
+                  style={{
+                    background: "rgba(255, 255, 255, 0.08)",
+                    border: "1px solid rgba(255, 255, 255, 0.2)",
+                    borderRadius: 6,
+                    color: "#cbd5e1",
+                    fontSize: 11,
+                    padding: "3px 8px",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  ⭐ Sačuvaj trenutni kao šablon
+                </button>
+              </div>
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {templates.map((tpl) => {
+                  const isSel = editItem.dobavljac === tpl.dobavljac;
+                  return (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      onClick={() => handleApplyTemplate(tpl)}
+                      title={`${tpl.dobavljac} • ${tpl.svrha}`}
+                      style={{
+                        background: isSel ? "rgba(56, 189, 248, 0.3)" : "rgba(255, 255, 255, 0.05)",
+                        border: `1px solid ${isSel ? "#38bdf8" : "rgba(255, 255, 255, 0.12)"}`,
+                        color: isSel ? "#ffffff" : "#cbd5e1",
+                        borderRadius: 6,
+                        padding: "5px 10px",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <span>{tpl.icon || "📄"}</span>
+                      <span>{tpl.naziv}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 10 }}>

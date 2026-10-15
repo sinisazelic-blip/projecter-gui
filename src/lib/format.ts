@@ -17,11 +17,15 @@ export function formatReportNum(
   return n.toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-/** Formatira iznos s odgovarajućom valutom prema jeziku (en → EUR, sr → KM) */
+/** Formatira iznos s odgovarajućom valutom prema jeziku (en → EUR, sr → KM) uz tačku za hiljade i zarez za decimale */
 export function formatAmount(value: number | string | null | undefined, locale: string = "sr"): string {
   const n = typeof value === "string" ? Number(value) : Number(value ?? 0);
   if (!Number.isFinite(n)) return "—";
-  return n.toFixed(2) + getCurrencySuffix(locale);
+  const numStr = n.toLocaleString(locale === "en" ? "en-GB" : "de-DE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return numStr + getCurrencySuffix(locale);
 }
 
 /**
@@ -46,7 +50,11 @@ export function formatAmountForDocumentValuta(
   else if (v === "CHF") suffix = " CHF";
   else if (v === "BAM" || v === "KM" || v === "") suffix = getCurrencySuffix(locale);
   else suffix = ` ${v}`;
-  return n.toFixed(2) + suffix;
+  const numStr = n.toLocaleString(locale === "en" ? "en-GB" : "de-DE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return numStr + suffix;
 }
 
 export function formatKM(value: number | string | null | undefined) {

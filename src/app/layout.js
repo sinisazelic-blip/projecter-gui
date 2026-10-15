@@ -47,7 +47,7 @@ export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
   const headersList = await headers();
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value ?? "sr");
-  const lang = locale === "en" ? "en" : "bs";
+  const lang = locale === "en" ? "en-GB" : "bs-BA";
   const token = cookieStore.get(COOKIE_NAME)?.value;
   const session = token ? verifySessionToken(token) : null;
   return await runWithSession(session, () => (

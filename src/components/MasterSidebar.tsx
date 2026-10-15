@@ -345,7 +345,7 @@ export default function MasterSidebar() {
           letterSpacing: "0.4px",
         }}
       >
-        {collapsed ? "v2.6" : "v. 2.6.15"}
+        {collapsed ? "v2.6" : "v. 2.6.16"}
       </div>
     </aside>
   );
