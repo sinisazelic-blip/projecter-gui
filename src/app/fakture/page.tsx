@@ -17,10 +17,10 @@ function fmtDDMMYYYY(iso: string | null): string {
   return `${d}.${m}.${y}`;
 }
 
+import { formatMoney } from "@/lib/format";
+
 function fmtMoney(n: number, ccy: string): string {
-  const v = Number.isFinite(n) ? n : 0;
-  const label = (ccy === "BAM" || ccy === "KM") ? "KM" : ccy;
-  return `${v.toFixed(2)} ${label}`;
+  return formatMoney(n, ccy);
 }
 
 function isStornoFaktura(

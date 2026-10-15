@@ -16,10 +16,10 @@ function fmtDDMMYYYY(iso: string | null): string {
   return `${d}.${m}.${y}`;
 }
 
-function fmtMoney(n: number, ccy: string): string {
-  const v = Number.isFinite(n) ? n : 0;
-  const label = ccy === "BAM" || ccy === "KM" ? "KM" : ccy;
-  return `${v.toFixed(2)} ${label}`;
+import { formatMoney } from "@/lib/format";
+
+function fmtMoney(n: number | null | undefined, ccy: string = "KM"): string {
+  return formatMoney(n, ccy);
 }
 
 type Ponuda = {

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import FluxaLogo from "@/components/FluxaLogo";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
+import FluxaDateInput from "@/components/FluxaDateInput";
 
 type MaliRacun = {
   id: number;
@@ -609,13 +610,12 @@ export default function MaliRacuniPage() {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, color: "#94a3b8" }}>Datum računa *</label>
-                  <input
-                    type="date"
+                  <label style={{ fontSize: 12, color: "#94a3b8" }}>Datum računa * (dd.mm.yyyy)</label>
+                  <FluxaDateInput
                     required
                     value={editItem.datum_racuna || ""}
                     onChange={(e) => setEditItem({ ...editItem, datum_racuna: e.target.value })}
-                    style={{ width: "100%", background: "#1e293b", border: "1px solid rgba(255,255,255,0.2)", padding: "8px 10px", borderRadius: 6, color: "#fff", marginTop: 4 }}
+                    style={{ marginTop: 4 }}
                   />
                 </div>
               </div>

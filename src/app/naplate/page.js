@@ -8,6 +8,7 @@ import { getValidLocale } from "@/lib/i18n";
 import { getT } from "@/lib/translations";
 import { ExportExcelButton } from "@/components/ExportExcelButton";
 import FluxaLogo from "@/components/FluxaLogo";
+import FluxaDateInput from "@/components/FluxaDateInput";
 
 const inputStyle = {
   padding: "8px 10px",
@@ -18,11 +19,11 @@ const inputStyle = {
   outline: "none",
 };
 
+import { formatMoney } from "@/lib/format";
+
 function fmtMoney(v, cur) {
   if (v === null || v === undefined) return "—";
-  const n = Number(v);
-  if (Number.isNaN(n)) return `${v} ${cur || ""}`.trim();
-  return `${n.toFixed(2)} ${cur || "BAM"}`.trim();
+  return formatMoney(v, cur || "KM");
 }
 
 function fmtDateDMY(v) {
@@ -314,20 +315,18 @@ export default async function Page({ searchParams }) {
                 <span style={{ opacity: 0.9 }}>dd.mm.yyyy</span>
               </span>
 
-              <input
-                type="date"
+              <FluxaDateInput
                 name="due_from"
                 defaultValue={String(dueFrom)}
                 className="input"
-                style={{ width: "auto" }}
+                style={{ width: 140 }}
               />
               <span style={{ opacity: 0.65 }}>{t("naplatePage.to")}</span>
-              <input
-                type="date"
+              <FluxaDateInput
                 name="due_to"
                 defaultValue={String(dueTo)}
                 className="input"
-                style={{ width: "auto" }}
+                style={{ width: 140 }}
               />
 
               <span style={{ opacity: 0.55, fontSize: 12 }}>

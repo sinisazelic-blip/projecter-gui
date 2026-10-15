@@ -51,13 +51,10 @@ function fmtT(
   return s;
 }
 
+import { formatNum } from "@/lib/format";
+
 function fmtMoney(n: number) {
-  const v = Number(n);
-  if (!Number.isFinite(v)) return "";
-  return v.toLocaleString("bs-BA", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return formatNum(n);
 }
 
 function cleanSpaces(s: any) {

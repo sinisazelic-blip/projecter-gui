@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { downloadExcel } from "@/lib/exportExcel";
 import { useTranslation } from "@/components/LocaleProvider";
 import FluxaLogo from "@/components/FluxaLogo";
+import FluxaDateInput from "@/components/FluxaDateInput";
 
 function fmtDDMMYYYY(iso: string | null): string {
   if (!iso) return "—";
@@ -16,9 +17,10 @@ function fmtDDMMYYYY(iso: string | null): string {
   return `${d}.${m}.${y}`;
 }
 
-function fmtMoney(n: number, ccy: string): string {
-  const v = Number.isFinite(n) ? n : 0;
-  return `${v.toFixed(2)} ${ccy}`;
+import { formatMoney } from "@/lib/format";
+
+function fmtMoney(n: number | null | undefined, ccy: string = "KM"): string {
+  return formatMoney(n, ccy);
 }
 
 type Izvod = {
@@ -314,21 +316,19 @@ export default function IzvodiPage() {
                 />
 
                 <label className="label">{t("izvodi.dateFrom")}:</label>
-                <input
+                <FluxaDateInput
                   id="date_from"
-                  type="date"
                   defaultValue={dateFromFilter}
                   className="input small"
-                  style={{ width: 150 }}
+                  style={{ width: 140 }}
                 />
 
                 <label className="label">{t("izvodi.dateTo")}:</label>
-                <input
+                <FluxaDateInput
                   id="date_to"
-                  type="date"
                   defaultValue={dateToFilter}
                   className="input small"
-                  style={{ width: 150 }}
+                  style={{ width: 140 }}
                 />
 
                 <button

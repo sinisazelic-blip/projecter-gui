@@ -13,8 +13,33 @@ export function formatReportNum(
   if (value == null || value === "") return "—";
   const n = Number(value);
   if (!Number.isFinite(n)) return String(value);
-  const loc = locale === "en" ? "en-GB" : "bs-BA";
+  const loc = locale === "en" ? "en-GB" : "de-DE";
   return n.toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/**
+ * Kanonsko formatiranje broja: tačka za hiljade, zarez za decimale (1234.56 -> "1.234,56")
+ */
+export function formatNum(value: number | string | null | undefined): string {
+  if (value == null || value === "") return "0,00";
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return "0,00";
+  return n.toLocaleString("de-DE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+/**
+ * Kanonsko formatiranje novčanog iznosa s valutom: 1612.26 -> "1.612,26 KM", 760 -> "760,00 EUR"
+ */
+export function formatMoney(
+  value: number | string | null | undefined,
+  ccy: string | null | undefined = "KM"
+): string {
+  const num = formatNum(value);
+  const cleanCcy = (ccy === "BAM" || ccy === "KM" || !ccy) ? "KM" : ccy;
+  return `${num} ${cleanCcy}`;
 }
 
 /** Formatira iznos s odgovarajućom valutom prema jeziku (en → EUR, sr → KM) uz tačku za hiljade i zarez za decimale */
@@ -160,10 +185,11 @@ export function parseMoneyInput(input: string | number | null | undefined): numb
 export function fmtMoneyBA(amount: number | string | null | undefined, currency = "KM"): string {
   const n = typeof amount === "string" ? parseMoneyInput(amount) : Number(amount ?? 0);
   const safe = Number.isFinite(n) ? n : 0;
-  const formatted = new Intl.NumberFormat("bs-BA", {
+  const formatted = safe.toLocaleString("de-DE", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(safe);
-  return currency ? `${formatted} ${currency}` : formatted;
+  });
+  const cleanCcy = (currency === "BAM" || currency === "KM" || !currency) ? "KM" : currency;
+  return `${formatted} ${cleanCcy}`;
 }
 

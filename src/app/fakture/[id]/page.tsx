@@ -15,11 +15,10 @@ function fmtDDMMYYYYFromISO(iso: string | null): string {
   return `${d}.${m}.${y}`;
 }
 
-function fmtMoney(n: number, ccy: string) {
-  const v = Number.isFinite(n) ? n : 0;
-  const s = v.toFixed(2);
-  const label = (ccy === "BAM" || ccy === "KM") ? "KM" : ccy;
-  return `${s} ${label}`;
+import { formatMoney } from "@/lib/format";
+
+function fmtMoney(n: number | null | undefined, ccy: string = "KM") {
+  return formatMoney(n, ccy);
 }
 
 type FakturaData = {

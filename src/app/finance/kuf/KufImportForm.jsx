@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/components/LocaleProvider";
+import FluxaDateInput from "@/components/FluxaDateInput";
 
 const TIP_RASKNJIZAVANJA_KEYS = [
   { val: "PROJEKTNI_TROSAK", key: "tipProjektniLabel" },
@@ -168,9 +169,7 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
 
         <div className="field">
           <span className="label">{t("kuf.dateInvoice")}</span>
-          <input
-            className="input"
-            type="date"
+          <FluxaDateInput
             name="datum_fakture"
             value={form.datum_fakture}
             onChange={handleChange}
@@ -180,9 +179,7 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
 
         <div className="field">
           <span className="label">{t("kuf.dateDue")}</span>
-          <input
-            className="input"
-            type="date"
+          <FluxaDateInput
             name="datum_dospijeca"
             value={form.datum_dospijeca}
             onChange={handleChange}
@@ -191,9 +188,7 @@ export default function KufImportForm({ dobavljaci, klijenti, projekti, fiksniTr
 
         <div className="field">
           <span className="label">{t("kuf.dateReceived")}</span>
-          <input
-            className="input"
-            type="date"
+          <FluxaDateInput
             name="datum_prijema"
             value={form.datum_prijema}
             onChange={handleChange}
