@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { parseMoneyInput, fmtMoneyBA } from "@/lib/format";
+import { parseMoneyInput, fmtMoneyBA, formatMoney, formatNum } from "@/lib/format";
 
 type RacunStanje = {
   id: number;
@@ -61,6 +61,17 @@ function formatDateTime(v: string | null | undefined): string {
     return `${match[3]}.${match[2]}.${match[1]}. u ${match[4]}:${match[5]}`;
   }
   return formatShortDate(v);
+}
+
+function isWithinRecentDays(dateStr: string | null | undefined, days = 7): boolean {
+  if (!dateStr) return true;
+  const s = String(dateStr).trim().replace(" ", "T");
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return true;
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  return diffDays <= days;
 }
 
 export default function OwnerOperativniPlan() {
@@ -136,6 +147,7 @@ export default function OwnerOperativniPlan() {
   }, []);
 
   const [showPaidRashodi, setShowPaidRashodi] = useState(false);
+  const [showArchivedPrilivi, setShowArchivedPrilivi] = useState(false);
 
   // Izračuni
   const totalRacuniPersonal = racuni
@@ -148,8 +160,17 @@ export default function OwnerOperativniPlan() {
 
   const totalSviRacuni = totalRacuniPersonal + totalRacuniFirma;
 
-  const priliviAktivni = planStavke.filter((p) => p.vrsta === "PRILIV" && p.status !== "OTKAZANO");
-  const totalPrilivi = priliviAktivni
+  const priliviSviAktivni = planStavke.filter((p) => p.vrsta === "PRILIV" && p.status !== "OTKAZANO");
+  // U aktivnoj listi prikazujemo one koji se još čekaju + one koji su legli u proteklih 7 dana
+  const priliviAktivni = priliviSviAktivni.filter(
+    (p) => p.status !== "REALIZOVANO" || isWithinRecentDays(p.paid_at, 7)
+  );
+  // Arhiva realizovanih priliva starijih od 7 dana (ostaje u bazi/logu, sklopljeno)
+  const priliviArhiva = priliviSviAktivni.filter(
+    (p) => p.status === "REALIZOVANO" && !isWithinRecentDays(p.paid_at, 7)
+  );
+
+  const totalPrilivi = priliviSviAktivni
     .filter((p) => p.status !== "REALIZOVANO")
     .reduce((sum, p) => {
       const fx = p.valuta === "EUR" ? 1.95583 : 1.0;
@@ -492,20 +513,20 @@ export default function OwnerOperativniPlan() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginTop: 16 }}>
           <div style={{ background: "rgba(2, 6, 23, 0.7)", padding: "12px 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)" }}>
             <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>💳 Trenutno na Računima</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: "#38bdf8", marginTop: 2 }}>{totalSviRacuni.toFixed(2)} KM</div>
-            <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Lično: {totalRacuniPersonal.toFixed(2)} | TAF: {totalRacuniFirma.toFixed(2)}</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "#38bdf8", marginTop: 2 }}>{formatMoney(totalSviRacuni, "KM")}</div>
+            <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Lično: {formatNum(totalRacuniPersonal)} | TAF: {formatNum(totalRacuniFirma)}</div>
           </div>
 
           <div style={{ background: "rgba(2, 6, 23, 0.7)", padding: "12px 14px", borderRadius: 8, border: "1px solid rgba(34, 197, 94, 0.3)" }}>
             <div style={{ fontSize: 11, color: "#4ade80", textTransform: "uppercase" }}>🟢 Očekivani Prilivi (+)</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: "#4ade80", marginTop: 2 }}>+{totalPrilivi.toFixed(2)} KM</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "#4ade80", marginTop: 2 }}>+{formatMoney(totalPrilivi, "KM")}</div>
             <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{priliviAktivni.length} planiranih uplata</div>
           </div>
 
           <div style={{ background: "rgba(2, 6, 23, 0.7)", padding: "12px 14px", borderRadius: 8, border: "1px solid rgba(239, 68, 68, 0.3)" }}>
             <div style={{ fontSize: 11, color: "#f87171", textTransform: "uppercase" }}>🔴 Planirane Obaveze (-)</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: "#f87171", marginTop: 2 }}>-{totalRashodi.toFixed(2)} KM</div>
-            <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>+ {totalRashodiHold.toFixed(2)} KM na HOLD</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "#f87171", marginTop: 2 }}>-{formatMoney(totalRashodi, "KM")}</div>
+            <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>+ {formatMoney(totalRashodiHold, "KM")} na HOLD</div>
           </div>
 
           <div
@@ -520,7 +541,7 @@ export default function OwnerOperativniPlan() {
               🚀 PROJEKTOVANI SALDO (HODOGRAM)
             </div>
             <div style={{ fontSize: 22, fontWeight: 900, color: operativniNetoHodogram >= 0 ? "#4ade80" : "#f87171", marginTop: 2 }}>
-              {operativniNetoHodogram >= 0 ? `+${operativniNetoHodogram.toFixed(2)} KM` : `${operativniNetoHodogram.toFixed(2)} KM`}
+              {operativniNetoHodogram >= 0 ? `+${formatMoney(operativniNetoHodogram, "KM")}` : `-${formatMoney(Math.abs(operativniNetoHodogram), "KM")}`}
             </div>
             <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
               {operativniNetoHodogram >= 0 ? "✅ Sve trenutne obaveze su pokrivene!" : "⚠️ Deficit: potrebno odgoditi HOLD obaveze."}
@@ -549,13 +570,13 @@ export default function OwnerOperativniPlan() {
               <div style={{ fontSize: 14, fontWeight: 900, color: netoDanasDostupno >= 0 ? "#86efac" : "#fca5a5", display: "flex", alignItems: "center", gap: 8 }}>
                 <span>REALNO STANJE U DŽEPU (Dostupno Danas):</span>
                 <span style={{ fontSize: 16, background: netoDanasDostupno >= 0 ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)", padding: "2px 8px", borderRadius: 6 }}>
-                  {netoDanasDostupno >= 0 ? `+${netoDanasDostupno.toFixed(2)} KM` : `${netoDanasDostupno.toFixed(2)} KM`}
+                  {netoDanasDostupno >= 0 ? `+${formatMoney(netoDanasDostupno, "KM")}` : `-${formatMoney(Math.abs(netoDanasDostupno), "KM")}`}
                 </span>
               </div>
               <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 4 }}>
                 {netoDanasDostupno >= 0
                   ? "✅ Na računima imate dovoljno raspoloživog novca da odmah podmirite sve preostale planirane rashode bez čekanja novih uplata."
-                  : `⚠️ Na privatnim računima i u kešu imate ukupno ${totalRacuniPersonal.toFixed(2)} KM, a čeka vas još ${totalRashodi.toFixed(2)} KM neplaćenih obaveza. Nemojte trošiti dok ne legnu očekivane uplate!`}
+                  : `⚠️ Na privatnim računima i u kešu imate ukupno ${formatMoney(totalRacuniPersonal, "KM")}, a čeka vas još ${formatMoney(totalRashodi, "KM")} neplaćenih obaveza. Nemojte trošiti dok ne legnu očekivane uplate!`}
               </div>
             </div>
           </div>
@@ -563,7 +584,7 @@ export default function OwnerOperativniPlan() {
           <div style={{ display: "flex", gap: 14, alignItems: "center", background: "rgba(15, 23, 42, 0.8)", padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)" }}>
             <div>
               <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>📉 Fiksni Mjesečni Troškovi (Burn Rate)</div>
-              <div style={{ fontSize: 16, fontWeight: 900, color: "#fbbf24", marginTop: 1 }}>~{fiksniMjesecniTrosak.toFixed(2)} KM / mj</div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: "#fbbf24", marginTop: 1 }}>~{formatMoney(fiksniMjesecniTrosak, "KM")} / mj</div>
             </div>
             <div style={{ fontSize: 10, color: "#94a3b8", lineHeight: 1.3, borderLeft: "1px solid rgba(255,255,255,0.1)", paddingLeft: 10 }}>
               BZ stan (1.250) + Kredit (109)<br />+ Pretplate (~180 KM)
@@ -581,7 +602,7 @@ export default function OwnerOperativniPlan() {
                   Planirane Investicije & Wishlist Želje ({wishlistPending.length})
                 </h3>
                 <div style={{ fontSize: 11, color: "#c084fc", marginTop: 2 }}>
-                  Ukupna vrijednost želja na čekanju: <b>{totalWishlist.toFixed(2)} KM</b> • Dostupno čistog salda: <b style={{ color: operativniNetoHodogram >= 0 ? "#4ade80" : "#f87171" }}>{operativniNetoHodogram.toFixed(2)} KM</b>
+                  Ukupna vrijednost želja na čekanju: <b>{formatMoney(totalWishlist, "KM")}</b> • Dostupno čistog salda: <b style={{ color: operativniNetoHodogram >= 0 ? "#4ade80" : "#f87171" }}>{formatMoney(operativniNetoHodogram, "KM")}</b>
                 </div>
               </div>
             </div>
@@ -660,7 +681,7 @@ export default function OwnerOperativniPlan() {
 
                       <div style={{ textAlign: "right" }}>
                         <div style={{ fontWeight: 900, color: "#f8fafc", fontSize: 15 }}>
-                          {Number(w.iznos).toFixed(2)} KM
+                          {formatMoney(w.iznos, "KM")}
                         </div>
                       </div>
                     </div>
@@ -670,7 +691,7 @@ export default function OwnerOperativniPlan() {
                       {canAfford ? (
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <span style={{ fontSize: 10, background: "rgba(34, 197, 94, 0.2)", color: "#4ade80", border: "1px solid #22c55e", padding: "2px 6px", borderRadius: 4, fontWeight: 800 }}>
-                            ✓ Ostaje +{remainingAfter.toFixed(2)} KM
+                            ✓ Ostaje +{formatMoney(remainingAfter, "KM")}
                           </span>
                           <button
                             type="button"
@@ -694,7 +715,7 @@ export default function OwnerOperativniPlan() {
                         </div>
                       ) : (
                         <span style={{ fontSize: 10, background: "rgba(239, 68, 68, 0.2)", color: "#fca5a5", border: "1px solid rgba(239, 68, 68, 0.3)", padding: "2px 6px", borderRadius: 4, fontWeight: 700 }}>
-                          ⏳ Fali još {Math.abs(remainingAfter).toFixed(2)} KM priliva
+                          ⏳ Fali još {formatMoney(Math.abs(remainingAfter), "KM")} priliva
                         </span>
                       )}
 
@@ -754,7 +775,7 @@ export default function OwnerOperativniPlan() {
                 }}
               >
                 <span>{showRealizedWishlist ? "▼" : "▶"}</span>
-                <span>🏆 Ostvarene Želje & Kupljene Investicije ({wishlistRealized.length}) — Ukupno investirano: {totalWishlistRealized.toFixed(2)} KM</span>
+                <span>🏆 Ostvarene Želje & Kupljene Investicije ({wishlistRealized.length}) — Ukupno investirano: {formatMoney(totalWishlistRealized, "KM")}</span>
               </button>
 
               {showRealizedWishlist && (
@@ -780,7 +801,7 @@ export default function OwnerOperativniPlan() {
                         </div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ color: "#86efac", fontWeight: 800 }}>{Number(w.iznos).toFixed(2)} KM</span>
+                        <span style={{ color: "#86efac", fontWeight: 800 }}>{formatMoney(w.iznos, "KM")}</span>
                         <button
                           type="button"
                           onClick={() => handleToggleStatus(w)}
@@ -885,7 +906,7 @@ export default function OwnerOperativniPlan() {
                             title="Kliknite za izmjenu stanja"
                             style={{ fontSize: 14, fontWeight: 800, color: Number(r.saldo) > 0 ? "#4ade80" : "#94a3b8", cursor: "pointer" }}
                           >
-                            {Number(r.saldo).toFixed(2)} {r.valuta}
+                            {formatMoney(r.saldo, r.valuta)}
                           </span>
                           <span style={{ fontSize: 10, color: "#64748b", cursor: "pointer" }} onClick={() => { setEditingRacunId(r.id); setEditSaldoVal(String(r.saldo)); }}>
                             ✎ uredi
@@ -906,7 +927,7 @@ export default function OwnerOperativniPlan() {
                 <span style={{ fontSize: 16 }}>🟢</span>
                 <h3 style={{ margin: 0, fontSize: 15, color: "#4ade80", fontWeight: 800 }}>Očekivani Prilivi (+)</h3>
               </div>
-              <span style={{ fontSize: 14, fontWeight: 900, color: "#4ade80" }}>+{totalPrilivi.toFixed(2)} KM</span>
+              <span style={{ fontSize: 14, fontWeight: 900, color: "#4ade80" }}>+{formatMoney(totalPrilivi, "KM")}</span>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -936,13 +957,13 @@ export default function OwnerOperativniPlan() {
                       <span style={{ fontWeight: 800, color: "#4ade80", fontSize: 14 }}>
                         {p.valuta === "EUR" ? (
                           <span>
-                            +{Number(p.iznos).toFixed(2)} €{" "}
+                            +{formatMoney(p.iznos, "EUR")}{" "}
                             <span style={{ fontSize: 11, color: "#86efac", fontWeight: 600 }}>
-                              (~{(Number(p.iznos) * 1.95583).toFixed(2)} KM)
+                              (~{formatMoney(Number(p.iznos) * 1.95583, "KM")})
                             </span>
                           </span>
                         ) : (
-                          `+${Number(p.iznos).toFixed(2)} KM`
+                          `+${formatMoney(p.iznos, "KM")}`
                         )}
                       </span>
                       <button
@@ -980,6 +1001,80 @@ export default function OwnerOperativniPlan() {
               })}
             </div>
 
+            {/* ARHIVA LEGLIH PRILIVA STARIJIH OD 7 DANA */}
+            {priliviArhiva.length > 0 && (
+              <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowArchivedPrilivi((prev) => !prev)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#94a3b8",
+                    fontSize: 11,
+                    cursor: "pointer",
+                    padding: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontWeight: 700,
+                  }}
+                >
+                  <span>{showArchivedPrilivi ? "▼" : "▶"}</span>
+                  <span>📁 Arhiva leglih priliva (&gt; 7 dana) ({priliviArhiva.length})</span>
+                </button>
+
+                {showArchivedPrilivi && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+                    {priliviArhiva.map((p) => (
+                      <div
+                        key={p.id}
+                        style={{
+                          background: "rgba(34, 197, 94, 0.05)",
+                          border: "1px solid rgba(34, 197, 94, 0.2)",
+                          borderRadius: 6,
+                          padding: "6px 10px",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          fontSize: 11,
+                          opacity: 0.85,
+                        }}
+                      >
+                        <div>
+                          <span style={{ color: "#86efac", fontWeight: 700, textDecoration: "line-through" }}>✓ {p.naziv}</span>
+                          <div style={{ fontSize: 9, color: "#94a3b8" }}>
+                            {p.kategorija} {p.paid_at ? `• Leglo: ${formatDateTime(p.paid_at)}` : ""}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ color: "#86efac", fontWeight: 800 }}>
+                            +{formatMoney(p.iznos, p.valuta)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStatus(p)}
+                            style={{
+                              background: "transparent",
+                              border: "1px solid rgba(255,255,255,0.15)",
+                              color: "#94a3b8",
+                              padding: "1px 6px",
+                              borderRadius: 3,
+                              cursor: "pointer",
+                              fontSize: 9,
+                            }}
+                            title="Vrati u aktivne prilive"
+                          >
+                            Vrati
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* NEPLAĆENE FAKTURE STUDIO TAF PREGLED */}
             {tafFakture.length > 0 && (
               <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
@@ -991,7 +1086,7 @@ export default function OwnerOperativniPlan() {
                     <div key={f.faktura_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, background: "rgba(0,0,0,0.2)", padding: "4px 8px", borderRadius: 4 }}>
                       <span style={{ color: "#cbd5e1" }}>{f.klijent_naziv || "Klijent"} ({f.broj_fakture})</span>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontWeight: 700, color: "#38bdf8" }}>{Number(f.iznos_sa_pdv).toFixed(2)} KM</span>
+                        <span style={{ fontWeight: 700, color: "#38bdf8" }}>{formatMoney(f.iznos_sa_pdv, "KM")}</span>
                         <button
                           type="button"
                           onClick={() => handleAddFakturaToPlan(f)}
@@ -1016,7 +1111,7 @@ export default function OwnerOperativniPlan() {
                 <span style={{ fontSize: 16 }}>🔴</span>
                 <h3 style={{ margin: 0, fontSize: 15, color: "#f87171", fontWeight: 800 }}>Planirane Obaveze & Troškovi (-)</h3>
               </div>
-              <span style={{ fontSize: 14, fontWeight: 900, color: "#f87171" }}>-{totalRashodi.toFixed(2)} KM</span>
+              <span style={{ fontSize: 14, fontWeight: 900, color: "#f87171" }}>-{formatMoney(totalRashodi, "KM")}</span>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1061,13 +1156,13 @@ export default function OwnerOperativniPlan() {
                         <span style={{ fontWeight: 800, color: isHold ? "#fbbf24" : "#f87171", fontSize: 14 }}>
                           {r.valuta === "EUR" ? (
                             <span>
-                              -{Number(r.iznos).toFixed(2)} €{" "}
+                              -{formatMoney(r.iznos, "EUR")}{" "}
                               <span style={{ fontSize: 11, color: isHold ? "#fcd34d" : "#fca5a5", fontWeight: 600 }}>
-                                (~{(Number(r.iznos) * 1.95583).toFixed(2)} KM)
+                                (~{formatMoney(Number(r.iznos) * 1.95583, "KM")})
                               </span>
                             </span>
                           ) : (
-                            `-${Number(r.iznos).toFixed(2)} KM`
+                            `-${formatMoney(r.iznos, "KM")}`
                           )}
                         </span>
                         <button
@@ -1139,7 +1234,7 @@ export default function OwnerOperativniPlan() {
                   }}
                 >
                   <span>{showPaidRashodi ? "▼" : "▶"}</span>
-                  <span>📁 Plaćene obaveze ({rashodiRealizovani.length}) — Ukupno isplaćeno: <b style={{ color: "#86efac" }}>{totalRashodiPlaceni.toFixed(2)} KM</b></span>
+                  <span>📁 Plaćene obaveze ({rashodiRealizovani.length}) — Ukupno isplaćeno: <b style={{ color: "#86efac" }}>{formatMoney(totalRashodiPlaceni, "KM")}</b></span>
                 </button>
 
                 {showPaidRashodi && (
@@ -1171,8 +1266,8 @@ export default function OwnerOperativniPlan() {
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ color: "#86efac", fontWeight: 800, fontSize: 13 }}>
                             {r.valuta === "EUR"
-                              ? `${Number(r.iznos).toFixed(2)} € (~${(Number(r.iznos) * 1.95583).toFixed(2)} KM)`
-                              : `${Number(r.iznos).toFixed(2)} KM`}
+                              ? `${formatMoney(r.iznos, "EUR")} (~${formatMoney(Number(r.iznos) * 1.95583, "KM")})`
+                              : `${formatMoney(r.iznos, "KM")}`}
                           </span>
                           <button
                             type="button"
@@ -1206,7 +1301,7 @@ export default function OwnerOperativniPlan() {
                 <span style={{ fontSize: 16 }}>🏛</span>
                 <h3 style={{ margin: 0, fontSize: 14, color: "#c084fc", fontWeight: 800 }}>Dugoročne Obaveze & Reprogrami</h3>
               </div>
-              <span style={{ fontSize: 13, fontWeight: 800, color: "#c084fc" }}>Ukupno: {totalDugorocno.toFixed(2)} KM</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: "#c084fc" }}>Ukupno: {formatMoney(totalDugorocno, "KM")}</span>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 8 }}>
@@ -1217,7 +1312,7 @@ export default function OwnerOperativniPlan() {
                     <div style={{ fontSize: 9, color: "#94a3b8" }}>{d.kategorija}</div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: "#c084fc" }}>{Number(d.iznos).toFixed(2)}</span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: "#c084fc" }}>{formatMoney(d.iznos, d.valuta)}</span>
                     <button
                       type="button"
                       onClick={() => handleDeleteItem(d.id)}
@@ -1288,7 +1383,7 @@ export default function OwnerOperativniPlan() {
                 </div>
                 {itemForm.valuta === "EUR" && (
                   <div style={{ fontSize: 11, color: "#38bdf8", marginTop: 4 }}>
-                    ℹ️ Kurs 1 EUR = 1.95583 KM • <b>Preračunato: ≈ {(Number(itemForm.iznos || 0) * 1.95583).toFixed(2)} KM</b>
+                    ℹ️ Kurs 1 EUR = 1.95583 KM • <b>Preračunato: ≈ {formatMoney(Number(itemForm.iznos || 0) * 1.95583, "KM")}</b>
                   </div>
                 )}
                 {/* Brzi kalkulator za sabiranje više iznosa npr. 550 + 650 + 120 */}
@@ -1433,7 +1528,7 @@ export default function OwnerOperativniPlan() {
             <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: 14, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", marginBottom: 16 }}>
               <div style={{ fontSize: 15, fontWeight: 800, color: "#f8fafc" }}>{realizeModalItem.naziv}</div>
               <div style={{ fontSize: 12, color: "#c084fc", marginTop: 2 }}>{realizeModalItem.kategorija} {realizeModalItem.napomena ? `• ${realizeModalItem.napomena}` : ""}</div>
-              <div style={{ fontSize: 20, fontWeight: 900, color: "#4ade80", marginTop: 8 }}>{Number(realizeModalItem.iznos).toFixed(2)} KM</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: "#4ade80", marginTop: 8 }}>{formatMoney(realizeModalItem.iznos, "KM")}</div>
             </div>
 
             <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", background: "rgba(34, 197, 94, 0.1)", padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(34, 197, 94, 0.3)", marginBottom: 18 }}>
@@ -1492,13 +1587,13 @@ export default function OwnerOperativniPlan() {
               <div style={{ fontSize: 20, fontWeight: 900, color: accountActionModal.action === "mark_paid" ? "#f87171" : "#4ade80", marginTop: 8 }}>
                 {accountActionModal.item.valuta === "EUR" ? (
                   <span>
-                    {Number(accountActionModal.item.iznos).toFixed(2)} €{" "}
+                    {formatMoney(accountActionModal.item.iznos, "EUR")}{" "}
                     <span style={{ fontSize: 14, color: "#cbd5e1", fontWeight: 600 }}>
-                      (~{(Number(accountActionModal.item.iznos) * 1.95583).toFixed(2)} KM)
+                      (~{formatMoney(Number(accountActionModal.item.iznos) * 1.95583, "KM")})
                     </span>
                   </span>
                 ) : (
-                  `${Number(accountActionModal.item.iznos).toFixed(2)} KM`
+                  formatMoney(accountActionModal.item.iznos, "KM")
                 )}
               </div>
             </div>
@@ -1529,7 +1624,7 @@ export default function OwnerOperativniPlan() {
                 <option value="">-- Bez promjene stanja računa (samo označi) --</option>
                 {racuni.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.naziv} ({r.tip.replace("_RACUN", "")}) — Stanje: {Number(r.saldo).toFixed(2)} {r.valuta}
+                    {r.naziv} ({r.tip.replace("_RACUN", "")}) — Stanje: {formatMoney(r.saldo, r.valuta)}
                   </option>
                 ))}
               </select>

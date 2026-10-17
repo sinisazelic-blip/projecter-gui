@@ -80,7 +80,8 @@ export async function GET() {
           ${inoSel},
           ${narucilacSel}
         FROM klijenti
-        ORDER BY naziv_klijenta ASC
+        WHERE COALESCE(aktivan, 1) = 1
+        ORDER BY naziv_klijenta COLLATE utf8mb4_unicode_ci ASC
       `;
 
     const [rows] = await (pool as any).query(sql);

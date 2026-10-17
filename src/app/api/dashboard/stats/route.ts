@@ -13,7 +13,8 @@ export async function GET() {
       racuniRows,
       tenantsRows,
       meetsRows,
-      trendRows
+      trendRows,
+      pdvRows
     ] = await Promise.all([
       // 1. SPREMNO ZA FAKTURISANJE (Projekti sa status_id = 8, non pro-bono)
       query(`
@@ -110,7 +111,8 @@ export async function GET() {
           status,
           ugovoreni_pausal_km
         FROM plivacki_kalendar
-        WHERE godina = 2026 OR datum_do >= CURDATE()
+        WHERE (godina = 2026 OR datum_do >= CURDATE())
+          AND (status IS NULL OR status NOT IN ('NAPLACENO', 'PLACENO', 'ZAVRSENO', 'OTKAZANO'))
         ORDER BY datum_od ASC
       `),
 
@@ -124,6 +126,15 @@ export async function GET() {
         WHERE datum_izdavanja >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
         GROUP BY DATE_FORMAT(datum_izdavanja, '%m/%Y'), DATE_FORMAT(datum_izdavanja, '%Y-%m')
         ORDER BY DATE_FORMAT(datum_izdavanja, '%Y-%m') ASC
+      `),
+
+      // 9. EVIDENTIRANA PDV PLAĆANJA IZ IZVODA
+      query(`
+        SELECT DISTINCT DATE_FORMAT(value_date, '%Y-%m') AS ym
+        FROM bank_tx_posting
+        WHERE reversed_at IS NULL
+          AND (kategorija = 'pdv' OR counterparty LIKE '%INDIREKTN%' OR description LIKE '%INDIREKTNI POREZ%')
+          AND amount < -5
       `)
     ]);
 
@@ -210,7 +221,9 @@ export async function GET() {
       // 7. Meets
       meets: Array.isArray(meetsRows) ? meetsRows : [],
       // 8. Trend
-      trend: Array.isArray(trendRows) ? trendRows : []
+      trend: Array.isArray(trendRows) ? trendRows : [],
+      // 9. PDV plaćeni mjeseci
+      pdvPaidMonths: Array.isArray(pdvRows) ? pdvRows.map((r: any) => String(r.ym)) : []
     });
   } catch (err: any) {
     console.error("Greška u /api/dashboard/stats:", err);

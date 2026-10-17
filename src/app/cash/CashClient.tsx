@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useTranslation } from "@/components/LocaleProvider";
 import FluxaLogo from "@/components/FluxaLogo";
 import { getCurrencyForLocale, getLocaleFromDocument } from "@/lib/i18n";
-import { parseMoneyInput, fmtMoneyBA } from "@/lib/format";
+import { parseMoneyInput, fmtMoneyBA, formatNum } from "@/lib/format";
 import styles from "./CashClient.module.css";
 import OwnerPrivateFinance from "./OwnerPrivateFinance";
 import OwnerOperativniPlan from "./OwnerOperativniPlan";
@@ -616,11 +616,11 @@ export default function CashClient() {
                     <div className={styles.big} style={{ color: "#fb7185", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
                       <span>{fmtMoney(totalHomeAmount, localeCurrency)}</span>
                       <span style={{ fontSize: 11, color: "#cbd5e1", fontWeight: 400 }}>
-                        (Dom: <b style={{ color: "#f8fafc" }}>{totalKucaPorodica.toFixed(2)}</b> | BZ: <b style={{ color: "#fde047" }}>{homeBZ.toFixed(2)}</b>)
+                        (Dom: <b style={{ color: "#f8fafc" }}>{formatNum(totalKucaPorodica)}</b> | BZ: <b style={{ color: "#fde047" }}>{formatNum(homeBZ)}</b>)
                       </span>
                     </div>
                     <div className={styles.muted} style={{ fontSize: 11, color: "#cbd5e1" }}>
-                      🏡 Kuća: <b>{homeKuca.toFixed(2)}</b> | 👩 Supruga: <b>{homeSupruga.toFixed(2)}</b> | 👦 Sin: <b>{homeSin.toFixed(2)}</b> | 🏢 BZ: <b style={{ color: "#fde047" }}>{homeBZ.toFixed(2)}</b>
+                      🏡 Kuća: <b>{formatNum(homeKuca)}</b> | 👩 Supruga: <b>{formatNum(homeSupruga)}</b> | 👦 Sin: <b>{formatNum(homeSin)}</b> | 🏢 BZ: <b style={{ color: "#fde047" }}>{formatNum(homeBZ)}</b>
                     </div>
                   </div>
 

@@ -455,6 +455,28 @@ export default function InicijacijaDetailClient() {
   const budgetPrimaryValue = isEurPrimary ? budgetKM / EUR_TO_BAM : budgetKM;
   const budgetPrimaryCode = isEurPrimary ? "EUR" : "BAM";
 
+  const sortedKlijenti = useMemo(() => {
+    const list = [...klijenti];
+    // Deduplicate by name if identical names exist
+    const seen = new Set<string>();
+    const uniqueList: Klijent[] = [];
+    for (const k of list) {
+      const norm = String(k.naziv_klijenta || "").trim().toLowerCase();
+      // Always include if it matches current deal's narucilac or krajnji klijent
+      const isSelected = k.klijent_id === row?.narucilac_id || k.klijent_id === row?.krajnji_klijent_id;
+      if (!seen.has(norm) || isSelected) {
+        seen.add(norm);
+        uniqueList.push(k);
+      }
+    }
+    uniqueList.sort((a, b) =>
+      String(a.naziv_klijenta || "").localeCompare(String(b.naziv_klijenta || ""), "bs", {
+        sensitivity: "base",
+      })
+    );
+    return uniqueList;
+  }, [klijenti, row?.narucilac_id, row?.krajnji_klijent_id]);
+
   async function loadKlijenti() {
     try {
       const res = await fetch("/api/klijenti", { cache: "no-store" });
@@ -2556,14 +2578,14 @@ onClick={() => setCloseOpen(false)}
                   }
                   style={inputStyle}
                 >
-                  {klijenti.length === 0 && (
+                  {sortedKlijenti.length === 0 && (
                     <option value={row.narucilac_id}>
                       {t("dealDetail.loadingClients")}
                     </option>
                   )}
-                  {klijenti.map((k) => (
+                  {sortedKlijenti.map((k) => (
                     <option key={k.klijent_id} value={k.klijent_id}>
-                      {k.klijent_id} — {k.naziv_klijenta}
+                      {k.naziv_klijenta}
                     </option>
                   ))}
                 </select>
@@ -2582,9 +2604,9 @@ onClick={() => setCloseOpen(false)}
                   style={inputStyle}
                 >
                   <option value="">{t("dealDetail.sameAsNarucilac")}</option>
-                  {klijenti.map((k) => (
+                  {sortedKlijenti.map((k) => (
                     <option key={k.klijent_id} value={k.klijent_id}>
-                      {k.klijent_id} — {k.naziv_klijenta}
+                      {k.naziv_klijenta}
                     </option>
                   ))}
                 </select>

@@ -44,16 +44,27 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
   const [currentMonth, setCurrentMonth] = useState(todayMonth);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
+  // Pomoćne funkcije za filtriranje završenih/naplaćenih obaveza
+  const isMeetActive = (m: any) => {
+    const st = String(m?.status || "").toUpperCase();
+    return !["NAPLACENO", "PLACENO", "ZAVRSENO", "OTKAZANO"].includes(st);
+  };
+
+  const isInvoiceUnpaid = (f: any) => {
+    const st = String(f?.fiskalni_status || "").toUpperCase();
+    return !["PLACENA", "PAID", "STORNIRAN", "ZAMIJENJEN"].includes(st);
+  };
+
   // Obaveze za danas
   const todayMeets = meets.filter((m: any) => {
-    if (!m.datum_od) return false;
+    if (!m.datum_od || !isMeetActive(m)) return false;
     const dOd = String(m.datum_od).slice(0, 10);
     const dDo = String(m.datum_do || m.datum_od).slice(0, 10);
     return todayStr >= dOd && todayStr <= dDo;
   });
 
   const todayInvoices = invoices.filter((f: any) => {
-    if (!f.datum_valute) return false;
+    if (!f.datum_valute || !isInvoiceUnpaid(f)) return false;
     const dVal = String(f.datum_valute).slice(0, 10);
     return dVal === todayStr;
   });
@@ -111,23 +122,27 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
     const dayPadded = String(d).padStart(2, "0");
     const dayStr = `${currentYear}-${monthPadded}-${dayPadded}`;
 
-    // Takmičenja za dan d
+    // Takmičenja za dan d (samo aktivna, koja nisu naplaćena/završena)
     const dayMeets = meets.filter((m: any) => {
-      if (!m.datum_od) return false;
+      if (!m.datum_od || !isMeetActive(m)) return false;
       const dOd = String(m.datum_od).slice(0, 10);
       const dDo = String(m.datum_do || m.datum_od).slice(0, 10);
       return dayStr >= dOd && dayStr <= dDo;
     });
 
-    // Dospijeća faktura za dan d
+    // Dospijeća faktura za dan d (samo neplaćene)
     const dayInvoices = invoices.filter((f: any) => {
-      if (!f.datum_valute) return false;
+      if (!f.datum_valute || !isInvoiceUnpaid(f)) return false;
       const dVal = String(f.datum_valute).slice(0, 10);
       return dVal === dayStr;
     });
 
     // Poreski rok: 10. u mjesecu (PDV prijava)
-    const isPdv = d === 10;
+    // Ako je PDV za taj mjesec već evidentiran u bankarskom izvodu, obavijest nestaje!
+    const cellMonthStr = `${currentYear}-${monthPadded}`;
+    const pdvPaidMonths: string[] = stats?.pdvPaidMonths || [];
+    const isPdvPaid = pdvPaidMonths.includes(cellMonthStr);
+    const isPdv = d === 10 && !isPdvPaid;
 
     const totalEventsCount = dayMeets.length + dayInvoices.length + (isPdv ? 1 : 0);
 

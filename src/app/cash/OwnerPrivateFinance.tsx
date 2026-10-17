@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { formatNum, formatMoney } from "@/lib/format";
 
 type PretplateItem = {
   id: number;
@@ -133,8 +134,8 @@ export default function OwnerPrivateFinance() {
   // Akcija: Plati pretplatu (evidentiraj izlaz iz blagajne)
   async function handlePayPretplata(p: PretplateItem) {
     const fx = p.valuta === "EUR" ? 1.95583 : p.valuta === "USD" ? 1.8 : 1.0;
-    const estKM = (Number(p.iznos) * fx).toFixed(2);
-    const ok = window.confirm(`Evidentirati plaćanje za pretplatu "${p.naziv}" (${Number(p.iznos).toFixed(2)} ${p.valuta} ~ ${estKM} KM) i umanjiti saldo blagajne?`);
+    const estKM = formatNum(Number(p.iznos) * fx);
+    const ok = window.confirm(`Evidentirati plaćanje za pretplatu "${p.naziv}" (${formatNum(p.iznos)} ${p.valuta} ~ ${estKM} KM) i umanjiti saldo blagajne?`);
     if (!ok) return;
 
     setActionLoading(`pretplata-${p.id}`);
@@ -188,7 +189,7 @@ export default function OwnerPrivateFinance() {
   // Akcija: Plati ratu privatnog kredita
   async function handlePayKreditRata(k: KreditItem) {
     const novaRata = k.uplaceno_rata + 1;
-    const ok = window.confirm(`Evidentirati uplatu rate ${novaRata} od ${k.broj_rata} za kredit "${k.naziv}" u iznosu od ${Number(k.iznos_rate).toFixed(2)} ${k.valuta} i automatski umanjiti saldo blagajne?`);
+    const ok = window.confirm(`Evidentirati uplatu rate ${novaRata} od ${k.broj_rata} za kredit "${k.naziv}" u iznosu od ${formatNum(k.iznos_rate)} ${k.valuta} i automatski umanjiti saldo blagajne?`);
     if (!ok) return;
 
     setActionLoading(`kredit-${k.id}`);
@@ -369,21 +370,21 @@ export default function OwnerPrivateFinance() {
           <div style={{ background: "rgba(2, 6, 23, 0.9)", padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(34, 197, 94, 0.5)", textAlign: "right" }}>
             <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>💵 Saldo u Blagajni / Džepu</div>
             <div style={{ fontSize: 16, fontWeight: 900, color: "#4ade80" }}>
-              {cashBalance !== null ? `${cashBalance.toFixed(2)} KM` : "—"}
+              {cashBalance !== null ? formatMoney(cashBalance, "KM") : "—"}
             </div>
           </div>
           <div style={{ background: "rgba(2, 6, 23, 0.8)", padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(56, 189, 248, 0.3)", textAlign: "right" }}>
             <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>Pretplate</div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: "#38bdf8" }}>~{totalMonthlyBAM.toFixed(2)} KM <span style={{ fontSize: 10, color: "#64748b" }}>/mj</span></div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "#38bdf8" }}>~{formatMoney(totalMonthlyBAM, "KM")} <span style={{ fontSize: 10, color: "#64748b" }}>/mj</span></div>
           </div>
           <div style={{ background: "rgba(2, 6, 23, 0.8)", padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(168, 85, 247, 0.3)", textAlign: "right" }}>
             <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>Krediti Rate</div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: "#c084fc" }}>{totalKreditiRateBAM.toFixed(2)} KM <span style={{ fontSize: 10, color: "#64748b" }}>/mj</span></div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "#c084fc" }}>{formatMoney(totalKreditiRateBAM, "KM")} <span style={{ fontSize: 10, color: "#64748b" }}>/mj</span></div>
           </div>
           <div style={{ background: "rgba(2, 6, 23, 0.9)", padding: "8px 14px", borderRadius: 8, border: `1px solid ${saldoNakonObaveza !== null && saldoNakonObaveza >= 0 ? "rgba(56, 189, 248, 0.5)" : "rgba(239, 68, 68, 0.5)"}`, textAlign: "right" }}>
             <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>🎯 Slobodno nakon obaveza</div>
             <div style={{ fontSize: 16, fontWeight: 900, color: saldoNakonObaveza !== null && saldoNakonObaveza >= 0 ? "#38bdf8" : "#f87171" }}>
-              {saldoNakonObaveza !== null ? `${saldoNakonObaveza.toFixed(2)} KM` : "—"}
+              {saldoNakonObaveza !== null ? formatMoney(saldoNakonObaveza, "KM") : "—"}
             </div>
           </div>
         </div>
@@ -510,12 +511,12 @@ export default function OwnerPrivateFinance() {
                       </td>
                       <td style={{ padding: "10px 12px", fontWeight: 800, color: isAnnual ? "#fbbf24" : "#38bdf8" }}>
                         <div>
-                          {Number(p.iznos).toFixed(2)} {p.valuta}{" "}
+                          {formatMoney(p.iznos, p.valuta)}{" "}
                           <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600 }}>{isAnnual ? "/ god" : "/ mj"}</span>
                         </div>
                         {isAnnual && (
                           <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 400 }}>
-                            (~{(Number(p.iznos) / 12).toFixed(2)} {p.valuta}/mj)
+                            (~{formatMoney(Number(p.iznos) / 12, p.valuta)}/mj)
                           </div>
                         )}
                       </td>
@@ -665,7 +666,7 @@ export default function OwnerPrivateFinance() {
                     <div style={{ margin: "14px 0", background: "rgba(0,0,0,0.3)", padding: "10px 12px", borderRadius: 6 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
                         <span style={{ color: "#94a3b8" }}>Mjesečna Rata:</span>
-                        <span style={{ fontWeight: 800, color: "#38bdf8" }}>{Number(k.iznos_rate).toFixed(2)} {k.valuta}</span>
+                        <span style={{ fontWeight: 800, color: "#38bdf8" }}>{formatMoney(k.iznos_rate, k.valuta)}</span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
                         <span style={{ color: "#94a3b8" }}>Dan naplate:</span>
@@ -673,7 +674,7 @@ export default function OwnerPrivateFinance() {
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
                         <span style={{ color: "#94a3b8" }}>Preostalo duga:</span>
-                        <span style={{ color: "#e2e8f0", fontWeight: 700 }}>{preostaliIznos.toFixed(2)} {k.valuta} ({preostaloRata} rata)</span>
+                        <span style={{ color: "#e2e8f0", fontWeight: 700 }}>{formatMoney(preostaliIznos, k.valuta)} ({preostaloRata} rata)</span>
                       </div>
                     </div>
 
@@ -710,7 +711,7 @@ export default function OwnerPrivateFinance() {
                               gap: 6,
                             }}
                           >
-                            <span>💵</span> {isPendingThis ? "Knjiženje..." : `+ Plati Ratu (${Number(k.iznos_rate).toFixed(2)} KM)`}
+                            <span>💵</span> {isPendingThis ? "Knjiženje..." : `+ Plati Ratu (${formatMoney(k.iznos_rate, "KM")})`}
                           </button>
                         ) : (
                           <span style={{ fontSize: 12, color: "#38bdf8", fontWeight: 700 }}>🎉 Kredit u potpunosti otplaćen!</span>
@@ -775,7 +776,7 @@ export default function OwnerPrivateFinance() {
                           {p.dan_u_mjesecu}. {mName}
                         </span>
                         <span style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc" }}>{p.naziv}</span>
-                        <span style={{ fontSize: 12, fontWeight: 800, color: "#38bdf8" }}>{Number(p.iznos).toFixed(2)} {p.valuta}</span>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: "#38bdf8" }}>{formatMoney(p.iznos, p.valuta)}</span>
                         {p.zadnje_placeno && (
                           <span style={{ fontSize: 11, color: "#64748b" }} title="Zadnje plaćeno">
                             (plaćeno: {formatDisplayDate(p.zadnje_placeno)})
@@ -811,7 +812,7 @@ export default function OwnerPrivateFinance() {
                     {matchesPretplateMonthly.map((p) => (
                       <div key={p.id} style={{ background: "rgba(2, 6, 23, 0.6)", padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.3)", display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: "#f8fafc" }}>{p.naziv}</span>
-                        <span style={{ fontSize: 12, fontWeight: 800, color: "#38bdf8" }}>{Number(p.iznos).toFixed(2)} {p.valuta}</span>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: "#38bdf8" }}>{formatMoney(p.iznos, p.valuta)}</span>
                       </div>
                     ))}
                     {matchesPretplateAnnual.map((p) => {
@@ -820,14 +821,14 @@ export default function OwnerPrivateFinance() {
                         <div key={p.id} style={{ background: "rgba(2, 6, 23, 0.8)", padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(251, 191, 36, 0.5)", display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ fontSize: 10, fontWeight: 800, color: "#fbbf24", background: "rgba(251, 191, 36, 0.15)", padding: "1px 5px", borderRadius: 3 }}>🗓️ {mName}</span>
                           <span style={{ fontSize: 12, fontWeight: 700, color: "#f8fafc" }}>{p.naziv}</span>
-                          <span style={{ fontSize: 12, fontWeight: 800, color: "#fbbf24" }}>{Number(p.iznos).toFixed(2)} {p.valuta} <span style={{ fontSize: 10, color: "#94a3b8" }}>/god</span></span>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: "#fbbf24" }}>{formatMoney(p.iznos, p.valuta)} <span style={{ fontSize: 10, color: "#94a3b8" }}>/god</span></span>
                         </div>
                       );
                     })}
                     {matchesKrediti.map((k) => (
                       <div key={k.id} style={{ background: "rgba(2, 6, 23, 0.6)", padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(168, 85, 247, 0.3)", display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: "#c084fc" }}>💳 {k.naziv}</span>
-                        <span style={{ fontSize: 12, fontWeight: 800, color: "#c084fc" }}>{Number(k.iznos_rate).toFixed(2)} {k.valuta}</span>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: "#c084fc" }}>{formatMoney(k.iznos_rate, k.valuta)}</span>
                       </div>
                     ))}
                   </div>
