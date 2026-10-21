@@ -137,6 +137,18 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
       return dVal === dayStr;
     });
 
+    // Rokovi isporuke projekata (DEADLINE za dan d)
+    const dayProjectsDeadline = activeProjects.filter((p: any) => {
+      if (!p.rok_datum) return false;
+      return String(p.rok_datum).slice(0, 10) === dayStr;
+    });
+
+    // Projekti otvoreni na dan d
+    const dayProjectsOpened = activeProjects.filter((p: any) => {
+      if (!p.datum_otvaranja) return false;
+      return String(p.datum_otvaranja).slice(0, 10) === dayStr;
+    });
+
     // Poreski rok: 10. u mjesecu (PDV prijava)
     // Ako je PDV za taj mjesec već evidentiran u bankarskom izvodu, obavijest nestaje!
     const cellMonthStr = `${currentYear}-${monthPadded}`;
@@ -144,7 +156,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
     const isPdvPaid = pdvPaidMonths.includes(cellMonthStr);
     const isPdv = d === 10 && !isPdvPaid;
 
-    const totalEventsCount = dayMeets.length + dayInvoices.length + (isPdv ? 1 : 0);
+    const totalEventsCount = dayMeets.length + dayInvoices.length + dayProjectsDeadline.length + dayProjectsOpened.length + (isPdv ? 1 : 0);
 
     calendarCells.push({
       day: d,
@@ -153,6 +165,8 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
       isToday,
       dayMeets,
       dayInvoices,
+      dayProjectsDeadline,
+      dayProjectsOpened,
       isPdv,
       totalEventsCount,
       colIndex: calendarCells.length % 7,
@@ -379,6 +393,28 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                       <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#ffffff", lineHeight: 1.35 }}>
                         {proj.radni_naziv}
                       </h4>
+
+                      {/* Vremenska specifikacija: Kad je otvoren i kada je ROK */}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                        {proj.datum_otvaranja && (
+                          <span style={{ fontSize: 11, color: "#94a3b8", background: "rgba(255,255,255,0.05)", padding: "3px 8px", borderRadius: 6 }}>
+                            🎬 Otvoren: <strong style={{ color: "#e2e8f0" }}>{proj.datum_otvaranja} {proj.vrijeme_otvaranja ? `u ${proj.vrijeme_otvaranja}` : ""}</strong>
+                          </span>
+                        )}
+                        {proj.rok_datum && (
+                          <span style={{
+                            fontSize: 11,
+                            fontWeight: 800,
+                            padding: "3px 8px",
+                            borderRadius: 6,
+                            background: Number(proj.dana_do_roka) <= 1 ? "rgba(239, 68, 68, 0.2)" : "rgba(245, 158, 11, 0.15)",
+                            color: Number(proj.dana_do_roka) <= 1 ? "#f87171" : "#fbbf24",
+                            border: `1px solid ${Number(proj.dana_do_roka) <= 1 ? "rgba(239, 68, 68, 0.4)" : "rgba(245, 158, 11, 0.3)"}`
+                          }}>
+                            {Number(proj.dana_do_roka) === 0 ? "🚨 ROK: DANAS!" : Number(proj.dana_do_roka) === 1 ? `🚨 ROK: SUTRA (${proj.rok_datum})` : `⏳ Rok: ${proj.rok_datum} (za ${proj.dana_do_roka} dana)`}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 10 }}>
@@ -553,6 +589,14 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
               {/* Legenda boja */}
               <div style={{ display: "flex", gap: 14, fontSize: 11, color: "var(--muted)", flexWrap: "wrap" }}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: "#ea580c" }} />
+                  Rok / Deadline projekta
+                </span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: "#0284c7" }} />
+                  Otvoren projekat
+                </span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                   <span style={{ width: 10, height: 10, borderRadius: 3, background: "#38bdf8" }} />
                   Takmičenja (Vikend)
                 </span>
@@ -666,6 +710,53 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
 
                         {/* Oznake događaja u kvadratu */}
                         <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 4 }}>
+                          {/* ROKOVI PROJEKATA (DEADLINE) - NAJVIŠI PRIORITET ZA STUDIO */}
+                          {cell.dayProjectsDeadline && cell.dayProjectsDeadline.map((p: any, pIdx: number) => {
+                            const isUrgent = Number(p.dana_do_roka) <= 1;
+                            return (
+                              <div
+                                key={`p-dl-${pIdx}`}
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 800,
+                                  color: "#ffffff",
+                                  background: isUrgent ? "#ea580c" : "#d97706",
+                                  border: isUrgent ? "1px solid #f97316" : "none",
+                                  boxShadow: isUrgent ? "0 0 10px rgba(234, 88, 12, 0.6)" : "none",
+                                  borderRadius: 4,
+                                  padding: "2px 4px",
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                                title={`ROK PROJEKTA: ${p.radni_naziv} (${p.klijent_naziv}) - Rok: ${p.rok_datum} (za ${p.dana_do_roka} d)`}
+                              >
+                                {isUrgent ? "🚨 ROK:" : "⏳ ROK:"} {p.klijent_naziv ? `${p.klijent_naziv}: ` : ""}{p.radni_naziv}
+                              </div>
+                            );
+                          })}
+
+                          {/* OTVORENI PROJEKTI NA OVAJ DAN */}
+                          {cell.dayProjectsOpened && cell.dayProjectsOpened.map((p: any, pIdx: number) => (
+                            <div
+                              key={`p-op-${pIdx}`}
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 800,
+                                color: "#ffffff",
+                                background: "#0284c7",
+                                borderRadius: 4,
+                                padding: "2px 4px",
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                              }}
+                              title={`OTVOREN POSAO: ${p.radni_naziv} (${p.klijent_naziv}) u ${p.vrijeme_otvaranja || ""}`}
+                            >
+                              🎬 Otvoren: {p.radni_naziv}
+                            </div>
+                          ))}
+
                           {/* Takmičenja */}
                           {cell.dayMeets && cell.dayMeets.length > 0 && cell.dayMeets.slice(0, 1).map((m: any, mIdx: number) => (
                             <div
@@ -793,6 +884,103 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
 
                 {/* Sadržaj za selektovani dan */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {/* Rokovi projekata (DEADLINE) */}
+                  {selectedCell.dayProjectsDeadline && selectedCell.dayProjectsDeadline.map((p: any, idx: number) => {
+                    const isUrgent = Number(p.dana_do_roka) <= 1;
+                    return (
+                      <div
+                        key={`dl-det-${idx}`}
+                        style={{
+                          padding: "12px 14px",
+                          borderRadius: 10,
+                          background: isUrgent ? "rgba(234, 88, 12, 0.2)" : "rgba(245, 158, 11, 0.15)",
+                          border: `1px solid ${isUrgent ? "#ea580c" : "#f59e0b"}`,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: 12,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontSize: 11, fontWeight: 900, background: isUrgent ? "#ea580c" : "#f59e0b", color: isUrgent ? "#fff" : "#000", padding: "2px 6px", borderRadius: 4 }}>
+                              {isUrgent ? "🚨 DEADLINE / ROK SUTRA!" : "⏳ ROK ISPORUKE"}
+                            </span>
+                            <span style={{ fontSize: 14, fontWeight: 800, color: "#ffffff" }}>
+                              {p.radni_naziv}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 4 }}>
+                            Klijent: <strong style={{ color: "#38bdf8" }}>{p.klijent_naziv}</strong> • Budžet: <strong style={{ color: "#4ade80" }}>{formatMoney(p.budzet, "KM")}</strong>
+                            {p.datum_otvaranja && ` • Otvoren: ${p.datum_otvaranja} u ${p.vrijeme_otvaranja || ""}`}
+                          </div>
+                        </div>
+                        <Link
+                          href="/projects"
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: "#ffffff",
+                            textDecoration: "none",
+                            padding: "6px 14px",
+                            borderRadius: 8,
+                            background: isUrgent ? "#ea580c" : "#d97706",
+                          }}
+                        >
+                          Otvori posao ➔
+                        </Link>
+                      </div>
+                    );
+                  })}
+
+                  {/* Otvoreni projekti na ovaj dan */}
+                  {selectedCell.dayProjectsOpened && selectedCell.dayProjectsOpened.map((p: any, idx: number) => (
+                    <div
+                      key={`op-det-${idx}`}
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: 10,
+                        background: "rgba(2, 132, 199, 0.15)",
+                        border: "1px solid #0284c7",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 12,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 11, fontWeight: 900, background: "#0284c7", color: "#fff", padding: "2px 6px", borderRadius: 4 }}>
+                            🎬 OTVOREN PROJEKAT
+                          </span>
+                          <span style={{ fontSize: 14, fontWeight: 800, color: "#ffffff" }}>
+                            {p.radni_naziv}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 4 }}>
+                          Klijent: <strong style={{ color: "#38bdf8" }}>{p.klijent_naziv}</strong> • Vrijeme: <strong style={{ color: "#facc15" }}>{p.vrijeme_otvaranja}</strong>
+                          {p.rok_datum && ` • Rok za završetak: ${p.rok_datum}`}
+                        </div>
+                      </div>
+                      <Link
+                        href="/projects"
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: "#ffffff",
+                          textDecoration: "none",
+                          padding: "6px 14px",
+                          borderRadius: 8,
+                          background: "#0284c7",
+                        }}
+                      >
+                        Otvori posao ➔
+                      </Link>
+                    </div>
+                  ))}
+
                   {/* Takmičenja */}
                   {selectedCell.dayMeets && selectedCell.dayMeets.map((m: any, idx: number) => (
                     <div

@@ -66,7 +66,12 @@ export async function GET() {
           p.radni_naziv,
           COALESCE(k.naziv_klijenta, 'Klijent') as klijent_naziv,
           COALESCE(vf.budzet_planirani, 0) as budzet,
-          p.status_id
+          p.status_id,
+          DATE_FORMAT(p.rok_glavni, '%Y-%m-%d') as rok_datum,
+          DATE_FORMAT(p.rok_glavni, '%H:%i') as rok_vrijeme,
+          DATE_FORMAT(p.created_at, '%Y-%m-%d') as datum_otvaranja,
+          DATE_FORMAT(p.created_at, '%H:%i') as vrijeme_otvaranja,
+          DATEDIFF(p.rok_glavni, CURDATE()) as dana_do_roka
         FROM projekti p
         LEFT JOIN klijenti k ON p.narucilac_id = k.klijent_id
         LEFT JOIN vw_projekti_finansije vf ON vf.projekat_id = p.projekat_id
