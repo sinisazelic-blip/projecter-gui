@@ -33,6 +33,7 @@ export const UPDATE_PRODUCTS = [
   "cctvgate",
   "eventmanager",
   "webshop",
+  "studiobridge",
 ] as const;
 
 export type UpdateProductId = (typeof UPDATE_PRODUCTS)[number];
@@ -125,6 +126,8 @@ export function productsForLicence(input: {
       return entersysProducts(input.soccs_tier, input.soccs_platform_scope);
     case "POOL_MANAGER":
       return ["poolmanager"];
+    case "FLUXAX_NET":
+      return ["studiobridge"];
     default:
       return [];
   }
