@@ -2851,25 +2851,14 @@ export default function LicenceClient() {
                       marginTop: 8,
                     }}
                   >
-                    {(
-                      activeTab === "DOCENTRE"
-                        ? (["JAVNENABAVKE"] as const)
-                        : activeTab === "ENTERSYS"
-                          ? (["ENTERSYS"] as const)
-                          : activeTab === "FLUXAPOS"
-                            ? (["FLUXAPOS"] as const)
-                            : activeTab === "SOCCS_SV"
-                              ? (["SOCCS_SWIMVOICE"] as const)
-                              : activeTab === "FLUXA"
-                                ? (["FLUXA_ONLY"] as const)
-                                : ([
-                                    "FLUXA_ONLY",
-                                    "SOCCS_SWIMVOICE",
-                                    "JAVNENABAVKE",
-                                    "ENTERSYS",
-                                    "FLUXAPOS",
-                                  ] as const)
-                    ).map((p) => (
+                    {([
+                      "FLUXA_ONLY",
+                      "SOCCS_SWIMVOICE",
+                      "JAVNENABAVKE",
+                      "ENTERSYS",
+                      "FLUXAPOS",
+                      "FLUXAX_NET",
+                    ] as const).map((p) => (
                       <button
                         key={p}
                         type="button"
@@ -2880,8 +2869,18 @@ export default function LicenceClient() {
                             p === "ENTERSYS" ||
                             p === "FLUXAPOS" ||
                             p === "JAVNENABAVKE"
-                          )
+                          ) {
                             setNewTenantCurrency("KM");
+                          } else if (p === "FLUXAX_NET") {
+                            setNewTenantCurrency("EUR");
+                            setNewTenantFluxaXNetPackage("FLUXAX_STUDIO_MONTHLY");
+                            setNewTenantPrice("80");
+                            const d = new Date();
+                            d.setDate(d.getDate() + 30);
+                            setNewTenantEnd(d.toISOString().slice(0, 10));
+                          } else {
+                            setNewTenantCurrency("EUR");
+                          }
                         }}
                         style={{
                           textAlign: "left",
