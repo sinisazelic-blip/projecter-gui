@@ -7,6 +7,10 @@ import {
   defaultModulesForJavneNabavkePackage,
   type JavneNabavkeBasePackageId,
 } from "@/lib/javnenabavke-activation";
+import {
+  defaultModulesForFluxaXNetPackage,
+  type FluxaXNetBasePackageId,
+} from "@/lib/fluxaxnet-activation";
 
 export const dynamic = "force-dynamic";
 
@@ -103,8 +107,9 @@ export async function GET(req: Request) {
     const meetRem = Number(row.meet_remaining ?? 0);
     const hasSoccs = Boolean(String(row.soccs_tier ?? "").trim());
 
+    const inGracePeriod = days === -1 && isLiveTenantStatus(st);
     const dateOk = Number.isFinite(days) && days >= 0 && isLiveTenantStatus(st);
-    const allowed = dateOk;
+    const allowed = dateOk || inGracePeriod;
 
     const reason = allowed
       ? null
@@ -117,6 +122,13 @@ export async function GET(req: Request) {
           hasSoccsTier: hasSoccs,
         })
       : [];
+
+    if (inGracePeriod) {
+      warnings.push({
+        code: "GRACE_PERIOD_24H",
+        severity: "warning",
+      });
+    }
 
     const profile = String(row.studio_licence_profile ?? "").trim().toUpperCase();
     const scopeStr = String(row.soccs_platform_scope ?? "").trim();
@@ -172,6 +184,21 @@ export async function GET(req: Request) {
       } else {
         modules = defaultMod;
       }
+    } else if (profile === "FLUXAX_NET") {
+      const netPkg =
+        (row.soccs_tier as FluxaXNetBasePackageId) || "FLUXAX_STUDIO_MONTHLY";
+      const defaultMod = defaultModulesForFluxaXNetPackage(netPkg);
+      if (hasScopeFilter) {
+        modules = {
+          studioBridge: activeScopeModules.includes("studioBridge"),
+          matrixEngine: activeScopeModules.includes("matrixEngine"),
+          clientHub: activeScopeModules.includes("clientHub"),
+          zeroBleed: activeScopeModules.includes("zeroBleed"),
+          lanCollab: activeScopeModules.includes("lanCollab"),
+        };
+      } else {
+        modules = defaultMod;
+      }
     } else {
       modules = {
         enterCore: !hasScopeFilter || activeScopeModules.includes("enterCore"),
@@ -207,6 +234,7 @@ export async function GET(req: Request) {
       broj_blagajni: row.broj_blagajni ?? 1,
       modules,
       warnings,
+      in_grace_period: inGracePeriod,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

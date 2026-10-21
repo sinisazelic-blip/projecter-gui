@@ -422,7 +422,9 @@ export async function POST(req: NextRequest) {
     profile === "SOCCS_SWIMVOICE" ||
     profile === "DOCENTRE" ||
     profile === "JAVNENABAVKE" ||
-    profile === "ENTERSYS";
+    profile === "ENTERSYS" ||
+    profile === "FLUXAPOS" ||
+    profile === "FLUXAX_NET";
 
   let planId = Number(body?.plan_id);
   if (usesStubPlan) {

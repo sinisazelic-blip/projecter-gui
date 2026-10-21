@@ -47,6 +47,13 @@ import {
   type JavneNabavkeBasePackageId,
 } from "@/lib/javnenabavke-activation";
 
+import FluxaXNetModulesModal from "./FluxaXNetModulesModal";
+import FluxaXNetTableRow from "./FluxaXNetTableRow";
+import {
+  FLUXAX_NET_BASE_PACKAGES,
+  getFluxaXNetBasePackage,
+  type FluxaXNetBasePackageId,
+} from "@/lib/fluxaxnet-activation";
 import { useAuthUser } from "@/components/AuthUserProvider";
 
 const USER_LIMIT_OPTIONS = [1, 3, 5, 10, 50, 101] as const; // 101 = 100+
@@ -192,6 +199,9 @@ export default function LicenceClient() {
   const [enterSysSaving, setEnterSysSaving] = useState(false);
   const [newTenantFluxaPosPackage, setNewTenantFluxaPosPackage] =
     useState<FluxaPosBasePackageId>("FLUXAPOS_START");
+  const [newTenantFluxaXNetPackage, setNewTenantFluxaXNetPackage] =
+    useState<FluxaXNetBasePackageId>("FLUXAX_STUDIO_MONTHLY");
+  const [fluxaXNetModalRow, setFluxaXNetModalRow] = useState<TenantRow | null>(null);
   const [newTenantJnPackage, setNewTenantJnPackage] =
     useState<JavneNabavkeBasePackageId>("JN_START");
   const [jnModalRow, setJnModalRow] = useState<TenantRow | null>(null);
@@ -525,6 +535,14 @@ export default function LicenceClient() {
     } else if (activeTab === "SOCCS_SV") {
       setWizardProfile("SOCCS_SWIMVOICE");
       setNewTenantCurrency("EUR");
+    } else if (activeTab === "FLUXAX_NET") {
+      setWizardProfile("FLUXAX_NET");
+      setNewTenantCurrency("EUR");
+      setNewTenantFluxaXNetPackage("FLUXAX_STUDIO_MONTHLY");
+      setNewTenantPrice("80");
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      setNewTenantEnd(d.toISOString().slice(0, 10));
     } else if (activeTab === "FLUXA") {
       setWizardProfile("FLUXA_ONLY");
       setNewTenantCurrency("EUR");
@@ -753,6 +771,8 @@ export default function LicenceClient() {
                   ? newTenantFluxaPosPackage
                   : wizardProfile === "JAVNENABAVKE"
                     ? newTenantJnPackage
+                    : wizardProfile === "FLUXAX_NET"
+                    ? newTenantFluxaXNetPackage
                     : newTenantSoccsTier.trim() || null,
           broj_blagajni:
             wizardProfile === "FLUXAPOS" ? newTenantBrojBlagajni : 1,
@@ -1286,6 +1306,20 @@ export default function LicenceClient() {
                 {!isKasicaRole && (
                   <th style={{ ...thTd, textAlign: "center" }}>Akcije</th>
                 )}
+              </tr>
+            ) : activeTab === "FLUXAX_NET" ? (
+              <tr>
+                <th style={thTd}>Naziv Studija (Tenant)</th>
+                <th style={thTd}>FluxaX Paket</th>
+                <th style={thTd}>Max Kanala (I/O)</th>
+                <th style={thTd}>Režim</th>
+                {!isKasicaRole && <th style={thTd}>Cijena / Način Naplate</th>}
+                <th style={thTd}>Ističe Datum</th>
+                <th style={thTd}>Dana do Isteka</th>
+                <th style={thTd}>Stanje</th>
+                <th style={thFlux}>Moduli & Paket</th>
+                <th style={thFluxCont}>Licencni Token</th>
+                {!isKasicaRole && <th style={{ ...thTd, textAlign: "center" }}>Akcije</th>}
               </tr>
             ) : activeTab === "ENTERSYS" ? (
               <tr>
@@ -2271,7 +2305,8 @@ export default function LicenceClient() {
                     )}
                     {activeTab !== "ENTERSYS" &&
                       activeTab !== "FLUXAPOS" &&
-                      activeTab !== "DOCENTRE" && (
+                      activeTab !== "DOCENTRE" &&
+                      activeTab !== "FLUXAX_NET" && (
                     <>
                     <td style={tdFluxCont}>
                       <button
@@ -3206,6 +3241,42 @@ export default function LicenceClient() {
                           </option>
                         ))}
                       </select>
+                    </>
+                  )}
+                  {wizardProfile === "FLUXAX_NET" && (
+                    <>
+                      <label style={{ display: "block", marginBottom: 4, fontWeight: 700 }}>
+                        🎛️ Odaberite FluxaX NET Paket & Trajanje:
+                      </label>
+                      <select
+                        value={newTenantFluxaXNetPackage}
+                        onChange={(e) => {
+                          const val = e.target.value as FluxaXNetBasePackageId;
+                          setNewTenantFluxaXNetPackage(val);
+                          const p = getFluxaXNetBasePackage(val);
+                          setNewTenantPrice(String(p.priceEur));
+                          const d = new Date();
+                          d.setDate(d.getDate() + p.durationDays);
+                          setNewTenantEnd(d.toISOString().slice(0, 10));
+                        }}
+                        style={{
+                          padding: 8,
+                          marginBottom: 12,
+                          width: "100%",
+                          maxWidth: 380,
+                          borderRadius: 8,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {FLUXAX_NET_BASE_PACKAGES.map((pkg) => (
+                          <option key={pkg.id} value={pkg.id}>
+                            {pkg.label} ({pkg.priceEur} EUR / {pkg.priceKm} KM) — {pkg.durationDays} dana
+                          </option>
+                        ))}
+                      </select>
+                      <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 12px 0" }}>
+                        Klijentska instanca StudioBridge aktivira se automatski putem generisanog licence tokena.
+                      </p>
                     </>
                   )}
                   {wizardProfile === "FLUXAPOS" && (
@@ -4634,6 +4705,16 @@ export default function LicenceClient() {
         );
       })()}
 
+      {fluxaXNetModalRow && (
+        <FluxaXNetModulesModal
+          row={fluxaXNetModalRow}
+          onClose={() => setFluxaXNetModalRow(null)}
+          onSaved={async () => {
+            setFluxaXNetModalRow(null);
+            await load();
+          }}
+        />
+      )}
       {jnModalRow &&
         (() => {
           const pkg =

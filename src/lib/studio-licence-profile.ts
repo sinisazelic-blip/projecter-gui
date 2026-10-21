@@ -10,6 +10,8 @@ export const STUDIO_LICENCE_PROFILES = [
   "JAVNENABAVKE",
   "ENTERSYS",
   "FLUXAPOS",
+  /** FluxaX NET Audio Engine & StudioBridge Ecosystem */
+  "FLUXAX_NET",
   /** Legacy — više se ne nudi u UI; ostaje radi starih redova u bazi. */
   "POOL_MANAGER",
 ] as const;
@@ -23,6 +25,7 @@ export const TENANT_PRODUCT_TABS = [
   "DOCENTRE",
   "ENTERSYS",
   "FLUXAPOS",
+  "FLUXAX_NET",
 ] as const;
 
 export type TenantProductTab = (typeof TENANT_PRODUCT_TABS)[number];
@@ -44,6 +47,8 @@ export function profileToTabs(profile: StudioLicenceProfile): TenantProductTab[]
       return ["ENTERSYS"];
     case "FLUXAPOS":
       return ["FLUXAPOS"];
+    case "FLUXAX_NET":
+      return ["FLUXAX_NET"];
     case "POOL_MANAGER":
       return [];
   }
@@ -57,7 +62,8 @@ export function profileUsesActivationCodes(
     profile !== "FLUXA_ONLY" &&
     profile !== "ENTERSYS" &&
     profile !== "FLUXAPOS" &&
-    profile !== "JAVNENABAVKE"
+    profile !== "JAVNENABAVKE" &&
+    profile !== "FLUXAX_NET"
   );
 }
 

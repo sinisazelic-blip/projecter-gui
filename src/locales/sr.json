@@ -2336,12 +2336,10 @@
     "newEndDate": "Novi datum isteka",
     "plan": "Plan",
     "newTenant": "Novi tenant",
-    "contactTableHint":
-      "Dvoklik na red tabele (ne na dugmad) otvara kontakt za licence alerte.",
+    "contactTableHint": "Dvoklik na red tabele (ne na dugmad) otvara kontakt za licence alerte.",
     "contactRowDblclickTitle": "Dvoklik — kontakt za alerte",
     "contactModalTitle": "Kontakt za upozorenja",
-    "contactModalHint":
-      "Koristi cron licence alerta (email / kasnije SMS). Prazno polje briše vrijednost u bazi.",
+    "contactModalHint": "Koristi cron licence alerta (email / kasnije SMS). Prazno polje briše vrijednost u bazi.",
     "contactEmailLabel": "Email",
     "contactPhoneLabel": "Telefon (SMS, kasnije)",
     "contactLastSent": "Zadnji alert",
@@ -2465,7 +2463,8 @@
       "DOCENTRE": "DokumentArt (Protokol, JN, Ugovori & E-potpis)",
       "JAVNENABAVKE": "DokumentArt (Protokol, JN, Ugovori & E-potpis)",
       "ENTERSYS": "EnterSYS (Kontrola prolaza, tripodi & menadžeri objekata)",
-      "FLUXAPOS": "FluxaPOS (Fiskalna touch blagajna & ugostiteljstvo)"
+      "FLUXAPOS": "FluxaPOS (Fiskalna touch blagajna & ugostiteljstvo)",
+      "FLUXAX_NET": "FluxaX NET (Audio StudioBridge & Klijentski Hab)"
     },
     "wizardNext": "Dalje",
     "wizardBack": "Nazad",
@@ -2479,7 +2478,8 @@
       "JAVNENABAVKE": "DokumentArt",
       "ENTERSYS": "EnterSYS",
       "FLUXAPOS": "FluxaPOS",
-      "POOL_MANAGER": "Pool Mgr"
+      "POOL_MANAGER": "Pool Mgr",
+      "FLUXAX_NET": "FluxaX NET"
     },
     "profileHint": {
       "FLUXA_ONLY": "Tenant za Fluxa Project & Finance Engine.",
@@ -2488,14 +2488,16 @@
       "DOCENTRE": "Tenant za DokumentArt (protokol, javne nabavke, ugovori, e-potpis).",
       "JAVNENABAVKE": "Tenant za DokumentArt (protokol, javne nabavke, ugovori, e-potpis).",
       "ENTERSYS": "Tenant za EnterSYS platformu (kontrola prolaza, tripodi, menadžeri).",
-      "FLUXAPOS": "Tenant za FluxaPOS kasu (ugostiteljstvo, biletarnica i maloprodaja)."
+      "FLUXAPOS": "Tenant za FluxaPOS kasu (ugostiteljstvo, biletarnica i maloprodaja).",
+      "FLUXAX_NET": "Tenant za FluxaX NET Audio platformu (StudioBridge, matrica rutiranja, Klijentski Hab)."
     },
     "productTab": {
       "FLUXA": "Fluxa",
       "SOCCS_SV": "SOCCS / SwimVoice",
       "DOCENTRE": "DokumentArt",
       "ENTERSYS": "EnterSYS",
-      "FLUXAPOS": "FluxaPOS"
+      "FLUXAPOS": "FluxaPOS",
+      "FLUXAX_NET": "FluxaX NET"
     },
     "jnPackage": "DokumentArt paket",
     "jnModulesCol": "Moduli & Paket",

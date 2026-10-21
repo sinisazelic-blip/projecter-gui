@@ -2336,12 +2336,10 @@
     "newEndDate": "New end date",
     "plan": "Plan",
     "newTenant": "New tenant",
-    "contactTableHint":
-      "Double-click a table row (not on buttons) to edit licence alert contacts.",
+    "contactTableHint": "Double-click a table row (not on buttons) to edit licence alert contacts.",
     "contactRowDblclickTitle": "Double-click — alert contacts",
     "contactModalTitle": "Alert contacts",
-    "contactModalHint":
-      "Used by the licence alert cron (email / SMS later). Empty field clears the value in the database.",
+    "contactModalHint": "Used by the licence alert cron (email / SMS later). Empty field clears the value in the database.",
     "contactEmailLabel": "Email",
     "contactPhoneLabel": "Phone (SMS, later)",
     "contactLastSent": "Last alert sent",
@@ -2438,7 +2436,8 @@
       "DOCENTRE": "DokumentArt (Protocol, Procurement, Contracts & E-Sign)",
       "JAVNENABAVKE": "DokumentArt (Protocol, Procurement, Contracts & E-Sign)",
       "ENTERSYS": "EnterSYS (Access Control & Managers)",
-      "FLUXAPOS": "FluxaPOS (Touch POS & Hospitality)"
+      "FLUXAPOS": "FluxaPOS (Touch POS & Hospitality)",
+      "FLUXAX_NET": "FluxaX NET (Audio StudioBridge & Client Hub)"
     },
     "wizardNext": "Next",
     "wizardBack": "Back",
@@ -2452,7 +2451,8 @@
       "JAVNENABAVKE": "DokumentArt",
       "ENTERSYS": "EnterSYS",
       "FLUXAPOS": "FluxaPOS",
-      "POOL_MANAGER": "Pool Mgr"
+      "POOL_MANAGER": "Pool Mgr",
+      "FLUXAX_NET": "FluxaX NET"
     },
     "profileHint": {
       "FLUXA_ONLY": "Tenant for Fluxa Project & Finance Engine.",
@@ -2461,14 +2461,16 @@
       "DOCENTRE": "Tenant for DokumentArt (protocol, procurement, contracts, e-sign).",
       "JAVNENABAVKE": "Tenant for DokumentArt (protocol, procurement, contracts, e-sign).",
       "ENTERSYS": "Tenant for EnterSYS platform (access control, turnstiles, managers).",
-      "FLUXAPOS": "Tenant for FluxaPOS register (hospitality & ticketing)."
+      "FLUXAPOS": "Tenant for FluxaPOS register (hospitality & ticketing).",
+      "FLUXAX_NET": "Tenant for FluxaX NET Audio platform (StudioBridge, routing matrix, Client Hub)."
     },
     "productTab": {
       "FLUXA": "Fluxa",
       "SOCCS_SV": "SOCCS / SwimVoice",
       "DOCENTRE": "DokumentArt",
       "ENTERSYS": "EnterSYS",
-      "FLUXAPOS": "FluxaPOS"
+      "FLUXAPOS": "FluxaPOS",
+      "FLUXAX_NET": "FluxaX NET"
     },
     "jnPackage": "DokumentArt package",
     "jnModulesCol": "Package & modules",
