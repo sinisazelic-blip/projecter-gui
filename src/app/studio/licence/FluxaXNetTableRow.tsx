@@ -24,7 +24,8 @@ interface FluxaXNetTableRowProps {
   onOpenModules: (row: any) => void;
   onOpenToken: (row: any) => void;
   onOpenExtend: (row: any) => void;
-  onSetStatus: (tenantId: number, status: string, row: any) => void;
+  onOpenManage: (row: any) => void;
+  onSetStatus: (tenantId: number, status: "PILOT" | "AKTIVAN" | "SUSPENDOVAN", row: any) => void;
   formatDateBiH: (dateStr: string | null | undefined) => string;
 }
 
@@ -35,6 +36,7 @@ export default function FluxaXNetTableRow({
   onOpenModules,
   onOpenToken,
   onOpenExtend,
+  onOpenManage,
   onSetStatus,
   formatDateBiH,
 }: FluxaXNetTableRowProps) {
@@ -195,88 +197,118 @@ export default function FluxaXNetTableRow({
             background: "rgba(14, 165, 233, 0.12)",
             whiteSpace: "nowrap",
             cursor: "pointer",
+            fontWeight: 700,
           }}
           onClick={() => onOpenModules(row)}
-          title="Uredi audio module i licencni paket za ovaj studio"
+          title="Upravljaj audio paketom, kanalima i modulima za ovaj studio"
         >
-          🎛️ Moduli & Paket
+          Moduli & Paket
         </button>
       </td>
 
       {/* 10. Licencni Token */}
       <td style={tdFlux}>
-        <button
-          type="button"
-          className="btn"
+        <code
           style={{
-            fontSize: 11,
-            padding: "4px 8px",
-            whiteSpace: "nowrap",
+            fontSize: 10,
+            padding: "3px 7px",
+            borderRadius: 6,
+            background: "rgba(15, 23, 42, 0.6)",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
             cursor: "pointer",
+            display: "inline-block",
+            fontFamily: "monospace",
+            color: "#cbd5e1",
           }}
           onClick={() => onOpenToken(row)}
-          title="Prikaži ili kopiraj trajni licence token za StudioBridge"
+          title="Kliknite za prikaz i kopiranje punog tokena"
         >
-          {row.licence_token ? "🔑 Token" : "Bez tokena"}
-        </button>
+          {row.licence_token ? `${row.licence_token.slice(0, 12)}...` : "—"}
+        </code>
       </td>
 
       {/* 11. Akcije */}
       {!isKasicaRole && (
         <td style={{ ...thTd, textAlign: "center" }}>
-          <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+          <div style={{ display: "flex", gap: 5, justifyContent: "center", alignItems: "center", flexWrap: "nowrap" }}>
             <button
               type="button"
-              className="btn"
+              className="btn btn-sm"
+              style={{ fontSize: 11, padding: "3px 8px", cursor: "pointer", whiteSpace: "nowrap" }}
+              onClick={() => onOpenToken(row)}
+              title="Prikaži, kopiraj ili pošalji licencni token tenantu"
+            >
+              🔑 Token
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-sm"
               style={{
                 fontSize: 11,
-                padding: "4px 8px",
+                padding: "3px 8px",
                 color: "#60a5fa",
                 borderColor: "rgba(96, 165, 250, 0.45)",
                 background: "rgba(59, 130, 246, 0.12)",
                 cursor: "pointer",
+                whiteSpace: "nowrap",
               }}
               onClick={() => onOpenExtend(row)}
-              title="Produži licencu za ovaj studio"
+              title="Produži licencni period za ovaj studio"
             >
-              Produži
+              Valid to
             </button>
 
             {isSuspended ? (
               <button
                 type="button"
-                className="btn"
+                className="btn btn-sm"
                 disabled={statusSavingId === row.tenant_id}
                 style={{
                   fontSize: 11,
-                  padding: "4px 8px",
+                  padding: "3px 8px",
                   color: "#f8fafc",
                   borderColor: "rgba(248, 250, 252, 0.35)",
                   background: "rgba(148, 163, 184, 0.2)",
                   cursor: "pointer",
+                  whiteSpace: "nowrap",
                 }}
                 onClick={() => onSetStatus(row.tenant_id, "AKTIVAN", row)}
+                title="Vrati licencu u aktivno stanje"
               >
-                Omogući
+                Live
               </button>
             ) : (
               <button
                 type="button"
-                className="btn"
+                className="btn btn-sm"
                 disabled={statusSavingId === row.tenant_id}
                 style={{
                   fontSize: 11,
-                  padding: "4px 8px",
+                  padding: "3px 8px",
                   color: "#f87171",
                   borderColor: "rgba(248, 113, 113, 0.45)",
                   background: "rgba(239, 68, 68, 0.12)",
                   cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  fontWeight: 700,
                 }}
                 onClick={() => onSetStatus(row.tenant_id, "SUSPENDOVAN", row)}
+                title="Kill switch: trenutno suspenduj licencu i onemogući rad ovom studiju"
               >
-                Suspenduj
+                Kill
               </button>
             )}
+
+            <button
+              type="button"
+              className="btn btn-sm"
+              style={{ fontSize: 11, padding: "3px 8px", cursor: "pointer", whiteSpace: "nowrap" }}
+              onClick={() => onOpenManage(row)}
+              title="Uredi profil tenanta i kontakt podatke"
+            >
+              Upravljaj
+            </button>
           </div>
         </td>
       )}

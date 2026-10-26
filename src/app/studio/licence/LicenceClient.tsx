@@ -1413,6 +1413,22 @@ export default function LicenceClient() {
               </tr>
             ) : (
               visibleTenants.map((row) => {
+                if (activeTab === "FLUXAX_NET") {
+                  return (
+                    <FluxaXNetTableRow
+                      key={row.tenant_id}
+                      row={row}
+                      isKasicaRole={isKasicaRole}
+                      statusSavingId={statusSavingId}
+                      onOpenModules={(r) => setFluxaXNetModalRow(r)}
+                      onOpenToken={(r) => setTokenModalRow(r)}
+                      onOpenExtend={(r) => openExtendModal(r)}
+                      onOpenManage={(r) => openContactModal(r)}
+                      onSetStatus={(id, st, r) => handleSetStatus(id, st as any, r)}
+                      formatDateBiH={formatDateBiH}
+                    />
+                  );
+                }
                 const lamp = tenantStatusLamp(row);
                 const dp = resolveDisplayStudioProfile(row);
                 return (
@@ -2305,8 +2321,7 @@ export default function LicenceClient() {
                     )}
                     {activeTab !== "ENTERSYS" &&
                       activeTab !== "FLUXAPOS" &&
-                      activeTab !== "DOCENTRE" &&
-                      activeTab !== "FLUXAX_NET" && (
+                      activeTab !== "DOCENTRE" && (
                     <>
                     <td style={tdFluxCont}>
                       <button

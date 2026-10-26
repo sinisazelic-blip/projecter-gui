@@ -89,6 +89,22 @@ export const FLUXAX_NET_MODULE_KEYS: FluxaXNetModuleDefinition[] = [
     categoryLabel: "🌐 Saradnja na Daljinu",
     icon: "💻",
   },
+  {
+    key: "videoSync",
+    label: "Video Screening & Sync",
+    shortDesc: "Sinhronizovani video pregled i screening za TV spotove i film",
+    category: "COLLAB",
+    categoryLabel: "🌐 Saradnja na Daljinu",
+    icon: "🎬",
+  },
+  {
+    key: "cloudVault",
+    label: "Cloud Vault & Web Storage",
+    shortDesc: "Web skladište tejkova i preuzimanje master WAV datoteka za agencije",
+    category: "COLLAB",
+    categoryLabel: "🌐 Saradnja na Daljinu",
+    icon: "☁️",
+  },
 ];
 
 export function getFluxaXNetBasePackage(id: string | null | undefined) {
