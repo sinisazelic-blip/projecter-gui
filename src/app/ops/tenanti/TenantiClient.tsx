@@ -13,6 +13,7 @@ const ERR: Record<string, string> = {
   TENANT_NOT_FOUND: "Objekat nije pronađen ili nije Enter licence.",
   INVALID_DATE: "Datum produženja nije ispravan.",
   INVALID_PACKAGE: "Paket nije ispravan.",
+  INVALID_USERNAME: "Korisničko ime je obavezno.",
 };
 
 function fmtDate(iso: string | null | undefined) {
@@ -33,6 +34,7 @@ function statusTone(status: string, days: number) {
 function actionLabel(action: string) {
   if (action === "EXTEND") return "Produženje";
   if (action === "MODULES") return "Moduli";
+  if (action === "PORTAL_CREDENTIALS") return "Pristup Portalu";
   return action;
 }
 
@@ -69,6 +71,66 @@ export default function TenantiClient({
   );
   const [modules, setModules] = useState<Record<string, boolean>>({});
   const [blagajni, setBlagajni] = useState(1);
+  const [portalRow, setPortalRow] = useState<EnterTenantRow | null>(null);
+  const [portalUser, setPortalUser] = useState("");
+  const [portalPass, setPortalPass] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const openPortal = (row: EnterTenantRow) => {
+    setPortalRow(row);
+    setPortalUser(row.portal_username || "");
+    setPortalPass(row.portal_password || "");
+    setShowPass(false);
+    setCopied(false);
+  };
+
+  const generatePass = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+    let gen = "";
+    for (let i = 0; i < 10; i++) {
+      gen += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setPortalPass(gen + "1+");
+  };
+
+  const copyCreds = async () => {
+    const text = "FLUXA TENANT PORTAL PRISTUP\nLink: https://fluxa.ba/#tenant-portal\nKorisničko ime: " + portalUser + "\nLozinka: " + portalPass;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    } catch {
+      // fallback
+    }
+  };
+
+  async function savePortal() {
+    if (!portalRow) return;
+    setBusyId(portalRow.tenant_id);
+    setError(null);
+    setInfo(null);
+    try {
+      const res = await fetch(`/api/ops/tenanti/${portalRow.tenant_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "PORTAL_CREDENTIALS",
+          portal_username: portalUser,
+          portal_password: portalPass,
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(ERR[json.error] || json.error);
+      setPortalRow(null);
+      await refresh();
+      setInfo(`Pristup za portal snimljen: ${portalRow.naziv}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   const openModules = (row: EnterTenantRow) => {
     const draft: Record<string, boolean> = {};
@@ -316,6 +378,115 @@ export default function TenantiClient({
           </table>
         </div>
       )}
+
+      
+      {portalRow ? (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.65)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 90,
+            padding: 16,
+            backdropFilter: "blur(4px)",
+          }}
+        >
+          <div
+            className="card opsCard"
+            style={{ width: "min(480px, 100%)", maxHeight: "90vh", overflow: "auto", border: "1px solid rgba(56, 189, 248, 0.3)" }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                <span>🔑</span>
+                <span>Portal Pristup — {portalRow.naziv}</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setPortalRow(null)}
+                style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 18 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ fontSize: 12, opacity: 0.8, margin: "0 0 16px" }}>
+              Pristupni podaci za klijentski Tenant Centar na <strong>https://fluxa.ba/#tenant-portal</strong>. Klijent se ovim podacima prijavljuje i preuzima instalacije, licence i nadogradnje.
+            </p>
+
+            <div style={{ display: "grid", gap: 14, marginBottom: 20 }}>
+              <label style={{ display: "grid", gap: 4, fontSize: 12 }}>
+                <strong>Korisničko ime za portal (Tenant Identifikator)</strong>
+                <input
+                  type="text"
+                  value={portalUser}
+                  placeholder="npr. aquana, taf, olymp..."
+                  onChange={(e) => setPortalUser(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                  style={{ padding: "8px 10px", borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff" }}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 4, fontSize: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <strong>Lozinka za portal</strong>
+                  <button
+                    type="button"
+                    onClick={generatePass}
+                    style={{ background: "none", border: "none", color: "#38bdf8", cursor: "pointer", fontSize: 11, textDecoration: "underline" }}
+                  >
+                    🎲 Generiši novu
+                  </button>
+                </div>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={showPass ? "text" : "password"}
+                    value={portalPass}
+                    placeholder="Unesite ili promijenite lozinku..."
+                    onChange={(e) => setPortalPass(e.target.value)}
+                    style={{ width: "100%", padding: "8px 40px 8px 10px", borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass(!showPass)}
+                    style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 13 }}
+                  >
+                    {showPass ? "Sakrij" : "Vidi"}
+                  </button>
+                </div>
+              </label>
+            </div>
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 14 }}>
+              <button
+                type="button"
+                className="btn"
+                style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}
+                onClick={copyCreds}
+                disabled={!portalUser || !portalPass}
+              >
+                <span>{copied ? "✓ Kopirano!" : "📋 Kopiraj za klijenta"}</span>
+              </button>
+
+              <div style={{ display: "flex", gap: 8 }}>
+                <button type="button" className="btn" onClick={() => setPortalRow(null)}>
+                  Odustani
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ background: "#0284c7", color: "#fff", borderColor: "#38bdf8", fontWeight: 600 }}
+                  disabled={busyId === portalRow.tenant_id || !portalUser.trim()}
+                  onClick={savePortal}
+                >
+                  {busyId === portalRow.tenant_id ? "Snimam..." : "Snimi pristup"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {moduleRow ? (
         <div

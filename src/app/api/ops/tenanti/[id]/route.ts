@@ -74,6 +74,23 @@ export async function PATCH(
       return NextResponse.json({ ok: true, tenant });
     }
 
+    if (action === "PORTAL_CREDENTIALS") {
+      const portalUsername = String(body.portal_username ?? "").trim();
+      if (!portalUsername) {
+        return NextResponse.json(
+          { ok: false, error: "INVALID_USERNAME" },
+          { status: 400 },
+        );
+      }
+      const tenant = await updateEnterTenantPortalCredentials({
+        tenantId,
+        portalUsername,
+        portalPassword: body.portal_password != null ? String(body.portal_password) : undefined,
+        ...actor,
+      });
+      return NextResponse.json({ ok: true, tenant });
+    }
+
     if (action === "MODULES") {
       const tenant = await updateEnterTenantModules({
         tenantId,

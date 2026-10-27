@@ -27,6 +27,8 @@ export type EnterTenantRow = {
   package_id: string | null;
   package_label: string | null;
   modules: string[];
+  portal_username?: string | null;
+  portal_password?: string | null;
 };
 
 export type EnterTenantAuditRow = {
@@ -66,6 +68,8 @@ function mapTenant(row: {
   studio_licence_profile?: string | null;
   soccs_tier: string | null;
   soccs_platform_scope: string | null;
+  portal_username?: string | null;
+  portal_password?: string | null;
 }): EnterTenantRow {
   const packageId = resolveEnterSysBasePackageId(row);
   const pkg = ENTERSYS_BASE_PACKAGES.find((p) => p.id === packageId) ?? null;
@@ -89,6 +93,8 @@ function mapTenant(row: {
     package_id: pkg?.id ?? null,
     package_label: pkg?.label ?? null,
     modules,
+    portal_username: row.portal_username ?? null,
+    portal_password: row.portal_password ?? null,
   };
 }
 
@@ -121,7 +127,9 @@ export async function listEnterTenants(): Promise<EnterTenantRow[]> {
         COALESCE(t.broj_blagajni, 1) AS broj_blagajni,
         t.studio_licence_profile,
         t.soccs_tier,
-        t.soccs_platform_scope
+        t.soccs_platform_scope,
+        t.portal_username,
+        t.portal_password
        FROM tenants t
        WHERE UPPER(COALESCE(t.studio_licence_profile, '')) IN ('ENTERSYS', 'POOL_MANAGER')
           OR t.soccs_tier IN (${ENTERSYS_PACKAGE_IDS.map(() => "?").join(", ")})
@@ -157,8 +165,10 @@ export async function listEnterTenants(): Promise<EnterTenantRow[]> {
           t.currency,
           COALESCE(t.broj_blagajni, 1) AS broj_blagajni,
           t.soccs_tier,
-          t.soccs_platform_scope
-         FROM tenants t
+        t.soccs_platform_scope,
+        t.portal_username,
+        t.portal_password
+       FROM tenants t
          WHERE t.soccs_tier IN (${ENTERSYS_PACKAGE_IDS.map(() => "?").join(", ")})
          ORDER BY t.naziv ASC`,
         ENTERSYS_PACKAGE_IDS,
@@ -339,6 +349,50 @@ export async function updateEnterTenantModules(input: {
       price_to: isPilot ? 0 : calc.total,
     },
   });
+  const next = await getEnterTenant(input.tenantId);
+  if (!next) throw new Error("TENANT_NOT_FOUND");
+  return next;
+}
+
+export async function updateEnterTenantPortalCredentials(input: {
+  tenantId: number;
+  portalUsername: string;
+  portalPassword?: string;
+  actorUserId: number;
+  actorUsername: string;
+}): Promise<EnterTenantRow> {
+  const current = await getEnterTenant(input.tenantId);
+  if (!current) throw new Error("TENANT_NOT_FOUND");
+  const username = input.portalUsername.trim();
+  if (!username) throw new Error("INVALID_USERNAME");
+
+  if (input.portalPassword && input.portalPassword.trim()) {
+    await query(
+      `UPDATE tenants
+       SET portal_username = ?, portal_password = ?, updated_at = NOW()
+       WHERE tenant_id = ?`,
+      [username, input.portalPassword.trim(), input.tenantId],
+    );
+  } else {
+    await query(
+      `UPDATE tenants
+       SET portal_username = ?, updated_at = NOW()
+       WHERE tenant_id = ?`,
+      [username, input.tenantId],
+    );
+  }
+
+  await writeAudit({
+    tenantId: input.tenantId,
+    actorUserId: input.actorUserId,
+    actorUsername: input.actorUsername,
+    action: "PORTAL_CREDENTIALS",
+    detail: {
+      portal_username: username,
+      password_changed: Boolean(input.portalPassword && input.portalPassword.trim()),
+    },
+  });
+
   const next = await getEnterTenant(input.tenantId);
   if (!next) throw new Error("TENANT_NOT_FOUND");
   return next;
