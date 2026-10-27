@@ -45,6 +45,9 @@ async function ensureVrsteTable() {
       KEY idx_sifarnik_aktivan_sort (sifarnik, aktivan, sort_order)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   );
+  try {
+    await query("ALTER TABLE dobavljaci MODIFY COLUMN vrsta VARCHAR(50) NOT NULL DEFAULT 'ostalo'");
+  } catch (_) {}
 }
 
 export async function getDobavljacVrste() {
