@@ -26,6 +26,8 @@ export type KlijentRow = {
   is_ino: number; // 1/0
   pdv_oslobodjen?: number; // 1/0 — oslobođen po članu 24
   pdv_oslobodjen_napomena?: string | null; // napomena za fakturu
+  portal_username?: string | null;
+  portal_password?: string | null;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -66,6 +68,7 @@ export default async function KlijentiPage() {
   const rows = await query(
     `SELECT klijent_id, naziv_klijenta, tip_klijenta, porezni_id${jibPibSelect}, adresa, grad, drzava${emailCol},
             rok_placanja_dana, napomena, aktivan${narucilacCol}, is_ino${pdvCols},
+            portal_username, portal_password,
             DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
             DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
        FROM klijenti

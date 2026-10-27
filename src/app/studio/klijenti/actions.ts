@@ -60,6 +60,8 @@ export async function createKlijent(input: {
   is_ino?: boolean;
   pdv_oslobodjen?: boolean;
   pdv_oslobodjen_napomena?: string | null;
+  portal_username?: string | null;
+  portal_password?: string | null;
 }) {
   const naziv = String(input?.naziv_klijenta ?? "").trim();
   if (!naziv) throw new Error("Naziv klijenta je obavezan.");
@@ -78,6 +80,8 @@ export async function createKlijent(input: {
   const is_ino = toBit(input?.is_ino);
   const pdv_oslobodjen = toBit(input?.pdv_oslobodjen);
   const pdv_oslobodjen_napomena = cleanStr(input?.pdv_oslobodjen_napomena);
+  const portal_username = cleanStr(input?.portal_username?.toLowerCase());
+  const portal_password = cleanStr(input?.portal_password);
 
   const hasJibPib = input.jib !== undefined || input.pib !== undefined;
   const jibPibCols = hasJibPib ? ", jib, pib" : "";
@@ -91,8 +95,8 @@ export async function createKlijent(input: {
 
   await query(
     `INSERT INTO klijenti
-      (naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava, email, rok_placanja_dana, napomena, aktivan, is_ino, pdv_oslobodjen, pdv_oslobodjen_napomena${jibPibCols}${narucilacCol}, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?${jibPibPlc}${narucilacPlc}, NOW(), NOW())`,
+      (naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava, email, rok_placanja_dana, napomena, aktivan, is_ino, pdv_oslobodjen, pdv_oslobodjen_napomena, portal_username, portal_password${jibPibCols}${narucilacCol}, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?${jibPibPlc}${narucilacPlc}, NOW(), NOW())`,
     [
       naziv,
       tip,
@@ -107,6 +111,8 @@ export async function createKlijent(input: {
       is_ino,
       pdv_oslobodjen,
       pdv_oslobodjen_napomena,
+      portal_username,
+      portal_password,
       ...jibPibVals,
       ...narucilacVals,
     ],
@@ -134,6 +140,8 @@ export async function updateKlijent(input: {
   is_ino?: boolean;
   pdv_oslobodjen?: boolean;
   pdv_oslobodjen_napomena?: string | null;
+  portal_username?: string | null;
+  portal_password?: string | null;
 }) {
   const id = Number(input?.klijent_id);
   if (!Number.isFinite(id) || id <= 0)
@@ -156,6 +164,8 @@ export async function updateKlijent(input: {
   const is_ino = toBit(input?.is_ino);
   const pdv_oslobodjen = toBit(input?.pdv_oslobodjen);
   const pdv_oslobodjen_napomena = cleanStr(input?.pdv_oslobodjen_napomena);
+  const portal_username = cleanStr(input?.portal_username?.toLowerCase());
+  const portal_password = cleanStr(input?.portal_password);
 
   const hasJibPib = input.jib !== undefined || input.pib !== undefined;
   const jibPibSet = hasJibPib ? ", jib=?, pib=?" : "";
@@ -179,7 +189,9 @@ export async function updateKlijent(input: {
             aktivan=?,
             is_ino=?,
             pdv_oslobodjen=?,
-            pdv_oslobodjen_napomena=?${jibPibSet}${narucilacSet},
+            pdv_oslobodjen_napomena=?,
+            portal_username=?,
+            portal_password=?${jibPibSet}${narucilacSet},
             updated_at=NOW()
       WHERE klijent_id=?`,
     [
@@ -196,11 +208,27 @@ export async function updateKlijent(input: {
       is_ino,
       pdv_oslobodjen,
       pdv_oslobodjen_napomena,
+      portal_username,
+      portal_password,
       ...jibPibVals,
       ...narucilacVals,
       id,
     ],
   );
+
+  // Sync to tenants table if this client is linked to a tenant
+  try {
+    if (portal_username || portal_password) {
+      await query(
+        `UPDATE tenants
+            SET portal_username = COALESCE(?, portal_username),
+                portal_password = COALESCE(?, portal_password),
+                updated_at = NOW()
+          WHERE klijent_id = ?`,
+        [portal_username, portal_password, id],
+      );
+    }
+  } catch (_) {}
 
   const [row] = (await query(
     `SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at,

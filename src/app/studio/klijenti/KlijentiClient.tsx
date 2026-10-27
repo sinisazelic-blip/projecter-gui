@@ -28,6 +28,8 @@ type FormState = {
   is_ino: boolean;
   pdv_oslobodjen: boolean;
   pdv_oslobodjen_napomena: string;
+  portal_username?: string;
+  portal_password?: string;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -49,6 +51,8 @@ const emptyForm = (): FormState => ({
   is_ino: false,
   pdv_oslobodjen: false,
   pdv_oslobodjen_napomena: "",
+  portal_username: "",
+  portal_password: "",
 });
 
 const fmtDateTime = (dt: string | null | undefined) => {
@@ -279,6 +283,8 @@ export default function KlijentiClient({
       is_ino: Number(it.is_ino) === 1,
       pdv_oslobodjen: Number(it.pdv_oslobodjen ?? 0) === 1,
       pdv_oslobodjen_napomena: it.pdv_oslobodjen_napomena ?? "",
+      portal_username: it.portal_username ?? "",
+      portal_password: it.portal_password ?? "",
       created_at: it.created_at,
       updated_at: it.updated_at,
     });
@@ -418,6 +424,8 @@ export default function KlijentiClient({
       is_ino: !!form.is_ino,
       pdv_oslobodjen: !!form.pdv_oslobodjen,
       pdv_oslobodjen_napomena: form.pdv_oslobodjen_napomena || null,
+      portal_username: form.portal_username || null,
+      portal_password: form.portal_password || null,
     };
     if (hasJib) payload.jib = form.jib || null;
     if (hasPib) payload.pib = form.pib || null;
@@ -446,8 +454,9 @@ export default function KlijentiClient({
                 Number(it.klijent_id) === Number(form.klijent_id)
                   ? {
                       ...it,
-                      created_at: result.created_at ?? it.created_at,
-                      updated_at: result.updated_at ?? it.updated_at,
+                      ...payload,
+                      created_at: result?.created_at ?? it.created_at,
+                      updated_at: result?.updated_at ?? it.updated_at,
                     }
                   : it,
               ),
@@ -763,6 +772,22 @@ export default function KlijentiClient({
                         <span style={{ fontWeight: 700 }}>
                           {it.naziv_klijenta}
                         </span>
+                        {it.portal_username && (
+                          <span
+                            title={`Portal Identifikator: ${it.portal_username}`}
+                            style={{
+                              fontSize: 10,
+                              fontFamily: "monospace",
+                              color: "#38bdf8",
+                              background: "rgba(56,189,248,0.12)",
+                              border: "1px solid rgba(56,189,248,0.3)",
+                              padding: "1px 6px",
+                              borderRadius: 4,
+                            }}
+                          >
+                            🔑 {it.portal_username}
+                          </span>
+                        )}
                       </div>
                       {it.adresa ? (
                         <div
@@ -1352,6 +1377,90 @@ export default function KlijentiClient({
                       </div>
                     </span>
                   </label>
+                </div>
+
+                {/* TENANT PORTAL PRISTUP (fluxa.ba/#portal) */}
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    padding: "16px",
+                    borderRadius: "12px",
+                    background: "rgba(56, 189, 248, 0.05)",
+                    border: "1px solid rgba(56, 189, 248, 0.3)",
+                    display: "grid",
+                    gap: 12,
+                    marginTop: 4,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: "#38bdf8", fontSize: 13 }}>
+                      <span>🔑</span>
+                      <span>Korisnički Portal Pristup (fluxa.ba/#portal)</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const rand = Math.random().toString(36).slice(-8);
+                          const generated = rand.charAt(0).toUpperCase() + rand.slice(1) + "01+";
+                          setForm((s) => ({ ...s, portal_password: generated }));
+                        }}
+                        className="btn"
+                        style={{ fontSize: 11, padding: "4px 8px" }}
+                      >
+                        🎲 Generiši lozinku
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const txt = `FLUXA KORISNIČKI PORTAL PRISTUP\nLink: https://fluxa.ba/#portal\nTenant Identifikator: ${form.portal_username || ""}\nLozinka: ${form.portal_password || ""}`;
+                          navigator.clipboard.writeText(txt);
+                          alert("Pristupni podaci za portal kopirani u clipboard!");
+                        }}
+                        className="btn btn--active"
+                        style={{ fontSize: 11, padding: "4px 10px" }}
+                      >
+                        📋 Kopiraj pristup
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                    <div>
+                      <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 4, fontWeight: 600 }}>
+                        Tenant Identifikator (Korisničko ime)
+                      </div>
+                      <input
+                        type="text"
+                        value={form.portal_username || ""}
+                        onChange={(e) =>
+                          setForm((s) => ({
+                            ...s,
+                            portal_username: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""),
+                          }))
+                        }
+                        placeholder="npr. aquana, fructatrade, sc_borik..."
+                        className="input"
+                        style={{ width: "100%", padding: "8px 12px", fontSize: 14, fontFamily: "monospace" }}
+                      />
+                    </div>
+
+                    <div>
+                      <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 4, fontWeight: 600 }}>
+                        Lozinka za portal
+                      </div>
+                      <input
+                        type="text"
+                        value={form.portal_password || ""}
+                        onChange={(e) =>
+                          setForm((s) => ({ ...s, portal_password: e.target.value }))
+                        }
+                        placeholder="Upisana lozinka za portal..."
+                        className="input"
+                        style={{ width: "100%", padding: "8px 12px", fontSize: 14, fontFamily: "monospace" }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div style={{ gridColumn: "1 / -1" }}>
