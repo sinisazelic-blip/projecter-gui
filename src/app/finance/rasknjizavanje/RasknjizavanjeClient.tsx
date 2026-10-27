@@ -338,6 +338,20 @@ export default function RasknjizavanjeClient({
     try {
       const isIn = selected.smjer === "IN";
 
+      // Pametno rasknjižavanje: ako je odliv (OUT), odabran partner, a nema raspoređenih obaveza -> knjiži kao DIREKTAN_TROSAK
+      if (!isIn && allocs.length === 0 && partnerId) {
+        await commitSpecial(
+          "DIREKTAN_TROSAK",
+          undefined,
+          String(selected.description || t("rasknjizavanje.directExpenseDefaultNote")),
+          {
+            dobavljac_id: partnerTip === "dobavljac" ? partnerId : null,
+            talent_id: partnerTip === "talent" ? partnerId : null,
+          },
+        );
+        return;
+      }
+
       let tolerancija = null;
       const tol = Number(String(tolerancijaKm).replace(",", "."));
       const tolFaktura = allocs[0]?.faktura_id ?? tolFakturaId;
@@ -403,9 +417,15 @@ export default function RasknjizavanjeClient({
   const tolReady =
     Number(String(tolerancijaKm).replace(",", ".")) > 0 &&
     (allocs[0]?.faktura_id ?? tolFakturaId) != null;
+  const isDirectExpenseMode =
+    !busy &&
+    selected?.smjer === "OUT" &&
+    !!partnerId &&
+    allocs.length === 0;
+
   const canCommit =
     !busy &&
-    (allocs.length > 0 || tolReady) &&
+    (allocs.length > 0 || tolReady || isDirectExpenseMode) &&
     remaining >= -0.01 &&
     !(allocs.length > 0 && remaining < -0.01);
 
@@ -1144,6 +1164,42 @@ export default function RasknjizavanjeClient({
                   <div className="card-title" style={{ fontSize: 14 }}>
                     {t("rasknjizavanje.openObaveze")}
                   </div>
+                  {obaveze.length === 0 ? (
+                    <div style={{
+                      padding: "14px 16px",
+                      background: "rgba(56, 189, 248, 0.08)",
+                      border: "1px solid rgba(56, 189, 248, 0.25)",
+                      borderRadius: 8,
+                      marginBottom: 16
+                    }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#38bdf8", marginBottom: 4 }}>
+                        ℹ️ Nema unesenih ulaznih faktura za ovog partnera
+                      </div>
+                      <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 12, lineHeight: 1.5 }}>
+                        Ovo je uobičajeno za direktna plaćanja predračuna, hostinga, domena, clouda i AI servisa.
+                        Možete odmah rasknjižiti kao direktan trošak za poreski odbitak:
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        style={{ fontSize: 12, padding: "7px 16px", display: "inline-flex", alignItems: "center", gap: 6 }}
+                        disabled={busy}
+                        onClick={() =>
+                          commitSpecial(
+                            "DIREKTAN_TROSAK",
+                            undefined,
+                            String(selected?.description || t("rasknjizavanje.directExpenseDefaultNote")),
+                            {
+                              dobavljac_id: partnerTip === "dobavljac" ? partnerId : null,
+                              talent_id: partnerTip === "talent" ? partnerId : null,
+                            },
+                          )
+                        }
+                      >
+                        ⚡ Knjiži direktno kao trošak partnera ({fmtMoneyWithCurr(Math.abs(selected?.amount || 0), "KM")})
+                      </button>
+                    </div>
+                  ) : (
                   <div className="tableCard table-wrap">
                     <table className="table">
                       <thead>
@@ -1175,6 +1231,7 @@ export default function RasknjizavanjeClient({
                       </tbody>
                     </table>
                   </div>
+                  )}
                 </>
               ) : null}
 
@@ -1227,7 +1284,11 @@ export default function RasknjizavanjeClient({
                   disabled={!canCommit}
                   onClick={commit}
                 >
-                  {busy ? t("rasknjizavanje.committing") : t("rasknjizavanje.confirm")}
+                  {busy
+                    ? t("rasknjizavanje.committing")
+                    : isDirectExpenseMode
+                      ? `⚡ Potvrdi kao direktan trošak (${fmtMoneyWithCurr(Math.abs(selected?.amount || 0), "KM")})`
+                      : t("rasknjizavanje.confirm")}
                 </button>
                 <button
                   type="button"
