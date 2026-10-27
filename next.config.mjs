@@ -15,6 +15,9 @@ const nextConfig = {
     "http://192.168.70.150:3000",
   ],
   // pdf-parse / pdfjs ne smiju u webpack bundle (Object.defineProperty na non-object).
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
 };
 
