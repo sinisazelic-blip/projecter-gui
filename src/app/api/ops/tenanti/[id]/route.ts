@@ -28,6 +28,8 @@ export async function PATCH(
     package_id?: string;
     modules?: string[];
     broj_blagajni?: number;
+    portal_username?: string;
+    portal_password?: string;
   };
   try {
     body = await req.json();
