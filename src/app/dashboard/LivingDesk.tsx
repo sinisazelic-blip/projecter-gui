@@ -593,7 +593,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                   Rok / Deadline projekta
                 </span>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 3, background: "#0284c7" }} />
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: "#475569" }} />
                   Otvoren projekat
                 </span>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -731,7 +731,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                                 }}
                                 title={`ROK PROJEKTA: ${p.radni_naziv} (${p.klijent_naziv}) - Rok: ${p.rok_datum} (za ${p.dana_do_roka} d)`}
                               >
-                                {isUrgent ? "🚨 ROK:" : "⏳ ROK:"} {p.klijent_naziv ? `${p.klijent_naziv}: ` : ""}{p.radni_naziv}
+                                {isUrgent ? "🚨 " : ""}{p.klijent_naziv ? `${p.klijent_naziv}: ` : ""}{p.radni_naziv}
                               </div>
                             );
                           })}
@@ -742,9 +742,9 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                               key={`p-op-${pIdx}`}
                               style={{
                                 fontSize: 10,
-                                fontWeight: 800,
-                                color: "#ffffff",
-                                background: "#0284c7",
+                                fontWeight: 700,
+                                color: "#e2e8f0",
+                                background: "#475569",
                                 borderRadius: 4,
                                 padding: "2px 4px",
                                 whiteSpace: "nowrap",
@@ -753,7 +753,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                               }}
                               title={`OTVOREN POSAO: ${p.radni_naziv} (${p.klijent_naziv}) u ${p.vrijeme_otvaranja || ""}`}
                             >
-                              🎬 Otvoren: {p.radni_naziv}
+                              {p.radni_naziv}
                             </div>
                           ))}
 
