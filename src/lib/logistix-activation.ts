@@ -1,0 +1,1 @@
+export const LOGISTIX_BASE_PACKAGES = [{ id: " LOGISTIX_START\, label: \LogistiX Start\ }, { id: \LOGISTIX_PRO\, label: \LogistiX Pro\ }]; export type LogistixBasePackageId = string; export function defaultModulesForLogistixPackage(pkg) { return { flotaVozila: true, dispecerNalozi: true, cmrUpload: true, b2bFakture: true }; }

@@ -43,6 +43,8 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
   const [currentYear, setCurrentYear] = useState(todayYear);
   const [currentMonth, setCurrentMonth] = useState(todayMonth);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [showICalModal, setShowICalModal] = useState(false);
+  const [copiedICal, setCopiedICal] = useState(false);
 
   // Pomoćne funkcije za filtriranje završenih/naplaćenih obaveza
   const isMeetActive = (m: any) => {
@@ -584,6 +586,26 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                 >
                   Danas
                 </button>
+
+                <button
+                  onClick={() => setShowICalModal(true)}
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    padding: "6px 12px",
+                    background: "rgba(34, 197, 94, 0.12)",
+                    border: "1px solid rgba(34, 197, 94, 0.3)",
+                    color: "#4ade80",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                  title="Poveži sa Google Kalendarom (iCal feed)"
+                >
+                  📅 Google Kalendar Sync
+                </button>
               </div>
 
               {/* Legenda boja */}
@@ -1106,6 +1128,141 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Modal za Google Kalendar Sync (iCal feed) */}
+        {showICalModal && (
+          <div
+            onClick={() => setShowICalModal(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0, 0, 0, 0.75)",
+              backdropFilter: "blur(6px)",
+              zIndex: 9999,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 16,
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "100%",
+                maxWidth: 540,
+                background: "#0f172a",
+                border: "1px solid rgba(255, 255, 255, 0.15)",
+                borderRadius: 20,
+                padding: "24px 28px",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.7)",
+                color: "#ffffff",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span>📅</span> Sinhronizacija sa Google Kalendarom
+                </h3>
+                <button
+                  onClick={() => setShowICalModal(false)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#94a3b8",
+                    fontSize: 20,
+                    cursor: "pointer",
+                    padding: 4,
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.6, margin: "0 0 16px 0" }}>
+                Povežite sve rokove projekata, otvorene poslove i takmičenja direktno na vaš telefon, pametni sat i računar. Google Kalendar automatski povlači promjene iz Fluxe.
+              </p>
+
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", marginBottom: 6 }}>
+                  Vaš jedinstveni iCal Feed URL:
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    background: "#020617",
+                    border: "1px solid #1e293b",
+                    borderRadius: 10,
+                    padding: "8px 12px",
+                    alignItems: "center",
+                  }}
+                >
+                  <input
+                    readOnly
+                    value="https://app.fluxa.ba/api/calendar/feed?token=fluxa_studio_cal"
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "#38bdf8",
+                      fontSize: 12,
+                      fontFamily: "monospace",
+                      width: "100%",
+                      outline: "none",
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText("https://app.fluxa.ba/api/calendar/feed?token=fluxa_studio_cal");
+                      setCopiedICal(true);
+                      setTimeout(() => setCopiedICal(false), 3000);
+                    }}
+                    style={{
+                      background: copiedICal ? "#22c55e" : "#0284c7",
+                      color: "#ffffff",
+                      border: "none",
+                      borderRadius: 8,
+                      padding: "6px 12px",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {copiedICal ? "Kopirano! ✓" : "Kopiraj Link"}
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ background: "rgba(56, 189, 248, 0.08)", border: "1px solid rgba(56, 189, 248, 0.2)", borderRadius: 12, padding: "12px 14px", fontSize: 12, color: "#e2e8f0" }}>
+                <div style={{ fontWeight: 800, color: "#38bdf8", marginBottom: 6 }}>
+                  Kako dodati u Google Kalendar (samo jednom):
+                </div>
+                <ol style={{ margin: 0, paddingLeft: 18, lineHeight: 1.6 }}>
+                  <li>Otvorite <strong>Google Calendar</strong> na računaru.</li>
+                  <li>Lijevo pored „Drugi kalendari” (Other calendars) kliknite na <strong>+</strong> ➔ <strong>„Preko URL adrese” (From URL)</strong>.</li>
+                  <li>Zalijepite gornji link i kliknite <strong>Dodaj kalendar</strong>.</li>
+                </ol>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
+                <button
+                  onClick={() => setShowICalModal(false)}
+                  style={{
+                    background: "#334155",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: 10,
+                    padding: "8px 18px",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  Zatvori
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
