@@ -244,9 +244,7 @@ export default async function Page() {
             <FirmaTabsClient
               firma={f}
               accs={accs}
-              t={t}
               locale={locale}
-              pick={pick}
               labelStyle={labelStyle}
               inputStyle={inputStyle}
               row2={row2}

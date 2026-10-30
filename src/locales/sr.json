@@ -2464,7 +2464,8 @@
       "JAVNENABAVKE": "DokumentArt (Protokol, JN, Ugovori & E-potpis)",
       "ENTERSYS": "EnterSYS (Kontrola prolaza, tripodi & menadžeri objekata)",
       "FLUXAPOS": "FluxaPOS (Fiskalna touch blagajna & ugostiteljstvo)",
-      "FLUXAX_NET": "FluxaX NET (Audio StudioBridge & Klijentski Hab)"
+      "FLUXAX_NET": "FluxaX NET (Audio StudioBridge & Klijentski Hab)",
+      "LOGISTIX": "LogistiX (Flota, dispečer, CMR upload & B2B fakture)"
     },
     "wizardNext": "Dalje",
     "wizardBack": "Nazad",
@@ -2479,7 +2480,8 @@
       "ENTERSYS": "EnterSYS",
       "FLUXAPOS": "FluxaPOS",
       "POOL_MANAGER": "Pool Mgr",
-      "FLUXAX_NET": "FluxaX NET"
+      "FLUXAX_NET": "FluxaX NET",
+      "LOGISTIX": "LogistiX"
     },
     "profileHint": {
       "FLUXA_ONLY": "Tenant za Fluxa Project & Finance Engine.",
@@ -2489,7 +2491,8 @@
       "JAVNENABAVKE": "Tenant za DokumentArt (protokol, javne nabavke, ugovori, e-potpis).",
       "ENTERSYS": "Tenant za EnterSYS platformu (kontrola prolaza, tripodi, menadžeri).",
       "FLUXAPOS": "Tenant za FluxaPOS kasu (ugostiteljstvo, biletarnica i maloprodaja).",
-      "FLUXAX_NET": "Tenant za FluxaX NET Audio platformu (StudioBridge, matrica rutiranja, Klijentski Hab)."
+      "FLUXAX_NET": "Tenant za FluxaX NET Audio platformu (StudioBridge, matrica rutiranja, Klijentski Hab).",
+      "LOGISTIX": "Tenant za LogistiX platformu (flota, dispečerski nalozi, mobilni CMR, euro-palete i B2B fakture)."
     },
     "productTab": {
       "FLUXA": "Fluxa",
@@ -2497,7 +2500,8 @@
       "DOCENTRE": "DokumentArt",
       "ENTERSYS": "EnterSYS",
       "FLUXAPOS": "FluxaPOS",
-      "FLUXAX_NET": "FluxaX NET"
+      "FLUXAX_NET": "FluxaX NET",
+      "LOGISTIX": "LogistiX"
     },
     "jnPackage": "DokumentArt paket",
     "jnModulesCol": "Moduli & Paket",

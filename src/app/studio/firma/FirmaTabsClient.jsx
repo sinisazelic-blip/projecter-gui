@@ -7,12 +7,15 @@ import BrojacFakturaCard from "./BrojacFakturaCard";
 import FluxarBridgeCard from "./FluxarBridgeCard";
 import LogoUpload from "./LogoUpload";
 
+function pick(v) {
+  const s = String(v ?? "").trim();
+  return s ? s : "";
+}
+
 export default function FirmaTabsClient({
   firma,
   accs,
-  t,
-  locale,
-  pick,
+  locale = "sr",
   labelStyle,
   inputStyle,
   row2,
@@ -74,16 +77,16 @@ export default function FirmaTabsClient({
         })}
       </div>
 
-      {/* GLAVNA FORMA ZA Tremove 1 & 2 (Oba taba ostaju u DOM-u radi čuvanja) */}
+      {/* GLAVNA FORMA ZA Tremove 1 & 2 */}
       <div style={{ display: activeTab === "osnovno" || activeTab === "banke" ? "block" : "none" }}>
         <FirmaSaveForm
-          saveLabel={t("firma.save")}
-          savingLabel={t("firma.saving")}
-          cancelLabel={t("firma.cancel")}
+          saveLabel="Sačuvaj izmjene"
+          savingLabel="Snimanje..."
+          cancelLabel="Odustani"
           cancelHref="/dashboard"
-          savedTitle={t("firma.savedTitle")}
-          savedMessage={t("firma.savedOk")}
-          errorGeneric={t("firma.saveError")}
+          savedTitle="Uspješno sačuvano"
+          savedMessage="Podaci o firmi i računima su ažurirani."
+          errorGeneric="Greška pri snimanju podataka"
         >
           {/* TAB 1: OSNOVNO, KONTAKT, POREZI I REGISTRI */}
           <div style={{ display: activeTab === "osnovno" ? "block" : "none" }}>
@@ -93,18 +96,18 @@ export default function FirmaTabsClient({
 
             <div className="twoCol" style={row2}>
               <div>
-                <div style={labelStyle}>{t("firma.labelNaziv")}</div>
+                <div style={labelStyle}>Komercijalni naziv</div>
                 <input
                   name="naziv"
                   defaultValue={pick(f?.naziv) || "Studio TAF"}
                   style={inputStyle}
                   required
                 />
-                <div className="hint">{t("firma.hintNaziv")}</div>
+                <div className="hint">Naziv koji se prikazuje u aplikaciji i na zaglavljima.</div>
               </div>
 
               <div>
-                <div style={labelStyle}>{t("firma.labelPravniNaziv")}</div>
+                <div style={labelStyle}>Puni pravni naziv</div>
                 <input
                   name="pravni_naziv"
                   defaultValue={pick(f?.pravni_naziv)}
@@ -117,7 +120,7 @@ export default function FirmaTabsClient({
 
             <div className="threeCol" style={row3}>
               <div>
-                <div style={labelStyle}>{t("firma.labelEmail")}</div>
+                <div style={labelStyle}>Email adresa</div>
                 <input
                   name="email"
                   defaultValue={pick(f?.email)}
@@ -125,7 +128,7 @@ export default function FirmaTabsClient({
                 />
               </div>
               <div>
-                <div style={labelStyle}>{t("firma.labelTelefon")}</div>
+                <div style={labelStyle}>Broj telefona</div>
                 <input
                   name="telefon"
                   defaultValue={pick(f?.telefon)}
@@ -133,7 +136,7 @@ export default function FirmaTabsClient({
                 />
               </div>
               <div>
-                <div style={labelStyle}>{t("firma.labelWeb")}</div>
+                <div style={labelStyle}>Web stranica</div>
                 <input
                   name="web"
                   defaultValue={pick(f?.web)}
@@ -146,10 +149,10 @@ export default function FirmaTabsClient({
 
             <LogoUpload
               initialLogoUrl={pick(f?.logo_url)}
-              uploadLabel={t("firma.logoUpload")}
-              removeLabel={t("firma.logoRemove")}
-              hintText={t("firma.logoHint")}
-              activeIdText={t("firma.activeId")}
+              uploadLabel="Učitaj logotip"
+              removeLabel="Ukloni logotip"
+              hintText="Preporučeni format: PNG sa providnom pozadinom."
+              activeIdText="ID Aktivne Firme"
             />
 
             <div style={{ height: 18 }} />
@@ -159,7 +162,7 @@ export default function FirmaTabsClient({
 
             <div className="twoCol" style={row2}>
               <div>
-                <div style={labelStyle}>{t("firma.labelAdresa")}</div>
+                <div style={labelStyle}>Adresa (ulica i broj)</div>
                 <input
                   name="adresa"
                   defaultValue={pick(f?.adresa)}
@@ -167,7 +170,7 @@ export default function FirmaTabsClient({
                 />
               </div>
               <div>
-                <div style={labelStyle}>{t("firma.labelGrad")}</div>
+                <div style={labelStyle}>Grad</div>
                 <input
                   name="grad"
                   defaultValue={pick(f?.grad)}
@@ -180,7 +183,7 @@ export default function FirmaTabsClient({
 
             <div className="twoCol" style={row2}>
               <div>
-                <div style={labelStyle}>{t("firma.labelPostanskiBroj")}</div>
+                <div style={labelStyle}>Poštanski broj</div>
                 <input
                   name="postanski_broj"
                   defaultValue={pick(f?.postanski_broj)}
@@ -188,7 +191,7 @@ export default function FirmaTabsClient({
                 />
               </div>
               <div>
-                <div style={labelStyle}>{t("firma.labelDrzava")}</div>
+                <div style={labelStyle}>Država</div>
                 <input
                   name="drzava"
                   defaultValue={pick(f?.drzava) || "Bosna i Hercegovina"}
@@ -204,7 +207,7 @@ export default function FirmaTabsClient({
 
             <div className="threeCol" style={row3}>
               <div>
-                <div style={labelStyle}>{t("firma.labelJib")}</div>
+                <div style={labelStyle}>JIB (13 cifara)</div>
                 <input
                   name="jib"
                   defaultValue={pick(f?.jib)}
@@ -213,7 +216,7 @@ export default function FirmaTabsClient({
                 />
               </div>
               <div>
-                <div style={labelStyle}>{t("firma.labelPib")}</div>
+                <div style={labelStyle}>PIB / Matični broj</div>
                 <input
                   name="pib"
                   defaultValue={pick(f?.pib)}
@@ -221,7 +224,7 @@ export default function FirmaTabsClient({
                 />
               </div>
               <div>
-                <div style={labelStyle}>{t("firma.labelPdvBroj")}</div>
+                <div style={labelStyle}>PDV Broj (12 cifara)</div>
                 <input
                   name="pdv_broj"
                   defaultValue={pick(f?.pdv_broj)}
@@ -242,12 +245,12 @@ export default function FirmaTabsClient({
                   style={{ width: 18, height: 18, cursor: "pointer" }}
                 />
                 <label htmlFor="pdv_obveznik" style={{ fontSize: 13, fontWeight: 700, cursor: "pointer", color: "#f8fafc" }}>
-                  {t("firma.labelPdvObveznik")}
+                  Preduzeće je u sistemu PDV-a
                 </label>
               </div>
 
               <div>
-                <div style={labelStyle}>{t("firma.labelSudskiRegistar")}</div>
+                <div style={labelStyle}>Sudski registar (Nadležni sud)</div>
                 <input
                   name="sudski_registar"
                   defaultValue={pick(f?.sudski_registar)}
@@ -260,7 +263,7 @@ export default function FirmaTabsClient({
 
             <div className="threeCol" style={row3}>
               <div>
-                <div style={labelStyle}>{t("firma.labelRegBroj")}</div>
+                <div style={labelStyle}>Registarski uložak / Broj rješenja</div>
                 <input
                   name="registarski_broj"
                   defaultValue={pick(f?.registarski_broj)}
@@ -268,7 +271,7 @@ export default function FirmaTabsClient({
                 />
               </div>
               <div>
-                <div style={labelStyle}>{t("firma.labelDjelatnost")}</div>
+                <div style={labelStyle}>Djelatnost (Opis)</div>
                 <input
                   name="djelatnost"
                   defaultValue={pick(f?.djelatnost)}
@@ -276,7 +279,7 @@ export default function FirmaTabsClient({
                 />
               </div>
               <div>
-                <div style={labelStyle}>{t("firma.labelSifraDjelatnosti")}</div>
+                <div style={labelStyle}>Šifra djelatnosti</div>
                 <input
                   name="sifra_djelatnosti"
                   defaultValue={pick(f?.sifra_djelatnosti)}
@@ -288,7 +291,7 @@ export default function FirmaTabsClient({
             <div style={{ height: 10 }} />
 
             <div style={{ maxWidth: 300 }}>
-              <div style={labelStyle}>{t("firma.labelOsnovniKapital")}</div>
+              <div style={labelStyle}>Osnovni kapital</div>
               <input
                 name="osnovni_kapital"
                 defaultValue={pick(f?.osnovni_kapital)}
@@ -315,7 +318,7 @@ export default function FirmaTabsClient({
 
                   <div className="twoCol" style={row2}>
                     <div>
-                      <div style={labelStyle}>{t("firma.labelBanka")}</div>
+                      <div style={labelStyle}>Naziv poslovne banke</div>
                       <input
                         name={`bank_naziv_${i}`}
                         defaultValue={pick(a.bank_naziv)}
@@ -323,7 +326,7 @@ export default function FirmaTabsClient({
                       />
                     </div>
                     <div>
-                      <div style={labelStyle}>{t("firma.labelRacun")}</div>
+                      <div style={labelStyle}>Broj računa (16 cifara)</div>
                       <input
                         name={`bank_racun_${i}`}
                         defaultValue={pick(a.bank_racun)}
@@ -336,7 +339,7 @@ export default function FirmaTabsClient({
 
                   <div className="twoCol" style={row2}>
                     <div>
-                      <div style={labelStyle}>{t("firma.labelIban")}</div>
+                      <div style={labelStyle}>IBAN</div>
                       <input
                         name={`iban_${i}`}
                         defaultValue={pick(a.iban)}
@@ -344,7 +347,7 @@ export default function FirmaTabsClient({
                       />
                     </div>
                     <div>
-                      <div style={labelStyle}>{t("firma.labelSwift")}</div>
+                      <div style={labelStyle}>SWIFT / BIC</div>
                       <input
                         name={`swift_${i}`}
                         defaultValue={pick(a.swift)}
@@ -360,7 +363,7 @@ export default function FirmaTabsClient({
                       defaultChecked={Number(a.show_on_invoice ?? 1) === 1}
                       style={{ marginRight: 8 }}
                     />
-                    {t("firma.showOnInvoice")}
+                    Prikaži ovaj račun na štampanoj fakturi
                   </label>
                 </div>
               );
@@ -380,7 +383,7 @@ export default function FirmaTabsClient({
             <div className="btnRow" style={{ marginBottom: 16 }}>
               <FiskalModal />
               <span className="muted" style={{ marginLeft: 10 }}>
-                {t("firma.activeId")}{" "}
+                ID Aktivne Firme:{" "}
                 <span className="mono">{pick(f?.firma_id) || "—"}</span>
               </span>
             </div>

@@ -758,6 +758,7 @@ export default function LicenceClient() {
             wizardProfile === "ENTERSYS" ||
             wizardProfile === "FLUXAPOS" ||
             wizardProfile === "JAVNENABAVKE" ||
+            wizardProfile === "LOGISTIX" ||
             newTenantPilot ||
             newTenantPrice.trim()
               ? newTenantCurrency
@@ -2873,6 +2874,7 @@ export default function LicenceClient() {
                       "ENTERSYS",
                       "FLUXAPOS",
                       "FLUXAX_NET",
+                      "LOGISTIX",
                     ] as const).map((p) => (
                       <button
                         key={p}
@@ -2886,7 +2888,7 @@ export default function LicenceClient() {
                             p === "JAVNENABAVKE"
                           ) {
                             setNewTenantCurrency("KM");
-                          } else if (p === "FLUXAX_NET") {
+                          } else if (p === "FLUXAX_NET" || p === "LOGISTIX") {
                             setNewTenantCurrency("EUR");
                             setNewTenantFluxaXNetPackage("FLUXAX_STUDIO_MONTHLY");
                             setNewTenantPrice("80");
