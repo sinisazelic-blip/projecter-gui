@@ -1,6 +1,6 @@
 {
   "name": "fluxa",
-  "version": "2.6.26",
+  "version": "2.6.27",
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
@@ -41,3 +41,4 @@
     "typescript": "^5.9.3"
   }
 }
+
