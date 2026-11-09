@@ -4,7 +4,7 @@ import {
   addMonthsIso,
   extendEnterTenant,
   getEnterTenant,
-  updateEnterTenantModules,
+  updateEnterTenantModules, updateEnterTenantPortalCredentials,
 } from "@/lib/ops/tenanti";
 
 export const dynamic = "force-dynamic";

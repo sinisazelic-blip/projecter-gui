@@ -11,6 +11,10 @@ import {
   defaultModulesForFluxaXNetPackage,
   type FluxaXNetBasePackageId,
 } from "@/lib/fluxaxnet-activation";
+import {
+  defaultModulesForLogistixPackage,
+  type LogistixBasePackageId,
+} from "@/lib/logistix-activation";
 
 export const dynamic = "force-dynamic";
 
@@ -195,6 +199,24 @@ export async function GET(req: Request) {
           clientHub: activeScopeModules.includes("clientHub"),
           zeroBleed: activeScopeModules.includes("zeroBleed"),
           lanCollab: activeScopeModules.includes("lanCollab"),
+        };
+      } else {
+        modules = defaultMod;
+      }
+    } else if (profile === "LOGISTIX") {
+      const logistixPkg =
+        (row.soccs_tier as LogistixBasePackageId) || "LOGISTIX_FLEET_MONTHLY";
+      const defaultMod = defaultModulesForLogistixPackage(logistixPkg);
+      if (hasScopeFilter) {
+        modules = {
+          flotaVozila: activeScopeModules.includes("flotaVozila"),
+          dispecerNalozi: activeScopeModules.includes("dispecerNalozi"),
+          cmrVault: activeScopeModules.includes("cmrVault"),
+          b2bFiskal: activeScopeModules.includes("b2bFiskal"),
+          vlasnickiTunel: activeScopeModules.includes("vlasnickiTunel"),
+          paletniSaldo: activeScopeModules.includes("paletniSaldo"),
+          tachoAetr: activeScopeModules.includes("tachoAetr"),
+          preventivaServis: activeScopeModules.includes("preventivaServis"),
         };
       } else {
         modules = defaultMod;

@@ -54,6 +54,13 @@ import {
   getFluxaXNetBasePackage,
   type FluxaXNetBasePackageId,
 } from "@/lib/fluxaxnet-activation";
+import LogistiXTableRow from "./LogistiXTableRow";
+import LogistiXModulesModal from "./LogistiXModulesModal";
+import {
+  LOGISTIX_BASE_PACKAGES,
+  getLogistixBasePackage,
+  type LogistixBasePackageId,
+} from "@/lib/logistix-activation";
 import { useAuthUser } from "@/components/AuthUserProvider";
 
 const USER_LIMIT_OPTIONS = [1, 3, 5, 10, 50, 101] as const; // 101 = 100+
@@ -202,6 +209,9 @@ export default function LicenceClient() {
   const [newTenantFluxaXNetPackage, setNewTenantFluxaXNetPackage] =
     useState<FluxaXNetBasePackageId>("FLUXAX_STUDIO_MONTHLY");
   const [fluxaXNetModalRow, setFluxaXNetModalRow] = useState<TenantRow | null>(null);
+  const [newTenantLogistixPackage, setNewTenantLogistixPackage] =
+    useState<LogistixBasePackageId>("LOGISTIX_FLEET_MONTHLY");
+  const [logistixModalRow, setLogistixModalRow] = useState<TenantRow | null>(null);
   const [newTenantJnPackage, setNewTenantJnPackage] =
     useState<JavneNabavkeBasePackageId>("JN_START");
   const [jnModalRow, setJnModalRow] = useState<TenantRow | null>(null);
@@ -543,6 +553,14 @@ export default function LicenceClient() {
       const d = new Date();
       d.setDate(d.getDate() + 30);
       setNewTenantEnd(d.toISOString().slice(0, 10));
+    } else if (activeTab === "LOGISTIX") {
+      setWizardProfile("LOGISTIX");
+      setNewTenantCurrency("EUR");
+      setNewTenantLogistixPackage("LOGISTIX_FLEET_MONTHLY");
+      setNewTenantPrice("80");
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      setNewTenantEnd(d.toISOString().slice(0, 10));
     } else if (activeTab === "FLUXA") {
       setWizardProfile("FLUXA_ONLY");
       setNewTenantCurrency("EUR");
@@ -774,6 +792,8 @@ export default function LicenceClient() {
                     ? newTenantJnPackage
                     : wizardProfile === "FLUXAX_NET"
                     ? newTenantFluxaXNetPackage
+                    : wizardProfile === "LOGISTIX"
+                    ? newTenantLogistixPackage
                     : newTenantSoccsTier.trim() || null,
           broj_blagajni:
             wizardProfile === "FLUXAPOS" ? newTenantBrojBlagajni : 1,
@@ -1322,6 +1342,20 @@ export default function LicenceClient() {
                 <th style={thFluxCont}>Licencni Token</th>
                 {!isKasicaRole && <th style={{ ...thTd, textAlign: "center" }}>Akcije</th>}
               </tr>
+            ) : activeTab === "LOGISTIX" ? (
+              <tr>
+                <th style={thTd}>Naziv Prevoznika (Tenant)</th>
+                <th style={thTd}>LogistiX Paket</th>
+                <th style={thTd}>Vozni Park (Kapacitet)</th>
+                <th style={thTd}>Režim</th>
+                {!isKasicaRole && <th style={thTd}>Cijena / Način Naplate</th>}
+                <th style={thTd}>Ističe Datum</th>
+                <th style={thTd}>Dana do Isteka</th>
+                <th style={thTd}>Stanje</th>
+                <th style={thFlux}>Moduli & Paket</th>
+                <th style={thFluxCont}>Licencni Token</th>
+                {!isKasicaRole && <th style={{ ...thTd, textAlign: "center" }}>Akcije</th>}
+              </tr>
             ) : activeTab === "ENTERSYS" ? (
               <tr>
                 <th style={thTd}>Naziv Tenanta</th>
@@ -1422,6 +1456,22 @@ export default function LicenceClient() {
                       isKasicaRole={isKasicaRole}
                       statusSavingId={statusSavingId}
                       onOpenModules={(r) => setFluxaXNetModalRow(r)}
+                      onOpenToken={(r) => setTokenModalRow(r)}
+                      onOpenExtend={(r) => openExtendModal(r)}
+                      onOpenManage={(r) => openContactModal(r)}
+                      onSetStatus={(id, st, r) => handleSetStatus(id, st as any, r)}
+                      formatDateBiH={formatDateBiH}
+                    />
+                  );
+                }
+                if (activeTab === "LOGISTIX") {
+                  return (
+                    <LogistiXTableRow
+                      key={row.tenant_id}
+                      row={row}
+                      isKasicaRole={isKasicaRole}
+                      statusSavingId={statusSavingId}
+                      onOpenModules={(r) => setLogistixModalRow(r)}
                       onOpenToken={(r) => setTokenModalRow(r)}
                       onOpenExtend={(r) => openExtendModal(r)}
                       onOpenManage={(r) => openContactModal(r)}
@@ -3295,6 +3345,42 @@ export default function LicenceClient() {
                       </p>
                     </>
                   )}
+                  {wizardProfile === "LOGISTIX" && (
+                    <>
+                      <label style={{ display: "block", marginBottom: 4, fontWeight: 700 }}>
+                        🚛 Odaberite LogistiX Paket & Vozni Park:
+                      </label>
+                      <select
+                        value={newTenantLogistixPackage}
+                        onChange={(e) => {
+                          const val = e.target.value as LogistixBasePackageId;
+                          setNewTenantLogistixPackage(val);
+                          const p = getLogistixBasePackage(val);
+                          setNewTenantPrice(String(p.priceEur));
+                          const d = new Date();
+                          d.setDate(d.getDate() + p.durationDays);
+                          setNewTenantEnd(d.toISOString().slice(0, 10));
+                        }}
+                        style={{
+                          padding: 8,
+                          marginBottom: 12,
+                          width: "100%",
+                          maxWidth: 380,
+                          borderRadius: 8,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {LOGISTIX_BASE_PACKAGES.map((pkg) => (
+                          <option key={pkg.id} value={pkg.id}>
+                            {pkg.label} ({pkg.priceEur} EUR / {pkg.priceKm} KM) — do {pkg.maxTrucks} šlepera — {pkg.durationDays} dana
+                          </option>
+                        ))}
+                      </select>
+                      <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 12px 0" }}>
+                        Klijentska instanca LogistiX Enterprise aktivira se automatski putem unosa generisanog licence tokena u podešavanja.
+                      </p>
+                    </>
+                  )}
                   {wizardProfile === "FLUXAPOS" && (
                     <>
                       <label style={{ display: "block", marginBottom: 4 }}>
@@ -4727,6 +4813,16 @@ export default function LicenceClient() {
           onClose={() => setFluxaXNetModalRow(null)}
           onSaved={async () => {
             setFluxaXNetModalRow(null);
+            await load();
+          }}
+        />
+      )}
+      {logistixModalRow && (
+        <LogistiXModulesModal
+          row={logistixModalRow}
+          onClose={() => setLogistixModalRow(null)}
+          onSaved={async () => {
+            setLogistixModalRow(null);
             await load();
           }}
         />
