@@ -22,6 +22,8 @@ export const RASKNJIŽAVANJE_VRSTA = {
   VEC_KNJIZENO: "VEC_KNJIZENO",
   /** Isplata dobavljaču bez prethodno otvorene obaveze */
   DIREKTAN_TROSAK: "DIREKTAN_TROSAK",
+  /** Operativni troškovi poslovanja bez A4 fakture (gorivo, AI servisi, reprezentacija, alat, smještaj...) */
+  TROSAK_POSLOVANJA: "TROSAK_POSLOVANJA",
   OSTALO: "OSTALO",
 } as const;
 
@@ -74,6 +76,12 @@ export const SPECIAL_PAYMENT_CFG: Record<
     allowIn: true,
     allowOut: true,
   },
+  [RASKNJIŽAVANJE_VRSTA.TROSAK_POSLOVANJA]: {
+    label: "Trošak poslovanja",
+    kategorija: "trosak_poslovanja",
+    nacin: "BANK_TROSAK",
+    allowOut: true,
+  },
   [RASKNJIŽAVANJE_VRSTA.DIREKTAN_TROSAK]: {
     label: "Direktan trošak",
     kategorija: "direktan_trosak",
@@ -88,6 +96,28 @@ export const SPECIAL_PAYMENT_CFG: Record<
     allowOut: true,
   },
 };
+
+
+export const BUSINESS_EXPENSE_CATEGORIES = [
+  { id: "GORIVO", label: "Gorivo i putarine", icon: "⛽", keywords: ["nesk", "petrol", "ina", "gazprom", "benz", "nafta", "gorivo", "pumpa", "hifa", "holdina", "zelir", "siniua"] },
+  { id: "AI_CLOUD", label: "AI, Softver & Cloud (ChatGPT, Claude, Hosting)", icon: "🤖", keywords: ["openai", "chatgpt", "claude", "anthropic", "hetzner", "google", "aws", "github", "cursor", "midjourney", "microsoft", "apple", "digitalocean", "cloudflare", "contabo"] },
+  { id: "SMJESTAJ_PUT", label: "Smještaj & Putni troškovi (Dnevnice, hoteli)", icon: "🏨", keywords: ["hotel", "motel", "apartman", "booking", "airbnb", "avio", "put", "smjestaj"] },
+  { id: "REPREZENTACIJA", label: "Reprezentacija & Poslovni ručkovi", icon: "☕", keywords: ["restoran", "kafe", "cafe", "pizzeria", "hrana", "konoba", "bar", "lounge"] },
+  { id: "ALAT_RADIONICA", label: "Alat & Radionica", icon: "🔧", keywords: ["alat", "wuerth", "wurth", "bau", "bosch", "makita", "hobi"] },
+  { id: "REPROMATERIJAL", label: "Repromaterijal & Potrošni dijelovi", icon: "🔩", keywords: ["repro", "materijal", "dijel", "cijev", "kabel", "vijci"] },
+  { id: "OPREMA_IT", label: "IT oprema, hardver & elektronika", icon: "💻", keywords: ["racunar", "laptop", "monitor", "mis", "tastatur", "servis", "elektronik", "gigatron"] },
+  { id: "OSNOVNA_SREDSTVA", label: "Osnovna sredstva & Krupni inventar", icon: "🏢", keywords: ["inventar", "namjestaj", "masina", "uredjaj"] },
+  { id: "KANCELARIJA", label: "Kancelarijski materijal & Higijena", icon: "📎", keywords: ["kancelar", "papir", "toner", "hemija", "ciscen", "voda"] },
+  { id: "POSTARINA", label: "Poštarina & Kurirske službe", icon: "📦", keywords: ["posta", "post", "dhl", "fedex", "euroexpress", "xpress", "kurir"] },
+  { id: "TELEKOM", label: "Telekomunikacije & Internet", icon: "📱", keywords: ["telekom", "mtel", "bht", "eronet", "telemach", "internet", "racun za telefon"] },
+  { id: "REZIJE", label: "Komunalije & Režije (struja, voda)", icon: "💡", keywords: ["elektro", "struja", "vodovod", "komunal", "cistoca", "grijanje", "toplana"] },
+  { id: "REGISTRACIJA_OSIGURANJE", label: "Registracija vozila & Osiguranje", icon: "🛡️", keywords: ["osigur", "registrac", "tehnicki", "amk", "kasko"] },
+  { id: "MARKETING", label: "Marketing, Reklame & Oglašavanje", icon: "📢", keywords: ["marketing", "reklam", "meta", "facebook", "instagram", "ads"] },
+  { id: "EDUKACIJA", label: "Kotizacije, seminari & stručna literatura", icon: "🎓", keywords: ["seminar", "kotizac", "kurs", "edukac", "knjig"] },
+  { id: "OSTALI_TROSKOVI", label: "Ostali operativni troškovi poslovanja", icon: "📝", keywords: [] },
+] as const;
+
+export type BusinessExpenseCategoryId = (typeof BUSINESS_EXPENSE_CATEGORIES)[number]["id"];
 
 export type RasknjizavanjeVrsta =
   (typeof RASKNJIŽAVANJE_VRSTA)[keyof typeof RASKNJIŽAVANJE_VRSTA];
@@ -110,6 +140,7 @@ export type OpenInvoice = {
   faktura_broj: string;
   datum_izdavanja: string;
   iznos_km: number;
+  podkategorija?: string;
   placeno_km: number;
   preostalo_km: number;
   valuta: string;
@@ -119,6 +150,7 @@ export type OpenInvoice = {
 export type AllocationLine = {
   vrsta: RasknjizavanjeVrsta;
   iznos_km: number;
+  podkategorija?: string;
   faktura_id?: number;
   trosak_id?: number;
   klijent_id?: number;

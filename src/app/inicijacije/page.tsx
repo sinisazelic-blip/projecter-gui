@@ -206,8 +206,12 @@ export default async function DealsPage({ searchParams }: any) {
     );
   } else if (view === "active") {
     // default: sakrij arhivu (10/12) + fakturisane (9) + zatvorene (8) + odbijene deale (4)
+    // + ako je plivačko takmičenje već naplaćeno/fakturisano/otkazano, skloni ga iz aktivnih deals
     where.push(
       "((i.projekat_id IS NOT NULL AND p.status_id NOT IN (8,9,10,12)) OR (i.projekat_id IS NULL AND i.status_id <> 4))",
+    );
+    where.push(
+      "(pk.swim_status IS NULL OR pk.swim_status NOT IN ('NAPLACENO', 'FAKTURISANO', 'OTKAZANO', 'ZAVRSENO'))",
     );
   } else if (view === "all") {
     // "all" = prikaži sve osim storniranih (po defaultu sakrij storno)
@@ -255,7 +259,7 @@ export default async function DealsPage({ searchParams }: any) {
     LEFT JOIN statusi_projekta sp
       ON sp.status_id = p.status_id
     LEFT JOIN (
-      SELECT inicijacija_id, MIN(kalendar_id) AS kalendar_id, MIN(naziv_takmicenja) AS naziv_takmicenja
+      SELECT inicijacija_id, MIN(kalendar_id) AS kalendar_id, MIN(naziv_takmicenja) AS naziv_takmicenja, MIN(status) AS swim_status
       FROM plivacki_kalendar
       WHERE inicijacija_id IS NOT NULL
       GROUP BY inicijacija_id
@@ -275,7 +279,10 @@ export default async function DealsPage({ searchParams }: any) {
       ON tl.inicijacija_id = i.inicijacija_id
 
     ${whereSql}
-    ORDER BY i.updated_at DESC, i.inicijacija_id DESC
+    ORDER BY
+      CASE WHEN COALESCE(p.rok_glavni, tl.accepted_deadline) IS NULL THEN 1 ELSE 0 END ASC,
+      COALESCE(p.rok_glavni, tl.accepted_deadline) ASC,
+      i.inicijacija_id DESC
     LIMIT 300
     `,
     params,

@@ -194,6 +194,7 @@ async function allocateSpecialPayment(
     amountKm: number;
     datum: string;
     vrsta: string;
+    podkategorija?: string | null;
     napomena?: string | null;
     postingAmount: number;
     dobavljac_id?: number | null;
@@ -393,6 +394,7 @@ async function processLine(
       amountKm,
       datum,
       vrsta: line.vrsta,
+      podkategorija: line.podkategorija,
       napomena: line.napomena,
       postingAmount,
       dobavljac_id: line.dobavljac_id,

@@ -262,6 +262,47 @@ export default function LogistiXTableRow({
             >
               Valid to
             </button>
+            {isSuspended ? (
+              <button
+                type="button"
+                disabled={statusSavingId === row.tenant_id}
+                onClick={() => onSetStatus(row.tenant_id, "AKTIVAN", row)}
+                style={{
+                  padding: "4px 8px",
+                  fontSize: 11,
+                  borderRadius: 6,
+                  background: "rgba(16,185,129,0.2)",
+                  color: "#34d399",
+                  border: "1px solid rgba(16,185,129,0.4)",
+                  cursor: "pointer",
+                }}
+              >
+                Aktiviraj
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={statusSavingId === row.tenant_id}
+                onClick={() => {
+                  if (confirm("Da li ste sigurni da želite aktivirati KILL SWITCH za ovog prevoznika?")) {
+                    onSetStatus(row.tenant_id, "SUSPENDOVAN", row);
+                  }
+                }}
+                style={{
+                  padding: "4px 8px",
+                  fontSize: 11,
+                  borderRadius: 6,
+                  background: "rgba(239,68,68,0.2)",
+                  color: "#f87171",
+                  border: "1px solid rgba(239,68,68,0.5)",
+                  cursor: "pointer",
+                  fontWeight: 700,
+                }}
+                title="Kill Switch - blokiraj instancu"
+              >
+                ⛔ Kill
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onOpenManage(row)}

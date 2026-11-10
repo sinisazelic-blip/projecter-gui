@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "@/components/LocaleProvider";
 import { formatReportNum } from "@/lib/format";
+import { BUSINESS_EXPENSE_CATEGORIES } from "@/lib/finance/rasknjizavanje/types";
 
 type Props = {
   embedded?: boolean;
@@ -109,6 +110,31 @@ export default function RasknjizavanjeClient({
   const [klijentNaziv, setKlijentNaziv] = useState("");
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [obaveze, setObaveze] = useState<ObavezaRow[]>([]);
+  const [showBizModal, setShowBizModal] = useState(false);
+  const [bizCat, setBizCat] = useState("GORIVO");
+  const [bizNote, setBizNote] = useState("");
+  const [bizAmt, setBizAmt] = useState("");
+
+  const openBizModal = () => {
+    if (!selected) return;
+    const desc = String(selected.description || "").trim();
+    const counterparty = String(selected.counterparty || "").trim();
+    const haystack = (desc + " " + counterparty).toLowerCase();
+
+    let matched = "GORIVO";
+    for (const c of BUSINESS_EXPENSE_CATEGORIES) {
+      if (c.keywords && c.keywords.some((kw) => haystack.includes(kw))) {
+        matched = c.id;
+        break;
+      }
+    }
+    setBizCat(matched);
+    const amt = selected.remaining_km > 0 ? selected.remaining_km : Math.abs(selected.amount);
+    setBizAmt(amt.toFixed(2));
+    setBizNote(desc || counterparty || "");
+    setShowBizModal(true);
+  };
+
   const [partnerTip, setPartnerTip] = useState<"dobavljac" | "talent">("dobavljac");
   const [partnerId, setPartnerId] = useState<number | null>(null);
   const [partnerNaziv, setPartnerNaziv] = useState("");
@@ -466,10 +492,12 @@ export default function RasknjizavanjeClient({
       | "KAMATA"
       | "VEC_KNJIZENO"
       | "DIREKTAN_TROSAK"
+      | "TROSAK_POSLOVANJA"
       | "OSTALO",
     iznos_km?: number,
     napomena?: string,
     extra?: {
+      podkategorija?: string;
       faktura_id?: number | null;
       klijent_id?: number | null;
       dobavljac_id?: number | null;
@@ -502,6 +530,7 @@ export default function RasknjizavanjeClient({
             {
               vrsta,
               iznos_km: amt,
+              podkategorija: extra?.podkategorija,
               napomena: napomena || undefined,
               faktura_id: extra?.faktura_id ?? undefined,
               klijent_id: extra?.klijent_id ?? undefined,
@@ -1106,6 +1135,48 @@ export default function RasknjizavanjeClient({
                       </button>
                     </div>
                   ) : null}
+                  {selected?.smjer === "OUT" && !partnerId && (
+                    <div
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: 8,
+                        background: "linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(217, 119, 6, 0.08))",
+                        border: "1px dashed rgba(245, 158, 11, 0.45)",
+                        marginBottom: 14,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        flexWrap: "wrap",
+                        gap: 10,
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#fbbf24" }}>
+                          💼 Operativni trošak poslovanja (kartica / račun firme)
+                        </div>
+                        <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                          Gorivo na pumpi, AI / cloud servisi, radionica, repromaterijal ili reprezentacija.
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn"
+                        style={{
+                          background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                          color: "#111827",
+                          fontWeight: 700,
+                          border: "none",
+                          padding: "8px 16px",
+                          borderRadius: 6,
+                          cursor: "pointer",
+                        }}
+                        disabled={busy}
+                        onClick={openBizModal}
+                      >
+                        ⚡ Knjiži trošak poslovanja ({fmtMoneyWithCurr(Math.abs(selected.remaining_km || selected.amount), "KM")})
+                      </button>
+                    </div>
+                  )}
                   <div className="label">{t("rasknjizavanje.payablePartner")}</div>
                   <div
                     style={{
@@ -1306,6 +1377,214 @@ export default function RasknjizavanjeClient({
             </>
           )}
         </div>
+      
+      {/* Modal za knjiženje troškova poslovanja */}
+      {showBizModal && selected && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.75)",
+            backdropFilter: "blur(6px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: 16,
+          }}
+          onClick={() => setShowBizModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "#111827",
+              border: "1px solid #374151",
+              borderRadius: 14,
+              padding: "24px 28px",
+              maxWidth: 560,
+              width: "100%",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.7)",
+              color: "#f3f4f6",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+              <div>
+                <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "#fbbf24", display: "flex", alignItems: "center", gap: 8 }}>
+                  <span>💼</span> {t("rasknjizavanje.businessExpenseModalTitle")}
+                </h3>
+                <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>
+                  {t("rasknjizavanje.businessExpenseModalSubtitle")}
+                </div>
+              </div>
+              <button
+                type="button"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#9ca3af",
+                  fontSize: 20,
+                  cursor: "pointer",
+                  padding: "0 6px",
+                }}
+                onClick={() => setShowBizModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Posting preview badge */}
+            <div
+              style={{
+                padding: "10px 14px",
+                borderRadius: 8,
+                background: "rgba(31, 41, 55, 0.7)",
+                border: "1px solid #374151",
+                fontSize: 12,
+                color: "#e5e7eb",
+                marginBottom: 16,
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span><strong>Stavka sa izvoda:</strong> #{selected.posting_id} ({fmtDate(selected.value_date)})</span>
+                <span style={{ color: "#f87171", fontWeight: 700 }}>{fmtMoneyWithCurr(selected.amount, "KM")}</span>
+              </div>
+              {selected.description && (
+                <div style={{ color: "#9ca3af", fontSize: 11, fontStyle: "italic" }}>
+                  &ldquo;{selected.description}&rdquo;
+                </div>
+              )}
+            </div>
+
+            {/* Kategorija troška */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#d1d5db", marginBottom: 6 }}>
+                {t("rasknjizavanje.businessExpenseCategoryLabel")}:
+              </label>
+              <select
+                className="input"
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  fontSize: 13,
+                  backgroundColor: "#1f2937",
+                  border: "1px solid #4b5563",
+                  color: "#f9fafb",
+                  borderRadius: 6,
+                }}
+                value={bizCat}
+                onChange={(e) => setBizCat(e.target.value)}
+              >
+                {BUSINESS_EXPENSE_CATEGORIES.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.icon} {cat.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Iznos */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#d1d5db", marginBottom: 6 }}>
+                {t("rasknjizavanje.businessExpenseAmountLabel")}:
+              </label>
+              <input
+                type="text"
+                className="input"
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  backgroundColor: "#1f2937",
+                  border: "1px solid #4b5563",
+                  color: "#f9fafb",
+                  borderRadius: 6,
+                }}
+                value={bizAmt}
+                onChange={(e) => setBizAmt(e.target.value)}
+              />
+            </div>
+
+            {/* Svrha / Napomena */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#d1d5db", marginBottom: 6 }}>
+                {t("rasknjizavanje.businessExpenseNoteLabel")}:
+              </label>
+              <input
+                type="text"
+                className="input"
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  fontSize: 13,
+                  backgroundColor: "#1f2937",
+                  border: "1px solid #4b5563",
+                  color: "#f9fafb",
+                  borderRadius: 6,
+                }}
+                value={bizNote}
+                onChange={(e) => setBizNote(e.target.value)}
+              />
+            </div>
+
+            {/* Akcije */}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  padding: "9px 16px",
+                  fontSize: 13,
+                  backgroundColor: "transparent",
+                  border: "1px solid #4b5563",
+                  color: "#d1d5db",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                }}
+                onClick={() => setShowBizModal(false)}
+                disabled={busy}
+              >
+                {t("rasknjizavanje.cancel")}
+              </button>
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  padding: "9px 18px",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                  border: "none",
+                  color: "#111827",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                }}
+                disabled={busy}
+                onClick={async () => {
+                  const val = parseFloat(bizAmt.replace(",", "."));
+                  if (!Number.isFinite(val) || val <= 0) {
+                    setErr("Unesite ispravan iznos troška");
+                    return;
+                  }
+                  const catObj = BUSINESS_EXPENSE_CATEGORIES.find((c) => c.id === bizCat);
+                  const catLabel = catObj ? catObj.label : "Trošak poslovanja";
+                  const finalNote = bizNote ? `[${catLabel}] ${bizNote}` : `[${catLabel}]`;
+                  setShowBizModal(false);
+                  await commitSpecial("TROSAK_POSLOVANJA", val, finalNote, {
+                    podkategorija: bizCat,
+                  });
+                }}
+              >
+                {busy ? t("rasknjizavanje.committing") : `⚡ ${t("rasknjizavanje.businessExpenseConfirm")}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       </div>
     </div>
   );

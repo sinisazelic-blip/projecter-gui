@@ -2143,7 +2143,16 @@
     "alreadyBookedDefaultNote": "Already booked (cash / reconcile)",
     "directExpenseBtn": "Direct expense (partner)",
     "directExpenseHint": "Pay selected vendor/talent when there is no open payable in the list — pick a partner first.",
-    "directExpenseDefaultNote": "Direct expense"
+    "directExpenseDefaultNote": "Direct expense",
+    "businessExpenseBtn": "Business Expenses",
+    "businessExpenseHint": "Operational business expenses without invoice: fuel, AI services, entertainment, tools, travel...",
+    "businessExpenseModalTitle": "Operational Business Expense Reconciliation",
+    "businessExpenseModalSubtitle": "Direct payments via company card or bank account for company operations",
+    "businessExpenseCategoryLabel": "Expense Category",
+    "businessExpenseAmountLabel": "Amount to book (KM)",
+    "businessExpenseNoteLabel": "Purpose / Description",
+    "businessExpenseConfirm": "Confirm Expense Booking",
+    "businessExpenseQuickPrompt": "Detected operational business expense. Reconcile directly with one click:"
   },
   "izvjestajiSvi": {
     "title": "Reports",

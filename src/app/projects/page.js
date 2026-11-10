@@ -4,6 +4,8 @@ import { cookies, headers } from "next/headers";
 import { query } from "@/lib/db";
 import { getValidLocale } from "@/lib/i18n";
 import { getT } from "@/lib/translations";
+import { verifySessionToken } from "@/lib/auth/session";
+import { getProjectsList } from "@/lib/projects/get-projects";
 import FluxaLogo from "@/components/FluxaLogo";
 import ProjectTableRow from "./ProjectTableRow";
 import ProjectsAutoRefreshOnShow from "./_components/ProjectsAutoRefreshOnShow";
@@ -529,13 +531,17 @@ export default async function Page({ searchParams }) {
 
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get(COOKIE_NAME)?.value ?? null;
+  const session = sessionCookie ? verifySessionToken(sessionCookie) : null;
   const locale = getValidLocale(cookieStore.get("NEXT_LOCALE")?.value ?? "sr");
   const t = getT(locale);
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-  const protocol = headersList.get("x-forwarded-proto") || "https";
-  const base = getBaseUrl(host, protocol);
-  const json = await apiGetNoStore(`/api/projects${qs}`, sessionCookie, base);
+  const json = await getProjectsList({
+    status_group,
+    status_id,
+    q: qRaw,
+    page,
+    limit,
+    show_storno: false,
+  }, session);
   const projectsRaw = json?.rows ?? [];
   const total = Number(json?.total ?? 0);
 

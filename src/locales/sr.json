@@ -2143,7 +2143,16 @@
     "alreadyBookedDefaultNote": "Već knjiženo (blagajna / usklađivanje)",
     "directExpenseBtn": "Direktan trošak (partner)",
     "directExpenseHint": "Isplata odabranom dobavljaču/saradniku kad nema otvorene obaveze u listi — prvo odaberi partnera.",
-    "directExpenseDefaultNote": "Direktan trošak"
+    "directExpenseDefaultNote": "Direktan trošak",
+    "businessExpenseBtn": "Troškovi poslovanja",
+    "businessExpenseHint": "Operativni troškovi poslovanja bez A4 fakture: gorivo, AI i cloud servisi, reprezentacija, alat, smještaj...",
+    "businessExpenseModalTitle": "Knjiženje troškova poslovanja (bez A4 fakture)",
+    "businessExpenseModalSubtitle": "Direktna plaćanja karticom firme ili sa računa za redovno poslovanje",
+    "businessExpenseCategoryLabel": "Tip / kategorija troška",
+    "businessExpenseAmountLabel": "Iznos za knjiženje (KM)",
+    "businessExpenseNoteLabel": "Svrha / Opis plaćanja (napomena)",
+    "businessExpenseConfirm": "Potvrdi knjiženje troška",
+    "businessExpenseQuickPrompt": "Prepoznat operativni trošak poslovanja. Knjižite direktno jednim klikom:"
   },
   "izvjestajiSvi": {
     "title": "Izvještaji",

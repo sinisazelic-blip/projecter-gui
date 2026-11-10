@@ -34,6 +34,7 @@ export const UPDATE_PRODUCTS = [
   "eventmanager",
   "webshop",
   "studiobridge",
+  "logistix",
 ] as const;
 
 export type UpdateProductId = (typeof UPDATE_PRODUCTS)[number];
@@ -128,6 +129,8 @@ export function productsForLicence(input: {
       return ["poolmanager"];
     case "FLUXAX_NET":
       return ["studiobridge"];
+    case "LOGISTIX":
+      return ["logistix"];
     default:
       return [];
   }

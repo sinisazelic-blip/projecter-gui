@@ -95,6 +95,15 @@ export async function POST(req: NextRequest) {
         [projekatId, id],
       );
 
+      // Ako je postojao povezan deal, uveži ga na kreirani projekat
+      if (meet.inicijacija_id) {
+        try {
+          await query("UPDATE inicijacije SET projekat_id = ? WHERE inicijacija_id = ?", [projekatId, meet.inicijacija_id]);
+        } catch (e) {
+          console.warn("Greška pri ažuriranju inicijacije:", e);
+        }
+      }
+
       return NextResponse.json({
         ok: true,
         projekat_id: projekatId,
@@ -139,6 +148,15 @@ export async function POST(req: NextRequest) {
         "UPDATE plivacki_kalendar SET status = 'NAPLACENO', napomena = CONCAT(COALESCE(napomena, ''), ' [Plaćeno u kešu: ', ?, ' KM]') WHERE kalendar_id = ?",
         [uplataIznos, id],
       );
+
+      // Ako je postojao povezan deal, označi ga kao realizovan (status 3 - zatvoreno/završeno)
+      if (meet.inicijacija_id) {
+        try {
+          await query("UPDATE inicijacije SET status_id = 3, updated_at = NOW() WHERE inicijacija_id = ?", [meet.inicijacija_id]);
+        } catch (e) {
+          console.warn("Greška pri ažuriranju inicijacije:", e);
+        }
+      }
 
       return NextResponse.json({
         ok: true,
