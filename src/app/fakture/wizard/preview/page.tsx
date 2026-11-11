@@ -1010,12 +1010,50 @@ export default function Page() {
         .cols2{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         @media (max-width: 760px){ .cols2{ grid-template-columns: 1fr; } }
         
-        /* ✅ Desna kolona (Klijent/Naručioc) - desno poravnanje */
-        .cols2 > div:last-child {
-          text-align: right;
+        /* ✅ Koverta sa desnim prozorom (DIN standard): lijevo poravnanje unutar prozora + veći, čitljiviji font za poštare */
+        .clientCol {
+          text-align: left !important;
+          padding-left: 10px !important;
+          padding-right: 6px !important;
         }
-        .cols2 > div:last-child .blockTitle {
-          text-align: right;
+        .clientCol .blockTitle,
+        .clientCol .clientTitle {
+          text-align: left !important;
+          font-size: 11px !important;
+          font-weight: 800 !important;
+          letter-spacing: .4px !important;
+          color: #444 !important;
+          margin-bottom: 4px !important;
+        }
+        .clientAddr {
+          text-align: left !important;
+          font-size: 13.5px !important;
+          line-height: 1.4 !important;
+          color: #000 !important;
+        }
+        .clientAddr .name,
+        .clientAddr .clientName {
+          font-size: 15px !important;
+          font-weight: 850 !important;
+          line-height: 1.25 !important;
+          color: #000 !important;
+          margin-bottom: 2px !important;
+        }
+        .clientAddr .clientLine {
+          font-size: 13.5px !important;
+          color: #000 !important;
+          line-height: 1.35 !important;
+        }
+        .clientAddr .clientCity {
+          font-size: 14px !important;
+          font-weight: 800 !important;
+          color: #000 !important;
+        }
+        .clientAddr .clientTax {
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          color: #222 !important;
+          margin-top: 3px !important;
         }
 
         .blockTitle{
@@ -1246,6 +1284,44 @@ export default function Page() {
             display: grid !important;
             grid-template-columns: 1fr 1fr !important;
             gap: 14px !important;
+          }
+
+          .clientCol {
+            text-align: left !important;
+            padding-left: 10px !important;
+            padding-right: 6px !important;
+          }
+          .clientCol .blockTitle,
+          .clientCol .clientTitle {
+            text-align: left !important;
+            font-size: 11px !important;
+            font-weight: 800 !important;
+            color: #444 !important;
+          }
+          .clientAddr {
+            text-align: left !important;
+            font-size: 13.5px !important;
+            line-height: 1.4 !important;
+            color: #000 !important;
+          }
+          .clientAddr .name,
+          .clientAddr .clientName {
+            font-size: 15px !important;
+            font-weight: 850 !important;
+            color: #000 !important;
+          }
+          .clientAddr .clientCity {
+            font-size: 14px !important;
+            font-weight: 800 !important;
+            color: #000 !important;
+          }
+          .clientAddr .clientLine {
+            font-size: 13.5px !important;
+            color: #000 !important;
+          }
+          .clientAddr .clientTax {
+            font-size: 12px !important;
+            color: #222 !important;
           }
           
           table {
@@ -1587,23 +1663,29 @@ export default function Page() {
                   </div>
                 </div>
 
-                <div>
-                  <div className="blockTitle">
+                <div className="clientCol">
+                  <div className="blockTitle clientTitle">
                     {docLang === "bh" ? "Klijent/Naručilac" : "Client/Orderer"}
                   </div>
-                  <div className="addr">
-                    <div className="name">{buyerName}</div>
-                    <div className="muted">{buyerAddr1}</div>
-                    {buyerCityLine ? (
-                      <div className="muted">{buyerCityLine}</div>
-                    ) : null}
-                    <div className="muted">{buyerCountry}</div>
-                    <div className="muted">
-                      {isBhDoc
-                        ? "JIB"
-                        : t(`wizard.previewDoc.${docLang}.pibJib`)}
-                      : {buyerTax}
-                    </div>
+                  <div className="addr clientAddr">
+                    <div className="name clientName">{buyerName}</div>
+                    {buyerAddr1 && buyerAddr1 !== "—" && (
+                      <div className="clientLine">{buyerAddr1}</div>
+                    )}
+                    {buyerCityLine && (
+                      <div className="clientLine clientCity">{buyerCityLine}</div>
+                    )}
+                    {buyerCountry && buyerCountry !== "—" && (
+                      <div className="clientLine">{buyerCountry}</div>
+                    )}
+                    {buyerTax && buyerTax !== "—" && (
+                      <div className="clientTax">
+                        {isBhDoc
+                          ? "JIB"
+                          : t(`wizard.previewDoc.${docLang}.pibJib`)}
+                        : {buyerTax}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

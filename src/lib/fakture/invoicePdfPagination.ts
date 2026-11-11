@@ -139,6 +139,43 @@ export const INVOICE_PDF_EXPORT_CSS = `
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
+  .paper.is-pdf-export .clientCol {
+    text-align: left !important;
+    padding-left: 10px !important;
+    padding-right: 6px !important;
+  }
+  .paper.is-pdf-export .clientCol .blockTitle,
+  .paper.is-pdf-export .clientCol .clientTitle {
+    text-align: left !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    color: #444 !important;
+  }
+  .paper.is-pdf-export .clientAddr {
+    text-align: left !important;
+    font-size: 13.5px !important;
+    line-height: 1.4 !important;
+    color: #000 !important;
+  }
+  .paper.is-pdf-export .clientAddr .name,
+  .paper.is-pdf-export .clientAddr .clientName {
+    font-size: 15px !important;
+    font-weight: 850 !important;
+    color: #000 !important;
+  }
+  .paper.is-pdf-export .clientAddr .clientCity {
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    color: #000 !important;
+  }
+  .paper.is-pdf-export .clientAddr .clientLine {
+    font-size: 13.5px !important;
+    color: #000 !important;
+  }
+  .paper.is-pdf-export .clientAddr .clientTax {
+    font-size: 12px !important;
+    color: #222 !important;
+  }
   .paper.is-pdf-export .totalsBox {
     width: 100% !important;
     max-width: 320px !important;
