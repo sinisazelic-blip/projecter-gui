@@ -723,15 +723,15 @@ export default function FakturaPreviewClient() {
         .cols2{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         @media (max-width: 760px){ .cols2{ grid-template-columns: 1fr; } }
         
-        /* ✅ Koverta sa desnim prozorom (DIN standard): lijevo poravnanje unutar prozora + veći, čitljiviji font za poštare */
+        /* ✅ Koverta sa desnim prozorom: centrirano u sredini prozora koverte + veći, čitljiviji font za poštare */
         .clientCol {
-          text-align: left !important;
-          padding-left: 10px !important;
+          text-align: center !important;
+          padding-left: 6px !important;
           padding-right: 6px !important;
         }
         .clientCol .blockTitle,
         .clientCol .clientTitle {
-          text-align: left !important;
+          text-align: center !important;
           font-size: 11px !important;
           font-weight: 800 !important;
           letter-spacing: .4px !important;
@@ -739,7 +739,7 @@ export default function FakturaPreviewClient() {
           margin-bottom: 4px !important;
         }
         .clientAddr {
-          text-align: left !important;
+          text-align: center !important;
           font-size: 13.5px !important;
           line-height: 1.4 !important;
           color: #000 !important;
@@ -985,19 +985,19 @@ export default function FakturaPreviewClient() {
           }
           
           .clientCol {
-            text-align: left !important;
-            padding-left: 10px !important;
+            text-align: center !important;
+            padding-left: 6px !important;
             padding-right: 6px !important;
           }
           .clientCol .blockTitle,
           .clientCol .clientTitle {
-            text-align: left !important;
+            text-align: center !important;
             font-size: 11px !important;
             font-weight: 800 !important;
             color: #444 !important;
           }
           .clientAddr {
-            text-align: left !important;
+            text-align: center !important;
             font-size: 13.5px !important;
             line-height: 1.4 !important;
             color: #000 !important;

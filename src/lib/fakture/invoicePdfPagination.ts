@@ -140,19 +140,19 @@ export const INVOICE_PDF_EXPORT_CSS = `
     break-inside: avoid !important;
   }
   .paper.is-pdf-export .clientCol {
-    text-align: left !important;
-    padding-left: 10px !important;
+    text-align: center !important;
+    padding-left: 6px !important;
     padding-right: 6px !important;
   }
   .paper.is-pdf-export .clientCol .blockTitle,
   .paper.is-pdf-export .clientCol .clientTitle {
-    text-align: left !important;
+    text-align: center !important;
     font-size: 11px !important;
     font-weight: 800 !important;
     color: #444 !important;
   }
   .paper.is-pdf-export .clientAddr {
-    text-align: left !important;
+    text-align: center !important;
     font-size: 13.5px !important;
     line-height: 1.4 !important;
     color: #000 !important;
