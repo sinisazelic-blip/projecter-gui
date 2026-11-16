@@ -89,6 +89,8 @@ export async function POST(req: NextRequest) {
         days_until_end: days,
         max_allowed_registers: tenant.broj_blagajni,
         active_registers_count: 0,
+        soccs_tier: tenant.soccs_tier,
+        soccs_platform_scope: tenant.soccs_platform_scope,
         message: "Licenca za ovaj objekat je istekla ili suspendovana."
       });
     }
@@ -132,6 +134,8 @@ export async function POST(req: NextRequest) {
       max_allowed_registers: maxAllowed,
       active_registers_count: activeCount,
       kasa_broj: kasaBroj,
+      soccs_tier: tenant.soccs_tier,
+      soccs_platform_scope: tenant.soccs_platform_scope,
       message: limitExceeded
         ? `Premašen je pretplaćeni broj kasa (${activeCount}/${maxAllowed}). Obratite se Fluxa podršci za proširenje paketa.`
         : null
