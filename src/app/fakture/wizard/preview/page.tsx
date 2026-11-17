@@ -599,7 +599,7 @@ export default function Page() {
         setCalculatedDueDate(result.datum_dospijeca);
       } else if (invoiceDateISO && data?.buyer?.rok_placanja_dana) {
         const rokDana = Number(data.buyer.rok_placanja_dana) || 30;
-        const dueDate = new Date(invoiceDateISO);
+        const dueDate = new Date((invoiceDateISO.includes("T") ? invoiceDateISO : invoiceDateISO + "T12:00:00"));
         dueDate.setDate(dueDate.getDate() + rokDana);
         setCalculatedDueDate(dueDate.toISOString().slice(0, 10));
       }

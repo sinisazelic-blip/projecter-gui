@@ -163,8 +163,8 @@ export async function POST(req: NextRequest) {
     const rokPlacanjaDana =
       Number(projektiRows[0]?.rok_placanja_dana) || 30;
 
-    // 2) Izračunaj datum dospijeća
-    const datumDospijeca = new Date(datumFakture);
+    // 2) Izračunaj datum dospijeća (koristi noon T12:00:00 da se izbjegne DST / timezone pomak)
+    const datumDospijeca = new Date(datumFakture + "T12:00:00");
     datumDospijeca.setDate(datumDospijeca.getDate() + rokPlacanjaDana);
     const datumDospijecaStr = datumDospijeca.toISOString().slice(0, 10);
 
