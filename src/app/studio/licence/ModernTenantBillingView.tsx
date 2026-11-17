@@ -26,6 +26,48 @@ interface ModernTenantBillingViewProps {
   statusSavingId?: number | null;
 }
 
+// =========================================================================
+// BIH FORMATED HELPERS (Tačka za hiljade, zarez za decimale, DD.MM.YYYY.)
+// =========================================================================
+
+export function formatNumberBiH(val: number | string | null | undefined, decimals = 2): string {
+  const num = Number(val) || 0;
+  const parts = num.toFixed(decimals).split(".");
+  // Odvajanje hiljada tačkom (.)
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  // Decimalni zarez (,)
+  return parts.join(",");
+}
+
+export function formatMoneyBiH(val: number | string | null | undefined, currency = "KM"): string {
+  const ccy = currency === "EUR" || currency === "€" ? "€" : "KM";
+  return `${formatNumberBiH(val, 2)} ${ccy}`;
+}
+
+export function formatDateBiH(val: string | null | undefined): string {
+  if (!val) return "—";
+  const s = String(val).trim().slice(0, 10);
+  const parts = s.split("-");
+  if (parts.length === 3 && parts[0].length === 4) {
+    return `${parts[2]}.${parts[1]}.${parts[0]}.`;
+  }
+  return s;
+}
+
+// Dosljedno mapiranje imena proizvoda u ekosistemu
+export function formatProductName(profile: string | null | undefined): string {
+  if (!profile) return "Fluxa Cloud";
+  const p = profile.toUpperCase();
+  if (p.includes("JAVNENABAVKE") || p.includes("DOCENTRE") || p.includes("DOKUMENTART")) return "DokumentArt";
+  if (p.includes("FLUXAX")) return "FluxaX";
+  if (p.includes("ENTERSYS")) return "EnterSYS";
+  if (p.includes("FLUXAPOS")) return "FluxaPOS";
+  if (p.includes("LOGISTIX")) return "LogistiX";
+  if (p.includes("SOCCS")) return "SOCCS SwimVoice";
+  if (p.includes("FLUXA")) return "Fluxa Cloud";
+  return profile;
+}
+
 function parseScopeModules(scope: string | null | undefined): string[] {
   if (!scope) return [];
   const s = String(scope).trim();
@@ -40,6 +82,47 @@ function parseScopeModules(scope: string | null | undefined): string[] {
   }
   return s.split(",").map((x) => x.trim()).filter(Boolean);
 }
+
+// Klasični stilovi standardnih desktop dugmića (Windows/Desktop aplikativni izgled)
+const btnDesktop: React.CSSProperties = {
+  borderRadius: 4,
+  padding: "5px 11px",
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: "pointer",
+  border: "1px solid #3b4252",
+  background: "#232936",
+  color: "#e2e8f0",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 5,
+  whiteSpace: "nowrap",
+  transition: "all 0.15s ease",
+};
+
+const btnDesktopPrimary: React.CSSProperties = {
+  ...btnDesktop,
+  border: "1px solid #2563eb",
+  background: "#1d4ed8",
+  color: "#ffffff",
+  fontWeight: 700,
+};
+
+const btnDesktopSuccess: React.CSSProperties = {
+  ...btnDesktop,
+  border: "1px solid #059669",
+  background: "#047857",
+  color: "#ffffff",
+  fontWeight: 700,
+};
+
+const btnDesktopDanger: React.CSSProperties = {
+  ...btnDesktop,
+  border: "1px solid #b91c1c",
+  background: "#991b1b",
+  color: "#ffffff",
+  fontWeight: 700,
+};
 
 export default function ModernTenantBillingView({
   tenants,
@@ -58,9 +141,19 @@ export default function ModernTenantBillingView({
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [productFilter, setProductFilter] = useState<string>("ALL");
+  const [showArchived, setShowArchived] = useState<boolean>(false);
 
-  // Prošireni red sa detaljima ugovora i modula
-  const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
+  // Prikaz: po klijentu (grupisano) ili po pojedinačnim licencama
+  const [viewGrouping, setViewGrouping] = useState<"client" | "licence">("client");
+
+  // Otvoreni klijenti u grupisanom prikazu
+  const [expandedClientIds, setExpandedClientIds] = useState<Record<string, boolean>>({});
+
+  // Prošireni red licence u pojedinačnom prikazu
+  const [expandedLicenceId, setExpandedLicenceId] = useState<number | null>(null);
+
+  // KPI Drilldown Modal
+  const [kpiModalCategory, setKpiModalCategory] = useState<string | null>(null);
 
   // Pro-rata modal state
   const [proRataOpen, setProRataOpen] = useState(false);
@@ -69,6 +162,11 @@ export default function ModernTenantBillingView({
   const [proRataDate, setProRataDate] = useState(() =>
     new Date().toISOString().slice(0, 10),
   );
+
+  // LogistiX Referral Kalkulator Modal State
+  const [logisticxOpen, setLogisticxOpen] = useState(false);
+  const [logTrucksCount, setLogTrucksCount] = useState<number>(20);
+  const [logReferredTrucks, setLogReferredTrucks] = useState<number>(40);
 
   // Invoice specification modal state
   const [invoiceModalTenant, setInvoiceModalTenant] = useState<any | null>(null);
@@ -83,7 +181,7 @@ export default function ModernTenantBillingView({
     return calculateProRata(proRataPrice, proRataDate);
   }, [proRataPrice, proRataDate]);
 
-  // Mapiraj klijente po ID-u
+  // Mapiraj klijente po ID-u direktno iz baze klijenata (sa emailom, JIB-om, adresom)
   const klijentMap = useMemo(() => {
     const map = new Map<number, any>();
     for (const k of klijenti ?? []) {
@@ -92,18 +190,30 @@ export default function ModernTenantBillingView({
     return map;
   }, [klijenti]);
 
-  // Obogaćeni tenanti sa billing podacima
+  // Obogaćeni tenanti: EMAIL I PODACI SE UZIMAJU DIREKTNO IZ BAZE KLIJENATA
   const enrichedTenants = useMemo(() => {
     return (tenants ?? []).map((t) => {
       const billing = getTenantBillingInfo(t);
       const kl = t.klijent_id ? klijentMap.get(Number(t.klijent_id)) : null;
+
+      // Prioritet za kontakt email: baza klijenata (klijenti.email), zatim billing_email iz tenanta
+      const resolvedEmail = (kl?.email && String(kl.email).trim() !== "")
+        ? String(kl.email).trim()
+        : (t.billing_email ? String(t.billing_email).trim() : null);
+
+      const resolvedJib = kl?.jib || kl?.porezni_id || kl?.pib || null;
+      const resolvedAddress = [kl?.adresa, kl?.grad].filter(Boolean).join(", ") || null;
+      const resolvedClientName = kl?.naziv_klijenta || t.naziv;
+
       return {
         ...t,
         billing,
-        klijent_naziv: kl?.naziv_klijenta || t.naziv,
-        klijent_jib: kl?.jib || kl?.porezni_id || null,
-        klijent_adresa: kl?.adresa || kl?.grad || null,
+        klijent_naziv: resolvedClientName,
+        klijent_email: resolvedEmail,
+        klijent_jib: resolvedJib,
+        klijent_adresa: resolvedAddress,
         klijent_is_ino: Boolean(kl?.is_ino),
+        product_display_name: formatProductName(t.studio_licence_profile),
       };
     });
   }, [tenants, klijentMap]);
@@ -111,6 +221,7 @@ export default function ModernTenantBillingView({
   // KPI metrike
   const metrics = useMemo(() => {
     let activeCount = 0;
+    let pilotCount = 0;
     let graceCount = 0;
     let suspendedCount = 0;
     let mrrKm = 0;
@@ -120,8 +231,11 @@ export default function ModernTenantBillingView({
       const price = Number(t.monthly_price) || 0;
       const ccy = (t.currency || "KM").toUpperCase();
 
-      if (t.billing.statusType === "PAID" || t.billing.statusType === "PILOT") {
+      if (t.billing.statusType === "PAID") {
         activeCount++;
+      }
+      if (t.billing.statusType === "PILOT") {
+        pilotCount++;
       }
       if (t.billing.statusType === "GRACE_PERIOD") {
         activeCount++;
@@ -142,48 +256,139 @@ export default function ModernTenantBillingView({
 
     return {
       activeCount,
+      pilotCount,
       graceCount,
       suspendedCount,
-      mrrKm: mrrKm.toFixed(2),
-      mrrEur: mrrEur.toFixed(2),
+      mrrKm,
+      mrrEur,
     };
   }, [enrichedTenants]);
 
   // Filtrirani tenanti
   const filteredTenants = useMemo(() => {
     return enrichedTenants.filter((t) => {
-      // 1. Text filter
+      // 1. Sakrivanje arhiviranih/bivših ako nije označeno
+      if (!showArchived && t.billing.statusType === "SUSPENDOVAN") {
+        // Ako je izričito odabran SUSPENDED filter, onda prikaži
+        if (statusFilter !== "SUSPENDED") {
+          // Sakrij bivše korisnike ako korisnik nije zatražio arhivu
+          // (ostavi samo ako pretražuje po imenu)
+          if (!searchTerm.trim()) return false;
+        }
+      }
+
+      // 2. Pretraga
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase();
         const matchesName = (t.naziv || "").toLowerCase().includes(q);
         const matchesClient = (t.klijent_naziv || "").toLowerCase().includes(q);
-        const matchesEmail = (t.billing_email || "").toLowerCase().includes(q);
+        const matchesEmail = (t.klijent_email || "").toLowerCase().includes(q);
         const matchesToken = (t.licence_token || "").toLowerCase().includes(q);
         const matchesId = String(t.tenant_id).includes(q);
         if (!matchesName && !matchesClient && !matchesEmail && !matchesToken && !matchesId) return false;
       }
 
-      // 2. Status filter
+      // 3. Status filter
       if (statusFilter !== "ALL") {
-        if (statusFilter === "ACTIVE" && t.billing.statusType !== "PAID" && t.billing.statusType !== "PILOT") return false;
+        if (statusFilter === "ACTIVE" && t.billing.statusType !== "PAID") return false;
+        if (statusFilter === "PILOT" && t.billing.statusType !== "PILOT") return false;
         if (statusFilter === "GRACE" && t.billing.statusType !== "GRACE_PERIOD") return false;
         if (statusFilter === "SUSPENDED" && t.billing.statusType !== "SUSPENDOVAN") return false;
       }
 
-      // 3. Product filter
+      // 4. Product filter
       if (productFilter !== "ALL") {
         const prod = (t.studio_licence_profile || "").toUpperCase();
         if (productFilter === "ENTERSYS" && !prod.includes("ENTERSYS")) return false;
         if (productFilter === "FLUXAPOS" && !prod.includes("FLUXAPOS")) return false;
-        if (productFilter === "DOCENTRE" && !prod.includes("JAVNENABAVKE") && !prod.includes("DOCENTRE")) return false;
+        if (productFilter === "DOCENTRE" && !prod.includes("JAVNENABAVKE") && !prod.includes("DOCENTRE") && !prod.includes("DOKUMENTART")) return false;
         if (productFilter === "SOCCS" && !prod.includes("SOCCS")) return false;
         if (productFilter === "FLUXAX" && !prod.includes("FLUXAX")) return false;
         if (productFilter === "LOGISTIX" && !prod.includes("LOGISTIX")) return false;
+        if (productFilter === "FLUXA" && (!prod.includes("FLUXA") || prod.includes("FLUXAPOS") || prod.includes("FLUXAX"))) return false;
       }
 
       return true;
     });
-  }, [enrichedTenants, searchTerm, statusFilter, productFilter]);
+  }, [enrichedTenants, searchTerm, statusFilter, productFilter, showArchived]);
+
+  // GRUPISANI TENANTI PO KLIJENTU (13 licenci = 4-6 klijenata)
+  const clientGroups = useMemo(() => {
+    const groups = new Map<string, {
+      clientId: string;
+      clientName: string;
+      email: string | null;
+      jib: string | null;
+      address: string | null;
+      tenants: any[];
+      totalKm: number;
+      totalEur: number;
+      hasGrace: boolean;
+      hasSuspended: boolean;
+      allPilot: boolean;
+    }>();
+
+    for (const t of filteredTenants) {
+      const key = t.klijent_id ? `klijent_${t.klijent_id}` : `tenant_unlinked_${t.tenant_id}`;
+      const name = t.klijent_naziv || t.naziv;
+
+      if (!groups.has(key)) {
+        groups.set(key, {
+          clientId: key,
+          clientName: name,
+          email: t.klijent_email,
+          jib: t.klijent_jib,
+          address: t.klijent_adresa,
+          tenants: [],
+          totalKm: 0,
+          totalEur: 0,
+          hasGrace: false,
+          hasSuspended: false,
+          allPilot: true,
+        });
+      }
+
+      const g = groups.get(key)!;
+      g.tenants.push(t);
+
+      const price = Number(t.monthly_price) || 0;
+      const ccy = (t.currency || "KM").toUpperCase();
+      if (t.billing.statusType !== "SUSPENDOVAN") {
+        if (ccy === "EUR" || ccy === "€") g.totalEur += price;
+        else g.totalKm += price;
+      }
+
+      if (t.billing.statusType === "GRACE_PERIOD") g.hasGrace = true;
+      if (t.billing.statusType === "SUSPENDOVAN") g.hasSuspended = true;
+      if (t.billing.statusType !== "PILOT") g.allPilot = false;
+    }
+
+    return Array.from(groups.values());
+  }, [filteredTenants]);
+
+  // Tenanti za KPI drilldown modal
+  const kpiDrilldownTenants = useMemo(() => {
+    if (!kpiModalCategory) return [];
+    if (kpiModalCategory === "ACTIVE") {
+      return enrichedTenants.filter((t) => t.billing.statusType === "PAID" || t.billing.statusType === "GRACE_PERIOD");
+    }
+    if (kpiModalCategory === "PILOT") {
+      return enrichedTenants.filter((t) => t.billing.statusType === "PILOT");
+    }
+    if (kpiModalCategory === "GRACE") {
+      return enrichedTenants.filter((t) => t.billing.statusType === "GRACE_PERIOD");
+    }
+    if (kpiModalCategory === "SUSPENDED") {
+      return enrichedTenants.filter((t) => t.billing.statusType === "SUSPENDOVAN");
+    }
+    if (kpiModalCategory === "MRR_KM") {
+      return enrichedTenants.filter((t) => (t.currency || "KM").toUpperCase() !== "EUR" && Number(t.monthly_price) > 0 && t.billing.statusType !== "SUSPENDOVAN");
+    }
+    if (kpiModalCategory === "MRR_EUR") {
+      return enrichedTenants.filter((t) => (t.currency || "KM").toUpperCase() === "EUR" && Number(t.monthly_price) > 0 && t.billing.statusType !== "SUSPENDOVAN");
+    }
+    return [];
+  }, [kpiModalCategory, enrichedTenants]);
 
   // Akcija brzog produženja (+48h)
   const handleGraceExtend = async (tenantId: number) => {
@@ -202,7 +407,7 @@ export default function ModernTenantBillingView({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Greška pri produženju");
 
-      setActionFeedback(`Uspješno produžen grace period za 48h (Novi rok: ${data.new_ends_at}).`);
+      setActionFeedback(`Uspješno produžen grace period za 48h (Novi rok: ${formatDateBiH(data.new_ends_at)}).`);
       onRefresh();
     } catch (err: any) {
       alert("Greška: " + err.message);
@@ -211,7 +416,6 @@ export default function ModernTenantBillingView({
     }
   };
 
-  // Kopiranje u clipboard
   const handleCopy = (text: string, id: number) => {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text);
@@ -220,60 +424,98 @@ export default function ModernTenantBillingView({
     }
   };
 
+  const toggleClientExpand = (clientId: string) => {
+    setExpandedClientIds((prev) => ({
+      ...prev,
+      [clientId]: !prev[clientId],
+    }));
+  };
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20, width: "100%" }}>
-      {/* 1. HEADER I AKCIJE */}
+    <div style={{ display: "flex", flexDirection: "column", gap: 18, width: "100%", color: "#cbd5e1" }}>
+      {/* 1. HEADER I GLAVNE KOMANDE */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           flexWrap: "wrap",
-          gap: 16,
+          gap: 14,
+          paddingBottom: 14,
+          borderBottom: "1px solid #2d3748",
         }}
       >
         <div>
-          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 850, color: "#ffffff", letterSpacing: "-0.02em" }}>
+          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#f8fafc", letterSpacing: "-0.01em" }}>
             SaaS Billing & Tenant Centar
           </h2>
-          <div style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.55)", marginTop: 4 }}>
-            Hetzner model obračuna (1. u mjesecu) · Grace period do 14 dana · Upravljanje ugovorima i blokada zloupotrebe
+          <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 3 }}>
+            Ciklus 1. u mjesecu · 14 dana tolerancija · Podaci klijenta iz CRM baze · Pregled po klijentima i licencama
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          {/* Preklopnik prikaza */}
+          <div style={{ display: "inline-flex", background: "#1e2430", padding: 2, borderRadius: 5, border: "1px solid #334155" }}>
+            <button
+              type="button"
+              onClick={() => setViewGrouping("client")}
+              style={{
+                ...btnDesktop,
+                border: "none",
+                background: viewGrouping === "client" ? "#2563eb" : "transparent",
+                color: viewGrouping === "client" ? "#ffffff" : "#94a3b8",
+                fontWeight: viewGrouping === "client" ? 700 : 500,
+              }}
+            >
+              🏢 Po Klijentima ({clientGroups.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewGrouping("licence")}
+              style={{
+                ...btnDesktop,
+                border: "none",
+                background: viewGrouping === "licence" ? "#2563eb" : "transparent",
+                color: viewGrouping === "licence" ? "#ffffff" : "#94a3b8",
+                fontWeight: viewGrouping === "licence" ? 700 : 500,
+              }}
+            >
+              📄 Sve Licence ({filteredTenants.length})
+            </button>
+          </div>
+
           <button
             type="button"
-            className="btn"
-            onClick={() => setProRataOpen(true)}
-            style={{
-              fontWeight: 700,
-              background: "rgba(56, 189, 248, 0.12)",
-              borderColor: "rgba(56, 189, 248, 0.35)",
-              color: "#38bdf8",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
+            style={btnDesktop}
+            onClick={() => setLogisticxOpen(true)}
+            title="LogistiX obračun po broju kamiona i referral popusti za preporučene klijente"
           >
-            ⚡ Pro-Rata Kalkulator
+            🚚 LogistiX Model
           </button>
 
           <button
             type="button"
-            className="btn btn-primary"
+            style={btnDesktop}
+            onClick={() => setProRataOpen(true)}
+            title="Izračunaj iznos zakupa od potpisivanja do 1. u narednom mjesecu"
+          >
+            ⚡ Pro-Rata
+          </button>
+
+          <button
+            type="button"
+            style={btnDesktopPrimary}
             onClick={onOpenNewTenant}
-            style={{ fontWeight: 750 }}
           >
             + Novi Tenant
           </button>
 
           <button
             type="button"
-            className="btn"
+            style={btnDesktop}
             onClick={onSwitchToClassic}
-            title="Prebaci na stari tabularni prikaz sa profilima licenci"
-            style={{ fontWeight: 650, color: "rgba(255, 255, 255, 0.8)" }}
+            title="Prebaci na klasični tabularni prikaz"
           >
             ⇄ Klasični Prikaz
           </button>
@@ -284,13 +526,12 @@ export default function ModernTenantBillingView({
       {actionFeedback && (
         <div
           style={{
-            padding: "12px 18px",
-            borderRadius: 12,
-            background: "rgba(16, 185, 129, 0.15)",
-            border: "1px solid rgba(16, 185, 129, 0.35)",
-            color: "#6ee7b7",
-            fontSize: 13.5,
-            fontWeight: 600,
+            padding: "10px 14px",
+            borderRadius: 4,
+            background: "#064e3b",
+            border: "1px solid #059669",
+            color: "#a7f3d0",
+            fontSize: 13,
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
@@ -299,119 +540,168 @@ export default function ModernTenantBillingView({
           <span>✓ {actionFeedback}</span>
           <button
             onClick={() => setActionFeedback(null)}
-            style={{ background: "none", border: "none", color: "#6ee7b7", cursor: "pointer", fontSize: 16 }}
+            style={{ background: "none", border: "none", color: "#a7f3d0", cursor: "pointer", fontSize: 16 }}
           >
             ✕
           </button>
         </div>
       )}
 
-      {/* 2. KPI METRIC CARDS */}
+      {/* 2. INTERAKTIVNE KPI KARTICE (Klik otvara detaljnu listu klijenata) */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
-          gap: 14,
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: 12,
           width: "100%",
         }}
       >
+        {/* AKTIVNI */}
         <div
+          onClick={() => setKpiModalCategory("ACTIVE")}
           style={{
-            padding: "16px 20px",
-            background: "rgba(255, 255, 255, 0.03)",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
-            borderRadius: 14,
+            padding: "14px 16px",
+            background: "#18202c",
+            border: "1px solid #2d3748",
+            borderRadius: 6,
+            cursor: "pointer",
+            transition: "all 0.15s ease",
           }}
+          title="Klikni za pregled aktivnih tenanata"
         >
-          <div style={{ fontSize: 11, fontWeight: 750, color: "rgba(255, 255, 255, 0.45)", textTransform: "uppercase" }}>
-            Aktivni Tenanti
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+            Aktivne Licence
           </div>
-          <div style={{ fontSize: 26, fontWeight: 850, color: "#ffffff", marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: "#f8fafc", marginTop: 4 }}>
             {metrics.activeCount}
           </div>
-          <div style={{ fontSize: 12, color: "#10b981", marginTop: 2 }}>
-            Aktivne pretplate
+          <div style={{ fontSize: 11.5, color: "#10b981", marginTop: 3 }}>
+            ● Uredne uplate
           </div>
         </div>
 
+        {/* PILOT STATUS (Novo!) */}
         <div
+          onClick={() => setKpiModalCategory("PILOT")}
           style={{
-            padding: "16px 20px",
-            background: "rgba(255, 255, 255, 0.03)",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
-            borderRadius: 14,
+            padding: "14px 16px",
+            background: "#18202c",
+            border: "1px solid #2d3748",
+            borderRadius: 6,
+            cursor: "pointer",
+            transition: "all 0.15s ease",
           }}
+          title="Klikni za pregled klijenata u pilot / test statusu"
         >
-          <div style={{ fontSize: 11, fontWeight: 750, color: "rgba(255, 255, 255, 0.45)", textTransform: "uppercase" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+            Pilot / Test Status
+          </div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: "#38bdf8", marginTop: 4 }}>
+            {metrics.pilotCount}
+          </div>
+          <div style={{ fontSize: 11.5, color: "#60a5fa", marginTop: 3 }}>
+            ● Testni period
+          </div>
+        </div>
+
+        {/* MRR BAM */}
+        <div
+          onClick={() => setKpiModalCategory("MRR_KM")}
+          style={{
+            padding: "14px 16px",
+            background: "#18202c",
+            border: "1px solid #2d3748",
+            borderRadius: 6,
+            cursor: "pointer",
+            transition: "all 0.15s ease",
+          }}
+          title="Klikni za pregled domaćih ugovorenih licenci"
+        >
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.03em" }}>
             Mjesečni Zakup (BAM)
           </div>
-          <div style={{ fontSize: 24, fontWeight: 850, color: "#38bdf8", marginTop: 4 }}>
-            {metrics.mrrKm} KM
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#f8fafc", marginTop: 4 }}>
+            {formatMoneyBiH(metrics.mrrKm, "KM")}
           </div>
-          <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.5)", marginTop: 2 }}>
-            Domaće ugovorene licence
+          <div style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 3 }}>
+            Domaće licence
           </div>
         </div>
 
+        {/* MRR EUR */}
         <div
+          onClick={() => setKpiModalCategory("MRR_EUR")}
           style={{
-            padding: "16px 20px",
-            background: "rgba(255, 255, 255, 0.03)",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
-            borderRadius: 14,
+            padding: "14px 16px",
+            background: "#18202c",
+            border: "1px solid #2d3748",
+            borderRadius: 6,
+            cursor: "pointer",
+            transition: "all 0.15s ease",
           }}
+          title="Klikni za pregled INO licenci"
         >
-          <div style={{ fontSize: 11, fontWeight: 750, color: "rgba(255, 255, 255, 0.45)", textTransform: "uppercase" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.03em" }}>
             Mjesečni Zakup (EUR)
           </div>
-          <div style={{ fontSize: 24, fontWeight: 850, color: "#a855f7", marginTop: 4 }}>
-            {metrics.mrrEur} €
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#f8fafc", marginTop: 4 }}>
+            {formatMoneyBiH(metrics.mrrEur, "EUR")}
           </div>
-          <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.5)", marginTop: 2 }}>
-            INO licence (0% PDV, stopa K)
+          <div style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 3 }}>
+            INO (0% PDV, stopa K)
           </div>
         </div>
 
+        {/* GRACE PERIOD */}
         <div
+          onClick={() => setKpiModalCategory("GRACE")}
           style={{
-            padding: "16px 20px",
-            background: metrics.graceCount > 0 ? "rgba(245, 158, 11, 0.12)" : "rgba(255, 255, 255, 0.03)",
-            border: metrics.graceCount > 0 ? "1px solid rgba(245, 158, 11, 0.35)" : "1px solid rgba(255, 255, 255, 0.08)",
-            borderRadius: 14,
+            padding: "14px 16px",
+            background: metrics.graceCount > 0 ? "#2d2010" : "#18202c",
+            border: metrics.graceCount > 0 ? "1px solid #b45309" : "1px solid #2d3748",
+            borderRadius: 6,
+            cursor: "pointer",
+            transition: "all 0.15s ease",
           }}
+          title="Klikni za pregled klijenata u grace periodu (rok do 14. u mjesecu)"
         >
-          <div style={{ fontSize: 11, fontWeight: 750, color: metrics.graceCount > 0 ? "#fbbf24" : "rgba(255, 255, 255, 0.45)", textTransform: "uppercase" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: metrics.graceCount > 0 ? "#f59e0b" : "#94a3b8", textTransform: "uppercase", letterSpacing: "0.03em" }}>
             Grace Period (Čeka Izvod)
           </div>
-          <div style={{ fontSize: 26, fontWeight: 850, color: metrics.graceCount > 0 ? "#f59e0b" : "#ffffff", marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: metrics.graceCount > 0 ? "#fbbf24" : "#f8fafc", marginTop: 4 }}>
             {metrics.graceCount}
           </div>
-          <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.5)", marginTop: 2 }}>
-            Tolerancija do 14. u mjesecu
+          <div style={{ fontSize: 11.5, color: metrics.graceCount > 0 ? "#f59e0b" : "#94a3b8", marginTop: 3 }}>
+            ● Tolerancija do 14-og
           </div>
         </div>
 
+        {/* BLOKIRANO / SUSPENDOVANO */}
         <div
+          onClick={() => setKpiModalCategory("SUSPENDED")}
           style={{
-            padding: "16px 20px",
-            background: metrics.suspendedCount > 0 ? "rgba(239, 68, 68, 0.12)" : "rgba(255, 255, 255, 0.03)",
-            border: metrics.suspendedCount > 0 ? "1px solid rgba(239, 68, 68, 0.35)" : "1px solid rgba(255, 255, 255, 0.08)",
-            borderRadius: 14,
+            padding: "14px 16px",
+            background: metrics.suspendedCount > 0 ? "#2d1515" : "#18202c",
+            border: metrics.suspendedCount > 0 ? "1px solid #991b1b" : "1px solid #2d3748",
+            borderRadius: 6,
+            cursor: "pointer",
+            transition: "all 0.15s ease",
           }}
+          title="Klikni za pregled blokiranih / suspendovanih licenci"
         >
-          <div style={{ fontSize: 11, fontWeight: 750, color: metrics.suspendedCount > 0 ? "#fca5a5" : "rgba(255, 255, 255, 0.45)", textTransform: "uppercase" }}>
-            Soft Suspenzija / Blokirano
+          <div style={{ fontSize: 11, fontWeight: 700, color: metrics.suspendedCount > 0 ? "#f87171" : "#94a3b8", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+            Blokirano / Suspendovano
           </div>
-          <div style={{ fontSize: 26, fontWeight: 850, color: metrics.suspendedCount > 0 ? "#ef4444" : "#ffffff", marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: metrics.suspendedCount > 0 ? "#f87171" : "#f8fafc", marginTop: 4 }}>
             {metrics.suspendedCount}
           </div>
-          <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.5)", marginTop: 2 }}>
-            Prekoračen rok / Blokiran rad
+          <div style={{ fontSize: 11.5, color: metrics.suspendedCount > 0 ? "#f87171" : "#94a3b8", marginTop: 3 }}>
+            ● Prekid pristupa softveru
           </div>
         </div>
       </div>
 
-      {/* 3. FILTERI I PRETRAGA */}
+      {/* 3. PRETRAGA I PAMETNI FILTERI */}
       <div
         style={{
           display: "flex",
@@ -419,457 +709,534 @@ export default function ModernTenantBillingView({
           alignItems: "center",
           gap: 12,
           flexWrap: "wrap",
-          width: "100%",
+          padding: "10px 14px",
+          background: "#161b22",
+          border: "1px solid #2d3748",
+          borderRadius: 6,
         }}
       >
-        <div style={{ display: "flex", gap: 10, flex: "1 1 320px", maxWidth: 460 }}>
+        <div style={{ display: "flex", gap: 10, flex: "1 1 300px", maxWidth: 440 }}>
           <input
-            className="input"
             type="text"
-            placeholder="Pretraži tenante po nazivu, klijentu, tokenu, emailu..."
+            placeholder="Pretraži po nazivu klijenta, tenanta, emailu, tokenu..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ width: "100%" }}
+            style={{
+              width: "100%",
+              padding: "6px 12px",
+              background: "#1f2937",
+              border: "1px solid #374151",
+              borderRadius: 4,
+              color: "#f8fafc",
+              fontSize: 13,
+            }}
           />
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <select
-            className="input"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            style={{ minWidth: 150 }}
+            style={{
+              padding: "6px 10px",
+              background: "#1f2937",
+              border: "1px solid #374151",
+              borderRadius: 4,
+              color: "#f8fafc",
+              fontSize: 12.5,
+            }}
           >
             <option value="ALL">Svi statusi</option>
-            <option value="ACTIVE">Aktivno / Plaćeno</option>
-            <option value="GRACE">U Grace periodu</option>
-            <option value="SUSPENDED">Suspendovano / Blokirano</option>
+            <option value="ACTIVE">Aktivno (Plaćeno)</option>
+            <option value="PILOT">Pilot / Test</option>
+            <option value="GRACE">U Grace periodu (do 14-og)</option>
+            <option value="SUSPENDED">Blokirano / Suspendovano</option>
           </select>
 
           <select
-            className="input"
             value={productFilter}
             onChange={(e) => setProductFilter(e.target.value)}
-            style={{ minWidth: 160 }}
+            style={{
+              padding: "6px 10px",
+              background: "#1f2937",
+              border: "1px solid #374151",
+              borderRadius: 4,
+              color: "#f8fafc",
+              fontSize: 12.5,
+            }}
           >
             <option value="ALL">Svi proizvodi</option>
             <option value="ENTERSYS">EnterSYS</option>
             <option value="FLUXAPOS">FluxaPOS</option>
-            <option value="DOCENTRE">DokumentArt (JN)</option>
-            <option value="SOCCS">SOCCS SwimVoice</option>
-            <option value="FLUXAX">FluxaX NET</option>
+            <option value="DOCENTRE">DokumentArt</option>
             <option value="LOGISTIX">LogistiX</option>
+            <option value="FLUXAX">FluxaX</option>
+            <option value="SOCCS">SOCCS SwimVoice</option>
+            <option value="FLUXA">Fluxa Cloud</option>
           </select>
+
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12.5,
+              color: "#94a3b8",
+              cursor: "pointer",
+              marginLeft: 6,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+              style={{ cursor: "pointer" }}
+            />
+            Prikaži arhivirane / neaktivne
+          </label>
         </div>
       </div>
 
-      {/* 4. MODERNA TABELA TENANATA SA DINAMIČKOM ŠIRINOM */}
-      <div
-        style={{
-          background: "rgba(255, 255, 255, 0.02)",
-          border: "1px solid rgba(255, 255, 255, 0.08)",
-          borderRadius: 16,
-          overflow: "visible",
-          width: "100%",
-        }}
-      >
-        <div style={{ width: "100%", overflowX: "auto" }}>
-          <table className="table" style={{ width: "100%", margin: 0, tableLayout: "auto" }}>
+      {/* 4. GLAVNI PRIKAZ: PO KLIJENTIMA (DEFAULT) ILI PO LICENCAMA */}
+      {viewGrouping === "client" ? (
+        /* ===================================================================
+           A) GRUPISANI PREGLED PO KLIJENTU (Jedan klijent -> Više licenci)
+           =================================================================== */
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {clientGroups.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 40, background: "#161b22", borderRadius: 6, border: "1px solid #2d3748" }}>
+              Nema klijenata koji odgovaraju izabranim filterima.
+            </div>
+          ) : (
+            clientGroups.map((g) => {
+              const isExpanded = Boolean(expandedClientIds[g.clientId]);
+
+              return (
+                <div
+                  key={g.clientId}
+                  style={{
+                    background: "#18202c",
+                    border: isExpanded ? "1px solid #3b82f6" : "1px solid #2d3748",
+                    borderRadius: 6,
+                    overflow: "hidden",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {/* ZAGLAVLJE KLIJENTA */}
+                  <div
+                    style={{
+                      padding: "12px 18px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      gap: 12,
+                      background: isExpanded ? "#1e293b" : "#1a2230",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, flex: "1 1 320px" }}>
+                      <button
+                        type="button"
+                        onClick={() => toggleClientExpand(g.clientId)}
+                        style={{
+                          background: "#242f42",
+                          border: "1px solid #3b4860",
+                          color: "#cbd5e1",
+                          borderRadius: 4,
+                          padding: "3px 8px",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {isExpanded ? "▲ Sakrij" : "▼ Licence (" + g.tenants.length + ")"}
+                      </button>
+
+                      <div>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                          <span style={{ fontSize: 16, fontWeight: 800, color: "#f8fafc" }}>
+                            {g.clientName}
+                          </span>
+                          {g.jib && (
+                            <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                              JIB: {g.jib}
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2, display: "flex", gap: 14 }}>
+                          {g.email ? (
+                            <span style={{ color: "#38bdf8" }}>✉ {g.email} (iz CRM baze)</span>
+                          ) : (
+                            <span style={{ color: "#64748b" }}>Nema emaila u bazi</span>
+                          )}
+                          {g.address && <span>📍 {g.address}</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SUMARNI PODACI KLIJENTA */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                      {/* Proizvodi koje koristi */}
+                      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                        {g.tenants.map((t) => (
+                          <span
+                            key={t.tenant_id}
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              padding: "2px 6px",
+                              borderRadius: 4,
+                              background: "#242f42",
+                              border: "1px solid #374763",
+                              color: "#cbd5e1",
+                            }}
+                          >
+                            {t.product_display_name}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Ukupan zakup klijenta */}
+                      <div style={{ textAlign: "right", minWidth: 120 }}>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: "#f8fafc" }}>
+                          {g.totalEur > 0
+                            ? `${formatMoneyBiH(g.totalKm, "KM")} + ${formatMoneyBiH(g.totalEur, "EUR")}`
+                            : formatMoneyBiH(g.totalKm, "KM")}
+                        </div>
+                        <div style={{ fontSize: 10.5, color: "#64748b" }}>
+                          ukupno mjesečno
+                        </div>
+                      </div>
+
+                      {/* Status bedž */}
+                      <div style={{ minWidth: 100, textAlign: "right" }}>
+                        {g.hasSuspended ? (
+                          <span style={{ color: "#f87171", fontSize: 12, fontWeight: 700 }}>● Blokirano</span>
+                        ) : g.hasGrace ? (
+                          <span style={{ color: "#fbbf24", fontSize: 12, fontWeight: 700 }}>● U Grace-u</span>
+                        ) : g.allPilot ? (
+                          <span style={{ color: "#60a5fa", fontSize: 12, fontWeight: 700 }}>● Pilot</span>
+                        ) : (
+                          <span style={{ color: "#34d399", fontSize: 12, fontWeight: 700 }}>● Aktivan</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* RAŠČLANJENE LICENCE OVOG KLIJENTA (Rasklapa se) */}
+                  {isExpanded && (
+                    <div style={{ padding: "12px 16px", background: "#111620", borderTop: "1px solid #2d3748" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+                        <thead>
+                          <tr style={{ color: "#94a3b8", textAlign: "left", borderBottom: "1px solid #263040" }}>
+                            <th style={{ padding: "6px 8px", width: 45 }}>#ID</th>
+                            <th style={{ padding: "6px 8px" }}>Aplikacija & Paket</th>
+                            <th style={{ padding: "6px 8px" }}>Licence Token</th>
+                            <th style={{ padding: "6px 8px" }}>Ugovoreno</th>
+                            <th style={{ padding: "6px 8px" }}>Plaćeno Do</th>
+                            <th style={{ padding: "6px 8px" }}>Status</th>
+                            <th style={{ padding: "6px 8px", textAlign: "right" }}>Upravljanje Licencom</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {g.tenants.map((t) => {
+                            const b = t.billing as TenantBillingInfo;
+                            const isSusp = String(t.status).toUpperCase() === "SUSPENDOVAN";
+
+                            return (
+                              <tr key={t.tenant_id} style={{ borderBottom: "1px solid #1e2636" }}>
+                                <td style={{ padding: "8px 8px", color: "#64748b" }}>{t.tenant_id}</td>
+                                <td style={{ padding: "8px 8px" }}>
+                                  <div style={{ fontWeight: 700, color: "#f8fafc" }}>
+                                    {t.product_display_name}
+                                  </div>
+                                  <div style={{ fontSize: 11, color: "#64748b" }}>
+                                    {t.plan_naziv || t.soccs_tier || "Standardni paket"}
+                                  </div>
+                                </td>
+                                <td style={{ padding: "8px 8px" }}>
+                                  {t.licence_token ? (
+                                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                      <code style={{ fontFamily: "monospace", color: "#38bdf8", fontSize: 11 }}>
+                                        {String(t.licence_token).slice(0, 10)}...
+                                      </code>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopy(t.licence_token, t.tenant_id)}
+                                        style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 11 }}
+                                        title="Kopiraj puni token"
+                                      >
+                                        {copyFeedback === t.tenant_id ? "✓" : "📋"}
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span style={{ color: "#64748b" }}>—</span>
+                                  )}
+                                </td>
+                                <td style={{ padding: "8px 8px", fontWeight: 700, color: "#f8fafc" }}>
+                                  {formatMoneyBiH(t.monthly_price, t.currency || "KM")}
+                                </td>
+                                <td style={{ padding: "8px 8px", color: b.isExpired ? "#fca5a5" : "#cbd5e1" }}>
+                                  {formatDateBiH(t.subscription_ends_at)}
+                                </td>
+                                <td style={{ padding: "8px 8px" }}>
+                                  {b.statusType === "PAID" && <span style={{ color: "#34d399", fontWeight: 700 }}>● Aktivan</span>}
+                                  {b.statusType === "PILOT" && <span style={{ color: "#60a5fa", fontWeight: 700 }}>● Pilot</span>}
+                                  {b.statusType === "GRACE_PERIOD" && <span style={{ color: "#fbbf24", fontWeight: 700 }}>● Grace ({b.graceDaysLeft}d)</span>}
+                                  {b.statusType === "SUSPENDOVAN" && <span style={{ color: "#f87171", fontWeight: 700 }}>● Blokiran</span>}
+                                </td>
+                                <td style={{ padding: "8px 8px", textAlign: "right" }}>
+                                  <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
+                                    {onOpenToken && (
+                                      <button
+                                        type="button"
+                                        style={btnDesktop}
+                                        onClick={() => onOpenToken(t)}
+                                        title="Pregled tokena, QR koda i regeneracija"
+                                      >
+                                        🔑 Token
+                                      </button>
+                                    )}
+
+                                    {onOpenModules && (
+                                      <button
+                                        type="button"
+                                        style={btnDesktop}
+                                        onClick={() => onOpenModules(t)}
+                                        title="Zakupljeni moduli i paketi"
+                                      >
+                                        📦 Moduli
+                                      </button>
+                                    )}
+
+                                    {onToggleStatus && (
+                                      isSusp ? (
+                                        <button
+                                          type="button"
+                                          style={btnDesktopSuccess}
+                                          disabled={statusSavingId === t.tenant_id}
+                                          onClick={() => onToggleStatus(t.tenant_id, "AKTIVAN", t)}
+                                          title="Odblokiraj rad"
+                                        >
+                                          ✓ Odblokiraj
+                                        </button>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          style={btnDesktopDanger}
+                                          disabled={statusSavingId === t.tenant_id}
+                                          onClick={() => onToggleStatus(t.tenant_id, "SUSPENDOVAN", t)}
+                                          title="Blokiraj pristup softveru"
+                                        >
+                                          ⛔ Blokiraj
+                                        </button>
+                                      )
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      style={btnDesktop}
+                                      disabled={extendingId === t.tenant_id}
+                                      onClick={() => handleGraceExtend(t.tenant_id)}
+                                      title="Brzo produženje za 48h dok izvod ne legne"
+                                    >
+                                      +48h
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      style={btnDesktop}
+                                      onClick={() => setInvoiceModalTenant(t)}
+                                      title="Specifikacija i račun za zakup"
+                                    >
+                                      🧾 Račun
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : (
+        /* ===================================================================
+           B) POJEDINAČNA TABELA SVIH LICENCI
+           =================================================================== */
+        <div
+          style={{
+            background: "#18202c",
+            border: "1px solid #2d3748",
+            borderRadius: 6,
+            overflowX: "auto",
+            width: "100%",
+          }}
+        >
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
-              <tr>
-                <th style={{ width: 45, textAlign: "center" }}>#ID</th>
-                <th style={{ minWidth: 190 }}>Tenant & Pravno Lice</th>
-                <th style={{ minWidth: 150 }}>Proizvod & Paket</th>
-                <th style={{ minWidth: 140 }}>Licence Token</th>
-                <th style={{ minWidth: 120 }}>Ugovoreni Zakup</th>
-                <th style={{ minWidth: 105 }}>Plaćeno Do</th>
-                <th style={{ minWidth: 120 }}>Status Licence</th>
-                <th style={{ minWidth: 320, textAlign: "right" }}>Upravljanje & Akcije</th>
+              <tr style={{ background: "#161b22", color: "#94a3b8", textAlign: "left", borderBottom: "1px solid #2d3748" }}>
+                <th style={{ padding: "10px 12px", width: 45 }}>#ID</th>
+                <th style={{ padding: "10px 12px", minWidth: 200 }}>Tenant & Pravno Lice</th>
+                <th style={{ padding: "10px 12px", minWidth: 150 }}>Proizvod & Paket</th>
+                <th style={{ padding: "10px 12px", minWidth: 130 }}>Licence Token</th>
+                <th style={{ padding: "10px 12px", minWidth: 110 }}>Ugovoreno</th>
+                <th style={{ padding: "10px 12px", minWidth: 105 }}>Plaćeno Do</th>
+                <th style={{ padding: "10px 12px", minWidth: 115 }}>Status</th>
+                <th style={{ padding: "10px 12px", textAlign: "right", minWidth: 280 }}>Upravljanje & Akcije</th>
               </tr>
             </thead>
             <tbody>
               {filteredTenants.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: "center", padding: 36, color: "rgba(255, 255, 255, 0.4)" }}>
+                  <td colSpan={8} style={{ textAlign: "center", padding: 32, color: "#64748b" }}>
                     Nema tenanata koji odgovaraju izabranim filterima.
                   </td>
                 </tr>
               ) : (
                 filteredTenants.map((t) => {
                   const b = t.billing as TenantBillingInfo;
-                  const price = Number(t.monthly_price) || 0;
-                  const ccy = t.currency || "KM";
-                  const isExpanded = expandedRowId === t.tenant_id;
-                  const isSuspended = String(t.status).toUpperCase() === "SUSPENDOVAN";
+                  const isSusp = String(t.status).toUpperCase() === "SUSPENDOVAN";
+                  const isExp = expandedLicenceId === t.tenant_id;
                   const modules = parseScopeModules(t.soccs_platform_scope);
 
                   return (
                     <React.Fragment key={t.tenant_id}>
-                      <tr
-                        style={{
-                          background: isExpanded ? "rgba(56, 189, 248, 0.04)" : undefined,
-                          transition: "background 0.2s",
-                        }}
-                      >
-                        <td style={{ textAlign: "center", color: "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
+                      <tr style={{ borderBottom: "1px solid #222b3b", background: isExp ? "#1e293b" : "transparent" }}>
+                        <td style={{ padding: "10px 12px", color: "#64748b", fontWeight: 700 }}>
                           {t.tenant_id}
                         </td>
-
-                        {/* TENANT I PRAVNO LICE */}
-                        <td>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <span style={{ fontWeight: 800, color: "#ffffff", fontSize: 14 }}>
+                        <td style={{ padding: "10px 12px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontWeight: 800, color: "#f8fafc", fontSize: 13.5 }}>
                               {t.naziv}
                             </span>
                             <button
                               type="button"
-                              onClick={() => setExpandedRowId(isExpanded ? null : t.tenant_id)}
+                              onClick={() => setExpandedLicenceId(isExp ? null : t.tenant_id)}
                               style={{
-                                background: "rgba(255, 255, 255, 0.06)",
-                                border: "1px solid rgba(255, 255, 255, 0.12)",
-                                borderRadius: 6,
-                                padding: "2px 6px",
+                                background: "none",
+                                border: "1px solid #374151",
+                                borderRadius: 3,
+                                color: "#94a3b8",
                                 fontSize: 10.5,
-                                color: isExpanded ? "#38bdf8" : "rgba(255, 255, 255, 0.6)",
+                                padding: "1px 5px",
                                 cursor: "pointer",
                               }}
-                              title="Prikaži / Sakrij detalje ugovora, module i tokene"
                             >
-                              {isExpanded ? "▲ Detalji" : "▼ Detalji"}
+                              {isExp ? "▲" : "▼"}
                             </button>
                           </div>
-                          <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", marginTop: 2 }}>
-                            {t.klijent_naziv}
-                            {t.klijent_jib ? ` · JIB: ${t.klijent_jib}` : ""}
+                          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                            {t.klijent_naziv} {t.klijent_jib ? `· JIB: ${t.klijent_jib}` : ""}
                           </div>
-                          {t.billing_email && (
-                            <div style={{ fontSize: 11, color: "#38bdf8", marginTop: 2 }}>
-                              ✉ {t.billing_email}
+                          {t.klijent_email && (
+                            <div style={{ fontSize: 11, color: "#38bdf8", marginTop: 1 }}>
+                              ✉ {t.klijent_email}
                             </div>
                           )}
                         </td>
-
-                        {/* PROIZVOD I PAKET */}
-                        <td>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                            <span
-                              style={{
-                                fontWeight: 800,
-                                color: "#e2e8f0",
-                                fontSize: 12,
-                                padding: "2px 7px",
-                                borderRadius: 6,
-                                background: "rgba(255, 255, 255, 0.08)",
-                                border: "1px solid rgba(255, 255, 255, 0.12)",
-                              }}
-                            >
-                              {t.studio_licence_profile || "FLUXA"}
-                            </span>
-                            {onOpenModules && (
-                              <button
-                                type="button"
-                                onClick={() => onOpenModules(t)}
-                                style={{
-                                  background: "rgba(96, 165, 250, 0.1)",
-                                  border: "1px solid rgba(96, 165, 250, 0.3)",
-                                  color: "#60a5fa",
-                                  fontSize: 10.5,
-                                  fontWeight: 700,
-                                  borderRadius: 5,
-                                  padding: "2px 6px",
-                                  cursor: "pointer",
-                                }}
-                                title="Pregled i izmjena zakupljenih modula i krovnog paketa"
-                              >
-                                📦 Moduli
-                              </button>
-                            )}
+                        <td style={{ padding: "10px 12px" }}>
+                          <div style={{ fontWeight: 700, color: "#f8fafc" }}>
+                            {t.product_display_name}
                           </div>
-                          {t.soccs_tier && (
-                            <div style={{ fontSize: 11, color: "rgba(255, 255, 255, 0.45)", marginTop: 3 }}>
-                              Paket: {t.soccs_tier}
-                            </div>
-                          )}
+                          <div style={{ fontSize: 11, color: "#64748b" }}>
+                            {t.plan_naziv || t.soccs_tier || "Standardni paket"}
+                          </div>
                         </td>
-
-                        {/* LICENCE TOKEN */}
-                        <td>
+                        <td style={{ padding: "10px 12px" }}>
                           {t.licence_token ? (
                             <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                              <code
-                                style={{
-                                  fontSize: 11,
-                                  background: "rgba(0,0,0,0.3)",
-                                  padding: "2px 5px",
-                                  borderRadius: 4,
-                                  color: "#38bdf8",
-                                  fontFamily: "monospace",
-                                }}
-                                title={t.licence_token}
-                              >
+                              <code style={{ fontFamily: "monospace", color: "#38bdf8", fontSize: 11 }}>
                                 {String(t.licence_token).slice(0, 10)}...
                               </code>
                               <button
                                 type="button"
                                 onClick={() => handleCopy(t.licence_token, t.tenant_id)}
-                                style={{
-                                  background: "none",
-                                  border: "none",
-                                  cursor: "pointer",
-                                  fontSize: 12,
-                                  color: copyFeedback === t.tenant_id ? "#34d399" : "rgba(255, 255, 255, 0.5)",
-                                }}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 12 }}
                                 title="Kopiraj puni token"
                               >
                                 {copyFeedback === t.tenant_id ? "✓" : "📋"}
                               </button>
                             </div>
                           ) : (
-                            <span style={{ fontSize: 11, color: "rgba(255, 255, 255, 0.3)" }}>— Nema tokena —</span>
+                            <span style={{ color: "#64748b" }}>—</span>
                           )}
                         </td>
-
-                        {/* UGOVORENI ZAKUP */}
-                        <td>
-                          <div style={{ fontWeight: 800, color: "#ffffff", fontSize: 13.5 }}>
-                            {price.toFixed(2)} {ccy}
-                          </div>
-                          <div style={{ fontSize: 10.5, color: "rgba(255, 255, 255, 0.45)" }}>
-                            mjesečno
-                          </div>
+                        <td style={{ padding: "10px 12px", fontWeight: 700, color: "#f8fafc" }}>
+                          {formatMoneyBiH(t.monthly_price, t.currency || "KM")}
                         </td>
-
-                        {/* PLAĆENO DO */}
-                        <td>
-                          <div style={{ fontWeight: 700, fontSize: 12.5, color: b.isExpired ? "#fca5a5" : "#e2e8f0" }}>
-                            {b.subscriptionEndsAtFormatted}
-                          </div>
-                          {onOpenExtend && (
-                            <button
-                              type="button"
-                              onClick={() => onOpenExtend(t)}
-                              style={{
-                                background: "none",
-                                border: "none",
-                                color: "#60a5fa",
-                                fontSize: 10.5,
-                                cursor: "pointer",
-                                padding: 0,
-                                marginTop: 1,
-                              }}
-                              title="Ručno promijeni datum važenja licence"
-                            >
-                              Izmjeni rok ✎
-                            </button>
-                          )}
+                        <td style={{ padding: "10px 12px", color: b.isExpired ? "#fca5a5" : "#cbd5e1" }}>
+                          {formatDateBiH(t.subscription_ends_at)}
                         </td>
-
-                        {/* STATUS */}
-                        <td>
-                          {b.statusType === "PAID" && (
-                            <span
-                              style={{
-                                display: "inline-block",
-                                padding: "4px 8px",
-                                borderRadius: 7,
-                                background: "rgba(16, 185, 129, 0.15)",
-                                color: "#34d399",
-                                fontSize: 11,
-                                fontWeight: 750,
-                                border: "1px solid rgba(16, 185, 129, 0.3)",
-                              }}
-                            >
-                              ✓ AKTIVAN
-                            </span>
-                          )}
-                          {b.statusType === "GRACE_PERIOD" && (
-                            <span
-                              style={{
-                                display: "inline-block",
-                                padding: "4px 8px",
-                                borderRadius: 7,
-                                background: "rgba(245, 158, 11, 0.15)",
-                                color: "#fbbf24",
-                                fontSize: 11,
-                                fontWeight: 750,
-                                border: "1px solid rgba(245, 158, 11, 0.3)",
-                              }}
-                              title={`Grace period do 14. u mjesecu. Preostalo: ${b.graceDaysLeft} dana.`}
-                            >
-                              ⏳ GRACE ({b.graceDaysLeft}d)
-                            </span>
-                          )}
-                          {b.statusType === "SUSPENDOVAN" && (
-                            <span
-                              style={{
-                                display: "inline-block",
-                                padding: "4px 8px",
-                                borderRadius: 7,
-                                background: "rgba(239, 68, 68, 0.15)",
-                                color: "#f87171",
-                                fontSize: 11,
-                                fontWeight: 750,
-                                border: "1px solid rgba(239, 68, 68, 0.3)",
-                              }}
-                            >
-                              🛑 BLOKIRAN
-                            </span>
-                          )}
-                          {b.statusType === "PILOT" && (
-                            <span
-                              style={{
-                                display: "inline-block",
-                                padding: "4px 8px",
-                                borderRadius: 7,
-                                background: "rgba(59, 130, 246, 0.15)",
-                                color: "#60a5fa",
-                                fontSize: 11,
-                                fontWeight: 750,
-                                border: "1px solid rgba(59, 130, 246, 0.3)",
-                              }}
-                            >
-                              PILOT / TEST
-                            </span>
-                          )}
+                        <td style={{ padding: "10px 12px" }}>
+                          {b.statusType === "PAID" && <span style={{ color: "#34d399", fontWeight: 700 }}>● Aktivan</span>}
+                          {b.statusType === "PILOT" && <span style={{ color: "#60a5fa", fontWeight: 700 }}>● Pilot</span>}
+                          {b.statusType === "GRACE_PERIOD" && <span style={{ color: "#fbbf24", fontWeight: 700 }}>● Grace ({b.graceDaysLeft}d)</span>}
+                          {b.statusType === "SUSPENDOVAN" && <span style={{ color: "#f87171", fontWeight: 700 }}>● Blokiran</span>}
                         </td>
-
-                        {/* KOMPLETNE AKCIJE UPRAVLJANJA */}
-                        <td style={{ textAlign: "right" }}>
-                          <div style={{ display: "flex", gap: 5, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                            {/* 1. TOKEN MODAL (Prikaz, QR, Regeneracija) */}
+                        <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                          <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
                             {onOpenToken && (
                               <button
                                 type="button"
-                                className="btn"
+                                style={btnDesktop}
                                 onClick={() => onOpenToken(t)}
-                                title="Pregled punog tokena, QR koda i regeneracija novog tokena"
-                                style={{
-                                  padding: "4px 7px",
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  background: "rgba(255, 255, 255, 0.05)",
-                                  borderColor: "rgba(255, 255, 255, 0.15)",
-                                  color: "#e2e8f0",
-                                }}
+                                title="Token & QR kod"
                               >
                                 🔑 Token
                               </button>
                             )}
-
-                            {/* 2. MODULI I PAKET */}
                             {onOpenModules && (
                               <button
                                 type="button"
-                                className="btn"
+                                style={btnDesktop}
                                 onClick={() => onOpenModules(t)}
-                                title="Pregled i izmjena zakupljenih modula, limita i kase"
-                                style={{
-                                  padding: "4px 7px",
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  background: "rgba(59, 130, 246, 0.12)",
-                                  borderColor: "rgba(59, 130, 246, 0.35)",
-                                  color: "#60a5fa",
-                                }}
+                                title="Moduli i paketi"
                               >
                                 📦 Moduli
                               </button>
                             )}
-
-                            {/* 3. BLOKIRAJ / AKTIVIRAJ RAD (Zloupotreba i kontrola) */}
                             {onToggleStatus && (
-                              isSuspended ? (
+                              isSusp ? (
                                 <button
                                   type="button"
-                                  className="btn"
+                                  style={btnDesktopSuccess}
                                   disabled={statusSavingId === t.tenant_id}
                                   onClick={() => onToggleStatus(t.tenant_id, "AKTIVAN", t)}
-                                  title="Aktiviraj rad tenanta i odblokiraj pristup terenskom softveru"
-                                  style={{
-                                    padding: "4px 8px",
-                                    fontSize: 11,
-                                    fontWeight: 750,
-                                    background: "rgba(16, 185, 129, 0.18)",
-                                    borderColor: "rgba(16, 185, 129, 0.45)",
-                                    color: "#34d399",
-                                  }}
                                 >
-                                  {statusSavingId === t.tenant_id ? "..." : "✓ Odblokiraj"}
+                                  ✓ Odblokiraj
                                 </button>
                               ) : (
                                 <button
                                   type="button"
-                                  className="btn"
+                                  style={btnDesktopDanger}
                                   disabled={statusSavingId === t.tenant_id}
                                   onClick={() => onToggleStatus(t.tenant_id, "SUSPENDOVAN", t)}
-                                  title="Blokiraj pristup i rad tenanta (u slučaju zloupotrebe ili neplaćanja)"
-                                  style={{
-                                    padding: "4px 8px",
-                                    fontSize: 11,
-                                    fontWeight: 750,
-                                    background: "rgba(239, 68, 68, 0.15)",
-                                    borderColor: "rgba(239, 68, 68, 0.4)",
-                                    color: "#f87171",
-                                  }}
                                 >
-                                  {statusSavingId === t.tenant_id ? "..." : "⛔ Blokiraj"}
+                                  ⛔ Blokiraj
                                 </button>
                               )
                             )}
-
-                            {/* 4. UPRAVLJAJ UGOVOROM (CRM, Podaci, Note) */}
-                            {onOpenContact && (
-                              <button
-                                type="button"
-                                className="btn"
-                                onClick={() => onOpenContact(t)}
-                                title="Upravljaj ugovorom, CRM klijentom, kontakt podacima i napomenama"
-                                style={{
-                                  padding: "4px 7px",
-                                  fontSize: 11,
-                                  fontWeight: 650,
-                                  background: "rgba(255, 255, 255, 0.05)",
-                                  borderColor: "rgba(255, 255, 255, 0.15)",
-                                  color: "#cbd5e1",
-                                }}
-                              >
-                                ⚙️ Ugovor
-                              </button>
-                            )}
-
-                            {/* 5. GRACE +48H */}
                             <button
                               type="button"
-                              className="btn"
+                              style={btnDesktop}
                               disabled={extendingId === t.tenant_id}
                               onClick={() => handleGraceExtend(t.tenant_id)}
-                              title="Produži licencu za +48h dok izvod ne legne kroz banku"
-                              style={{
-                                padding: "4px 7px",
-                                fontSize: 11,
-                                fontWeight: 700,
-                                background: "rgba(245, 158, 11, 0.12)",
-                                borderColor: "rgba(245, 158, 11, 0.35)",
-                                color: "#fbbf24",
-                              }}
+                              title="Brzo produženje +48h"
                             >
-                              {extendingId === t.tenant_id ? "..." : "+48h"}
+                              +48h
                             </button>
-
-                            {/* 6. RAČUN / SPECIFIKACIJA */}
                             <button
                               type="button"
-                              className="btn"
+                              style={btnDesktop}
                               onClick={() => setInvoiceModalTenant(t)}
-                              title="Pregled specifikacije i izdavanje računa za zakup licence"
-                              style={{
-                                padding: "4px 8px",
-                                fontSize: 11,
-                                fontWeight: 700,
-                                background: "rgba(255, 255, 255, 0.08)",
-                                borderColor: "rgba(255, 255, 255, 0.2)",
-                                color: "#ffffff",
-                              }}
                             >
                               🧾 Račun
                             </button>
@@ -877,182 +1244,46 @@ export default function ModernTenantBillingView({
                         </td>
                       </tr>
 
-                      {/* INLINE PROŠIRENI DETALJI UGOVORA I MODULA */}
-                      {isExpanded && (
-                        <tr style={{ background: "rgba(15, 23, 42, 0.65)" }}>
-                          <td colSpan={8} style={{ padding: "16px 20px" }}>
-                            <div
-                              style={{
-                                display: "grid",
-                                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                                gap: 16,
-                                background: "rgba(0, 0, 0, 0.3)",
-                                padding: 18,
-                                borderRadius: 12,
-                                border: "1px solid rgba(255, 255, 255, 0.08)",
-                              }}
-                            >
-                              {/* 1. UGOVORENA PRETPLATA & MODULI */}
+                      {/* RASKLOPIVI DETALJI */}
+                      {isExp && (
+                        <tr style={{ background: "#111620" }}>
+                          <td colSpan={8} style={{ padding: "14px 18px", borderBottom: "1px solid #2d3748" }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
                               <div>
-                                <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "#38bdf8", letterSpacing: "0.05em", marginBottom: 8 }}>
-                                  📦 Ugovorena Pretplata & Obuhvat Modula
+                                <div style={{ fontSize: 11, fontWeight: 700, color: "#38bdf8", textTransform: "uppercase" }}>
+                                  Ugovoreni moduli
                                 </div>
-                                <div style={{ fontSize: 13, color: "#f8fafc", marginBottom: 4 }}>
-                                  <strong>Paket:</strong> {t.plan_naziv || t.soccs_tier || "Standardni paket"}
-                                </div>
-                                <div style={{ fontSize: 13, color: "#f8fafc", marginBottom: 6 }}>
-                                  <strong>Ugovorena cijena:</strong> {price.toFixed(2)} {ccy} / mjesečno
-                                </div>
-
-                                <div style={{ fontSize: 11.5, color: "rgba(255, 255, 255, 0.55)", marginBottom: 6 }}>
-                                  Aktivirani moduli u licenci:
-                                </div>
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
+                                <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 6 }}>
                                   {modules.length > 0 ? (
-                                    modules.map((m: string) => (
-                                      <span
-                                        key={m}
-                                        style={{
-                                          fontSize: 10.5,
-                                          fontWeight: 700,
-                                          padding: "2px 7px",
-                                          borderRadius: 5,
-                                          background: "rgba(56, 189, 248, 0.15)",
-                                          border: "1px solid rgba(56, 189, 248, 0.3)",
-                                          color: "#38bdf8",
-                                        }}
-                                      >
+                                    modules.map((m) => (
+                                      <span key={m} style={{ fontSize: 11, background: "#1e293b", padding: "2px 6px", borderRadius: 3, color: "#e2e8f0" }}>
                                         ✓ {m}
                                       </span>
                                     ))
                                   ) : (
-                                    <span style={{ fontSize: 11.5, color: "rgba(255, 255, 255, 0.4)" }}>
-                                      Osnovni paket bez dodatnih podmodula
-                                    </span>
+                                    <span style={{ fontSize: 12, color: "#64748b" }}>Osnovni modul</span>
                                   )}
                                 </div>
-
-                                {onOpenModules && (
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm"
-                                    onClick={() => onOpenModules(t)}
-                                    style={{ fontSize: 11, fontWeight: 700, color: "#60a5fa" }}
-                                  >
-                                    ✎ Izmijeni obuhvat modula i paketa
-                                  </button>
-                                )}
                               </div>
 
-                              {/* 2. PRAVNO LICE & UGOVORNI PODACI */}
                               <div>
-                                <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "#a855f7", letterSpacing: "0.05em", marginBottom: 8 }}>
-                                  🏢 Pravno Lice & Ugovorni Podaci
+                                <div style={{ fontSize: 11, fontWeight: 700, color: "#a855f7", textTransform: "uppercase" }}>
+                                  CRM Klijent & Fakturisanje
                                 </div>
-                                <div style={{ fontSize: 13, color: "#f8fafc", marginBottom: 3 }}>
-                                  <strong>Klijent:</strong> {t.klijent_naziv || "Nije povezan sa CRM-om"}
+                                <div style={{ fontSize: 12.5, color: "#e2e8f0", marginTop: 4 }}>
+                                  {t.klijent_naziv} {t.klijent_jib ? `· JIB: ${t.klijent_jib}` : ""}
                                 </div>
-                                {t.klijent_jib && (
-                                  <div style={{ fontSize: 12.5, color: "rgba(255, 255, 255, 0.7)", marginBottom: 3 }}>
-                                    <strong>JIB / Porezni broj:</strong> {t.klijent_jib}
-                                  </div>
-                                )}
-                                {t.klijent_adresa && (
-                                  <div style={{ fontSize: 12.5, color: "rgba(255, 255, 255, 0.7)", marginBottom: 3 }}>
-                                    <strong>Adresa:</strong> {t.klijent_adresa}
-                                  </div>
-                                )}
-                                <div style={{ fontSize: 12.5, color: "rgba(255, 255, 255, 0.7)", marginBottom: 3 }}>
-                                  <strong>Račun prima:</strong> {t.billing_email || "Nije definisan email"}
+                                <div style={{ fontSize: 12, color: "#94a3b8" }}>
+                                  Email za račun: {t.klijent_email || "Nije postavljen"}
                                 </div>
-                                {t.billing_phone && (
-                                  <div style={{ fontSize: 12.5, color: "rgba(255, 255, 255, 0.7)", marginBottom: 6 }}>
-                                    <strong>Telefon:</strong> {t.billing_phone}
-                                  </div>
-                                )}
-
-                                {onOpenContact && (
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm"
-                                    onClick={() => onOpenContact(t)}
-                                    style={{ fontSize: 11, fontWeight: 700, color: "#cbd5e1" }}
-                                  >
-                                    ✎ Uredi podatke klijenta i ugovorne bilješke
-                                  </button>
-                                )}
                               </div>
 
-                              {/* 3. SIGURNOST, TOKEN & KONTROLA */}
                               <div>
-                                <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "#fbbf24", letterSpacing: "0.05em", marginBottom: 8 }}>
-                                  🔐 Licenca, Token & Kontrola Pristupa
+                                <div style={{ fontSize: 11, fontWeight: 700, color: "#f59e0b", textTransform: "uppercase" }}>
+                                  Puni aktivacioni token
                                 </div>
-                                <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.7)", marginBottom: 4 }}>
-                                  Puni aktivacioni token:
-                                </div>
-                                <div
-                                  style={{
-                                    background: "rgba(0,0,0,0.5)",
-                                    padding: "6px 8px",
-                                    borderRadius: 6,
-                                    fontSize: 10.5,
-                                    fontFamily: "monospace",
-                                    color: "#38bdf8",
-                                    wordBreak: "break-all",
-                                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                                    marginBottom: 8,
-                                  }}
-                                >
-                                  {t.licence_token || "Token nije generisan"}
-                                </div>
-
-                                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                                  {t.licence_token && (
-                                    <button
-                                      type="button"
-                                      className="btn btn-sm"
-                                      onClick={() => handleCopy(t.licence_token, t.tenant_id)}
-                                      style={{ fontSize: 11, fontWeight: 700 }}
-                                    >
-                                      {copyFeedback === t.tenant_id ? "✓ Kopirano" : "📋 Kopiraj Token"}
-                                    </button>
-                                  )}
-
-                                  {onOpenToken && (
-                                    <button
-                                      type="button"
-                                      className="btn btn-sm"
-                                      onClick={() => onOpenToken(t)}
-                                      style={{ fontSize: 11, fontWeight: 700, color: "#f59e0b" }}
-                                    >
-                                      🔄 Regeneriši Token / QR
-                                    </button>
-                                  )}
-
-                                  {onToggleStatus && (
-                                    isSuspended ? (
-                                      <button
-                                        type="button"
-                                        className="btn btn-sm"
-                                        disabled={statusSavingId === t.tenant_id}
-                                        onClick={() => onToggleStatus(t.tenant_id, "AKTIVAN", t)}
-                                        style={{ fontSize: 11, fontWeight: 800, color: "#34d399", borderColor: "rgba(16, 185, 129, 0.4)" }}
-                                      >
-                                        ✓ Odblokiraj rad tenanta
-                                      </button>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        className="btn btn-sm"
-                                        disabled={statusSavingId === t.tenant_id}
-                                        onClick={() => onToggleStatus(t.tenant_id, "SUSPENDOVAN", t)}
-                                        style={{ fontSize: 11, fontWeight: 800, color: "#f87171", borderColor: "rgba(239, 68, 68, 0.4)" }}
-                                      >
-                                        ⛔ Blokiraj rad tenanta
-                                      </button>
-                                    )
-                                  )}
+                                <div style={{ fontFamily: "monospace", fontSize: 11, color: "#38bdf8", wordBreak: "break-all", marginTop: 4 }}>
+                                  {t.licence_token || "—"}
                                 </div>
                               </div>
                             </div>
@@ -1066,16 +1297,268 @@ export default function ModernTenantBillingView({
             </tbody>
           </table>
         </div>
-      </div>
+      )}
 
-      {/* 5. MODAL: PRO-RATA KALKULATOR */}
-      {proRataOpen && (
+      {/* 5. MODAL: KPI DRILLDOWN (Klik na bilo koji KPI broj otvara listu) */}
+      {kpiModalCategory && (
         <div
-          className="studio-modal"
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0, 0, 0, 0.75)",
+            background: "rgba(0,0,0,0.75)",
+            backdropFilter: "blur(4px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onClick={() => setKpiModalCategory(null)}
+        >
+          <div
+            style={{
+              background: "#18202c",
+              border: "1px solid #374151",
+              borderRadius: 6,
+              padding: 22,
+              width: "100%",
+              maxWidth: 720,
+              maxHeight: "85vh",
+              overflowY: "auto",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #2d3748", paddingBottom: 10 }}>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#f8fafc" }}>
+                {kpiModalCategory === "ACTIVE" && "Pregled Aktivnih Tenanata"}
+                {kpiModalCategory === "PILOT" && "Pregled Klijenata u Pilot / Test Statusu"}
+                {kpiModalCategory === "GRACE" && "Klijenti u Grace Periodu (Rok do 14-og)"}
+                {kpiModalCategory === "SUSPENDED" && "Blokirani i Suspendovani Tenanti"}
+                {kpiModalCategory === "MRR_KM" && "Ugovoreni Domaći Zakup (BAM)"}
+                {kpiModalCategory === "MRR_EUR" && "Ugovoreni INO Zakup (EUR)"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setKpiModalCategory(null)}
+                style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ marginTop: 14 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+                <thead>
+                  <tr style={{ color: "#94a3b8", borderBottom: "1px solid #2d3748", textAlign: "left" }}>
+                    <th style={{ padding: "6px 8px" }}>Tenant</th>
+                    <th style={{ padding: "6px 8px" }}>Aplikacija</th>
+                    <th style={{ padding: "6px 8px" }}>Zakup</th>
+                    <th style={{ padding: "6px 8px" }}>Plaćeno Do</th>
+                    <th style={{ padding: "6px 8px", textAlign: "right" }}>Akcija</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {kpiDrilldownTenants.map((t) => (
+                    <tr key={t.tenant_id} style={{ borderBottom: "1px solid #1e2636" }}>
+                      <td style={{ padding: "8px 8px" }}>
+                        <div style={{ fontWeight: 700, color: "#f8fafc" }}>{t.naziv}</div>
+                        <div style={{ fontSize: 11, color: "#94a3b8" }}>{t.klijent_naziv}</div>
+                      </td>
+                      <td style={{ padding: "8px 8px" }}>{t.product_display_name}</td>
+                      <td style={{ padding: "8px 8px", fontWeight: 700, color: "#f8fafc" }}>
+                        {formatMoneyBiH(t.monthly_price, t.currency || "KM")}
+                      </td>
+                      <td style={{ padding: "8px 8px" }}>{formatDateBiH(t.subscription_ends_at)}</td>
+                      <td style={{ padding: "8px 8px", textAlign: "right" }}>
+                        <button
+                          type="button"
+                          style={btnDesktop}
+                          onClick={() => {
+                            setKpiModalCategory(null);
+                            if (onOpenToken) onOpenToken(t);
+                          }}
+                        >
+                          Upravljaj ➔
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button
+                type="button"
+                style={btnDesktopPrimary}
+                onClick={() => setKpiModalCategory(null)}
+              >
+                Zatvori
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. MODAL: LOGISTIX FLOTA & REFERRAL KALKULATOR */}
+      {logisticxOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            backdropFilter: "blur(4px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onClick={() => setLogisticxOpen(false)}
+        >
+          <div
+            style={{
+              background: "#18202c",
+              border: "1px solid #374151",
+              borderRadius: 6,
+              padding: 24,
+              width: "100%",
+              maxWidth: 580,
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #2d3748", paddingBottom: 10 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#f8fafc" }}>
+                🚚 LogistiX Flota & Referral Model
+              </h3>
+              <button
+                type="button"
+                onClick={() => setLogisticxOpen(false)}
+                style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 10, lineHeight: 1.5 }}>
+              Formula: <strong>1 kamion = 1 KM po danu</strong> (30 dana = 30 KM / mjesec po kamionu).
+              <br />
+              Referral popust: Za svakog novog klijenta kojeg dovede, dobija <strong>50% popusta po kamionu</strong> (15 KM / mjesec po preporučenom kamionu).
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 16 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#e2e8f0", marginBottom: 5 }}>
+                  Broj kamiona klijenta u floti:
+                </label>
+                <input
+                  type="number"
+                  value={logTrucksCount}
+                  onChange={(e) => setLogTrucksCount(Math.max(0, Number(e.target.value) || 0))}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    background: "#1f2937",
+                    border: "1px solid #374151",
+                    borderRadius: 4,
+                    color: "#f8fafc",
+                    fontSize: 14,
+                    fontWeight: 700,
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#e2e8f0", marginBottom: 5 }}>
+                  Broj kamiona koje su doveli preporučeni klijenti (Referral):
+                </label>
+                <input
+                  type="number"
+                  value={logReferredTrucks}
+                  onChange={(e) => setLogReferredTrucks(Math.max(0, Number(e.target.value) || 0))}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    background: "#1f2937",
+                    border: "1px solid #374151",
+                    borderRadius: 4,
+                    color: "#f8fafc",
+                    fontSize: 14,
+                    fontWeight: 700,
+                  }}
+                />
+              </div>
+
+              {/* OBRAČUN */}
+              {(() => {
+                const baseMonthly = logTrucksCount * 30; // 1 KM po danu za 30 dana
+                const discountMonthly = logReferredTrucks * 15; // 0.50 KM po danu = 15 KM po kamionu
+                const finalMonthly = Math.max(0, baseMonthly - discountMonthly);
+                const isFree = baseMonthly > 0 && finalMonthly === 0;
+
+                return (
+                  <div
+                    style={{
+                      background: isFree ? "#064e3b" : "#111827",
+                      border: isFree ? "1px solid #059669" : "1px solid #374151",
+                      borderRadius: 6,
+                      padding: 16,
+                      marginTop: 6,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#cbd5e1" }}>
+                      <span>Osnovni zakup ({logTrucksCount} kamiona × 30 KM):</span>
+                      <strong style={{ color: "#f8fafc" }}>{formatMoneyBiH(baseMonthly, "KM")}</strong>
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#38bdf8", marginTop: 6 }}>
+                      <span>Referral popust ({logReferredTrucks} kamiona × 15 KM):</span>
+                      <strong>- {formatMoneyBiH(discountMonthly, "KM")}</strong>
+                    </div>
+
+                    <div style={{ height: 1, background: "#374151", margin: "10px 0" }} />
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>
+                        Konačna mjesečna pretplata:
+                      </span>
+                      <span style={{ fontSize: 22, fontWeight: 800, color: isFree ? "#34d399" : "#f8fafc" }}>
+                        {isFree ? "0,00 KM (BESPLATNO!)" : formatMoneyBiH(finalMonthly, "KM")}
+                      </span>
+                    </div>
+
+                    {isFree && (
+                      <div style={{ fontSize: 11.5, color: "#a7f3d0", marginTop: 6 }}>
+                        ✓ Klijent ima 100% besplatno korištenje LogistiX-a dok god su preporučeni klijenti aktivni!
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
+              <button
+                type="button"
+                style={btnDesktopPrimary}
+                onClick={() => setLogisticxOpen(false)}
+              >
+                Zatvori
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7. MODAL: PRO-RATA KALKULATOR */}
+      {proRataOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
             backdropFilter: "blur(4px)",
             zIndex: 9999,
             display: "flex",
@@ -1087,51 +1570,65 @@ export default function ModernTenantBillingView({
         >
           <div
             style={{
-              background: "#0f172a",
-              border: "1px solid rgba(255, 255, 255, 0.15)",
-              borderRadius: 20,
-              padding: 28,
+              background: "#18202c",
+              border: "1px solid #374151",
+              borderRadius: 6,
+              padding: 24,
               width: "100%",
-              maxWidth: 540,
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.6)",
+              maxWidth: 520,
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3 style={{ margin: 0, fontSize: 19, fontWeight: 850, color: "#ffffff" }}>
-                ⚡ Hetzner Pro-Rata Kalkulator
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #2d3748", paddingBottom: 10 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#f8fafc" }}>
+                ⚡ Hetzner Pro-Rata Obračun
               </h3>
               <button
                 type="button"
                 onClick={() => setProRataOpen(false)}
-                style={{ background: "none", border: "none", color: "rgba(255, 255, 255, 0.5)", fontSize: 20, cursor: "pointer" }}
+                style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer" }}
               >
                 ✕
               </button>
             </div>
 
-            <p style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.65)", marginTop: 8, marginBottom: 20, lineHeight: 1.5 }}>
-              Izračunava tačan srazmjerni iznos od dana potpisivanja ugovora do 1. u narednom mjesecu (bez opraštanja dana).
+            <p style={{ fontSize: 12.5, color: "#94a3b8", marginTop: 10, lineHeight: 1.5 }}>
+              Računa tačan iznos od dana početka do 1. u narednom mjesecu (srazmjerno broju dana).
             </p>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "rgba(255, 255, 255, 0.7)", marginBottom: 6 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#e2e8f0", marginBottom: 5 }}>
                   Mjesečna ugovorena cijena zakupa:
                 </label>
                 <div style={{ display: "flex", gap: 8 }}>
                   <input
                     type="number"
-                    className="input"
                     value={proRataPrice}
                     onChange={(e) => setProRataPrice(Number(e.target.value) || 0)}
-                    style={{ flex: 1, fontSize: 15, fontWeight: 750 }}
+                    style={{
+                      flex: 1,
+                      padding: "7px 10px",
+                      background: "#1f2937",
+                      border: "1px solid #374151",
+                      borderRadius: 4,
+                      color: "#f8fafc",
+                      fontSize: 14,
+                      fontWeight: 700,
+                    }}
                   />
                   <select
-                    className="input"
                     value={proRataCurrency}
                     onChange={(e) => setProRataCurrency(e.target.value)}
-                    style={{ width: 85 }}
+                    style={{
+                      width: 80,
+                      padding: "7px",
+                      background: "#1f2937",
+                      border: "1px solid #374151",
+                      borderRadius: 4,
+                      color: "#f8fafc",
+                    }}
                   >
                     <option value="KM">KM</option>
                     <option value="EUR">EUR (€)</option>
@@ -1140,51 +1637,48 @@ export default function ModernTenantBillingView({
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "rgba(255, 255, 255, 0.7)", marginBottom: 6 }}>
-                  Datum potpisivanja / početka zakupa:
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#e2e8f0", marginBottom: 5 }}>
+                  Datum početka zakupa:
                 </label>
                 <input
                   type="date"
-                  className="input"
                   value={proRataDate}
                   onChange={(e) => setProRataDate(e.target.value)}
-                  style={{ width: "100%", fontSize: 14 }}
+                  style={{
+                    width: "100%",
+                    padding: "7px 10px",
+                    background: "#1f2937",
+                    border: "1px solid #374151",
+                    borderRadius: 4,
+                    color: "#f8fafc",
+                    fontSize: 13,
+                  }}
                 />
               </div>
 
-              {/* REZULTAT PRO-RATA */}
-              <div
-                style={{
-                  background: "rgba(56, 189, 248, 0.08)",
-                  border: "1px solid rgba(56, 189, 248, 0.25)",
-                  borderRadius: 14,
-                  padding: 16,
-                  marginTop: 8,
-                }}
-              >
-                <div style={{ fontSize: 12, color: "#38bdf8", fontWeight: 750, textTransform: "uppercase" }}>
-                  Obračun do 1. {proRataResult.nextFirstOfMonthFormatted}:
+              <div style={{ background: "#111827", border: "1px solid #374151", borderRadius: 6, padding: 14 }}>
+                <div style={{ fontSize: 11.5, color: "#38bdf8", fontWeight: 700 }}>
+                  Obračun do 01.{formatDateBiH(proRataResult.nextFirstOfMonthFormatted).slice(3)}:
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 6 }}>
-                  <span style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.7)" }}>
-                    Preostalo dana u mjesecu ({proRataResult.daysRemaining} od {proRataResult.daysInMonth}):
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 4 }}>
+                  <span style={{ fontSize: 12.5, color: "#94a3b8" }}>
+                    Preostalo dana ({proRataResult.daysRemaining} od {proRataResult.daysInMonth}):
                   </span>
-                  <span style={{ fontSize: 24, fontWeight: 850, color: "#38bdf8" }}>
-                    {proRataResult.proRataAmount} {proRataCurrency}
+                  <span style={{ fontSize: 20, fontWeight: 800, color: "#38bdf8" }}>
+                    {formatMoneyBiH(proRataResult.proRataAmount, proRataCurrency)}
                   </span>
                 </div>
-                <div style={{ fontSize: 11.5, color: "rgba(255, 255, 255, 0.5)", marginTop: 4 }}>
-                  Formula: ({proRataPrice} / {proRataResult.daysInMonth} dana) × {proRataResult.daysRemaining} preostalih dana
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                  Formula: ({formatMoneyBiH(proRataPrice, proRataCurrency)} / {proRataResult.daysInMonth} dana) × {proRataResult.daysRemaining} dana
                 </div>
               </div>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 22 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
               <button
                 type="button"
-                className="btn btn-primary"
+                style={btnDesktopPrimary}
                 onClick={() => setProRataOpen(false)}
-                style={{ padding: "8px 20px" }}
               >
                 Zatvori
               </button>
@@ -1193,14 +1687,13 @@ export default function ModernTenantBillingView({
         </div>
       )}
 
-      {/* 6. MODAL: SPECIFIKACIJA RAČUNA ZA ZAKUP LICENCE */}
+      {/* 8. MODAL: SPECIFIKACIJA RAČUNA ZA ZAKUP LICENCE */}
       {invoiceModalTenant && (
         <div
-          className="studio-modal"
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0, 0, 0, 0.75)",
+            background: "rgba(0,0,0,0.75)",
             backdropFilter: "blur(4px)",
             zIndex: 9999,
             display: "flex",
@@ -1212,77 +1705,81 @@ export default function ModernTenantBillingView({
         >
           <div
             style={{
-              background: "#0f172a",
-              border: "1px solid rgba(255, 255, 255, 0.15)",
-              borderRadius: 20,
-              padding: 28,
+              background: "#18202c",
+              border: "1px solid #374151",
+              borderRadius: 6,
+              padding: 24,
               width: "100%",
-              maxWidth: 580,
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.6)",
+              maxWidth: 560,
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3 style={{ margin: 0, fontSize: 19, fontWeight: 850, color: "#ffffff" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #2d3748", paddingBottom: 10 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#f8fafc" }}>
                 🧾 Specifikacija Računa Pretplate
               </h3>
               <button
                 type="button"
                 onClick={() => setInvoiceModalTenant(null)}
-                style={{ background: "none", border: "none", color: "rgba(255, 255, 255, 0.5)", fontSize: 20, cursor: "pointer" }}
+                style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer" }}
               >
                 ✕
               </button>
             </div>
 
-            <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ padding: 12, background: "rgba(255, 255, 255, 0.03)", borderRadius: 10, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-                <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.5)" }}>Tenant & Klijent:</div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: "#ffffff", marginTop: 2 }}>
+            <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ padding: 12, background: "#111827", borderRadius: 4, border: "1px solid #2d3748" }}>
+                <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>Tenant & CRM Klijent:</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#f8fafc", marginTop: 2 }}>
                   {invoiceModalTenant.naziv} ({invoiceModalTenant.klijent_naziv})
                 </div>
                 {invoiceModalTenant.klijent_jib && (
-                  <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
                     JIB: {invoiceModalTenant.klijent_jib} · {invoiceModalTenant.klijent_is_ino ? "INO klijent (0% PDV, stopa K)" : "Domaće pravno lice"}
+                  </div>
+                )}
+                {invoiceModalTenant.klijent_email && (
+                  <div style={{ fontSize: 12, color: "#38bdf8", marginTop: 2 }}>
+                    Email za fakturu: {invoiceModalTenant.klijent_email}
                   </div>
                 )}
               </div>
 
-              <div style={{ padding: 12, background: "rgba(255, 255, 255, 0.03)", borderRadius: 10, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-                <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.5)" }}>Stavka za fakturisanje:</div>
-                <div style={{ fontSize: 14, fontWeight: 750, color: "#38bdf8", marginTop: 2 }}>
-                  Zakup softverske licence
+              <div style={{ padding: 12, background: "#111827", borderRadius: 4, border: "1px solid #2d3748" }}>
+                <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>Stavka za fakturisanje:</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#38bdf8", marginTop: 2 }}>
+                  Zakup softverske licence ({invoiceModalTenant.product_display_name})
                 </div>
-                <div style={{ fontSize: 12.5, color: "rgba(255, 255, 255, 0.7)", marginTop: 4 }}>
+                <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 4 }}>
                   Opis: <em>Zakup softverske licence za period {invoiceModalTenant.billing.billingPeriodDescription}</em>
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 850, color: "#ffffff", marginTop: 8 }}>
-                  Iznos: {Number(invoiceModalTenant.monthly_price).toFixed(2)} {invoiceModalTenant.currency || "KM"}
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#f8fafc", marginTop: 6 }}>
+                  Iznos: {formatMoneyBiH(invoiceModalTenant.monthly_price, invoiceModalTenant.currency || "KM")}
                 </div>
               </div>
 
-              <div style={{ padding: 12, background: "rgba(245, 158, 11, 0.08)", borderRadius: 10, border: "1px solid rgba(245, 158, 11, 0.25)" }}>
+              <div style={{ padding: 10, background: "#221c10", borderRadius: 4, border: "1px solid #b45309" }}>
                 <div style={{ fontSize: 11.5, color: "#fbbf24", fontWeight: 700 }}>
-                  ⚖️ Zakonska procedura fiskalizacije i izvoda:
+                  ⚖️ Fiskalizacija i bankovni izvod:
                 </div>
-                <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.75)", marginTop: 4, lineHeight: 1.45 }}>
-                  Fiskalna faktura sa QR kodom generiše se u radno vrijeme nakon što uplata bude knjižena kroz bankovni izvod. Klijentu se na email šalje elektronska potvrda i obavještenje.
+                <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 3, lineHeight: 1.4 }}>
+                  Fiskalna faktura sa QR kodom generiše se u radno vrijeme nakon knjiženja bankovnog izvoda. Klijent dobija elektronsku potvrdu na email sa kontaktom <strong>{BILLING_CONTACT_EMAIL}</strong>.
                 </div>
               </div>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20 }}>
               <Link
-                href={`/fakture/wizard`}
-                className="btn btn-primary"
-                style={{ padding: "8px 18px", fontWeight: 750 }}
+                href="/fakture/wizard"
+                style={btnDesktopPrimary}
               >
                 Kreiraj Fakturu u Wizardu ➔
               </Link>
 
               <button
                 type="button"
-                className="btn"
+                style={btnDesktop}
                 onClick={() => setInvoiceModalTenant(null)}
               >
                 Zatvori

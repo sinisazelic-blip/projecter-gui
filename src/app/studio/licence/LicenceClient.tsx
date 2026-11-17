@@ -118,8 +118,16 @@ type PlanRow = { plan_id: number; naziv: string; max_users: number };
 type KlijentOption = {
   klijent_id: number;
   naziv_klijenta: string;
+  email?: string | null;
+  adresa?: string | null;
+  grad?: string | null;
+  drzava?: string | null;
+  jib?: string | null;
+  pib?: string | null;
+  porezni_id?: string | null;
   aktivan?: number;
   is_narucilac?: number;
+  is_ino?: number;
 };
 
 export default function LicenceClient() {
@@ -510,15 +518,8 @@ export default function LicenceClient() {
       if (pr.ok) setPlans(pr.plans ?? []);
       if (cj.ok) setEnterSysCatalog(cj.items ?? []);
       if (kr.ok) {
-        // Tenant se naplaćuje kroz fakturisanje — nude se samo aktivni naručioci.
         const rows = (kr.rows ?? []) as KlijentOption[];
-        setKlijenti(
-          rows.filter(
-            (k) =>
-              Number(k.is_narucilac ?? 0) === 1 &&
-              Number(k.aktivan ?? 1) === 1,
-          ),
-        );
+        setKlijenti(rows);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

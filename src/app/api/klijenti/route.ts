@@ -76,6 +76,13 @@ export async function GET() {
         SELECT
           klijent_id,
           naziv_klijenta,
+          email,
+          adresa,
+          grad,
+          drzava,
+          jib,
+          pib,
+          porezni_id,
           COALESCE(aktivan, 1) AS aktivan,
           ${inoSel},
           ${narucilacSel}
