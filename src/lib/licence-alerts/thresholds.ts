@@ -80,6 +80,9 @@ export function describeAlertTags(tags: string[]): string[] {
       case "SUB_EXPIRED":
         out.push("Pretplata: datum isteka je prošao.");
         break;
+      case "TENANT_SUSPENDED_GRACE_EXPIRED":
+        out.push("Pretplata: grace period od 14 dana je istekao bez uplate — licenca je privremeno suspendovana.");
+        break;
       case "SUB_D0":
         out.push("Pretplata: posljednji dan važenja (danas).");
         break;

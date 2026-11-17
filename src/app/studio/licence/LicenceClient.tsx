@@ -62,6 +62,7 @@ import {
   type LogistixBasePackageId,
 } from "@/lib/logistix-activation";
 import { useAuthUser } from "@/components/AuthUserProvider";
+import ModernTenantBillingView from "./ModernTenantBillingView";
 
 const USER_LIMIT_OPTIONS = [1, 3, 5, 10, 50, 101] as const; // 101 = 100+
 const CURRENCY_OPTIONS = ["KM", "EUR", "USD"];
@@ -129,6 +130,24 @@ export default function LicenceClient() {
   const [tenants, setTenants] = useState<TenantRow[]>([]);
   const [plans, setPlans] = useState<PlanRow[]>([]);
   const [klijenti, setKlijenti] = useState<KlijentOption[]>([]);
+  const [viewMode, setViewMode] = useState<"modern" | "classic">("modern");
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("fluxa_tenant_view");
+      if (saved === "classic" || saved === "modern") {
+        setViewMode(saved);
+      }
+    } catch {}
+  }, []);
+
+  const handleSetViewMode = (mode: "modern" | "classic") => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem("fluxa_tenant_view", mode);
+    } catch {}
+  };
+
   const [activeTab, setActiveTab] = useState<TenantProductTab>("FLUXA");
   const [enterSysBlagajniDraft, setEnterSysBlagajniDraft] = useState<number>(1);
   const [newTenantBrojBlagajni, setNewTenantBrojBlagajni] = useState<number>(1);
@@ -1204,8 +1223,29 @@ export default function LicenceClient() {
 
   return (
     <>
-      {/* Tabovi proizvoda — svaki proizvod ima svoj tenant sloj */}
-      <div
+      {viewMode === "modern" ? (
+        <ModernTenantBillingView
+          tenants={tenants}
+          klijenti={klijenti}
+          plans={plans}
+          onSwitchToClassic={() => handleSetViewMode("classic")}
+          onRefresh={load}
+          onOpenNewTenant={openNewTenantWizard}
+        />
+      ) : (
+        <>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => handleSetViewMode("modern")}
+              style={{ fontWeight: 700 }}
+            >
+              ⇄ Prebaci na Moderni Billing Centar
+            </button>
+          </div>
+          {/* Tabovi proizvoda — svaki proizvod ima svoj tenant sloj */}
+          <div
         style={{
           display: "flex",
           gap: 6,
@@ -2540,6 +2580,8 @@ export default function LicenceClient() {
           </tbody>
         </table>
       </div>
+        </>
+      )}
 
       {/* Modal Produži */}
       {extendId != null && (

@@ -12,7 +12,7 @@ const dbStorage = new AsyncLocalStorage<Record<string, never>>();
 function mustEnv(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Missing env: ${name}`);
-  return v;
+  return v.trim();
 }
 
 function getPoolOptions(dbName: string) {

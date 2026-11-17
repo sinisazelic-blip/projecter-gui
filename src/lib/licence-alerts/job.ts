@@ -120,6 +120,21 @@ export async function runLicenceAlertJob(): Promise<LicenceAlertJobResult> {
     }
 
     const tags = [expiryTag, meetTag].filter(Boolean) as string[];
+
+    // Automatska soft-suspenzija nakon 14. u mjesecu ako račun nije izmiren
+    const currentDayOfMonth = new Date().getDate();
+    if (currentDayOfMonth >= 15 && days < 0 && String(row.status).toUpperCase() === "AKTIVAN") {
+      try {
+        await query(
+          `UPDATE tenants SET status = 'SUSPENDOVAN', updated_at = NOW() WHERE tenant_id = ?`,
+          [row.tenant_id],
+        );
+        tags.push("TENANT_SUSPENDED_GRACE_EXPIRED");
+      } catch (err) {
+        console.warn(`[licence-alerts] Greška pri automatskoj suspenziji tenanta ${row.tenant_id}:`, err);
+      }
+    }
+
     const reasons = describeAlertTags(tags);
 
     const payload = {

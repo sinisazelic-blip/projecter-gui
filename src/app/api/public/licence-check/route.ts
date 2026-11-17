@@ -111,9 +111,12 @@ export async function GET(req: Request) {
     const meetRem = Number(row.meet_remaining ?? 0);
     const hasSoccs = Boolean(String(row.soccs_tier ?? "").trim());
 
-    const inGracePeriod = days === -1 && isLiveTenantStatus(st);
+    const currentDayOfMonth = new Date().getDate();
+    // Grace period: do 14. u mjesecu (maksimalno 14 dana) za aktivne tenante, pod uslovom da nisu eksplicitno suspendovani
+    const inMonthlyGracePeriod = currentDayOfMonth <= 14 && isLiveTenantStatus(st) && st !== "SUSPENDOVAN";
+    const inGracePeriod = (days === -1 || (days < 0 && inMonthlyGracePeriod)) && isLiveTenantStatus(st);
     const dateOk = Number.isFinite(days) && days >= 0 && isLiveTenantStatus(st);
-    const allowed = dateOk || inGracePeriod;
+    const allowed = (dateOk || inMonthlyGracePeriod) && st !== "SUSPENDOVAN";
 
     const reason = allowed
       ? null
@@ -127,7 +130,12 @@ export async function GET(req: Request) {
         })
       : [];
 
-    if (inGracePeriod) {
+    if (inMonthlyGracePeriod && days < 0) {
+      warnings.push({
+        code: "GRACE_PERIOD_MONTHLY",
+        severity: "warning",
+      });
+    } else if (inGracePeriod) {
       warnings.push({
         code: "GRACE_PERIOD_24H",
         severity: "warning",
