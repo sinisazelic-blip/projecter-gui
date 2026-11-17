@@ -57,6 +57,7 @@ export async function createKlijent(input: {
   napomena?: string | null;
   aktivan?: boolean;
   is_narucilac?: boolean;
+  is_tenant?: boolean;
   is_ino?: boolean;
   pdv_oslobodjen?: boolean;
   pdv_oslobodjen_napomena?: string | null;
@@ -93,10 +94,15 @@ export async function createKlijent(input: {
   const narucilacPlc = hasNarucilacCol ? ", ?" : "";
   const narucilacVals = hasNarucilacCol ? [toBit(input?.is_narucilac)] : [];
 
+  const hasTenantCol = await hasColumn("klijenti", "is_tenant");
+  const tenantCol = hasTenantCol ? ", is_tenant" : "";
+  const tenantPlc = hasTenantCol ? ", ?" : "";
+  const tenantVals = hasTenantCol ? [toBit(input?.is_tenant)] : [];
+
   await query(
     `INSERT INTO klijenti
-      (naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava, email, rok_placanja_dana, napomena, aktivan, is_ino, pdv_oslobodjen, pdv_oslobodjen_napomena, portal_username, portal_password${jibPibCols}${narucilacCol}, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?${jibPibPlc}${narucilacPlc}, NOW(), NOW())`,
+      (naziv_klijenta, tip_klijenta, porezni_id, adresa, grad, drzava, email, rok_placanja_dana, napomena, aktivan, is_ino, pdv_oslobodjen, pdv_oslobodjen_napomena, portal_username, portal_password${jibPibCols}${narucilacCol}${tenantCol}, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?${jibPibPlc}${narucilacPlc}${tenantPlc}, NOW(), NOW())`,
     [
       naziv,
       tip,
@@ -115,6 +121,7 @@ export async function createKlijent(input: {
       portal_password,
       ...jibPibVals,
       ...narucilacVals,
+      ...tenantVals,
     ],
   );
 
@@ -137,6 +144,7 @@ export async function updateKlijent(input: {
   napomena?: string | null;
   aktivan?: boolean;
   is_narucilac?: boolean;
+  is_tenant?: boolean;
   is_ino?: boolean;
   pdv_oslobodjen?: boolean;
   pdv_oslobodjen_napomena?: string | null;
@@ -175,6 +183,10 @@ export async function updateKlijent(input: {
   const narucilacSet = hasNarucilacCol ? ", is_narucilac=?" : "";
   const narucilacVals = hasNarucilacCol ? [toBit(input?.is_narucilac)] : [];
 
+  const hasTenantCol = await hasColumn("klijenti", "is_tenant");
+  const tenantSet = hasTenantCol ? ", is_tenant=?" : "";
+  const tenantVals = hasTenantCol ? [toBit(input?.is_tenant)] : [];
+
   await query(
     `UPDATE klijenti
         SET naziv_klijenta=?,
@@ -191,7 +203,7 @@ export async function updateKlijent(input: {
             pdv_oslobodjen=?,
             pdv_oslobodjen_napomena=?,
             portal_username=?,
-            portal_password=?${jibPibSet}${narucilacSet},
+            portal_password=?${jibPibSet}${narucilacSet}${tenantSet},
             updated_at=NOW()
       WHERE klijent_id=?`,
     [
@@ -212,6 +224,7 @@ export async function updateKlijent(input: {
       portal_password,
       ...jibPibVals,
       ...narucilacVals,
+      ...tenantVals,
       id,
     ],
   );

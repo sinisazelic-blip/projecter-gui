@@ -66,11 +66,15 @@ export async function GET() {
     // ✅ sigurno: ne puca ako is_ino / is_narucilac ne postoje
     const hasIsINO = await hasColumn("klijenti", "is_ino");
     const hasIsNarucilac = await hasColumn("klijenti", "is_narucilac");
+    const hasIsTenant = await hasColumn("klijenti", "is_tenant");
 
     const inoSel = hasIsINO ? "COALESCE(is_ino, 0) AS is_ino" : "0 AS is_ino";
     const narucilacSel = hasIsNarucilac
       ? "COALESCE(is_narucilac, 0) AS is_narucilac"
       : "0 AS is_narucilac";
+    const tenantSel = hasIsTenant
+      ? "COALESCE(is_tenant, 0) AS is_tenant"
+      : "0 AS is_tenant";
 
     const sql = `
         SELECT
@@ -85,7 +89,8 @@ export async function GET() {
           porezni_id,
           COALESCE(aktivan, 1) AS aktivan,
           ${inoSel},
-          ${narucilacSel}
+          ${narucilacSel},
+          ${tenantSel}
         FROM klijenti
         WHERE COALESCE(aktivan, 1) = 1
         ORDER BY naziv_klijenta COLLATE utf8mb4_unicode_ci ASC

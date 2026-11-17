@@ -145,5 +145,63 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // 4. Evidencija uplate (Banka vs Keš) sa popustima za avansno plaćanje (6 mj: -10%, 12 mj: -15%, 24 mj: -20%)
+  if (action === "record-payment") {
+    const tenantId = Number(body?.tenant_id);
+    const months = Number(body?.months || 1); // 1, 6, 12, 24
+    const paymentMethod = body?.payment_method === "kes" ? "kes" : "banka";
+    const discountPercent = months === 24 ? 20 : months === 12 ? 15 : months === 6 ? 10 : 0;
+
+    if (!tenantId || tenantId <= 0) {
+      return NextResponse.json({ ok: false, error: "INVALID_TENANT_ID" }, { status: 400 });
+    }
+
+    const [tRows]: any = await query(
+      "SELECT tenant_id, naziv, monthly_price, currency, subscription_ends_at FROM tenants WHERE tenant_id = ? LIMIT 1",
+      [tenantId]
+    );
+    if (!tRows || tRows.length === 0) {
+      return NextResponse.json({ ok: false, error: "TENANT_NOT_FOUND" }, { status: 404 });
+    }
+
+    const tenant = tRows[0];
+    const now = new Date();
+    let currentEnd = tenant.subscription_ends_at ? new Date(tenant.subscription_ends_at) : now;
+    if (currentEnd.getTime() < now.getTime()) {
+      currentEnd = now;
+    }
+
+    // Dodaj broj mjeseci na subscription_ends_at
+    const newEnd = new Date(currentEnd);
+    newEnd.setMonth(newEnd.getMonth() + months);
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+    const newEndStr = `${newEnd.getFullYear()}-${pad2(newEnd.getMonth() + 1)}-${pad2(newEnd.getDate())}`;
+
+    const baseAmount = (Number(tenant.monthly_price) || 0) * months;
+    const discountAmount = (baseAmount * discountPercent) / 100;
+    const finalAmount = baseAmount - discountAmount;
+
+    await query(
+      "UPDATE tenants SET subscription_ends_at = ?, status = 'AKTIVAN', updated_at = CURRENT_TIMESTAMP WHERE tenant_id = ?",
+      [newEndStr, tenantId]
+    );
+
+    return NextResponse.json({
+      ok: true,
+      tenant_id: tenantId,
+      months,
+      payment_method: paymentMethod,
+      discount_percent: discountPercent,
+      base_amount: baseAmount,
+      discount_amount: discountAmount,
+      final_amount: finalAmount,
+      currency: tenant.currency || "KM",
+      subscription_ends_at: newEndStr,
+      message: paymentMethod === "kes"
+        ? `Uplata u kešu (${finalAmount.toFixed(2)} ${tenant.currency || "KM"}) uspješno evidentirana. Licenca produžena za ${months} mj. (do ${newEndStr}) bez KIF fakture.`
+        : `Žiralna uplata (${finalAmount.toFixed(2)} ${tenant.currency || "KM"}) evidentirana. Licenca produžena za ${months} mj. (do ${newEndStr}). Faktura ide u KIF kroz izvod.`,
+    });
+  }
+
   return NextResponse.json({ ok: false, error: "UNKNOWN_ACTION" }, { status: 400 });
 }

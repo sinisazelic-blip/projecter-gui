@@ -170,6 +170,8 @@ export default function ModernTenantBillingView({
 
   // Invoice specification modal state
   const [invoiceModalTenant, setInvoiceModalTenant] = useState<any | null>(null);
+  const [invoiceMonths, setInvoiceMonths] = useState<number>(1);
+  const [paymentRecording, setPaymentRecording] = useState<boolean>(false);
 
   // Quick extension loading state
   const [extendingId, setExtendingId] = useState<number | null>(null);
@@ -413,6 +415,32 @@ export default function ModernTenantBillingView({
       alert("Greška: " + err.message);
     } finally {
       setExtendingId(null);
+    }
+  };
+
+  // Akcija evidencije uplate (Keš vs Banka) sa popustima za avansno plaćanje
+  const handleRecordPayment = async (tenantId: number, months: number, method: "kes" | "banka") => {
+    try {
+      setPaymentRecording(true);
+      const res = await fetch("/api/tenant-admin/billing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "record-payment",
+          tenant_id: tenantId,
+          months,
+          payment_method: method,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Greška pri evidenciji uplate");
+      setActionFeedback(data.message);
+      setInvoiceModalTenant(null);
+      onRefresh();
+    } catch (err: any) {
+      alert("Greška: " + err.message);
+    } finally {
+      setPaymentRecording(false);
     }
   };
 
@@ -1672,6 +1700,47 @@ export default function ModernTenantBillingView({
                   Formula: ({formatMoneyBiH(proRataPrice, proRataCurrency)} / {proRataResult.daysInMonth} dana) × {proRataResult.daysRemaining} dana
                 </div>
               </div>
+
+              {/* SKALA POPUSTA ZA AVANSNO PLAĆANJE */}
+              <div style={{ background: "#18202c", border: "1px solid #2d3748", borderRadius: 6, padding: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#f8fafc", marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
+                  <span>🎁 Skala popusta za avansno plaćanje unaprijed:</span>
+                  <span style={{ color: "#38bdf8", fontSize: 11.5 }}>Maksimalno -20%</span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 8 }}>
+                  <div style={{ padding: "8px 10px", background: "#111827", borderRadius: 4, border: "1px solid #2d3748" }}>
+                    <div style={{ fontSize: 11, color: "#94a3b8" }}>1 Mjesec (0%)</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: "#f8fafc", marginTop: 2 }}>
+                      {formatMoneyBiH(proRataPrice * 1, proRataCurrency)}
+                    </div>
+                  </div>
+
+                  <div style={{ padding: "8px 10px", background: "#111827", borderRadius: 4, border: "1px solid #2d3748" }}>
+                    <div style={{ fontSize: 11, color: "#38bdf8" }}>6 Mj. (-10%)</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: "#38bdf8", marginTop: 2 }}>
+                      {formatMoneyBiH(proRataPrice * 6 * 0.9, proRataCurrency)}
+                    </div>
+                    <div style={{ fontSize: 10, color: "#64748b" }}>Ušteda: {formatMoneyBiH(proRataPrice * 6 * 0.1, proRataCurrency)}</div>
+                  </div>
+
+                  <div style={{ padding: "8px 10px", background: "#111827", borderRadius: 4, border: "1px solid #2d3748" }}>
+                    <div style={{ fontSize: 11, color: "#10b981" }}>12 Mj. (-15%)</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: "#10b981", marginTop: 2 }}>
+                      {formatMoneyBiH(proRataPrice * 12 * 0.85, proRataCurrency)}
+                    </div>
+                    <div style={{ fontSize: 10, color: "#64748b" }}>Ušteda: {formatMoneyBiH(proRataPrice * 12 * 0.15, proRataCurrency)}</div>
+                  </div>
+
+                  <div style={{ padding: "8px 10px", background: "#111827", borderRadius: 4, border: "1px solid #2d3748" }}>
+                    <div style={{ fontSize: 11, color: "#a855f7" }}>24 Mj. (-20%)</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: "#a855f7", marginTop: 2 }}>
+                      {formatMoneyBiH(proRataPrice * 24 * 0.8, proRataCurrency)}
+                    </div>
+                    <div style={{ fontSize: 10, color: "#64748b" }}>Ušteda: {formatMoneyBiH(proRataPrice * 24 * 0.2, proRataCurrency)}</div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
@@ -1746,44 +1815,142 @@ export default function ModernTenantBillingView({
                 )}
               </div>
 
-              <div style={{ padding: 12, background: "#111827", borderRadius: 4, border: "1px solid #2d3748" }}>
-                <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>Stavka za fakturisanje:</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#38bdf8", marginTop: 2 }}>
-                  Zakup softverske licence ({invoiceModalTenant.product_display_name})
-                </div>
-                <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 4 }}>
-                  Opis: <em>Zakup softverske licence za period {invoiceModalTenant.billing.billingPeriodDescription}</em>
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: "#f8fafc", marginTop: 6 }}>
-                  Iznos: {formatMoneyBiH(invoiceModalTenant.monthly_price, invoiceModalTenant.currency || "KM")}
-                </div>
-              </div>
+              {/* ODABIR PERIODA I AVANSNIH POPUSTA */}
+              {(() => {
+                const monthlyPrice = Number(invoiceModalTenant.monthly_price) || 0;
+                const ccy = invoiceModalTenant.currency || "KM";
+                const discountPct = invoiceMonths === 24 ? 20 : invoiceMonths === 12 ? 15 : invoiceMonths === 6 ? 10 : 0;
+                const baseTotal = monthlyPrice * invoiceMonths;
+                const discountAmount = (baseTotal * discountPct) / 100;
+                const finalTotal = baseTotal - discountAmount;
 
-              <div style={{ padding: 10, background: "#221c10", borderRadius: 4, border: "1px solid #b45309" }}>
-                <div style={{ fontSize: 11.5, color: "#fbbf24", fontWeight: 700 }}>
-                  ⚖️ Fiskalizacija i bankovni izvod:
-                </div>
-                <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 3, lineHeight: 1.4 }}>
-                  Fiskalna faktura sa QR kodom generiše se u radno vrijeme nakon knjiženja bankovnog izvoda. Klijent dobija elektronsku potvrdu na email sa kontaktom <strong>{BILLING_CONTACT_EMAIL}</strong>.
-                </div>
-              </div>
-            </div>
+                return (
+                  <>
+                    <div style={{ padding: 12, background: "#111827", borderRadius: 4, border: "1px solid #2d3748" }}>
+                      <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase", marginBottom: 6 }}>
+                        Period zakupa i popust na avansno plaćanje:
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => setInvoiceMonths(1)}
+                          style={{
+                            ...btnDesktop,
+                            justifyContent: "center",
+                            background: invoiceMonths === 1 ? "#2563eb" : "#1f2937",
+                            color: invoiceMonths === 1 ? "#fff" : "#cbd5e1",
+                            border: invoiceMonths === 1 ? "1px solid #3b82f6" : "1px solid #374151",
+                          }}
+                        >
+                          1 mj. (0%)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInvoiceMonths(6)}
+                          style={{
+                            ...btnDesktop,
+                            justifyContent: "center",
+                            background: invoiceMonths === 6 ? "#2563eb" : "#1f2937",
+                            color: invoiceMonths === 6 ? "#fff" : "#cbd5e1",
+                            border: invoiceMonths === 6 ? "1px solid #3b82f6" : "1px solid #374151",
+                          }}
+                        >
+                          6 mj. (-10%)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInvoiceMonths(12)}
+                          style={{
+                            ...btnDesktop,
+                            justifyContent: "center",
+                            background: invoiceMonths === 12 ? "#2563eb" : "#1f2937",
+                            color: invoiceMonths === 12 ? "#fff" : "#cbd5e1",
+                            border: invoiceMonths === 12 ? "1px solid #3b82f6" : "1px solid #374151",
+                          }}
+                        >
+                          12 mj. (-15%)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInvoiceMonths(24)}
+                          style={{
+                            ...btnDesktop,
+                            justifyContent: "center",
+                            background: invoiceMonths === 24 ? "#2563eb" : "#1f2937",
+                            color: invoiceMonths === 24 ? "#fff" : "#cbd5e1",
+                            border: invoiceMonths === 24 ? "1px solid #3b82f6" : "1px solid #374151",
+                          }}
+                        >
+                          24 mj. (-20%)
+                        </button>
+                      </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20 }}>
-              <Link
-                href="/fakture/wizard"
-                style={btnDesktopPrimary}
-              >
-                Kreiraj Fakturu u Wizardu ➔
-              </Link>
+                      <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "#94a3b8" }}>
+                        <span>Osnovica ({invoiceMonths} mj × {formatMoneyBiH(monthlyPrice, ccy)}):</span>
+                        <span style={{ color: "#f8fafc" }}>{formatMoneyBiH(baseTotal, ccy)}</span>
+                      </div>
 
-              <button
-                type="button"
-                style={btnDesktop}
-                onClick={() => setInvoiceModalTenant(null)}
-              >
-                Zatvori
-              </button>
+                      {discountPct > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "#38bdf8", marginTop: 4 }}>
+                          <span>Avansni popust ({discountPct}%):</span>
+                          <span>- {formatMoneyBiH(discountAmount, ccy)}</span>
+                        </div>
+                      )}
+
+                      <div style={{ height: 1, background: "#2d3748", margin: "8px 0" }} />
+
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc" }}>
+                          Konačan iznos za uplatu:
+                        </span>
+                        <span style={{ fontSize: 20, fontWeight: 800, color: "#38bdf8" }}>
+                          {formatMoneyBiH(finalTotal, ccy)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ padding: 10, background: "#221c10", borderRadius: 4, border: "1px solid #b45309" }}>
+                      <div style={{ fontSize: 11.5, color: "#fbbf24", fontWeight: 700 }}>
+                        ⚖️ Fiskalizacija i KIF vs Uplata u kešu:
+                      </div>
+                      <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 3, lineHeight: 1.4 }}>
+                        • <strong>Žiralno (Banka):</strong> Faktura ide u KIF kroz izvod nakon knjiženja u banci.
+                        <br />
+                        • <strong>Keš (Gotovina):</strong> Ne izdaje se faktura u KIF, a licenca se automatski produžava za {invoiceMonths} mj.
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 18, gap: 8, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          type="button"
+                          style={btnDesktopSuccess}
+                          disabled={paymentRecording}
+                          onClick={() => handleRecordPayment(invoiceModalTenant.tenant_id, invoiceMonths, "kes")}
+                          title="Evidentiraj keš uplatu: produžava licencu odmah, bez izdavanja fakture u KIF"
+                        >
+                          {paymentRecording ? "..." : "💵 Evidentiraj Uplatu u Kešu"}
+                        </button>
+
+                        <Link
+                          href={`/fakture/wizard`}
+                          style={btnDesktopPrimary}
+                        >
+                          🏦 Kreiraj Fakturu u Wizardu (KIF) ➔
+                        </Link>
+                      </div>
+
+                      <button
+                        type="button"
+                        style={btnDesktop}
+                        onClick={() => setInvoiceModalTenant(null)}
+                      >
+                        Zatvori
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
