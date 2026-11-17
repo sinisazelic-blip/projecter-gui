@@ -14,7 +14,7 @@ export default async function LicencePage() {
   const t = getT(locale);
 
   return (
-    <div className="container">
+    <div className="container" style={{ width: "100%", maxWidth: "100%", padding: "0 28px", margin: "16px auto", boxSizing: "border-box" }}>
       <div className="pageWrap">
         <div className="topBlock">
           <div className="topInner">

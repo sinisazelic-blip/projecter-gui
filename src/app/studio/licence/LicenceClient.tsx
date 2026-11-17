@@ -1221,6 +1221,17 @@ export default function LicenceClient() {
     gap: 12,
   };
 
+  const openModulesForTenant = (row: TenantRow) => {
+    const dp = resolveDisplayStudioProfile(row.licence_profile, row.app_scope);
+    if (dp === "ENTERSYS") return openEnterSysModulesModal(row);
+    if (dp === "FLUXAPOS") return openFluxaPosModulesModal(row);
+    if (dp === "JAVNENABAVKE") return openJnModulesModal(row);
+    if (dp === "FLUXAX") return setFluxaXNetModalRow(row);
+    if (dp === "LOGISTIX") return setLogistixModalRow(row);
+    if (dp === "SOCCS") return openSoccsModal(row);
+    return openEnterSysModulesModal(row);
+  };
+
   return (
     <>
       {viewMode === "modern" ? (
@@ -1231,6 +1242,12 @@ export default function LicenceClient() {
           onSwitchToClassic={() => handleSetViewMode("classic")}
           onRefresh={load}
           onOpenNewTenant={openNewTenantWizard}
+          onOpenToken={(row) => setTokenModalRow(row)}
+          onOpenModules={(row) => openModulesForTenant(row)}
+          onOpenContact={(row) => openContactModal(row)}
+          onOpenExtend={(row) => openExtendModal(row)}
+          onToggleStatus={(tenantId, newStatus, row) => handleSetStatus(tenantId, newStatus as any, row)}
+          statusSavingId={statusSavingId}
         />
       ) : (
         <>
