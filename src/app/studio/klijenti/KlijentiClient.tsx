@@ -25,6 +25,7 @@ type FormState = {
   napomena: string;
   aktivan: boolean;
   is_narucilac: boolean;
+  is_tenant: boolean;
   is_ino: boolean;
   pdv_oslobodjen: boolean;
   pdv_oslobodjen_napomena: string;
@@ -48,6 +49,7 @@ const emptyForm = (): FormState => ({
   napomena: "",
   aktivan: true,
   is_narucilac: false,
+  is_tenant: false,
   is_ino: false,
   pdv_oslobodjen: false,
   pdv_oslobodjen_napomena: "",
@@ -280,6 +282,7 @@ export default function KlijentiClient({
       napomena: it.napomena ?? "",
       aktivan: Number(it.aktivan) === 1,
       is_narucilac: Number(it.is_narucilac ?? 0) === 1,
+      is_tenant: Number((it as any).is_tenant ?? 0) === 1,
       is_ino: Number(it.is_ino) === 1,
       pdv_oslobodjen: Number(it.pdv_oslobodjen ?? 0) === 1,
       pdv_oslobodjen_napomena: it.pdv_oslobodjen_napomena ?? "",
@@ -421,6 +424,7 @@ export default function KlijentiClient({
       napomena: form.napomena || null,
       aktivan: !!form.aktivan,
       is_narucilac: !!form.is_narucilac,
+      is_tenant: !!form.is_tenant,
       is_ino: !!form.is_ino,
       pdv_oslobodjen: !!form.pdv_oslobodjen,
       pdv_oslobodjen_napomena: form.pdv_oslobodjen_napomena || null,
@@ -772,6 +776,22 @@ export default function KlijentiClient({
                         <span style={{ fontWeight: 700 }}>
                           {it.naziv_klijenta}
                         </span>
+                        {Number((it as any).is_tenant) === 1 && (
+                          <span
+                            title="SaaS Softverski Tenant (Kupac licenci)"
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 600,
+                              color: "#60a5fa",
+                              background: "rgba(37, 99, 235, 0.15)",
+                              border: "1px solid rgba(59, 130, 246, 0.35)",
+                              padding: "1px 6px",
+                              borderRadius: 4,
+                            }}
+                          >
+                            ⚡ SaaS Tenant
+                          </span>
+                        )}
                         {it.portal_username && (
                           <span
                             title={`Portal Identifikator: ${it.portal_username}`}
@@ -1376,6 +1396,35 @@ export default function KlijentiClient({
                         {t("studioKlijenti.labelKrajnjiHint")}
                       </div>
                     </span>
+                  </label>
+
+                  <label
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      alignItems: "center",
+                      padding: "10px 14px",
+                      background: form.is_tenant ? "rgba(37, 99, 235, 0.12)" : "rgba(255,255,255,0.03)",
+                      border: form.is_tenant ? "1px solid #3b82f6" : "1px solid #334155",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      marginTop: 6,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.is_tenant}
+                      onChange={(e) => setForm((s) => ({ ...s, is_tenant: e.target.checked }))}
+                      style={{ width: 16, height: 16, accentColor: "#2563eb", cursor: "pointer" }}
+                    />
+                    <div>
+                      <b style={{ color: form.is_tenant ? "#93c5fd" : "var(--text)" }}>
+                        ⚡ SaaS Softverski Tenant (Kupac licenci)
+                      </b>
+                      <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
+                        Ovaj klijent koristi softverske licence (EnterSYS, FluxaPOS, DokumentArt, LogistiX itd.). Povezuje se u Tenant Centru i odvaja od audio/video studijskih klijenata.
+                      </div>
+                    </div>
                   </label>
                 </div>
 

@@ -1,4 +1,5 @@
 import { query } from "@/lib/db";
+import { sendEmail, buildGracePeriodEmailHtml } from "@/lib/email/mailer";
 import {
   buildLicenceAlertSignature,
   describeAlertTags,
@@ -52,12 +53,31 @@ WHERE UPPER(TRIM(t.status)) IN ('AKTIVAN', 'PILOT')`;
 async function dispatchLicenceAlert(
   payload: Record<string, unknown>,
 ): Promise<boolean> {
+  const email = String(payload.billing_email || "").trim();
+  if (email && email.includes("@")) {
+    const html = buildGracePeriodEmailHtml({
+      tenantName: String(payload.tenant_name),
+      clientName: String(payload.tenant_name),
+      productName: String(payload.soccs_tier || "Softverska licenca"),
+      monthlyPriceFormatted: "Ugovoreni iznos",
+      graceDaysLeft: Math.max(0, 14 - new Date().getDate()),
+      contactEmail: "info@fluxa.ba",
+    });
+
+    const res = await sendEmail({
+      to: email,
+      subject: `Fluxa SaaS · Obavještenje o dospijeću licence (${payload.tenant_name})`,
+      html,
+      replyTo: "info@fluxa.ba",
+    });
+
+    if (!res.ok && res.error) {
+      console.warn(`[licence-alerts] Email slanje nije uspjelo za ${email}:`, res.error);
+    }
+  }
+
   const url = process.env.LICENCE_ALERT_WEBHOOK_URL?.trim();
   if (!url) {
-    console.log(
-      "[licence-alerts] LICENCE_ALERT_WEBHOOK_URL nije postavljen — dry run:",
-      JSON.stringify(payload),
-    );
     return true;
   }
   const res = await fetch(url, {
