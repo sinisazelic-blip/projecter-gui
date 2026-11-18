@@ -44,7 +44,7 @@ export default function ModernDashboard({ onSwitchToClassic }: ModernDashboardPr
         display: "flex",
         width: "100vw",
         height: "100vh",
-        background: "#0b0f14",
+        background: "#14181f",
         color: "#e8eef6",
         overflow: "hidden",
       }}
@@ -67,8 +67,8 @@ export default function ModernDashboard({ onSwitchToClassic }: ModernDashboardPr
         <header
           style={{
             padding: "12px 24px",
-            background: "#0c121b",
-            borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+            background: "#181d25",
+            borderBottom: "1px solid #2b3240",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",

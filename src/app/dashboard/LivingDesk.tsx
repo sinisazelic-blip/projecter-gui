@@ -15,7 +15,8 @@ import {
   Trophy,
   X,
   Clock,
-  Landmark
+  Landmark,
+  KeyRound
 } from "lucide-react";
 import { formatMoney, formatNum } from "@/lib/format";
 
@@ -32,6 +33,8 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
   const activeProjects = stats?.projekti?.stavke || [];
   const meets = stats?.meets || [];
   const invoices = stats?.fakture?.stavke || [];
+  const licenceStats = stats?.licence || { ukupno: 0, aktivne: 0, grace: 0, suspendovane: 0, uskoroIsticu: 0, mrrKm: 0, poProizvodu: [], stavke: [] };
+  const tenants: any[] = licenceStats.stavke || [];
 
   // Dinamičko stanje za kalendar (bazirano na trenutnom sistemskom datumu)
   const now = new Date();
@@ -79,7 +82,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
   // Pravilo (Google Calendar stil):
   // Ako imamo obaveze danas -> automatski se otvaraju obaveze (focus).
   // Ako nemamo obaveza danas -> automatski se otvara kalendar.
-  const [viewMode, setViewMode] = useState<"focus" | "calendar">(hasTodayTasks ? "focus" : "calendar");
+  const [viewMode, setViewMode] = useState<"focus" | "calendar" | "saas">(hasTodayTasks ? "focus" : "calendar");
   const [newDealOpen, setNewDealOpen] = useState(false);
 
   // Navigacija kroz mjesece
@@ -153,6 +156,14 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
       return String(p.datum_otvaranja).slice(0, 10) === dayStr;
     });
 
+    // Obnova / istek SaaS licenci na dan d
+    const daySubscriptions = tenants.filter((t: any) => {
+      if (!t.subscription_ends_at) return false;
+      const st = String(t.status || "").toUpperCase();
+      if (st === "SUSPENDOVAN") return false;
+      return String(t.subscription_ends_at).slice(0, 10) === dayStr;
+    });
+
     // Poreski rok: 10. u mjesecu (PDV prijava)
     // Ako je PDV za taj mjesec već evidentiran u bankarskom izvodu, obavijest nestaje!
     const cellMonthStr = `${currentYear}-${monthPadded}`;
@@ -160,7 +171,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
     const isPdvPaid = pdvPaidMonths.includes(cellMonthStr);
     const isPdv = d === 10 && !isPdvPaid;
 
-    const totalEventsCount = dayMeets.length + dayInvoices.length + dayProjectsDeadline.length + dayProjectsOpened.length + (isPdv ? 1 : 0);
+    const totalEventsCount = dayMeets.length + dayInvoices.length + dayProjectsDeadline.length + dayProjectsOpened.length + daySubscriptions.length + (isPdv ? 1 : 0);
 
     calendarCells.push({
       day: d,
@@ -171,6 +182,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
       dayInvoices,
       dayProjectsDeadline,
       dayProjectsOpened,
+      daySubscriptions,
       isPdv,
       totalEventsCount,
       colIndex: calendarCells.length % 7,
@@ -266,6 +278,30 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
             >
               <CalendarIcon size={13} />
               <span>Kalendar</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode("saas");
+                setSelectedDay(null);
+              }}
+              style={{
+                background: viewMode === "saas" ? "rgba(16, 185, 129, 0.2)" : "transparent",
+                border: viewMode === "saas" ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid transparent",
+                color: viewMode === "saas" ? "#6ee7b7" : "var(--muted)",
+                fontSize: 12,
+                fontWeight: 700,
+                padding: "6px 14px",
+                borderRadius: 7,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <KeyRound size={13} />
+              <span>SaaS Pulse ({licenceStats.aktivne}/{licenceStats.ukupno})</span>
             </button>
           </div>
 
@@ -699,6 +735,10 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                   Poreski rok (PDV 10.)
                 </span>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: "#10b981" }} />
+                  Obnova licence (SaaS)
+                </span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                   <span style={{ width: 10, height: 10, borderRadius: 3, border: "2px solid #22c55e" }} />
                   Danas
                 </span>
@@ -912,6 +952,29 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                               title={`Dospijeva: ${f.naziv_klijenta} (${formatMoney(f.iznos_km, "KM")})`}
                             >
                               {f.naziv_klijenta?.split(" ")[0]} · {formatMoney(f.iznos_km, "KM")}
+                            </div>
+                          ))}
+
+                          {/* Obnova / istek SaaS licence */}
+                          {cell.daySubscriptions && cell.daySubscriptions.length > 0 && cell.daySubscriptions.slice(0, 1).map((sub: any, sIdx: number) => (
+                            <div
+                              key={`sub-${sIdx}`}
+                              style={{
+                                fontSize: 10.5,
+                                fontWeight: 600,
+                                color: "#a7f3d0",
+                                background: "rgba(16, 185, 129, 0.14)",
+                                border: "1px solid rgba(16, 185, 129, 0.3)",
+                                borderLeft: "3px solid #10b981",
+                                borderRadius: 5,
+                                padding: "3px 6px",
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                              }}
+                              title={`SaaS obnova: ${sub.naziv} (${sub.proizvod}) • ${formatMoney(sub.mrr_km, "KM")}`}
+                            >
+                              {sub.naziv} · {sub.proizvod}
                             </div>
                           ))}
 
@@ -1175,6 +1238,47 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                     </div>
                   ))}
 
+                  {/* Obnove SaaS licenci na odabrani datum */}
+                  {selectedCell.daySubscriptions?.map((sub: any, sIdx: number) => (
+                    <div
+                      key={`sel-sub-${sIdx}`}
+                      style={{
+                        padding: "10px 14px",
+                        borderRadius: 10,
+                        background: "rgba(16, 185, 129, 0.12)",
+                        border: "1px solid rgba(16, 185, 129, 0.3)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 10,
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: "#ffffff" }}>
+                          🔑 Obnova SaaS licence: {sub.naziv} ({sub.proizvod})
+                        </div>
+                        <div style={{ fontSize: 11, color: "#a7f3d0", marginTop: 2 }}>
+                          Mjesečna pretplata: <strong>{formatMoney(sub.mrr_km, "KM")}</strong> • Status: <strong>{sub.status}</strong>
+                        </div>
+                      </div>
+                      <Link
+                        href="/studio/licence"
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: "#6ee7b7",
+                          textDecoration: "none",
+                          padding: "6px 12px",
+                          borderRadius: 8,
+                          background: "rgba(16, 185, 129, 0.2)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Master Hub ➔
+                      </Link>
+                    </div>
+                  ))}
+
                   {/* Poreski rok PDV (10. u mjesecu) */}
                   {selectedCell.isPdv && (
                     <div
@@ -1222,6 +1326,164 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                 </div>
               </div>
             )}
+            </div>
+          </div>
+        )}
+
+        {/* =========================================================================
+            REŽIM C: SAAS PULSE (Pregled MRR-a, proizvoda i obnova tenanata)
+            ========================================================================= */}
+        {viewMode === "saas" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {/* Top KPI Cards */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+              <div style={{ padding: "14px 16px", borderRadius: 12, background: "#141820", border: "1px solid #2b3240" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+                  MRR (Mjesečni SaaS Prihod)
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: "#4ade80", marginTop: 6, fontVariantNumeric: "tabular-nums" }}>
+                  {formatMoney(licenceStats.mrrKm || 0, "KM")}
+                </div>
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                  Aktivni + grace tenanti (KM ekvivalent)
+                </div>
+              </div>
+
+              <div style={{ padding: "14px 16px", borderRadius: 12, background: "#141820", border: "1px solid #2b3240" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+                  Aktivni & Pilot Tenanti
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: "#38bdf8", marginTop: 6, fontVariantNumeric: "tabular-nums" }}>
+                  {licenceStats.aktivne} / {licenceStats.ukupno}
+                </div>
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                  Ukupno registrovanih licenci
+                </div>
+              </div>
+
+              <div style={{ padding: "14px 16px", borderRadius: 12, background: "#141820", border: "1px solid #2b3240" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+                  Ističu za ≤ 7 dana
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: licenceStats.uskoroIsticu > 0 ? "#fbbf24" : "#cbd5e1", marginTop: 6, fontVariantNumeric: "tabular-nums" }}>
+                  {licenceStats.uskoroIsticu || 0}
+                </div>
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                  Zahtijevaju obnovu uskoro
+                </div>
+              </div>
+
+              <div style={{ padding: "14px 16px", borderRadius: 12, background: "#141820", border: "1px solid #2b3240" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+                  Grace / Suspendovani
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: (licenceStats.grace + licenceStats.suspendovane) > 0 ? "#f87171" : "#cbd5e1", marginTop: 6, fontVariantNumeric: "tabular-nums" }}>
+                  {licenceStats.grace || 0} / {licenceStats.suspendovane || 0}
+                </div>
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                  U grace periodu / blokirani
+                </div>
+              </div>
+            </div>
+
+            {/* Raspodjela po proizvodima */}
+            {Array.isArray(licenceStats.poProizvodu) && licenceStats.poProizvodu.length > 0 && (
+              <div style={{ padding: "14px 16px", borderRadius: 12, background: "#141820", border: "1px solid #2b3240" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: "#e2e8f0", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    Aktivni Tenanti & MRR po Proizvodu
+                  </span>
+                  <Link href="/studio/licence" style={{ fontSize: 12, fontWeight: 700, color: "#38bdf8", textDecoration: "none" }}>
+                    Otvori Master Hub Licenci ➔
+                  </Link>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {licenceStats.poProizvodu.map((p: any) => (
+                    <div
+                      key={p.proizvod}
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: 9,
+                        background: "#1b2029",
+                        border: "1px solid #2f3848",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                      }}
+                    >
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: "#f8fafc" }}>{p.proizvod}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#7dd3fc", padding: "1px 7px", borderRadius: 999, background: "rgba(56, 189, 248, 0.12)" }}>
+                        {p.broj}
+                      </span>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: "#4ade80", fontVariantNumeric: "tabular-nums" }}>
+                        {formatMoney(p.mrrKm, "KM")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Lista tenanata po najbližoj obnovi */}
+            <div style={{ padding: "14px 16px", borderRadius: 12, background: "#141820", border: "1px solid #2b3240" }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: "#e2e8f0", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 10 }}>
+                Pregled Tenanata & Datuma Obnove
+              </div>
+              {tenants.length === 0 ? (
+                <div style={{ fontSize: 12.5, color: "#94a3b8", padding: "12px 0" }}>
+                  Trenutno nema evidentiranih tenanata.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 280, overflowY: "auto" }}>
+                  {tenants.slice(0, 12).map((t: any) => {
+                    const daysLeft = t.dana_do_isteka !== null ? Number(t.dana_do_isteka) : null;
+                    const st = String(t.status || "").toUpperCase();
+                    const isDanger = st === "SUSPENDOVAN" || st === "GRACE" || (daysLeft !== null && daysLeft < 0);
+                    const isWarn = !isDanger && daysLeft !== null && daysLeft <= 7;
+                    return (
+                      <div
+                        key={t.tenant_id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 10,
+                          padding: "8px 12px",
+                          borderRadius: 8,
+                          background: "#1b2029",
+                          border: "1px solid #2b3342",
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 200 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc" }}>{t.naziv}</span>
+                          <span style={{ fontSize: 10.5, fontWeight: 700, padding: "2px 7px", borderRadius: 5, background: "#232936", border: "1px solid #323b4d", color: "#cbd5e1" }}>
+                            {t.proizvod}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 12 }}>
+                          <span style={{ color: "#4ade80", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                            {formatMoney(t.mrr_km, "KM")}/mj
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              padding: "2px 8px",
+                              borderRadius: 5,
+                              background: isDanger ? "rgba(248, 113, 113, 0.14)" : isWarn ? "rgba(251, 191, 36, 0.14)" : "rgba(16, 185, 129, 0.14)",
+                              color: isDanger ? "#fca5a5" : isWarn ? "#fde68a" : "#6ee7b7",
+                              border: `1px solid ${isDanger ? "rgba(248, 113, 113, 0.3)" : isWarn ? "rgba(251, 191, 36, 0.3)" : "rgba(16, 185, 129, 0.3)"}`,
+                            }}
+                          >
+                            {t.subscription_ends_at || "Bez datuma"} {daysLeft !== null ? `(${daysLeft >= 0 ? `za ${daysLeft}d` : `kasni ${Math.abs(daysLeft)}d`})` : ""}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}

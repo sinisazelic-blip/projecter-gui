@@ -96,12 +96,20 @@ export async function GET() {
         ORDER BY sort_order ASC, id ASC
       `),
 
-      // 6. MASTER HUB LICENCE (tabela tenants)
+      // 6. MASTER HUB LICENCE (tabela tenants - SaaS Pulse & datumi obnove)
       query(`
         SELECT 
-          COUNT(*) as ukupno_licenci,
-          SUM(CASE WHEN status IN ('AKTIVAN', 'PILOT') THEN 1 ELSE 0 END) as aktivne_licence
+          tenant_id,
+          naziv,
+          status,
+          DATE_FORMAT(subscription_ends_at, '%Y-%m-%d') AS subscription_ends_at,
+          DATEDIFF(subscription_ends_at, CURDATE()) AS dana_do_isteka,
+          COALESCE(monthly_price, 0) AS monthly_price,
+          COALESCE(currency, 'KM') AS currency,
+          studio_licence_profile,
+          soccs_tier
         FROM tenants
+        ORDER BY subscription_ends_at ASC, tenant_id ASC
       `),
 
       // 7. PRESTOJEĆA PLIVAČKA TAKMIČENJA (SWISS TIMING)
@@ -182,6 +190,48 @@ export async function GET() {
       .reduce((s: number, r: any) => s + Number(r.saldo || 0), 0);
     const totalSviRacuni = racuni.reduce((s: number, r: any) => s + Number(r.saldo || 0), 0);
 
+    // Obrada SaaS / Master Hub Licenci (tenants)
+    const tenantsList = Array.isArray(tenantsRows) ? tenantsRows : [];
+    const resolveProductLabel = (row: any): string => {
+      const p = String(row?.studio_licence_profile || row?.soccs_tier || "").toUpperCase();
+      if (p.includes("LOGISTIX")) return "LogistiX";
+      if (p.includes("FLUXAPOS")) return "FluxaPOS";
+      if (p.includes("ENTERSYS") || p.includes("POOL_MANAGER")) return "EnterSYS";
+      if (p.includes("DOCENTRE") || p.includes("JAVNENABAVKE") || p.includes("DOKUMENTART")) return "DokumentArt";
+      if (p.includes("FLUXAX")) return "FluxaX";
+      if (p.includes("SOCCS")) return "SOCCS";
+      return "Fluxa Cloud";
+    };
+
+    const activeTenants = tenantsList.filter((t: any) => ["AKTIVAN", "PILOT"].includes(String(t.status || "").toUpperCase()));
+    const graceTenants = tenantsList.filter((t: any) => {
+      const st = String(t.status || "").toUpperCase();
+      return st === "GRACE" || (st === "AKTIVAN" && t.dana_do_isteka !== null && Number(t.dana_do_isteka) < 0);
+    });
+    const suspendedTenants = tenantsList.filter((t: any) => String(t.status || "").toUpperCase() === "SUSPENDOVAN");
+    const expiringSoonTenants = tenantsList.filter((t: any) => {
+      const st = String(t.status || "").toUpperCase();
+      return ["AKTIVAN", "PILOT"].includes(st) && t.dana_do_isteka !== null && Number(t.dana_do_isteka) >= 0 && Number(t.dana_do_isteka) <= 7;
+    });
+
+    const toKm = (price: any, currency: any) => {
+      const val = Number(price || 0);
+      return String(currency || "KM").toUpperCase() === "EUR" ? val * 1.95583 : val;
+    };
+
+    const mrrKm = [...activeTenants, ...graceTenants]
+      .filter((t: any, idx: number, arr: any[]) => arr.findIndex((x) => x.tenant_id === t.tenant_id) === idx)
+      .reduce((sum: number, t: any) => sum + toKm(t.monthly_price, t.currency), 0);
+
+    const productMap: Record<string, { proizvod: string; broj: number; mrrKm: number }> = {};
+    for (const t of activeTenants) {
+      const prod = resolveProductLabel(t);
+      if (!productMap[prod]) productMap[prod] = { proizvod: prod, broj: 0, mrrKm: 0 };
+      productMap[prod].broj += 1;
+      productMap[prod].mrrKm = Number((productMap[prod].mrrKm + toKm(t.monthly_price, t.currency)).toFixed(2));
+    }
+    const poProizvodu = Object.values(productMap).sort((a, b) => b.mrrKm - a.mrrKm || b.broj - a.broj);
+
     return NextResponse.json({
       ok: true,
       timestamp: new Date().toISOString(),
@@ -220,8 +270,18 @@ export async function GET() {
       },
       // 6. Master Hub Licence (tenants)
       licence: {
-        ukupno: Number((tenantsRows as any)?.[0]?.ukupno_licenci || 0),
-        aktivne: Number((tenantsRows as any)?.[0]?.aktivne_licence || 0)
+        ukupno: tenantsList.length,
+        aktivne: activeTenants.length,
+        grace: graceTenants.length,
+        suspendovane: suspendedTenants.length,
+        uskoroIsticu: expiringSoonTenants.length,
+        mrrKm: Number(mrrKm.toFixed(2)),
+        poProizvodu,
+        stavke: tenantsList.map((t: any) => ({
+          ...t,
+          proizvod: resolveProductLabel(t),
+          mrr_km: Number(toKm(t.monthly_price, t.currency).toFixed(2)),
+        })),
       },
       // 7. Meets
       meets: Array.isArray(meetsRows) ? meetsRows : [],
@@ -232,6 +292,48 @@ export async function GET() {
     });
   } catch (err: any) {
     console.error("Greška u /api/dashboard/stats:", err);
+    // Obrada SaaS / Master Hub Licenci (tenants)
+    const tenantsList = Array.isArray(tenantsRows) ? tenantsRows : [];
+    const resolveProductLabel = (row: any): string => {
+      const p = String(row?.studio_licence_profile || row?.soccs_tier || "").toUpperCase();
+      if (p.includes("LOGISTIX")) return "LogistiX";
+      if (p.includes("FLUXAPOS")) return "FluxaPOS";
+      if (p.includes("ENTERSYS") || p.includes("POOL_MANAGER")) return "EnterSYS";
+      if (p.includes("DOCENTRE") || p.includes("JAVNENABAVKE") || p.includes("DOKUMENTART")) return "DokumentArt";
+      if (p.includes("FLUXAX")) return "FluxaX";
+      if (p.includes("SOCCS")) return "SOCCS";
+      return "Fluxa Cloud";
+    };
+
+    const activeTenants = tenantsList.filter((t: any) => ["AKTIVAN", "PILOT"].includes(String(t.status || "").toUpperCase()));
+    const graceTenants = tenantsList.filter((t: any) => {
+      const st = String(t.status || "").toUpperCase();
+      return st === "GRACE" || (st === "AKTIVAN" && t.dana_do_isteka !== null && Number(t.dana_do_isteka) < 0);
+    });
+    const suspendedTenants = tenantsList.filter((t: any) => String(t.status || "").toUpperCase() === "SUSPENDOVAN");
+    const expiringSoonTenants = tenantsList.filter((t: any) => {
+      const st = String(t.status || "").toUpperCase();
+      return ["AKTIVAN", "PILOT"].includes(st) && t.dana_do_isteka !== null && Number(t.dana_do_isteka) >= 0 && Number(t.dana_do_isteka) <= 7;
+    });
+
+    const toKm = (price: any, currency: any) => {
+      const val = Number(price || 0);
+      return String(currency || "KM").toUpperCase() === "EUR" ? val * 1.95583 : val;
+    };
+
+    const mrrKm = [...activeTenants, ...graceTenants]
+      .filter((t: any, idx: number, arr: any[]) => arr.findIndex((x) => x.tenant_id === t.tenant_id) === idx)
+      .reduce((sum: number, t: any) => sum + toKm(t.monthly_price, t.currency), 0);
+
+    const productMap: Record<string, { proizvod: string; broj: number; mrrKm: number }> = {};
+    for (const t of activeTenants) {
+      const prod = resolveProductLabel(t);
+      if (!productMap[prod]) productMap[prod] = { proizvod: prod, broj: 0, mrrKm: 0 };
+      productMap[prod].broj += 1;
+      productMap[prod].mrrKm = Number((productMap[prod].mrrKm + toKm(t.monthly_price, t.currency)).toFixed(2));
+    }
+    const poProizvodu = Object.values(productMap).sort((a, b) => b.mrrKm - a.mrrKm || b.broj - a.broj);
+
     return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
   }
 }
