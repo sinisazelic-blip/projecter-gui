@@ -71,8 +71,10 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
     return dVal === todayStr;
   });
 
-  // Da li DANAS imamo konkretne obaveze?
-  const hasTodayTasks = activeProjects.length > 0 || todayMeets.length > 0 || todayInvoices.length > 0;
+  // Da li DANAS imamo konkretne radne obaveze (projekti u produkciji ili takmičenja)?
+  // Napomena: dospijeće valute fakture NIJE "rad", nego očekivana uplata i prikazuje se odvojeno.
+  const todayWorkCount = activeProjects.length + todayMeets.length;
+  const hasTodayTasks = todayWorkCount > 0;
 
   // Pravilo (Google Calendar stil):
   // Ako imamo obaveze danas -> automatski se otvaraju obaveze (focus).
@@ -242,7 +244,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
               }}
             >
               <Play size={13} />
-              <span>Danas u radu ({activeProjects.length})</span>
+              <span>Danas u radu ({todayWorkCount})</span>
             </button>
 
             <button
@@ -266,6 +268,35 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
               <span>Kalendar</span>
             </button>
           </div>
+
+          {todayInvoices.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode("calendar");
+                setCurrentYear(todayYear);
+                setCurrentMonth(todayMonth);
+                setSelectedDay(todayDay);
+              }}
+              title="Dospijeće valute plaćanja za danas (očekivana uplata, nije radni zadatak)"
+              style={{
+                background: "rgba(248, 113, 113, 0.12)",
+                border: "1px solid rgba(248, 113, 113, 0.3)",
+                color: "#fecaca",
+                fontSize: 11.5,
+                fontWeight: 700,
+                padding: "5px 10px",
+                borderRadius: 8,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f87171" }} />
+              <span>Očekujemo uplatu danas ({todayInvoices.length})</span>
+            </button>
+          )}
 
           {/* Dugme Novi Deal sa biračem */}
           <div style={{ position: "relative" }}>
@@ -461,23 +492,60 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
         )}
 
         {/* =========================================================================
-            REŽIM B: GOOGLE CALENDAR STIL (Mjesečni kalendar sa izborom mjeseca + Klik na dan)
+            REŽIM B: VINTAGE DISPLAY KALENDAR (Ispupčena ploča + Čisti prikazi događaja)
             ========================================================================= */}
         {viewMode === "calendar" && (
-          <div>
-            {/* Kalendar Header: Navigacija kroz mjesece + Legenda */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+          <div
+            style={{
+              background: "linear-gradient(180deg, #272d38 0%, #1c212a 100%)",
+              border: "1px solid #3c4556",
+              borderRadius: 18,
+              padding: "14px 16px 16px",
+              boxShadow:
+                "0 20px 44px rgba(0, 0, 0, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -2px 0 rgba(0, 0, 0, 0.5)",
+            }}
+          >
+            {/* Kalendar Header na gornjoj lajsni vintage kućišta */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 12 }}>
               {/* Strelice, Birač mjeseca i godine, Dugme Danas */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 10,
+                    fontWeight: 800,
+                    letterSpacing: "1px",
+                    textTransform: "uppercase",
+                    color: "#94a3b8",
+                    padding: "4px 9px",
+                    borderRadius: 6,
+                    background: "#151922",
+                    border: "1px solid #2d3646",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "#22c55e",
+                      boxShadow: "0 0 8px #22c55e",
+                    }}
+                  />
+                  Studio Display
+                </span>
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 4,
-                    background: "rgba(0, 0, 0, 0.4)",
-                    borderRadius: 10,
+                    background: "#141821",
+                    borderRadius: 9,
                     padding: "4px 8px",
-                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    border: "1px solid #323b4d",
+                    boxShadow: "inset 0 2px 5px rgba(0, 0, 0, 0.45)",
                   }}
                 >
                   <button
@@ -637,6 +705,16 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
               </div>
             </div>
 
+            {/* Uvučeni stakleni ekran kalendara */}
+            <div
+              style={{
+                background: "#131720",
+                border: "1px solid #2b3342",
+                borderRadius: 12,
+                padding: 12,
+                boxShadow: "inset 0 4px 14px rgba(0, 0, 0, 0.65), 0 1px 0 rgba(255, 255, 255, 0.05)",
+              }}
+            >
             {/* MREŽA KALENDARA: 7 KOLONA (PON - NED) */}
             <div
               style={{
@@ -713,47 +791,57 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <span
                             style={{
-                              fontSize: 13,
-                              fontWeight: isSelected || cell.isToday ? 900 : 700,
-                              color: isSelected ? "#38bdf8" : cell.isToday ? "#4ade80" : isWeekend ? "#93c5fd" : "#ffffff",
+                              fontSize: 12.5,
+                              fontVariantNumeric: "tabular-nums",
+                              fontWeight: isSelected || cell.isToday ? 800 : 600,
+                              color: isSelected ? "#38bdf8" : cell.isToday ? "#4ade80" : isWeekend ? "#93c5fd" : "#cbd5e1",
                             }}
                           >
                             {cell.day}
                           </span>
                           {cell.isToday && (
-                            <span style={{ fontSize: 9, fontWeight: 800, color: "#4ade80", textTransform: "uppercase" }}>
+                            <span
+                              style={{
+                                fontSize: 9,
+                                fontWeight: 800,
+                                color: "#4ade80",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.5px",
+                                padding: "1px 5px",
+                                borderRadius: 4,
+                                background: "rgba(34, 197, 94, 0.14)",
+                                border: "1px solid rgba(34, 197, 94, 0.3)",
+                              }}
+                            >
                               Danas
                             </span>
                           )}
-                          {!cell.isToday && cell.totalEventsCount > 0 && (
-                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#38bdf8" }} />
-                          )}
                         </div>
 
-                        {/* Oznake događaja u kvadratu */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 4 }}>
-                          {/* ROKOVI PROJEKATA (DEADLINE) - NAJVIŠI PRIORITET ZA STUDIO */}
+                        {/* Oznake događaja u kvadratu — uredni translucent pillovi sa lijevom akcentnom trakom */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
+                          {/* ROKOVI PROJEKATA (DEADLINE) */}
                           {cell.dayProjectsDeadline && cell.dayProjectsDeadline.map((p: any, pIdx: number) => {
                             const isUrgent = Number(p.dana_do_roka) <= 1;
                             return (
                               <div
                                 key={`p-dl-${pIdx}`}
                                 style={{
-                                  fontSize: 10,
-                                  fontWeight: 800,
-                                  color: "#ffffff",
-                                  background: isUrgent ? "#ea580c" : "#d97706",
-                                  border: isUrgent ? "1px solid #f97316" : "none",
-                                  boxShadow: isUrgent ? "0 0 10px rgba(234, 88, 12, 0.6)" : "none",
-                                  borderRadius: 4,
-                                  padding: "2px 4px",
+                                  fontSize: 10.5,
+                                  fontWeight: 600,
+                                  color: "#fed7aa",
+                                  background: isUrgent ? "rgba(234, 88, 12, 0.22)" : "rgba(217, 119, 6, 0.16)",
+                                  border: `1px solid ${isUrgent ? "rgba(249, 115, 22, 0.45)" : "rgba(245, 158, 11, 0.32)"}`,
+                                  borderLeft: `3px solid ${isUrgent ? "#f97316" : "#f59e0b"}`,
+                                  borderRadius: 5,
+                                  padding: "3px 6px",
                                   whiteSpace: "nowrap",
                                   overflow: "hidden",
                                   textOverflow: "ellipsis",
                                 }}
                                 title={`ROK PROJEKTA: ${p.radni_naziv} (${p.klijent_naziv}) - Rok: ${p.rok_datum} (za ${p.dana_do_roka} d)`}
                               >
-                                {isUrgent ? "🚨 " : ""}{p.klijent_naziv ? `${p.klijent_naziv}: ` : ""}{p.radni_naziv}
+                                {isUrgent ? "● " : ""}{p.klijent_naziv ? `${p.klijent_naziv}: ` : ""}{p.radni_naziv}
                               </div>
                             );
                           })}
@@ -763,12 +851,14 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                             <div
                               key={`p-op-${pIdx}`}
                               style={{
-                                fontSize: 10,
-                                fontWeight: 700,
+                                fontSize: 10.5,
+                                fontWeight: 500,
                                 color: "#e2e8f0",
-                                background: "#475569",
-                                borderRadius: 4,
-                                padding: "2px 4px",
+                                background: "rgba(148, 163, 184, 0.12)",
+                                border: "1px solid rgba(148, 163, 184, 0.24)",
+                                borderLeft: "3px solid #94a3b8",
+                                borderRadius: 5,
+                                padding: "3px 6px",
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
@@ -784,19 +874,21 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                             <div
                               key={mIdx}
                               style={{
-                                fontSize: 10,
-                                fontWeight: 800,
-                                color: "#082f49",
-                                background: "#38bdf8",
-                                borderRadius: 4,
-                                padding: "2px 4px",
+                                fontSize: 10.5,
+                                fontWeight: 600,
+                                color: "#bae6fd",
+                                background: "rgba(56, 189, 248, 0.14)",
+                                border: "1px solid rgba(56, 189, 248, 0.3)",
+                                borderLeft: "3px solid #38bdf8",
+                                borderRadius: 5,
+                                padding: "3px 6px",
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                               }}
                               title={`Takmičenje: ${m.naziv || "Miting"} (${m.lokacija || ""})`}
                             >
-                              🏊 {m.naziv || "Takmičenje"}
+                              {m.naziv || "Takmičenje"}
                             </div>
                           ))}
 
@@ -805,47 +897,49 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                             <div
                               key={fIdx}
                               style={{
-                                fontSize: 10,
-                                fontWeight: 800,
-                                color: "#450a0a",
-                                background: "#f87171",
-                                borderRadius: 4,
-                                padding: "2px 4px",
+                                fontSize: 10.5,
+                                fontWeight: 600,
+                                color: "#fecaca",
+                                background: "rgba(248, 113, 113, 0.14)",
+                                border: "1px solid rgba(248, 113, 113, 0.3)",
+                                borderLeft: "3px solid #f87171",
+                                borderRadius: 5,
+                                padding: "3px 6px",
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                               }}
                               title={`Dospijeva: ${f.naziv_klijenta} (${formatMoney(f.iznos_km, "KM")})`}
                             >
-                              ⚠️ {f.naziv_klijenta?.split(" ")[0]} ({formatMoney(f.iznos_km, "KM")})
+                              {f.naziv_klijenta?.split(" ")[0]} · {formatMoney(f.iznos_km, "KM")}
                             </div>
                           ))}
-
-
 
                           {/* PDV prijava (10. u mjesecu) */}
                           {cell.isPdv && (
                             <div
                               style={{
-                                fontSize: 10,
-                                fontWeight: 800,
-                                color: "#3b0764",
-                                background: "#c084fc",
-                                borderRadius: 4,
-                                padding: "2px 4px",
+                                fontSize: 10.5,
+                                fontWeight: 600,
+                                color: "#e9d5ff",
+                                background: "rgba(192, 132, 252, 0.14)",
+                                border: "1px solid rgba(192, 132, 252, 0.3)",
+                                borderLeft: "3px solid #c084fc",
+                                borderRadius: 5,
+                                padding: "3px 6px",
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                               }}
                               title={`10. ${MONTH_NAMES[currentMonth].toLowerCase()}: Rok za podnošenje mjesečne PDV prijave`}
                             >
-                              🏛️ PDV Prijava
+                              PDV Prijava
                             </div>
                           )}
 
                           {/* Ako ima više događaja */}
                           {cell.totalEventsCount > 2 && (
-                            <div style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", textAlign: "right" }}>
+                            <div style={{ fontSize: 9.5, fontWeight: 700, color: "#94a3b8", textAlign: "right", paddingRight: 2 }}>
                               +{cell.totalEventsCount - 1} još
                             </div>
                           )}
@@ -1128,6 +1222,7 @@ export default function LivingDesk({ stats }: LivingDeskProps) {
                 </div>
               </div>
             )}
+            </div>
           </div>
         )}
 

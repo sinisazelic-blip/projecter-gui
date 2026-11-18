@@ -120,7 +120,7 @@ export default function MasterSidebar() {
     { label: "Uloge i Prava", href: "/studio/roles", icon: ShieldCheck, show: isOwner || canSee("Šifarnici - Roles", "") },
   ];
 
-  const renderNavList = (items: any[]) => {
+  const renderNavList = (items: any[], compact = false) => {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
         {items
@@ -128,7 +128,7 @@ export default function MasterSidebar() {
           .map((it, idx) => {
             const Icon = it.icon;
             const active = pathname === it.href;
-            const itemColor = it.color || (active ? "#7dd3fc" : "var(--muted, #a9b4c2)");
+            const itemColor = it.color || (active ? "#38bdf8" : "#9aa6b8");
             return (
               <Link
                 key={idx}
@@ -137,40 +137,61 @@ export default function MasterSidebar() {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 10,
-                  padding: collapsed ? "9px 0" : "8px 12px",
+                  gap: 9,
+                  padding: collapsed ? "8px 0" : compact ? "6px 8px" : "7px 9px",
                   justifyContent: collapsed ? "center" : "flex-start",
-                  borderRadius: 9,
-                  fontSize: 14.5,
-                  fontWeight: active ? 800 : it.isSpecial ? 700 : 500,
-                  color: active ? "#ffffff" : it.isSpecial ? "#38bdf8" : "var(--muted, #a9b4c2)",
+                  borderRadius: 7,
+                  fontSize: compact ? 12.5 : 13,
+                  fontWeight: active ? 700 : it.isSpecial ? 700 : 500,
+                  color: active ? "#f8fafc" : it.isSpecial ? "#7dd3fc" : "#cbd5e1",
                   background: active
-                    ? "rgba(56, 189, 248, 0.16)"
+                    ? "#232b38"
                     : it.isSpecial
                       ? "rgba(56, 189, 248, 0.08)"
                       : "transparent",
                   border: active
-                    ? "1px solid rgba(56, 189, 248, 0.35)"
+                    ? "1px solid #3b495e"
                     : it.isSpecial
                       ? "1px solid rgba(56, 189, 248, 0.22)"
                       : "1px solid transparent",
+                  boxShadow: active ? "inset 3px 0 0 #38bdf8" : "none",
                   textDecoration: "none",
-                  transition: "all 0.12s ease",
+                  transition: "all 0.14s ease",
                 }}
                 onMouseEnter={(e) => {
                   if (!active) {
-                    e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
+                    e.currentTarget.style.background = "#222834";
+                    e.currentTarget.style.borderColor = "#2f3746";
                     e.currentTarget.style.color = "#ffffff";
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!active) {
                     e.currentTarget.style.background = it.isSpecial ? "rgba(56, 189, 248, 0.08)" : "transparent";
-                    e.currentTarget.style.color = it.isSpecial ? "#38bdf8" : "var(--muted, #a9b4c2)";
+                    e.currentTarget.style.borderColor = it.isSpecial ? "rgba(56, 189, 248, 0.22)" : "transparent";
+                    e.currentTarget.style.color = it.isSpecial ? "#7dd3fc" : "#cbd5e1";
                   }
                 }}
               >
-                <Icon size={17} strokeWidth={active || it.isSpecial ? 2.2 : 1.8} color={itemColor} />
+                <span
+                  style={{
+                    width: compact ? 22 : 26,
+                    height: compact ? 22 : 26,
+                    borderRadius: 6,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    background: active
+                      ? "rgba(56, 189, 248, 0.15)"
+                      : it.color
+                        ? `${it.color}18`
+                        : "rgba(255, 255, 255, 0.04)",
+                    border: `1px solid ${active ? "rgba(56, 189, 248, 0.35)" : it.color ? `${it.color}33` : "rgba(255, 255, 255, 0.06)"}`,
+                  }}
+                >
+                  <Icon size={compact ? 13 : 14} strokeWidth={active || it.isSpecial ? 2.2 : 1.9} color={itemColor} />
+                </span>
                 {!collapsed && <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.label}</span>}
               </Link>
             );
@@ -186,7 +207,7 @@ export default function MasterSidebar() {
           style={{
             height: 1,
             background: "rgba(255, 255, 255, 0.08)",
-            margin: "10px 4px",
+            margin: "8px 4px",
           }}
         />
       );
@@ -201,25 +222,42 @@ export default function MasterSidebar() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "6px 8px",
-          marginBottom: 4,
-          background: "none",
+          padding: "7px 9px",
+          background: isOpen ? "#1e2430" : "transparent",
           border: "none",
-          color: "rgba(255, 255, 255, 0.45)",
+          color: isOpen ? "#e2e8f0" : "#94a3b8",
           cursor: "pointer",
-          fontSize: 10,
-          fontWeight: 800,
-          letterSpacing: "0.8px",
+          fontSize: 10.5,
+          fontWeight: 700,
+          letterSpacing: "0.7px",
           textTransform: "uppercase",
-          borderRadius: 6,
-          transition: "background 0.1s ease",
+          borderRadius: 7,
+          transition: "all 0.12s ease",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.04)")}
-        onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "#222834";
+          e.currentTarget.style.color = "#f8fafc";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = isOpen ? "#1e2430" : "transparent";
+          e.currentTarget.style.color = isOpen ? "#e2e8f0" : "#94a3b8";
+        }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span>{title}</span>
-          <span style={{ fontSize: 9, opacity: 0.7 }}>({count})</span>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              padding: "1px 6px",
+              borderRadius: 999,
+              background: "#232936",
+              border: "1px solid #323a4a",
+              color: "#94a3b8",
+            }}
+          >
+            {count}
+          </span>
         </div>
         {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
       </button>
@@ -229,10 +267,10 @@ export default function MasterSidebar() {
   return (
     <aside
       style={{
-        width: collapsed ? 64 : 240,
+        width: collapsed ? 64 : 246,
         transition: "width 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-        background: "#0c121b",
-        borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+        background: "#181d25",
+        borderRight: "1px solid #2b3240",
         display: "flex",
         flexDirection: "column",
         height: "100vh",
@@ -243,16 +281,34 @@ export default function MasterSidebar() {
       {/* Header */}
       <div
         style={{
-          padding: "14px 12px",
+          padding: "12px",
           display: "flex",
           alignItems: "center",
           justifyContent: collapsed ? "center" : "space-between",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+          borderBottom: "1px solid #262d3b",
+          background: "#1b2029",
         }}
       >
         {!collapsed && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: "0.4px", color: "#ffffff" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+            <span
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 7,
+                background: "linear-gradient(135deg, #2563eb, #0ea5e9)",
+                color: "#ffffff",
+                fontSize: 11,
+                fontWeight: 900,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                letterSpacing: "0.4px",
+              }}
+            >
+              ST
+            </span>
+            <span style={{ fontSize: 13.5, fontWeight: 800, letterSpacing: "0.3px", color: "#f1f5f9" }}>
               Studio TAF
             </span>
           </div>
@@ -261,10 +317,10 @@ export default function MasterSidebar() {
           type="button"
           onClick={() => setCollapsed(!collapsed)}
           style={{
-            background: "rgba(255, 255, 255, 0.05)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
-            color: "var(--text, #e8eef6)",
-            borderRadius: 8,
+            background: "#232936",
+            border: "1px solid #3b4252",
+            color: "#e2e8f0",
+            borderRadius: 6,
             width: 26,
             height: 26,
             display: "flex",
@@ -279,18 +335,25 @@ export default function MasterSidebar() {
       </div>
 
       {/* Nav List (Scrollable) */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "10px 8px" }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "10px 9px", display: "flex", flexDirection: "column", gap: 8 }}>
         {/* =========================================================
             1. GLAVNI DESK (UVIJEK VIDLJIV, NE SKLAPA SE)
             ========================================================= */}
-        <div style={{ marginBottom: 14 }}>
+        <div
+          style={{
+            background: "#141820",
+            border: "1px solid #262d3b",
+            borderRadius: 10,
+            padding: collapsed ? "6px 4px" : "8px 6px",
+          }}
+        >
           {!collapsed && (
             <div
               style={{
                 fontSize: 10,
                 fontWeight: 800,
                 letterSpacing: "0.8px",
-                color: "#38bdf8",
+                color: "#7dd3fc",
                 padding: "2px 8px 6px",
                 textTransform: "uppercase",
               }}
@@ -304,43 +367,80 @@ export default function MasterSidebar() {
         {/* =========================================================
             2. FINANSIJE (OPERATIVA) — SKLOPIVO
             ========================================================= */}
-        <div style={{ marginBottom: 12 }}>
-          {renderSectionHeader("FINANSIJE OPERATIVA", "finance", financeItems.filter(i => i.show).length)}
-          {(!collapsed ? openSections.finance : true) && renderNavList(financeItems)}
+        <div
+          style={{
+            background: "#141820",
+            border: "1px solid #262d3b",
+            borderRadius: 10,
+            padding: 4,
+          }}
+        >
+          {renderSectionHeader("Finansije", "finance", financeItems.filter(i => i.show).length)}
+          {(!collapsed ? openSections.finance : true) && (
+            <div style={{ paddingTop: collapsed ? 0 : 4 }}>{renderNavList(financeItems, true)}</div>
+          )}
         </div>
 
         {/* =========================================================
             3. PROFIT & ANALITIKA — SKLOPIVO
             ========================================================= */}
-        <div style={{ marginBottom: 12 }}>
-          {renderSectionHeader("PROFIT & ANALITIKA", "analytics", analyticsItems.filter(i => i.show).length)}
-          {(!collapsed ? openSections.analytics : true) && renderNavList(analyticsItems)}
+        <div
+          style={{
+            background: "#141820",
+            border: "1px solid #262d3b",
+            borderRadius: 10,
+            padding: 4,
+          }}
+        >
+          {renderSectionHeader("Profit & Analitika", "analytics", analyticsItems.filter(i => i.show).length)}
+          {(!collapsed ? openSections.analytics : true) && (
+            <div style={{ paddingTop: collapsed ? 0 : 4 }}>{renderNavList(analyticsItems, true)}</div>
+          )}
         </div>
 
         {/* =========================================================
             4. ŠIFARNICI — SKLOPIVO
             ========================================================= */}
-        <div style={{ marginBottom: 12 }}>
-          {renderSectionHeader("ŠIFARNICI", "sifarnici", sifarniciItems.filter(i => i.show).length)}
-          {(!collapsed ? openSections.sifarnici : true) && renderNavList(sifarniciItems)}
+        <div
+          style={{
+            background: "#141820",
+            border: "1px solid #262d3b",
+            borderRadius: 10,
+            padding: 4,
+          }}
+        >
+          {renderSectionHeader("Šifarnici", "sifarnici", sifarniciItems.filter(i => i.show).length)}
+          {(!collapsed ? openSections.sifarnici : true) && (
+            <div style={{ paddingTop: collapsed ? 0 : 4 }}>{renderNavList(sifarniciItems, true)}</div>
+          )}
         </div>
 
         {/* =========================================================
             5. SISTEM & PRAVA — SKLOPIVO
             ========================================================= */}
-        <div style={{ marginBottom: 12 }}>
-          {renderSectionHeader("SISTEM", "system", systemItems.filter(i => i.show).length)}
-          {(!collapsed ? openSections.system : true) && renderNavList(systemItems)}
+        <div
+          style={{
+            background: "#141820",
+            border: "1px solid #262d3b",
+            borderRadius: 10,
+            padding: 4,
+          }}
+        >
+          {renderSectionHeader("Sistem", "system", systemItems.filter(i => i.show).length)}
+          {(!collapsed ? openSections.system : true) && (
+            <div style={{ paddingTop: collapsed ? 0 : 4 }}>{renderNavList(systemItems, true)}</div>
+          )}
         </div>
       </div>
 
       {/* Footer Info */}
       <div
         style={{
-          padding: "10px",
-          borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+          padding: "9px 10px",
+          borderTop: "1px solid #262d3b",
+          background: "#1b2029",
           fontSize: 11,
-          color: "rgba(255, 255, 255, 0.35)",
+          color: "#64748b",
           textAlign: "center",
           fontWeight: 700,
           letterSpacing: "0.4px",
