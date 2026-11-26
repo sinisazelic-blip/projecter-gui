@@ -2474,7 +2474,8 @@
       "ENTERSYS": "EnterSYS (Kontrola prolaza, tripodi & menadžeri objekata)",
       "FLUXAPOS": "FluxaPOS (Fiskalna touch blagajna & ugostiteljstvo)",
       "FLUXAX_NET": "FluxaX NET (Audio StudioBridge & Klijentski Hab)",
-      "LOGISTIX": "LogistiX (Flota, dispečer, CMR upload & B2B fakture)"
+      "LOGISTIX": "LogistiX (Flota, dispečer, CMR upload & B2B fakture)",
+      "FLUXASCB": "FluxaSCB (Plivački Scoreboard, CGI & Mini Displeji)"
     },
     "wizardNext": "Dalje",
     "wizardBack": "Nazad",
@@ -2490,7 +2491,8 @@
       "FLUXAPOS": "FluxaPOS",
       "POOL_MANAGER": "Pool Mgr",
       "FLUXAX_NET": "FluxaX NET",
-      "LOGISTIX": "LogistiX"
+      "LOGISTIX": "LogistiX",
+      "FLUXASCB": "FluxaSCB"
     },
     "profileHint": {
       "FLUXA_ONLY": "Tenant za Fluxa Project & Finance Engine.",
@@ -2501,7 +2503,8 @@
       "ENTERSYS": "Tenant za EnterSYS platformu (kontrola prolaza, tripodi, menadžeri).",
       "FLUXAPOS": "Tenant za FluxaPOS kasu (ugostiteljstvo, biletarnica i maloprodaja).",
       "FLUXAX_NET": "Tenant za FluxaX NET Audio platformu (StudioBridge, matrica rutiranja, Klijentski Hab).",
-      "LOGISTIX": "Tenant za LogistiX platformu (flota, dispečerski nalozi, mobilni CMR, euro-palete i B2B fakture)."
+      "LOGISTIX": "Tenant za LogistiX platformu (flota, dispečerski nalozi, mobilni CMR, euro-palete i B2B fakture).",
+      "FLUXASCB": "Tenant za FluxaSCB plivački scoreboard kontroler (CORE / CGI / PRO)."
     },
     "productTab": {
       "FLUXA": "Fluxa",
@@ -2510,7 +2513,8 @@
       "ENTERSYS": "EnterSYS",
       "FLUXAPOS": "FluxaPOS",
       "FLUXAX_NET": "FluxaX NET",
-      "LOGISTIX": "LogistiX"
+      "LOGISTIX": "LogistiX",
+      "FLUXASCB": "FluxaSCB"
     },
     "jnPackage": "DokumentArt paket",
     "jnModulesCol": "Moduli & Paket",

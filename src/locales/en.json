@@ -2446,7 +2446,8 @@
       "JAVNENABAVKE": "DokumentArt (Protocol, Procurement, Contracts & E-Sign)",
       "ENTERSYS": "EnterSYS (Access Control & Managers)",
       "FLUXAPOS": "FluxaPOS (Touch POS & Hospitality)",
-      "FLUXAX_NET": "FluxaX NET (Audio StudioBridge & Client Hub)"
+      "FLUXAX_NET": "FluxaX NET (Audio StudioBridge & Client Hub)",
+      "FLUXASCB": "FluxaSCB (Swimming Scoreboard, CGI & Lane Displays)"
     },
     "wizardNext": "Next",
     "wizardBack": "Back",
@@ -2461,7 +2462,8 @@
       "ENTERSYS": "EnterSYS",
       "FLUXAPOS": "FluxaPOS",
       "POOL_MANAGER": "Pool Mgr",
-      "FLUXAX_NET": "FluxaX NET"
+      "FLUXAX_NET": "FluxaX NET",
+      "FLUXASCB": "FluxaSCB"
     },
     "profileHint": {
       "FLUXA_ONLY": "Tenant for Fluxa Project & Finance Engine.",
@@ -2471,7 +2473,8 @@
       "JAVNENABAVKE": "Tenant for DokumentArt (protocol, procurement, contracts, e-sign).",
       "ENTERSYS": "Tenant for EnterSYS platform (access control, turnstiles, managers).",
       "FLUXAPOS": "Tenant for FluxaPOS register (hospitality & ticketing).",
-      "FLUXAX_NET": "Tenant for FluxaX NET Audio platform (StudioBridge, routing matrix, Client Hub)."
+      "FLUXAX_NET": "Tenant for FluxaX NET Audio platform (StudioBridge, routing matrix, Client Hub).",
+      "FLUXASCB": "Tenant for FluxaSCB swimming scoreboard controller (CORE / CGI / PRO)."
     },
     "productTab": {
       "FLUXA": "Fluxa",
@@ -2479,7 +2482,8 @@
       "DOCENTRE": "DokumentArt",
       "ENTERSYS": "EnterSYS",
       "FLUXAPOS": "FluxaPOS",
-      "FLUXAX_NET": "FluxaX NET"
+      "FLUXAX_NET": "FluxaX NET",
+      "FLUXASCB": "FluxaSCB"
     },
     "jnPackage": "DokumentArt package",
     "jnModulesCol": "Package & modules",
