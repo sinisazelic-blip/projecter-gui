@@ -35,6 +35,9 @@ export const UPDATE_PRODUCTS = [
   "webshop",
   "studiobridge",
   "logistix",
+  "fluxascb",
+  "fluxar",
+  "recovery",
 ] as const;
 
 export type UpdateProductId = (typeof UPDATE_PRODUCTS)[number];
@@ -110,28 +113,33 @@ export function productsForLicence(input: {
     input.studio_licence_profile,
   );
   if (!profile) return [];
-  switch (profile) {
-    case "FLUXA_ONLY":
-      return ["fluxa"];
-    case "SOCCS_SWIMVOICE":
-      return soccsProducts(input.soccs_tier);
-    case "FLUXA_AND_SOCCS":
-      return ["fluxa", ...soccsProducts(input.soccs_tier)];
-    case "DOCENTRE":
-      return ["docentre"];
-    case "JAVNENABAVKE":
-      return ["dokumentart"];
-    case "FLUXAPOS":
-      return ["fluxapos"];
-    case "ENTERSYS":
-      return entersysProducts(input.soccs_tier, input.soccs_platform_scope);
-    case "POOL_MANAGER":
-      return ["poolmanager"];
-    case "FLUXAX_NET":
-      return ["studiobridge"];
-    case "LOGISTIX":
-      return ["logistix"];
-    default:
-      return [];
-  }
+  const base = ((): UpdateProductId[] => {
+    switch (profile) {
+      case "FLUXA_ONLY":
+        return ["fluxa", "fluxar"];
+      case "SOCCS_SWIMVOICE":
+        return soccsProducts(input.soccs_tier);
+      case "FLUXA_AND_SOCCS":
+        return ["fluxa", "fluxar", ...soccsProducts(input.soccs_tier)];
+      case "DOCENTRE":
+        return ["docentre"];
+      case "JAVNENABAVKE":
+        return ["dokumentart"];
+      case "FLUXAPOS":
+        return ["fluxapos", "fluxar"];
+      case "ENTERSYS":
+        return [...entersysProducts(input.soccs_tier, input.soccs_platform_scope), "fluxar"];
+      case "POOL_MANAGER":
+        return ["poolmanager"];
+      case "FLUXAX_NET":
+        return ["studiobridge"];
+      case "LOGISTIX":
+        return ["logistix"];
+      case "FLUXASCB":
+        return ["fluxascb"];
+      default:
+        return [];
+    }
+  })();
+  return base.length > 0 ? [...base, "recovery"] : [];
 }

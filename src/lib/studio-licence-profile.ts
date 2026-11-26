@@ -14,6 +14,8 @@ export const STUDIO_LICENCE_PROFILES = [
   "FLUXAX_NET",
   /** LogistiX — Flota, dispečerski nalozi, mobilni CMR i fakturisanje */
   "LOGISTIX",
+  /** FluxaSCB — Samostalni plivački scoreboard kontroler (CORE / CGI / PRO) */
+  "FLUXASCB",
   /** Legacy — više se ne nudi u UI; ostaje radi starih redova u bazi. */
   "POOL_MANAGER",
 ] as const;
@@ -29,6 +31,7 @@ export const TENANT_PRODUCT_TABS = [
   "FLUXAPOS",
   "FLUXAX_NET",
   "LOGISTIX",
+  "FLUXASCB",
 ] as const;
 
 export type TenantProductTab = (typeof TENANT_PRODUCT_TABS)[number];
@@ -54,6 +57,8 @@ export function profileToTabs(profile: StudioLicenceProfile): TenantProductTab[]
       return ["FLUXAX_NET"];
     case "LOGISTIX":
       return ["LOGISTIX"];
+    case "FLUXASCB":
+      return ["FLUXASCB"];
     case "POOL_MANAGER":
       return [];
   }
@@ -69,7 +74,8 @@ export function profileUsesActivationCodes(
     profile !== "FLUXAPOS" &&
     profile !== "JAVNENABAVKE" &&
     profile !== "FLUXAX_NET" &&
-    profile !== "LOGISTIX"
+    profile !== "LOGISTIX" &&
+    profile !== "FLUXASCB"
   );
 }
 

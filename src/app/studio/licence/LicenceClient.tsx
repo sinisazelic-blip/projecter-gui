@@ -56,11 +56,17 @@ import {
 } from "@/lib/fluxaxnet-activation";
 import LogistiXTableRow from "./LogistiXTableRow";
 import LogistiXModulesModal from "./LogistiXModulesModal";
+import FluxaScbTableRow from "./FluxaScbTableRow";
 import {
   LOGISTIX_BASE_PACKAGES,
   getLogistixBasePackage,
   type LogistixBasePackageId,
 } from "@/lib/logistix-activation";
+import {
+  FLUXASCB_BASE_PACKAGES,
+  getFluxaScbBasePackage,
+  type FluxaScbBasePackageId,
+} from "@/lib/fluxascb-activation";
 import { useAuthUser } from "@/components/AuthUserProvider";
 import ModernTenantBillingView from "./ModernTenantBillingView";
 
@@ -239,6 +245,8 @@ export default function LicenceClient() {
   const [newTenantLogistixPackage, setNewTenantLogistixPackage] =
     useState<LogistixBasePackageId>("LOGISTIX_FLEET_MONTHLY");
   const [logistixModalRow, setLogistixModalRow] = useState<TenantRow | null>(null);
+  const [newTenantFluxaScbPackage, setNewTenantFluxaScbPackage] =
+    useState<FluxaScbBasePackageId>("FLUXASCB_CORE_MONTHLY");
   const [newTenantJnPackage, setNewTenantJnPackage] =
     useState<JavneNabavkeBasePackageId>("JN_START");
   const [jnModalRow, setJnModalRow] = useState<TenantRow | null>(null);
@@ -581,6 +589,14 @@ export default function LicenceClient() {
       const d = new Date();
       d.setDate(d.getDate() + 30);
       setNewTenantEnd(d.toISOString().slice(0, 10));
+    } else if (activeTab === "FLUXASCB") {
+      setWizardProfile("FLUXASCB");
+      setNewTenantCurrency("EUR");
+      setNewTenantFluxaScbPackage("FLUXASCB_CORE_MONTHLY");
+      setNewTenantPrice("100");
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      setNewTenantEnd(d.toISOString().slice(0, 10));
     } else if (activeTab === "FLUXA") {
       setWizardProfile("FLUXA_ONLY");
       setNewTenantCurrency("EUR");
@@ -797,6 +813,7 @@ export default function LicenceClient() {
             wizardProfile === "FLUXAPOS" ||
             wizardProfile === "JAVNENABAVKE" ||
             wizardProfile === "LOGISTIX" ||
+            wizardProfile === "FLUXASCB" ||
             newTenantPilot ||
             newTenantPrice.trim()
               ? newTenantCurrency
@@ -814,6 +831,8 @@ export default function LicenceClient() {
                     ? newTenantFluxaXNetPackage
                     : wizardProfile === "LOGISTIX"
                     ? newTenantLogistixPackage
+                    : wizardProfile === "FLUXASCB"
+                    ? newTenantFluxaScbPackage
                     : newTenantSoccsTier.trim() || null,
           broj_blagajni:
             wizardProfile === "FLUXAPOS" ? newTenantBrojBlagajni : 1,
@@ -1414,6 +1433,18 @@ export default function LicenceClient() {
                 <th style={thFluxCont}>Licencni Token</th>
                 {!isKasicaRole && <th style={{ ...thTd, textAlign: "center" }}>Akcije</th>}
               </tr>
+            ) : activeTab === "FLUXASCB" ? (
+              <tr>
+                <th style={thTd}>Naziv Klijenta (Tenant)</th>
+                <th style={thTd}>Paket</th>
+                <th style={thTd}>Model Naplate</th>
+                {!isKasicaRole && <th style={thTd}>Cijena</th>}
+                <th style={thTd}>Ističe Datum</th>
+                <th style={thTd}>Dana do Isteka</th>
+                <th style={thTd}>Stanje</th>
+                <th style={thFluxCont}>Licencni Token</th>
+                {!isKasicaRole && <th style={{ ...thTd, textAlign: "center" }}>Akcije</th>}
+              </tr>
             ) : activeTab === "ENTERSYS" ? (
               <tr>
                 <th style={thTd}>Naziv Tenanta</th>
@@ -1530,6 +1561,21 @@ export default function LicenceClient() {
                       isKasicaRole={isKasicaRole}
                       statusSavingId={statusSavingId}
                       onOpenModules={(r) => setLogistixModalRow(r)}
+                      onOpenToken={(r) => setTokenModalRow(r)}
+                      onOpenExtend={(r) => openExtendModal(r)}
+                      onOpenManage={(r) => openContactModal(r)}
+                      onSetStatus={(id, st, r) => handleSetStatus(id, st as any, r)}
+                      formatDateBiH={formatDateBiH}
+                    />
+                  );
+                }
+                if (activeTab === "FLUXASCB") {
+                  return (
+                    <FluxaScbTableRow
+                      key={row.tenant_id}
+                      row={row}
+                      isKasicaRole={isKasicaRole}
+                      statusSavingId={statusSavingId}
                       onOpenToken={(r) => setTokenModalRow(r)}
                       onOpenExtend={(r) => openExtendModal(r)}
                       onOpenManage={(r) => openContactModal(r)}
@@ -2985,6 +3031,7 @@ export default function LicenceClient() {
                       "FLUXAPOS",
                       "FLUXAX_NET",
                       "LOGISTIX",
+                      "FLUXASCB",
                     ] as const).map((p) => (
                       <button
                         key={p}
@@ -3002,6 +3049,13 @@ export default function LicenceClient() {
                             setNewTenantCurrency("EUR");
                             setNewTenantFluxaXNetPackage("FLUXAX_STUDIO_MONTHLY");
                             setNewTenantPrice("80");
+                            const d = new Date();
+                            d.setDate(d.getDate() + 30);
+                            setNewTenantEnd(d.toISOString().slice(0, 10));
+                          } else if (p === "FLUXASCB") {
+                            setNewTenantCurrency("EUR");
+                            setNewTenantFluxaScbPackage("FLUXASCB_CORE_MONTHLY");
+                            setNewTenantPrice("100");
                             const d = new Date();
                             d.setDate(d.getDate() + 30);
                             setNewTenantEnd(d.toISOString().slice(0, 10));
@@ -3402,6 +3456,42 @@ export default function LicenceClient() {
                       </select>
                       <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 12px 0" }}>
                         Klijentska instanca StudioBridge aktivira se automatski putem generisanog licence tokena.
+                      </p>
+                    </>
+                  )}
+                  {wizardProfile === "FLUXASCB" && (
+                    <>
+                      <label style={{ display: "block", marginBottom: 4, fontWeight: 700 }}>
+                        🏊 Odaberite FluxaSCB Paket & Trajanje:
+                      </label>
+                      <select
+                        value={newTenantFluxaScbPackage}
+                        onChange={(e) => {
+                          const val = e.target.value as FluxaScbBasePackageId;
+                          setNewTenantFluxaScbPackage(val);
+                          const p = getFluxaScbBasePackage(val);
+                          setNewTenantPrice(String(p.priceEur));
+                          const d = new Date();
+                          d.setDate(d.getDate() + p.durationDays);
+                          setNewTenantEnd(d.toISOString().slice(0, 10));
+                        }}
+                        style={{
+                          padding: 8,
+                          marginBottom: 12,
+                          width: "100%",
+                          maxWidth: 420,
+                          borderRadius: 8,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {FLUXASCB_BASE_PACKAGES.map((pkg) => (
+                          <option key={pkg.id} value={pkg.id}>
+                            {pkg.label} ({pkg.priceEur} EUR / {pkg.priceKm} KM) — {pkg.durationDays} dana
+                          </option>
+                        ))}
+                      </select>
+                      <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 12px 0" }}>
+                        Bez licence FluxaSCB radi samo u Simulator modu. Token određuje paket (CORE / CGI / PRO) i trajanje.
                       </p>
                     </>
                   )}

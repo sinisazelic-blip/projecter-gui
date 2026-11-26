@@ -307,7 +307,8 @@ export default function ModernTenantBillingView({
         if (productFilter === "SOCCS" && !prod.includes("SOCCS")) return false;
         if (productFilter === "FLUXAX" && !prod.includes("FLUXAX")) return false;
         if (productFilter === "LOGISTIX" && !prod.includes("LOGISTIX")) return false;
-        if (productFilter === "FLUXA" && (!prod.includes("FLUXA") || prod.includes("FLUXAPOS") || prod.includes("FLUXAX"))) return false;
+        if (productFilter === "FLUXASCB" && !prod.includes("FLUXASCB")) return false;
+        if (productFilter === "FLUXA" && (!prod.includes("FLUXA") || prod.includes("FLUXAPOS") || prod.includes("FLUXAX") || prod.includes("FLUXASCB"))) return false;
       }
 
       return true;
@@ -799,6 +800,7 @@ export default function ModernTenantBillingView({
             <option value="DOCENTRE">DokumentArt</option>
             <option value="LOGISTIX">LogistiX</option>
             <option value="FLUXAX">FluxaX</option>
+            <option value="FLUXASCB">FluxaSCB</option>
             <option value="SOCCS">SOCCS SwimVoice</option>
             <option value="FLUXA">Fluxa Cloud</option>
           </select>

@@ -15,6 +15,12 @@ import {
   defaultModulesForLogistixPackage,
   type LogistixBasePackageId,
 } from "@/lib/logistix-activation";
+import {
+  defaultModulesForFluxaScbPackage,
+  resolveFluxaScbBillingMode,
+  resolveFluxaScbTier,
+  type FluxaScbBasePackageId,
+} from "@/lib/fluxascb-activation";
 
 export const dynamic = "force-dynamic";
 
@@ -111,12 +117,16 @@ export async function GET(req: Request) {
     const meetRem = Number(row.meet_remaining ?? 0);
     const hasSoccs = Boolean(String(row.soccs_tier ?? "").trim());
 
+    const profile = String(row.studio_licence_profile ?? "").trim().toUpperCase();
     const currentDayOfMonth = new Date().getDate();
-    // Grace period: do 14. u mjesecu (maksimalno 14 dana) za aktivne tenante, pod uslovom da nisu eksplicitno suspendovani
-    const inMonthlyGracePeriod = currentDayOfMonth <= 14 && isLiveTenantStatus(st) && st !== "SUSPENDOVAN";
-    const inGracePeriod = (days === -1 || (days < 0 && inMonthlyGracePeriod)) && isLiveTenantStatus(st);
+    // Za FluxaSCB (uključujući PILOT): 15 dana tolerancije nakon isteka datuma, nakon toga hard lock
+    const isFluxaScb = profile === "FLUXASCB";
+    const inScbGracePeriod = isFluxaScb && days < 0 && days >= -15 && isLiveTenantStatus(st) && st !== "SUSPENDOVAN";
+    // Grace period za ostale: do 14. u mjesecu
+    const inMonthlyGracePeriod = !isFluxaScb && currentDayOfMonth <= 14 && isLiveTenantStatus(st) && st !== "SUSPENDOVAN";
+    const inGracePeriod = (inScbGracePeriod || days === -1 || (days < 0 && inMonthlyGracePeriod)) && isLiveTenantStatus(st);
     const dateOk = Number.isFinite(days) && days >= 0 && isLiveTenantStatus(st);
-    const allowed = (dateOk || inMonthlyGracePeriod) && st !== "SUSPENDOVAN";
+    const allowed = (dateOk || inScbGracePeriod || inMonthlyGracePeriod) && st !== "SUSPENDOVAN";
 
     const reason = allowed
       ? null
@@ -130,7 +140,12 @@ export async function GET(req: Request) {
         })
       : [];
 
-    if (inMonthlyGracePeriod && days < 0) {
+    if (inScbGracePeriod) {
+      warnings.push({
+        code: "GRACE_PERIOD_15D",
+        severity: "warning",
+      });
+    } else if (inMonthlyGracePeriod && days < 0) {
       warnings.push({
         code: "GRACE_PERIOD_MONTHLY",
         severity: "warning",
@@ -142,7 +157,6 @@ export async function GET(req: Request) {
       });
     }
 
-    const profile = String(row.studio_licence_profile ?? "").trim().toUpperCase();
     const scopeStr = String(row.soccs_platform_scope ?? "").trim();
     const activeScopeModules = scopeStr ? scopeStr.split(",").map((s) => s.trim()) : [];
     const hasScopeFilter = activeScopeModules.length > 0;
@@ -229,6 +243,20 @@ export async function GET(req: Request) {
       } else {
         modules = defaultMod;
       }
+    } else if (profile === "FLUXASCB") {
+      const scbPkg =
+        (row.soccs_tier as FluxaScbBasePackageId) || "FLUXASCB_CORE_MONTHLY";
+      const defaultMod = defaultModulesForFluxaScbPackage(scbPkg);
+      if (hasScopeFilter) {
+        modules = {
+          scbCore: true,
+          cgiChroma: activeScopeModules.includes("cgiChroma"),
+          laneDisplays: activeScopeModules.includes("laneDisplays"),
+          medalCeremony: activeScopeModules.includes("medalCeremony"),
+        };
+      } else {
+        modules = defaultMod;
+      }
     } else {
       modules = {
         enterCore: !hasScopeFilter || activeScopeModules.includes("enterCore"),
@@ -261,6 +289,8 @@ export async function GET(req: Request) {
       meet_remaining: meetRem,
       soccs_tier: row.soccs_tier,
       soccs_platform_scope: row.soccs_platform_scope,
+      fluxascb_tier: profile === "FLUXASCB" ? resolveFluxaScbTier(row.soccs_tier) : null,
+      fluxascb_billing_mode: profile === "FLUXASCB" ? resolveFluxaScbBillingMode(row.soccs_tier) : null,
       broj_blagajni: row.broj_blagajni ?? 1,
       modules,
       warnings,

@@ -424,7 +424,9 @@ export async function POST(req: NextRequest) {
     profile === "JAVNENABAVKE" ||
     profile === "ENTERSYS" ||
     profile === "FLUXAPOS" ||
-    profile === "FLUXAX_NET";
+    profile === "FLUXAX_NET" ||
+    profile === "LOGISTIX" ||
+    profile === "FLUXASCB";
 
   let planId = Number(body?.plan_id);
   if (usesStubPlan) {
