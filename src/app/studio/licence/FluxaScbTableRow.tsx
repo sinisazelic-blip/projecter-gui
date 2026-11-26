@@ -23,6 +23,7 @@ interface FluxaScbTableRowProps {
   row: TenantRowLike;
   isKasicaRole: boolean;
   statusSavingId: number | null;
+  onOpenModules: (row: any) => void;
   onOpenToken: (row: any) => void;
   onOpenExtend: (row: any) => void;
   onOpenManage: (row: any) => void;
@@ -34,6 +35,7 @@ export default function FluxaScbTableRow({
   row,
   isKasicaRole,
   statusSavingId,
+  onOpenModules,
   onOpenToken,
   onOpenExtend,
   onOpenManage,
@@ -107,11 +109,46 @@ export default function FluxaScbTableRow({
       <td style={thTd}>
         <span style={{ fontWeight: 700, color: isSuspended ? "#f87171" : "#34d399" }}>{st || "AKTIVAN"}</span>
       </td>
+      <td style={{ ...thTd, textAlign: "center" }}>
+        <button
+          type="button"
+          className="btn btn-sm"
+          style={{
+            fontSize: 11,
+            height: 26,
+            padding: "0 10px",
+            borderRadius: 6,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#38bdf8",
+            borderColor: "rgba(56, 189, 248, 0.4)",
+            background: "rgba(56, 189, 248, 0.12)",
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+            fontWeight: 600,
+          }}
+          onClick={() => onOpenModules(row)}
+          title="Promijeni paket (CORE / CGI / PRO) i module"
+        >
+          Moduli &amp; Paket
+        </button>
+      </td>
       <td style={thTd}>
         <button
           type="button"
           className="btn btn-sm"
-          style={{ fontSize: 11, padding: "3px 8px", cursor: "pointer" }}
+          style={{
+            fontSize: 11,
+            height: 26,
+            padding: "0 10px",
+            borderRadius: 6,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
           onClick={() => onOpenToken(row)}
         >
           🔑 Token
@@ -119,17 +156,23 @@ export default function FluxaScbTableRow({
       </td>
       {!isKasicaRole && (
         <td style={{ ...thTd, textAlign: "center" }}>
-          <div style={{ display: "flex", gap: 5, justifyContent: "center", alignItems: "center", flexWrap: "nowrap" }}>
+          <div style={{ display: "flex", gap: 6, justifyContent: "center", alignItems: "center", flexWrap: "nowrap" }}>
             <button
               type="button"
               className="btn btn-sm"
               style={{
                 fontSize: 11,
-                padding: "3px 8px",
+                height: 26,
+                padding: "0 10px",
+                borderRadius: 6,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
                 color: "#60a5fa",
                 borderColor: "rgba(96, 165, 250, 0.45)",
                 background: "rgba(59, 130, 246, 0.12)",
                 cursor: "pointer",
+                whiteSpace: "nowrap",
               }}
               onClick={() => onOpenExtend(row)}
             >
@@ -140,6 +183,21 @@ export default function FluxaScbTableRow({
                 type="button"
                 className="btn btn-sm"
                 disabled={statusSavingId === row.tenant_id}
+                style={{
+                  fontSize: 11,
+                  height: 26,
+                  padding: "0 10px",
+                  borderRadius: 6,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#34d399",
+                  borderColor: "rgba(52, 211, 153, 0.45)",
+                  background: "rgba(16, 185, 129, 0.12)",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  fontWeight: 700,
+                }}
                 onClick={() => onSetStatus(row.tenant_id, "AKTIVAN", row)}
               >
                 Live
@@ -149,7 +207,21 @@ export default function FluxaScbTableRow({
                 type="button"
                 className="btn btn-sm"
                 disabled={statusSavingId === row.tenant_id}
-                style={{ color: "#f87171", borderColor: "rgba(248, 113, 113, 0.45)" }}
+                style={{
+                  fontSize: 11,
+                  height: 26,
+                  padding: "0 10px",
+                  borderRadius: 6,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#f87171",
+                  borderColor: "rgba(248, 113, 113, 0.45)",
+                  background: "rgba(239, 68, 68, 0.12)",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  fontWeight: 700,
+                }}
                 onClick={() => onSetStatus(row.tenant_id, "SUSPENDOVAN", row)}
               >
                 Kill
@@ -158,7 +230,17 @@ export default function FluxaScbTableRow({
             <button
               type="button"
               className="btn btn-sm"
-              style={{ fontSize: 11, padding: "3px 8px", cursor: "pointer" }}
+              style={{
+                fontSize: 11,
+                height: 26,
+                padding: "0 10px",
+                borderRadius: 6,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
               onClick={() => onOpenManage(row)}
             >
               Upravljaj

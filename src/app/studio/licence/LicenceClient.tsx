@@ -57,6 +57,7 @@ import {
 import LogistiXTableRow from "./LogistiXTableRow";
 import LogistiXModulesModal from "./LogistiXModulesModal";
 import FluxaScbTableRow from "./FluxaScbTableRow";
+import FluxaScbModulesModal from "./FluxaScbModulesModal";
 import {
   LOGISTIX_BASE_PACKAGES,
   getLogistixBasePackage,
@@ -247,6 +248,7 @@ export default function LicenceClient() {
   const [logistixModalRow, setLogistixModalRow] = useState<TenantRow | null>(null);
   const [newTenantFluxaScbPackage, setNewTenantFluxaScbPackage] =
     useState<FluxaScbBasePackageId>("FLUXASCB_CORE_MONTHLY");
+  const [fluxaScbModalRow, setFluxaScbModalRow] = useState<TenantRow | null>(null);
   const [newTenantJnPackage, setNewTenantJnPackage] =
     useState<JavneNabavkeBasePackageId>("JN_START");
   const [jnModalRow, setJnModalRow] = useState<TenantRow | null>(null);
@@ -673,7 +675,11 @@ export default function LicenceClient() {
 
   const openContactModal = (row: TenantRow) => {
     setContactModalRow(row);
-    setContactEmailDraft(String(row.billing_email ?? "").trim());
+    const linkedKlijent = row.klijent_id != null
+      ? klijenti.find((k) => k.klijent_id === row.klijent_id)
+      : undefined;
+    const rawEmail = String(row.billing_email ?? "").trim();
+    setContactEmailDraft(rawEmail || String(linkedKlijent?.email ?? "").trim());
     setContactPhoneDraft(String(row.billing_phone ?? "").trim());
     setContactKlijentDraft(row.klijent_id ?? "");
   };
@@ -1248,6 +1254,7 @@ export default function LicenceClient() {
     if (dp === "JAVNENABAVKE") return openJnModulesModal(row);
     if (dp === "FLUXAX") return setFluxaXNetModalRow(row);
     if (dp === "LOGISTIX") return setLogistixModalRow(row);
+    if (dp === "FLUXASCB") return setFluxaScbModalRow(row);
     if (dp === "SOCCS") return openSoccsModal(row);
     return openEnterSysModulesModal(row);
   };
@@ -1442,6 +1449,7 @@ export default function LicenceClient() {
                 <th style={thTd}>Ističe Datum</th>
                 <th style={thTd}>Dana do Isteka</th>
                 <th style={thTd}>Stanje</th>
+                <th style={thFlux}>Moduli &amp; Paket</th>
                 <th style={thFluxCont}>Licencni Token</th>
                 {!isKasicaRole && <th style={{ ...thTd, textAlign: "center" }}>Akcije</th>}
               </tr>
@@ -1576,6 +1584,7 @@ export default function LicenceClient() {
                       row={row}
                       isKasicaRole={isKasicaRole}
                       statusSavingId={statusSavingId}
+                      onOpenModules={(r) => setFluxaScbModalRow(r)}
                       onOpenToken={(r) => setTokenModalRow(r)}
                       onOpenExtend={(r) => openExtendModal(r)}
                       onOpenManage={(r) => openContactModal(r)}
@@ -4973,6 +4982,16 @@ export default function LicenceClient() {
           onClose={() => setLogistixModalRow(null)}
           onSaved={async () => {
             setLogistixModalRow(null);
+            await load();
+          }}
+        />
+      )}
+      {fluxaScbModalRow && (
+        <FluxaScbModulesModal
+          row={fluxaScbModalRow}
+          onClose={() => setFluxaScbModalRow(null)}
+          onSaved={async () => {
+            setFluxaScbModalRow(null);
             await load();
           }}
         />
