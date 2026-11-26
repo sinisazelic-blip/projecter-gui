@@ -6,6 +6,7 @@ import { query } from "@/lib/db";
 import { isEnterSysBasePackageId } from "@/lib/entersys-activation";
 import { isFluxaPosBasePackageId } from "@/lib/fluxapos-activation";
 import { isJavneNabavkeBasePackageId } from "@/lib/javnenabavke-activation";
+import { isFluxaScbBasePackageId } from "@/lib/fluxascb-activation";
 import { normalizeStudioLicenceProfile } from "@/lib/studio-licence-profile";
 
 export const dynamic = "force-dynamic";
@@ -177,7 +178,8 @@ export async function PATCH(
       soccsAllowed.includes(raw) ||
       isEnterSysBasePackageId(raw) ||
       isFluxaPosBasePackageId(raw) ||
-      isJavneNabavkeBasePackageId(raw)
+      isJavneNabavkeBasePackageId(raw) ||
+      isFluxaScbBasePackageId(raw)
     ) {
       updates.push("soccs_tier = ?");
       paramsList.push(raw);

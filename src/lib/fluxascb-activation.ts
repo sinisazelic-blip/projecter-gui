@@ -108,6 +108,11 @@ export function getFluxaScbBasePackage(id: string | null | undefined) {
   return FLUXASCB_BASE_PACKAGES.find((p) => p.id === id) ?? FLUXASCB_BASE_PACKAGES[1];
 }
 
+export function isFluxaScbBasePackageId(id: string | null | undefined): boolean {
+  const s = String(id || "").trim().toUpperCase();
+  return FLUXASCB_BASE_PACKAGES.some((p) => p.id === s);
+}
+
 export function resolveFluxaScbTier(pkgId: string | null | undefined): FluxaScbTier {
   const pkg = getFluxaScbBasePackage(pkgId);
   return pkg.tier;
